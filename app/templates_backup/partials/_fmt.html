@@ -1,0 +1,33 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{# partials/_fmt.html — Shared formatting helpers (CSP-safe, robust) #} {# Money
+--------------------------------------------------------------- #} {# Usage:
+fmt.roll_money(12345) -> $12,345 fmt.roll_money(12345, decimals=2) -> $12,345.00
+fmt.roll_money(15234, abbr=True) -> $15.2K fmt.roll_money(-9800000, abbr=True)
+-> -$9.8M fmt.roll_money(2500, symbol='€') -> €2,500 #} {% macro roll_money(v,
+symbol='$', decimals=0, abbr=False) -%} {# sanitize -> float #} {%- set n = (v
+if v is number else
+(v|string)|replace('$','')|replace('%','')|replace(',','')|replace(' ',
+'')|float) -%} {%- set neg = n < 0 -%} {%- set n = (-n) if neg else n -%} {%- if
+abbr and n >= 1000 -%} {%- set units = [('T', 1000000000000), ('B', 1000000000),
+('M', 1000000), ('K', 1000)] -%} {%- for suf, val in units if n >= val -%} {%-
+set short = n / val -%} {%- set s =
+'{:,.1f}'.format(short).rstrip('0').rstrip('.') -%} {{- (neg and '-' or '') ~
+symbol ~ s ~ suf -}} {%- endfor -%} {%- else -%} {{- (neg and '-' or '') ~
+symbol ~ ('{:,.%df}' % (decimals|int)).format(n) -}} {%- endif -%} {%- endmacro
+%} {# Percent ------------------------------------------------------------- #}
+{# Usage: fmt.roll_pct(92) -> 92 fmt.roll_pct(92, 1) -> 92.0 fmt.roll_pct(0.31)
+-> 31 (auto treats 0..1 as ratio) fmt.roll_pct(0.31, 1, ratio=True)-> 31.0
+(explicit ratio multiply) fmt.roll_pct(31, 0, ratio=False)-> 31 (explicitly NOT
+a ratio) #} {% macro roll_pct(v, decimals=0, ratio=None) -%} {%- set raw = (v if
+v is number else (v|string)|replace('%','')|replace(' ', '')|float) -%} {%- if
+ratio is not none -%} {%- set n = (raw * 100.0) if ratio else raw -%} {%- else
+-%} {%- set n = (raw * 100.0) if (0 <= raw <= 1) else raw -%} {%- endif -%} {{-
+('{:,.%df}' % (decimals|int)).format(n) -}} {%- endmacro %}

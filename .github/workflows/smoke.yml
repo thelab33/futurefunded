@@ -1,0 +1,16 @@
+name: Smoke
+on: [push, pull_request]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - run: |
+          export FLASK_CONFIG=app.config.DevelopmentConfig
+          export SQLALCHEMY_DATABASE_URI="sqlite:///./dev.db"
+          python -c "from app import create_app; app=create_app(); app.run(port=5000)" &
+          for i in {1..40}; do curl -fsS http://localhost:5000/healthz && break || sleep 0.5; done
+          python ci/smoke/wiring_smoketest.py --base http://localhost:5000

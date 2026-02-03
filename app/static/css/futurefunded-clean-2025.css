@@ -1,0 +1,746 @@
+/* ================================================================
+   DIAMOND 2025 — Unified Theme
+   Light-first · Dark-capable · Manrope-only · Energetic Youth Sports
+   ================================================================ */
+
+/* ---------------------------------------------------------------
+   1. TOKENS / ROOT SYSTEM
+   --------------------------------------------------------------- */
+:root {
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-sans: var(--font-display);
+
+  /* Brandable accent */
+  --accent: #22c55e;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-strong: color-mix(in srgb, var(--accent) 32%, transparent);
+
+  /* Radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Typography */
+  --ts-1: 0.78rem;
+  --ts-2: 0.85rem;
+  --ts-3: 0.95rem;
+  --ts-4: 1.1rem;
+  --ts-5: 1.35rem;
+  --ts-6: 1.75rem;
+  --ts-7: 2.1rem;
+
+  /* Shadow system */
+  --shadow-soft: 0 16px 40px rgb(15,23,42,0.18);
+  --shadow-strong: 0 24px 60px rgb(15,23,42,0.28);
+  --shadow-card: 0 20px 50px rgb(15,23,42,0.15);
+
+  /* Layout */
+  --tap-size: 44px;
+  --shell: 1120px;
+  --gutter: max(16px, env(safe-area-inset-left,0));
+  --gutter-r: max(16px, env(safe-area-inset-right,0));
+
+  /* Theme engine */
+  color-scheme: light;
+
+  --bg: #f5f6fa;
+  --surface: #fff;
+  --surface-soft: #f9fafb;
+  --surface-card: #fff;
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --ink-muted: #64748b;
+  --border-subtle: rgb(148,163,184,0.3);
+  --border-strong: rgb(148,163,184,0.6);
+  --ease: cubic-bezier(.16,1,.3,1);
+}
+
+/* ---------------------------------------------------------------
+   1b. Dark Mode
+   --------------------------------------------------------------- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #020617;
+  --surface: #0b1220;
+  --surface-soft: #0b1220;
+  --surface-card: #020617;
+  --ink: #f8fafc;
+  --ink-soft: #cdd4e0;
+  --ink-muted: #94a3b8;
+  --border-subtle: rgb(148,163,184,0.34);
+  --border-strong: rgb(148,163,184,0.72);
+  --shadow-soft: 0 16px 40px rgb(0,0,0,0.55);
+  --shadow-card: 0 20px 55px rgb(0,0,0,0.65);
+}
+
+/* ---------------------------------------------------------------
+   2. GLOBAL RESET & BASE
+   --------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+img, svg {
+  max-width: 100%;
+  display: block;
+}
+button {
+  font-family: inherit;
+}
+
+/* Utility */
+.tnums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* -----------------------------------------------------------------------
+   3. APP SHELL
+   ----------------------------------------------------------------------- */
+.app-shell {
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 2.25rem var(--gutter) calc(80px + env(safe-area-inset-bottom));
+  min-height: 100vh;
+  background:
+    radial-gradient(140% 200% at 0% 0%, #e4efff 0, #f9fafb 40%, #e0f2fe 100%);
+}
+html[data-theme="dark"] .app-shell {
+  background:
+    radial-gradient(900px 600px at -10% -15%, rgb(148,163,184,0.25), transparent 60%),
+    radial-gradient(900px 500px at 110% -15%, rgb(59,130,246,0.25), transparent 60%),
+    var(--bg);
+}
+
+/* -----------------------------------------------------------------------
+   4. APP HEADER (Diamond 2025)
+   ----------------------------------------------------------------------- */
+.app-header {
+  max-width: var(--shell);
+  margin-inline: auto;
+  margin-bottom: var(--space-6);
+  padding: 1.6rem 1.8rem 2rem;
+  border-radius: 2.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+html[data-theme="dark"] .app-header {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+/* Header layout */
+.app-header-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* -----------------------------------------------------------------------
+   5. BRAND LOCKUP
+   ----------------------------------------------------------------------- */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.1rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand-orb {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-pill);
+  background:
+    radial-gradient(circle at 30% 20%, #4ade80 0, #22c55e 35%, #0ea5e9 70%, #020617 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: var(--shadow-card);
+}
+.brand-orb-logo {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
+.brand-orb-initials {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+/* Brand copy */
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.12em; /* neutral tracking */
+  text-transform: uppercase;
+}
+.brand-tagline {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* -----------------------------------------------------------------------
+   6. HEADER ACTIONS
+   ----------------------------------------------------------------------- */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* Platform Chip */
+.platform-chip-shell {
+  flex: 1 1 auto;
+  min-width: 240px;
+}
+.platform-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+html[data-theme="dark"] .platform-chip {
+  background: rgb(15,23,42,0.92);
+  border-color: var(--border-strong);
+}
+
+/* Logo */
+.platform-chip-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  object-fit: cover;
+}
+
+/* Fallback initials */
+.platform-chip-initials {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: #111827;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+/* Labels */
+.platform-chip-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+html[data-theme="dark"] .platform-chip-name {
+  color: var(--ink-soft);
+}
+.platform-chip-sub {
+  margin-left: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.16em;
+}
+
+/* -----------------------------------------------------------------------
+   7. HEADER CTA (Hero Button)
+   ----------------------------------------------------------------------- */
+.btn-header-cta {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.75rem 1.6rem;
+  background: linear-gradient(90deg, #fb923c, #facc15, #22c55e);
+  color: #052e16;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: 0 22px 60px rgb(248,181,63,0.55);
+  cursor: pointer;
+  transition: 0.15s var(--ease);
+}
+.btn-header-cta:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+.btn-header-cta:active {
+  transform: translateY(0);
+}
+
+/* -----------------------------------------------------------------------
+   8. THEME TOGGLE
+   ----------------------------------------------------------------------- */
+.theme-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: 0.15s var(--ease);
+}
+html[data-theme="dark"] .theme-toggle {
+  background: rgb(15,23,42,0.35);
+}
+.theme-toggle:hover {
+  transform: translateY(-1px);
+}
+
+/* -----------------------------------------------------------------------
+   9. PROGRESS CARD
+   ----------------------------------------------------------------------- */
+.app-header-progress {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 1.4rem 1.5rem 1.35rem;
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+html[data-theme="dark"] .app-header-progress {
+  background: var(--surface-soft);
+}
+
+/* Labels */
+.progress-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 0.5rem;
+}
+.progress-value-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+}
+.progress-main-number {
+  font-size: var(--ts-6);
+  font-weight: 800;
+  color: var(--ink);
+}
+.progress-amount {
+  font-size: var(--ts-2);
+  color: var(--ink-soft);
+}
+
+/* Bar */
+.progress-bar {
+  height: 8px;
+  background: rgb(148,163,184,0.25);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+.progress-bar-fill {
+  width: var(--pct, 0%);
+  height: 100%;
+  background: linear-gradient(90deg, #fb923c, #facc15, #22c55e);
+  transition: width 0.6s var(--ease);
+}
+
+/* Countdown pill */
+.progress-pill {
+  flex-shrink: 0;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  box-shadow: var(--shadow-soft);
+  min-width: 10rem;
+}
+.progress-pill-value {
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.progress-pill-countdown {
+  font-size: var(--ts-3);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* -----------------------------------------------------------------------
+   10. ANNOUNCEMENT BAR
+   ----------------------------------------------------------------------- */
+.app-announcement {
+  margin-top: 1.4rem;
+}
+.app-announcement-inner {
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+html[data-theme="dark"] .app-announcement-inner {
+  background: var(--surface-soft);
+}
+.app-announcement-pill {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-pill);
+  background: rgb(251,146,60,0.1);
+  color: #ea580c;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.app-announcement-text {
+  font-size: var(--ts-3);
+  color: var(--ink-soft);
+}
+.app-announcement-link {
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: 500;
+}
+.app-announcement-close {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+/* -----------------------------------------------------------------------
+   11. HERO
+   ----------------------------------------------------------------------- */
+.hero-section {
+  margin-top: var(--space-6);
+}
+.hero-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (width >= 840px) {
+  .hero-layout {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+.hero-title {
+  font-size: var(--ts-7);
+  font-weight: 800;
+  margin: 0 0 var(--space-2);
+  letter-spacing: 0; /* neutral tracking */
+}
+.hero-highlight {
+  background: linear-gradient(120deg, var(--accent), #facc15);
+  background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-meta {
+  font-size: var(--ts-3);
+  color: var(--ink-soft);
+}
+
+/* CTA Row */
+.hero-cta-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* Hero media */
+.hero-media-card {
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+.hero-photo-wrapper {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #020617;
+  aspect-ratio: 4/3;
+}
+
+/* Live badge */
+.badge-live {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: var(--ts-1);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgb(220,38,38,0.96);
+  color: #fecaca;
+  border: 1px solid rgb(248,113,113,0.8);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* -----------------------------------------------------------------------
+   12. IMPACT GRID
+   ----------------------------------------------------------------------- */
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+  gap: var(--space-2);
+}
+.impact-card {
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: 0.15s var(--ease);
+}
+.impact-card:hover {
+  transform: translateY(-1px);
+}
+
+/* -----------------------------------------------------------------------
+   13. SUPPORTERS + VIP
+   ----------------------------------------------------------------------- */
+.supporters-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (width >= 900px) {
+  .supporters-layout {
+    grid-template-columns: 1.06fr 1fr;
+  }
+}
+.supporters-card,
+.tiers-card {
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+.vip-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-subtle);
+}
+
+/* -----------------------------------------------------------------------
+   14. SPONSOR TIERS
+   ----------------------------------------------------------------------- */
+.sponsor-tier-card {
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+
+/* -----------------------------------------------------------------------
+   15. WAYS TO GIVE + FAQ
+   ----------------------------------------------------------------------- */
+.ways-tabs {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-soft);
+}
+.ways-tab {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 13px;
+  text-transform: uppercase;
+  font-size: var(--ts-1);
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.ways-tab.is-active {
+  background: linear-gradient(135deg, var(--accent), #facc15);
+  color: #111;
+  font-weight: 700;
+  box-shadow: var(--shadow-soft);
+}
+.faq-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@media (width >=720px) {
+  .faq-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.faq-item {
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-subtle);
+}
+
+/* -----------------------------------------------------------------------
+   16. DONATION FORM
+   ----------------------------------------------------------------------- */
+.field-input {
+  min-height: var(--tap-size);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  padding: 10px 14px;
+  font-size: var(--ts-3);
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+}
+.quick-btn {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: var(--ts-2);
+  transition: 0.15s var(--ease);
+}
+.quick-btn.is-active {
+  background: linear-gradient(135deg, var(--accent), #facc15);
+  color: #111827;
+  border-color: transparent;
+}
+
+/* -----------------------------------------------------------------------
+   17. TOAST
+   ----------------------------------------------------------------------- */
+.toast-host {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.inline-toast {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-strong);
+  font-size: var(--ts-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transform: translateY(12px);
+  opacity: 0;
+  transition: 0.2s var(--ease);
+}
+.inline-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* -----------------------------------------------------------------------
+   18. TABBAR
+   ----------------------------------------------------------------------- */
+.app-tabbar {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  padding: 6px var(--gutter) calc(6px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border-subtle);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-soft);
+}
+.tabbar-inner {
+  max-width: var(--shell);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5,1fr);
+}
+.tab-btn {
+  min-height: var(--tap-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: var(--ts-1);
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  gap: 2px;
+  cursor: pointer;
+}
+.tab-btn.is-active {
+  color: #facc15;
+  font-weight: 700;
+}
+
+/* -----------------------------------------------------------------------
+   19. FOOTER
+   ----------------------------------------------------------------------- */
+.app-footer {
+  max-width: var(--shell);
+  margin: var(--space-6) auto 0;
+  padding: var(--space-3) var(--gutter);
+  font-size: var(--ts-2);
+  color: var(--ink-muted);
+}
+

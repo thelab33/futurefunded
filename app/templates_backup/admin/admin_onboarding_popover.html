@@ -1,0 +1,327 @@
+{# =============================================================================
+   app/templates/partials/admin_onboarding_popover.html
+   Admin Onboarding Popover — Elite (CSP/HTMX/Alpine-optional, Single-file)
+   - Brand-aware styling; safe route resolution
+   - Idempotent JS; BroadcastChannel for cross-tab sync
+   - Proper ARIA (progressbar), reduced-motion aware
+   - Avoids HTMX double-POST by detecting hx-post at runtime
+   ============================================================================= #}
+
+{% include "partials/ui_bootstrap.html" ignore missing with context %}
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set HAS   = has_endpoint is defined %}
+{% set brand_color = (team.theme_color if team and team.theme_color else '#facc15') %}
+{% set team_key    = (team.id if team and team.id is defined else 'global') %}
+{% set storage_key = 'adminOnboardSteps:' ~ team_key %}
+{% set step_labels = step_labels if step_labels is defined else ['Visit Dashboard','Invite Sponsors','Import Contacts'] %}
+{% set csrf_val    = (csrf_token() if csrf_token is defined else '') %}
+
+{# ---- Safe routes (no lambdas) ---- #}
+{% set href_dashboard = (safe_url_for('admin.dashboard')          if (safe_url_for is defined and HAS and has_endpoint('admin.dashboard'))          else '/admin/') %}
+{% set href_invite    = (safe_url_for('admin.invite')             if (safe_url_for is defined and HAS and has_endpoint('admin.invite'))             else '/admin/invite') %}
+{% set href_import    = (safe_url_for('admin.import_contacts')    if (safe_url_for is defined and HAS and has_endpoint('admin.import_contacts'))    else '/admin/import') %}
+{% set href_dismiss   = (safe_url_for('admin.dismiss_onboarding') if (safe_url_for is defined and HAS and has_endpoint('admin.dismiss_onboarding')) else '/admin/dismiss-onboarding') %}
+{% set href_sync      = (safe_url_for('admin.onboarding_sync')    if (safe_url_for is defined and HAS and has_endpoint('admin.onboarding_sync'))    else '/admin/onboarding/sync') %}
+
+{% if current_user and current_user.is_authenticated and current_user.is_admin and not session.get('onboarded') %}
+<div
+  data-ui="{{ (name|default('admin_onboarding_popover'))|replace('_','-') }}"
+  id="admin-onboarding"
+  class="fixed bottom-6 right-6 z-[1050] w-[22rem] max-w-[92vw] rounded-2xl border border-yellow-400/25 bg-zinc-950/95 p-5 text-zinc-100 shadow-2xl backdrop-blur-xl opacity-0 translate-y-2 transition"
+  role="dialog" aria-modal="true" aria-labelledby="admin-ob-title" aria-describedby="admin-ob-desc" tabindex="-1"
+  data-key="{{ storage_key }}"
+  data-sync="{{ href_sync }}"
+  data-dc="{{ csrf_val }}"
+  style="
+    --fc-brand: {{ brand_color }};
+    --fc-brand-200: color-mix(in srgb, {{ brand_color }} 20%, transparent);
+  "
+>
+  <h3 id="admin-ob-title" class="flex items-center gap-2 text-lg font-extrabold text-yellow-300">
+    <span aria-hidden="true">🎯</span> Welcome, Admin!
+  </h3>
+  <p id="admin-ob-desc" class="mt-1 text-xs text-zinc-300">
+    Quick setup checklist so you can launch fundraising in minutes.
+  </p>
+
+  <!-- Progress -->
+  <div class="mt-3">
+    <div class="h-2 w-full overflow-hidden rounded-full bg-zinc-800 ring-1 ring-[color:var(--fc-brand-200)]" aria-hidden="true">
+      <div id="ob-bar"
+           class="h-full bg-gradient-to-r from-yellow-400 to-amber-300 transition-[width] duration-500"
+           role="progressbar"
+           aria-valuemin="0"
+           aria-valuemax="{{ step_labels|length }}"
+           aria-valuenow="0"
+           style="width:0%"></div>
+    </div>
+    <div class="mt-1 text-right text-[11px] text-zinc-400">
+      <span id="ob-progress" aria-live="polite" aria-atomic="true">0 / {{ step_labels|length }} complete</span>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <ol id="ob-steps" class="mt-3 space-y-2" aria-label="Onboarding steps">
+    {% for lbl in step_labels %}
+    <li class="flex items-start gap-3" data-step="{{ loop.index0 }}">
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked="false"
+        class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded border border-yellow-400/40 bg-zinc-900/70 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+        data-toggle
+        aria-label="Mark step as complete"
+      >
+        <span class="hidden" aria-hidden="true">✔️</span>
+      </button>
+      <span class="text-sm text-zinc-300" data-label>{{ lbl }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+
+  <!-- Quick actions -->
+  <div class="mt-4 grid grid-cols-3 gap-2 text-sm">
+    <a href="{{ href_dashboard }}" class="rounded-lg border border-yellow-400/20 bg-zinc-900/70 px-3 py-2 text-center hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" data-quick="0" aria-label="Go to Dashboard">Dashboard</a>
+    <a href="{{ href_invite    }}" class="rounded-lg border border-yellow-400/20 bg-zinc-900/70 px-3 py-2 text-center hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" data-quick="1" aria-label="Invite Sponsors">Invite</a>
+    <a href="{{ href_import    }}" class="rounded-lg border border-yellow-400/20 bg-zinc-900/70 px-3 py-2 text-center hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-300" data-quick="2" aria-label="Import Contacts">Import</a>
+  </div>
+
+  <p class="mt-3 text-xs text-zinc-300">
+    💡 Need help? Use the AI Concierge <span aria-hidden="true">💬</span> at any time.
+  </p>
+
+  <div class="mt-4 space-y-2">
+    <button
+      type="button"
+      id="ob-dismiss"
+      class="inline-flex w-full items-center justify-center rounded-lg border border-yellow-400/30 bg-black/60 px-4 py-2 font-bold text-yellow-200 hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+      hx-post="{{ href_dismiss }}"
+      hx-headers='{"X-CSRFToken":"{{ csrf_val }}"}'
+      hx-swap="none"
+      aria-label="Dismiss onboarding"
+    >
+      Got it!
+    </button>
+    <button
+      type="button"
+      id="ob-reset"
+      class="w-full text-xs text-zinc-400 underline underline-offset-4 hover:text-zinc-200 focus:outline-none"
+      aria-label="Reset onboarding checklist"
+    >
+      Reset checklist
+    </button>
+  </div>
+</div>
+{% endif %}
+
+{# — AI Concierge tip (shows even if popover dismissed) — #}
+<div id="ai-concierge-tip"
+     class="fixed bottom-24 right-6 z-[1049] translate-y-2 rounded-lg border border-yellow-400/20 bg-black/80 px-3 py-2 text-xs text-yellow-200 opacity-0 shadow-lg transition"
+     aria-live="polite" aria-atomic="true" role="status">
+  👋 Click the chat icon for AI support!
+</div>
+
+<style nonce="{{ NONCE }}">
+  #admin-onboarding { will-change: opacity, transform; }
+  #ai-concierge-tip { will-change: transform, opacity; }
+  @media (prefers-reduced-motion: reduce){
+    #admin-onboarding, #ai-concierge-tip { transition: none !important; }
+  }
+</style>
+
+{% if script_open is defined %}{{ script_open() }}{% else %}<script nonce="{{ NONCE }}">{% endif %}
+(() => {
+  const root = document.getElementById('admin-onboarding');
+  const tip  = document.getElementById('ai-concierge-tip');
+  if (!root || root.__init) return; root.__init = true;
+
+  // Utils
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || (navigator.connection?.saveData === true);
+  const $ = (sel, el = document) => el.querySelector(sel);
+  const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
+  const getKey  = () => root.dataset.key || 'adminOnboardSteps:global';
+  const getSync = () => root.dataset.sync || '';
+  const getCSRF = () => root.dataset.dc || (document.cookie.match(/(?:^|;\\s*)csrf_token=([^;]+)/)?.[1] || '');
+
+  function confettiLite(){ try { window.launchConfetti?.({ particleCount: 60, spread: 80, origin: { y: .6 } }); } catch(_){} }
+
+  // Focus trap
+  function trapFocus(container){
+    const onKey = (e) => {
+      if (e.key !== 'Tab') return;
+      const list = $$('a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])', container).filter(el => !el.disabled);
+      if (!list.length) return;
+      const first = list[0], last = list[list.length-1];
+      if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    };
+    container.addEventListener('keydown', onKey);
+    return () => container.removeEventListener('keydown', onKey);
+  }
+
+  // State
+  const labels = {{ step_labels|tojson if tojson is defined else '["Visit Dashboard","Invite Sponsors","Import Contacts"]' }};
+  let steps = (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(getKey()) || 'null');
+      return (Array.isArray(saved) && saved.length === labels.length) ? saved : new Array(labels.length).fill(false);
+    } catch { return new Array(labels.length).fill(false); }
+  })();
+
+  // Cross-tab sync
+  let bc = null;
+  try { bc = new BroadcastChannel(getKey()); bc.onmessage = (ev) => { if (Array.isArray(ev.data)) { steps = ev.data; paint(); } }; } catch {}
+
+  // Paint UI
+  function paint(){
+    $$('#ob-steps [data-step]').forEach(li => {
+      const i = +li.dataset.step;
+      const on = !!steps[i];
+      const btn = $('[data-toggle]', li);
+      const tic = btn?.firstElementChild;
+      const lbl = $('[data-label]', li);
+      if (btn) {
+        btn.setAttribute('aria-checked', String(on));
+        btn.classList.toggle('bg-yellow-400', on);
+        btn.classList.toggle('text-black', on);
+      }
+      if (tic) tic.classList.toggle('hidden', !on);
+      if (lbl) {
+        lbl.classList.toggle('text-yellow-200', on);
+        lbl.classList.toggle('font-semibold', on);
+        lbl.classList.toggle('text-zinc-300', !on);
+      }
+    });
+    const done = steps.reduce((a,b)=>a+(b?1:0),0), total = labels.length, pct = total ? Math.round(done/total*100) : 0;
+    const bar = document.getElementById('ob-bar'); const txt = document.getElementById('ob-progress');
+    if (bar) { bar.style.width = pct + '%'; bar.setAttribute('aria-valuenow', String(done)); }
+    if (txt) txt.textContent = `${done} / ${total} complete`;
+    window.dispatchEvent(new CustomEvent('fc:onboarding:progress', { detail: { done, total, pct } }));
+  }
+
+  function persist(){
+    try { localStorage.setItem(getKey(), JSON.stringify(steps)); } catch {}
+    try { bc?.postMessage(steps); } catch {}
+    const syncUrl = getSync();
+    if (syncUrl) {
+      const payload = { steps };
+      if (window.htmx) {
+        try { htmx.ajax('POST', syncUrl, { values: payload, headers: { 'X-CSRFToken': getCSRF() }, swap: 'none' }); } catch {}
+      } else {
+        try { fetch(syncUrl, { method:'POST', headers:{ 'Content-Type':'application/json','X-CSRFToken': getCSRF() }, credentials:'same-origin', body: JSON.stringify(payload) }); } catch {}
+      }
+    }
+  }
+
+  function toggle(i){
+    const was = !!steps[i];
+    steps[i] = !was;
+    paint(); persist();
+    if (!was) confettiLite();
+    if (steps.every(Boolean)) { setTimeout(()=> close(true), 350); }
+  }
+  function quick(i){
+    if (!steps[i]) { steps[i] = true; paint(); persist(); confettiLite(); }
+  }
+
+  // Bindings
+  const dismissBtn = $('#ob-dismiss');
+  dismissBtn?.addEventListener('click', (e) => {
+    // If HTMX is present and hx-post is configured, let HTMX perform the POST to avoid double-submit.
+    const hasHX = !!window.htmx && dismissBtn.hasAttribute('hx-post');
+    if (hasHX) {
+      e.preventDefault();
+      try {
+        htmx.ajax('POST', dismissBtn.getAttribute('hx-post'), {
+          headers: { 'X-CSRFToken': getCSRF() },
+          swap: 'none'
+        });
+      } catch {}
+      close(true, /*skipServer*/ true);
+    } else {
+      e.preventDefault();
+      close(true); // will call our fetch fallback
+    }
+  });
+
+  $('#ob-reset')?.addEventListener('click', () => {
+    steps = new Array(labels.length).fill(false);
+    paint();
+    try{ localStorage.removeItem(getKey()); }catch{}
+    persist();
+  });
+
+  $$('#ob-steps [data-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => toggle(+btn.closest('[data-step]').dataset.step));
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(+btn.closest('[data-step]').dataset.step); }
+    });
+  });
+
+  $$('[data-quick]').forEach(a => a.addEventListener('click', () => quick(+a.dataset.quick)));
+
+  // Dismiss server call (fallback when HTMX not used)
+  function dismissServer(){
+    const url = {{ href_dismiss|tojson if tojson is defined else '"' ~ href_dismiss ~ '"' }};
+    const csrf = getCSRF();
+    if (window.htmx) {
+      try { htmx.ajax('POST', url, { headers:{'X-CSRFToken': csrf}, swap:'none' }); } catch {}
+    } else {
+      try { fetch(url, { method:'POST', headers:{'X-CSRFToken': csrf}, credentials:'same-origin' }); } catch {}
+    }
+  }
+
+  // Open/close + trap
+  let untrap = null;
+  function open(){
+    root.style.opacity = '1';
+    root.style.transform = 'translateY(0)';
+    root.focus();
+    untrap = trapFocus(root);
+  }
+  function close(persistFlag, skipServer = false){
+    root.style.opacity = '0';
+    root.style.transform = 'translateY(6px)';
+    setTimeout(()=> root.remove(), reduce ? 0 : 220);
+    untrap?.(); untrap = null;
+    if (persistFlag) {
+      try { localStorage.removeItem(getKey()); } catch {}
+      if (!skipServer) dismissServer();
+    }
+  }
+
+  // Show after tiny delay
+  setTimeout(open, reduce ? 0 : 120);
+
+  // Esc to close
+  document.addEventListener('keydown', (e)=> { if (e.key === 'Escape') close(true); }, { passive:true });
+
+  // Concierge tip (rate-limited)
+  try {
+    const last = parseInt(localStorage.getItem('ai_tip_last') || '0', 10);
+    const now = Date.now();
+    if (now - last > 6*60*60*1000) {
+      setTimeout(()=> {
+        tip.classList.remove('opacity-0','translate-y-2');
+        setTimeout(()=> tip.classList.add('opacity-0','translate-y-2'), 4000);
+      }, 1500);
+      localStorage.setItem('ai_tip_last', String(now));
+    }
+  } catch {}
+
+  // Initial paint
+  paint();
+
+  // Alpine adapter (optional)
+  window.AdminOnboarding = {
+    toggle: (i)=> toggle(i),
+    quick:  (i)=> quick(i),
+    reset:  ()=> $('#ob-reset')?.click(),
+    close:  (persist=true)=> close(persist),
+    get steps(){ return steps.slice(); },
+    set steps(v){ if (Array.isArray(v) && v.length===labels.length){ steps = v.map(Boolean); paint(); persist(); } }
+  };
+})();
+{% if script_close is defined %}{{ script_close() }}{% else %}</script>{% endif %}
+

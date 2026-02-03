@@ -1,0 +1,296 @@
+{# === Minimal Footer — FundChamps Elite (SV-ELITE MVP v3.4) === #}
+{% set NONCE          = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set now_year       = (now().year if now is defined else 2025) %}
+{% set team_name      = (team.team_name if team and team.team_name else 'FundChamps') %}
+{% set team_location  = (team.location if team and team.location else ((team.city ~ ', ' ~ team.state) if team and team.city and team.state else 'Austin, TX')) %}
+{% set brand_color    = (team.theme_color if team and team.theme_color else '#facc15') %}
+{% set currency       = (team.currency if team and team.currency else 'USD') %}
+
+{# Nonprofit trust signals (optional) #}
+{% set is_501c3       = (team.is_501c3 if team and team.is_501c3 is not none else false) %}
+{% set ein            = (team.ein if team and team.ein else '') %}
+
+{# Logo URL (works with or without Flask) #}
+{% set _footer_logo   = (team.footer_logo_url if team and team.footer_logo_url else 'images/logo.webp') %}
+{% if '://' in _footer_logo or _footer_logo.startswith('data:') %}
+  {% set footer_logo = _footer_logo %}
+{% else %}
+  {% set footer_logo = (url_for('static', filename=_footer_logo.lstrip('/')) if url_for is defined else '/static/' ~ _footer_logo.lstrip('/')) %}
+{% endif %}
+
+{# Progress #}
+{% set raised   = (stats.raised if stats is defined and stats.raised is defined else 0) | float %}
+{% set goal     = (stats.goal   if stats is defined and stats.goal   is defined else 10000) | float %}
+{% set pct_raw  = (raised / goal * 100 if goal else 0) %}
+{% set pct      = (0 if pct_raw < 0 else (100 if pct_raw > 100 else pct_raw)) %}
+
+{# Links #}
+{% set _donate_default = (url_for('main.donate') if url_for is defined else '/donate') %}
+{% set donate_href  = (team.payment_link if team and team.payment_link else (team.paypal if team and team.paypal else _donate_default)) %}
+{% set privacy_url  = terms_privacy_url if terms_privacy_url is defined else (privacy_url|default('#privacy')) %}
+{% set terms_url    = terms_url|default('#terms') %}
+{% set website_href = (team.website if team and team.website else 'https://www.connectatxelite.com') %}
+{% set email_addr   = (team.email if team and team.email else 'connectatxelite@gmail.com') %}
+{% set email_href   = 'mailto:' ~ email_addr %}
+
+{# Social (optional) #}
+{% set ig = (team.instagram if team and team.instagram else None) %}
+{% set fb = (team.facebook  if team and team.facebook  else None) %}
+{% set tw = (team.twitter   if team and team.twitter   else None) %}
+
+{# Supporters (optional list of names/brands) #}
+{% set supporters = (recent_supporters if recent_supporters is defined else None) %}
+
+<footer id="site-footer" role="contentinfo"
+  class="fc-section border-t border-yellow-400/20 bg-zinc-950 text-zinc-100"
+  aria-labelledby="footer-brand"
+  itemscope itemtype="https://schema.org/Organization"
+  style="--fc-brand: {{ brand_color }};">
+  <meta itemprop="name" content="{{ team_name }}"/>
+
+  <div class="fc-container">
+    <div class="grid gap-8 md:grid-cols-3 items-start">
+      <!-- Brand -->
+      <section class="space-y-3">
+        <div class="flex items-center gap-3">
+          <img src="{{ footer_logo }}" alt="{{ team_name }} logo"
+               class="h-10 w-10 rounded bg-black/40 object-contain ring-1 ring-[color:color-mix(in srgb,var(--fc-brand) 20%,transparent)]"
+               loading="lazy" decoding="async" width="40" height="40" />
+          <div>
+            <h3 id="footer-brand" class="text-lg font-extrabold text-yellow-300">{{ team_name }}</h3>
+            <p class="text-sm text-zinc-300">{{ team_location }}</p>
+            <p class="text-xs text-zinc-500">© {{ now_year }}</p>
+          </div>
+        </div>
+
+        {% if is_501c3 or ein %}
+        <div class="flex flex-wrap items-center gap-2 text-[11px]">
+          {% if is_501c3 %}<span class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/40 px-2 py-0.5 text-yellow-200">✅ 501(c)(3)</span>{% endif %}
+          {% if ein %}<span class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/40 px-2 py-0.5 text-yellow-200">EIN: {{ ein }}</span>{% endif %}
+        </div>
+        {% endif %}
+
+        {% if ig or fb or tw %}
+        <nav aria-label="Social links" class="flex items-center gap-2">
+          {% if ig %}
+          <a href="{{ ig }}" target="_blank" rel="noopener" aria-label="Instagram"
+             class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/40 hover:bg-black/55">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="6" stroke-width="2"/><circle cx="12" cy="12" r="5" stroke-width="2"/><circle cx="18" cy="6" r="1.5" fill="currentColor"/>
+            </svg>
+          </a>
+          {% endif %}
+          {% if fb %}
+          <a href="{{ fb }}" target="_blank" rel="noopener" aria-label="Facebook"
+             class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/40 hover:bg-black/55">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="6" stroke-width="2"/><path d="M16 8h-2a2 2 0 0 0-2 2v2h4l-1 4h-3v4" stroke-width="2"/>
+            </svg>
+          </a>
+          {% endif %}
+          {% if tw %}
+          <a href="{{ tw }}" target="_blank" rel="noopener" aria-label="Twitter / X"
+             class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-black/40 hover:bg-black/55">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="6" stroke-width="2"/><path d="M7 17L17 7M7 7l10 10" stroke-width="2"/>
+            </svg>
+          </a>
+          {% endif %}
+        </nav>
+        {% endif %}
+      </section>
+
+      <!-- Progress + CTA (basketball meter) -->
+      <section class="space-y-3">
+        <div class="relative">
+          <div class="h-3 w-full overflow-hidden rounded-full ring-1 ring-white/10 bg-white/5" role="progressbar"
+               aria-label="Season fundraising progress"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ '%.1f' % pct }}">
+            <div class="relative h-full rounded-full"
+                 style="background:
+                        repeating-linear-gradient(90deg, rgba(255,255,255,.12) 0 8px, transparent 8px 16px),
+                        linear-gradient(90deg,#f59e0b,#facc15,#84cc16,#22c55e);">
+              <div id="footer-meter"
+                   class="absolute inset-y-0 left-0 rounded-full"
+                   style="width: {{ '%.1f' % pct }}%;
+                          box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 3px 10px rgba(34,197,94,.18);">
+              </div>
+              <!-- basketball marker -->
+              <div id="footer-ball" aria-hidden="true"
+                   class="absolute -top-1.5 size-6 rounded-full ring-1 ring-black/30"
+                   style="left: calc({{ '%.1f' % pct }}% - 12px);
+                          background:
+                            radial-gradient(circle at 30% 30%, #fff3 0 30%, #0000 31%),
+                            linear-gradient(90deg, #000 2px, #0000 2px 4px, #000 4px, #0000 6px) 50% / 6px 100% repeat-y,
+                            #f97316;">
+              </div>
+            </div>
+          </div>
+          <p class="mt-2 text-sm text-zinc-300">
+            <span class="sr-only">Raised</span><span id="f-raised" data-cur="{{ currency }}">{{ '{:,.0f}'.format(raised) }}</span>
+            <span class="opacity-60">/</span>
+            <span class="sr-only">Goal</span><span id="f-goal" data-cur="{{ currency }}">{{ '{:,.0f}'.format(goal) }}</span>
+            <span class="ml-1 text-xs text-yellow-200">(<span id="f-pct">{{ '%.1f' % pct }}</span>%)</span>
+          </p>
+          <span class="sr-only" aria-live="polite" id="f-live">Progress loaded.</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <a id="f-donate" href="{{ donate_href }}"
+             class="fc-btn fc-btn-primary inline-flex items-center"
+             data-cta="footer:donate">💛 Donate</a>
+
+          <button id="f-share" type="button"
+                  class="fc-btn inline-flex items-center rounded-full border border-white/10 bg-black/40 px-3 py-2">
+            🔗 Share
+          </button>
+          <button id="f-install" type="button"
+                  class="hidden fc-btn inline-flex items-center rounded-full border border-white/10 bg-black/40 px-3 py-2">
+            ⤓ Install App
+          </button>
+        </div>
+      </section>
+
+      <!-- Links + Contact -->
+      <section class="space-y-3">
+        <nav aria-label="Footer quick links" class="grid grid-cols-2 gap-2 text-sm text-zinc-300">
+          <a href="#mission" class="hover:text-yellow-200">Mission</a>
+          <a href="#tiers" class="hover:text-yellow-200">Sponsors</a>
+          <a href="{{ privacy_url }}" class="hover:text-yellow-200">Privacy</a>
+          <a href="{{ terms_url }}" class="hover:text-yellow-200">Terms</a>
+        </nav>
+        <p class="text-sm">
+          <strong class="text-zinc-300">Contact:</strong>
+          <a href="{{ email_href }}" class="underline decoration-yellow-400/40 underline-offset-4 hover:text-yellow-200">{{ email_addr }}</a>
+        </p>
+      </section>
+    </div>
+
+    <!-- Supporters (tiny line) -->
+    <p class="mt-6 text-xs text-zinc-400">
+      <span class="text-zinc-300 font-medium">Recent supporters:</span>
+      {% if supporters %}
+        {% for s in supporters %}{{ s }}{% if not loop.last %} • {% endif %}{% endfor %}
+        <span class="text-yellow-300/90"> • Your Brand Next</span>
+      {% else %}
+        Acme Corp • Jane D. • Smith &amp; Co <span class="text-yellow-300/90">• Your Brand Next</span>
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Minimal JSON-LD -->
+  <script type="application/ld+json" nonce="{{ NONCE }}">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": {{ team_name|tojson if tojson is defined else '"' ~ team_name ~ '"' }},
+    "url": {{ website_href|tojson if tojson is defined else '"' ~ website_href ~ '"' }},
+    "logo": {{ footer_logo|tojson if tojson is defined else '"' ~ footer_logo ~ '"' }},
+    "location": { "@type": "Place", "name": {{ team_location|tojson if tojson is defined else '"' ~ team_location ~ '"' }} },
+    {% if is_501c3 or ein %}
+    "nonprofitStatus": "https://schema.org/NonprofitType",
+    {% if ein %}"taxID": {{ ein|tojson if tojson is defined else '"' ~ ein ~ '"' }},{% endif %}
+    {% endif %}
+    "potentialAction": { "@type": "DonateAction", "target": {{ donate_href|tojson if tojson is defined else '"' ~ donate_href ~ '"' }} }
+  }
+  </script>
+</footer>
+
+<style nonce="{{ NONCE }}">
+  #site-footer .fc-btn { padding:.7rem 1rem; font-weight:800; border-radius:999px; }
+  #site-footer .fc-btn-primary { background: linear-gradient(180deg,#fde047,#facc15); color:#0b0b0c; box-shadow: 0 8px 26px rgb(250 204 21 / 15%); }
+  #site-footer .fc-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(255,255,255,.35), 0 0 0 5px rgba(250,204,21,.45); }
+</style>
+
+<script nonce="{{ NONCE }}">
+(() => {
+  if (window.__fcFooterLite34) return; window.__fcFooterLite34 = true;
+  const $ = (s, r=document) => r.querySelector(s);
+  const bar = $('#footer-meter'), ball = $('#footer-ball'), pctEl = $('#f-pct'), raisedEl = $('#f-raised'), goalEl = $('#f-goal'), live = $('#f-live');
+  const donate = $('#f-donate'), share = $('#f-share'), installBtn = $('#f-install');
+  const cur = (raisedEl?.dataset.cur || 'USD');
+
+  const nf = (val) => {
+    try { return new Intl.NumberFormat(undefined, { style:'currency', currency: cur, maximumFractionDigits:0 }).format(Number(val||0)); }
+    catch { return '$' + Number(val||0).toLocaleString(); }
+  };
+  const pctFmt = (p)=> (p%1===0 ? p.toFixed(0) : p.toFixed(1));
+
+  function setMeter(r,g){
+    const R = Math.max(0,+r||0), G = Math.max(0,+g||0);
+    const P = G ? Math.min(100, Math.max(0, R/G*100)) : 0;
+    if (bar) { bar.style.width = P + '%'; bar.parentElement?.setAttribute('aria-valuenow', P.toFixed(1)); }
+    if (ball) { ball.style.left = `calc(${P}% - 12px)`; }
+    if (pctEl) pctEl.textContent = pctFmt(P);
+    if (raisedEl) raisedEl.textContent = nf(R);
+    if (goalEl) goalEl.textContent = nf(G);
+    if (live) live.textContent = `Raised ${nf(R)} of ${nf(G)} (${pctFmt(P)}%)`;
+  }
+
+  // initialize from server-rendered values
+  setMeter( {{ '%.0f' % raised }}, {{ '%.0f' % goal }} );
+
+  // cross-section live updates
+  addEventListener('fc:meter:update', ev => {
+    const d = ev.detail || {};
+    const R = ('raised' in d) ? d.raised : (raisedEl?.textContent || 0);
+    const G = ('goal'   in d) ? d.goal   : (goalEl?.textContent   || 0);
+    setMeter(R, G);
+  }, { passive:true });
+
+  // fun confetti hook when big gifts roll in
+  addEventListener('fc:funds:update', ev => {
+    try {
+      const name = ev.detail?.sponsorName || 'Sponsor';
+      live.textContent = `${name} just donated — thank you!`;
+    } catch {}
+  }, { passive:true });
+
+  // Smart Donate Router: adds UTM & opens modal if href is '#'/missing
+  if (donate && donate.href) {
+    try {
+      const u = new URL(donate.href, location.origin);
+      u.searchParams.set('utm_source','footer');
+      u.searchParams.set('utm_medium','web');
+      u.searchParams.set('utm_campaign','fundraiser');
+      donate.href = u.toString();
+    } catch {}
+  }
+  donate?.addEventListener('click', (e)=>{
+    const href = donate.getAttribute('href') || '';
+    if (href === '#' || donate.hasAttribute('data-open-donate-modal')) {
+      e.preventDefault();
+      if (typeof window.openDonationModal === 'function') window.openDonationModal({ source:'footer' });
+    }
+  }, { passive:false });
+
+  // Share button
+  share?.addEventListener('click', async ()=>{
+    const url = location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title || 'FundChamps', text: 'Support our program!', url });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        share.textContent = '✅ Copied';
+        setTimeout(()=> share.textContent = '🔗 Share', 1200);
+      }
+    } catch {}
+  }, { passive:true });
+
+  // PWA install prompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault(); deferredPrompt = e;
+    installBtn?.classList.remove('hidden');
+  });
+  installBtn?.addEventListener('click', async ()=>{
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice.catch(()=>{});
+    installBtn.classList.add('hidden'); deferredPrompt = null;
+  });
+
+})();
+</script>
+

@@ -1,0 +1,96 @@
+<!-- futurefunded-ff-stacked.svg -->
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Outer border gradient ring -->
+    <linearGradient id="ff_stack_border" x1="6" y1="6" x2="58" y2="58"
+                    gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#FACC15"/>
+    </linearGradient>
+
+    <!-- Inner card background -->
+    <linearGradient id="ff_stack_card" x1="14" y1="12" x2="50" y2="52"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#020617"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+
+    <!-- Subtle chip behind the FF -->
+    <linearGradient id="ff_stack_chip" x1="18" y1="20" x2="44" y2="38"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+
+    <!-- Left F fill -->
+    <linearGradient id="ff_stack_left" x1="0" y1="0" x2="0" y2="20"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#4ADE80"/>
+    </linearGradient>
+
+    <!-- Right F fill -->
+    <linearGradient id="ff_stack_right" x1="0" y1="0" x2="0" y2="20"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A3E635"/>
+      <stop offset="1" stop-color="#FACC15"/>
+    </linearGradient>
+
+    <!-- Tiny highlight across the tops of the Fs -->
+    <linearGradient id="ff_stack_highlight" x1="20" y1="20" x2="44" y2="20"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ECFCCB" stop-opacity="0.0"/>
+      <stop offset="0.5" stop-color="#ECFCCB" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#FEF3C7" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer soft square -->
+  <rect x="3" y="3" width="58" height="58" rx="18" fill="#020617"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="16.5"
+        stroke="url(#ff_stack_border)" stroke-width="3"/>
+
+  <!-- Inner “card” surface to match your UI tiles -->
+  <rect x="14" y="12" width="36" height="40" rx="14" fill="url(#ff_stack_card)"/>
+  <rect x="15.4" y="13.4" width="33.2" height="37.2" rx="12.6"
+        fill="#020617" stroke="#0B1120" stroke-width="1.3"/>
+
+  <!-- Rounded chip behind the FF (gives it that pill / card feel) -->
+  <rect x="18" y="20" width="28" height="20" rx="9"
+        fill="url(#ff_stack_chip)"/>
+
+  <!-- FF monogram -->
+  <g transform="translate(20,21)">
+    <!-- LEFT F -->
+    <!-- vertical stem -->
+    <rect x="1" y="0" width="6" height="18" rx="2"
+          fill="url(#ff_stack_left)"/>
+    <!-- top bar -->
+    <rect x="1" y="0" width="14" height="4.6" rx="2.3"
+          fill="url(#ff_stack_left)"/>
+    <!-- middle bar -->
+    <rect x="1" y="7.2" width="11" height="4.2" rx="2.1"
+          fill="url(#ff_stack_left)"/>
+
+    <!-- RIGHT F (offset for depth but clearly a second F) -->
+    <!-- vertical stem -->
+    <rect x="16" y="2" width="6" height="18" rx="2"
+          fill="url(#ff_stack_right)"/>
+    <!-- top bar -->
+    <rect x="16" y="2" width="14" height="4.6" rx="2.3"
+          fill="url(#ff_stack_right)"/>
+    <!-- middle bar -->
+    <rect x="16" y="9.2" width="11" height="4.2" rx="2.1"
+          fill="url(#ff_stack_right)"/>
+  </g>
+
+  <!-- soft highlight strip across the top of both Fs -->
+  <rect x="20" y="20" width="26" height="3" rx="1.5"
+        fill="url(#ff_stack_highlight)" />
+
+  <!-- Tiny “spark” star in the corner -->
+  <path d="M45.7 13.2L46.7 15.6L49.2 16.1L47.3 17.4L47.7 19.9L45.7 18.6L43.7 19.9L44.1 17.4L42.2 16.1L44.7 15.6L45.7 13.2Z"
+        fill="#FACC15"/>
+</svg>
+

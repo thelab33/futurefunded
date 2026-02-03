@@ -1,0 +1,75 @@
+{# ========================================================================
+   donate.html — FundChamps Full Donation Page (hosts the unified modal)
+   - Route: /donate
+   - Includes the modal partial and auto-opens it
+   - CSP-safe (script uses NONCE)
+   ======================================================================== #}
+{% extends "base.html" %}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set team_name = team.team_name if team and team.team_name else "Connect ATX Elite" %}
+
+{% block content %}
+<section class="relative min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 text-white">
+  <div class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6">
+    <div class="mx-auto max-w-3xl px-6 py-16 sm:py-24">
+      <!-- Title / Branding -->
+      <header class="mb-10 text-center">
+        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-yellow-400">
+          {{ team_name }} — Fundraiser
+        </h1>
+        <p class="mx-auto mt-3 max-w-prose text-lg sm:text-xl text-neutral-300">
+          Fuel the season. Fund the future.
+        </p>
+      </header>
+
+      <!-- Primary CTA (opens modal) -->
+      <div class="rounded-2xl border border-yellow-400/15 bg-neutral-800/70 p-8 sm:p-10 shadow-xl">
+        <div class="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
+          <p class="text-neutral-200">
+            Your gift powers gym time, travel, academics, and gear for our student-athletes.
+          </p>
+          <a href="{{ url_for('main.donate') }}"
+             data-open-donate-modal
+             class="inline-flex items-center justify-center rounded-xl bg-yellow-400 px-6 py-3 font-extrabold text-neutral-900 hover:bg-yellow-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-yellow-500/40 transition">
+            💸 Donate Now
+          </a>
+        </div>
+
+        <!-- Trust / badges -->
+        <p class="mt-4 text-center text-xs text-neutral-400">
+          🔒 Secure checkout • Powered by Stripe &amp; PayPal
+        </p>
+      </div>
+
+      <!-- Progress + Share -->
+      <div class="mt-12 text-center">
+        <h2 class="mb-4 text-2xl font-semibold">Fundraising Progress</h2>
+        {% include "partials/fundraiser_meter.html" ignore missing with context %}
+        <div class="mt-6 flex flex-wrap justify-center gap-4">
+          <a href="{{ url_for('main.home') }}#share"
+             class="inline-flex items-center rounded-lg bg-neutral-700 px-5 py-3 hover:bg-neutral-600 transition">
+            🔗 Share
+          </a>
+          <a href="{{ url_for('main.become_sponsor') }}"
+             class="inline-flex items-center rounded-lg bg-neutral-700 px-5 py-3 hover:bg-neutral-600 transition">
+            🤝 Become a Sponsor
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Screen-reader live region (used by the modal script) #}
+  <span id="sr-live" class="sr-only" aria-live="polite"></span>
+</section>
+
+{# Unified Donation Modal #}
+
+{# Auto-open the modal on page load; still works if user clicks the CTA above #}
+<script nonce="{{ NONCE }}">
+  window.requestAnimationFrame(() => {
+    if (typeof window.openDonationModal === "function") window.openDonationModal();
+  });
+</script>
+{% endblock %}
+

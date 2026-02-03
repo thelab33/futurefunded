@@ -1,0 +1,43 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+
+  <div
+    id="kpi-fragment-{{ cid }}"
+    class="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/80"
+    aria-live="polite"
+    data-kpi-campaign-id="{{ cid }}"
+    hx-get="{{ url_for('api.kpi_fragment', campaign_id=cid) }}"
+    hx-trigger="revealed, every 10s"
+    hx-swap="outerHTML">
+    <span id="kpi-raised"><strong>{{ raised_label }}</strong> raised</span>
+    <span aria-hidden="true">•</span>
+    <span id="kpi-donors">{{ donors_label }} donors</span>
+    <span aria-hidden="true">•</span>
+    <span id="kpi-progress">{{ pct }}% to goal</span>
+  </div>
+</cid>

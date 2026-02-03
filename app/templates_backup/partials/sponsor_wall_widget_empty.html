@@ -1,0 +1,13 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# Zero-state for Sponsor Wall (renders when no sponsors yet) #}
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 max-w-6xl mx-auto px-6 my-8" id="sponsor-wall-empty" >
+  <div class="rounded-2xl border border-fc-border bg-fc-elev p-6 text-center">
+    <h2 class="text-2xl font-bold">🙌 Meet Our Champions</h2>
+    <p class="mt-2 text-sm text-zinc-300">Be the first to support — your logo appears here instantly.</p>
+    <div class="mt-4 flex flex-wrap justify-center gap-3">
+      <a href="#sponsor-form" class="px-4 py-2 rounded-xl bg-fc-brand text-black font-semibold">🌟 Become a Sponsor</a>
+      <a href="#tiers" class="px-4 py-2 rounded-xl border border-fc-border">See Tiers</a>
+    </div>
+    <p class="mt-3 text-xs text-zinc-400">All gifts fund gym time, travel, gear, and academic support.</p>
+  </div>
+</section>

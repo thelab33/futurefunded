@@ -1,0 +1,69 @@
+{# Starforge Hero (uses your FC hero image logic) #} {% set NONCE = NONCE if
+NONCE is defined else '' %} {% set theme_hex = theme_hex|default('#facc15') %}
+{% set team_name = (team.team_name if team and team.team_name else 'Connect ATX
+Elite') %} {% set hero_title = hero_title|default('Fuel the Season — Fund the
+Future') %} {% set catch_line = (catch_phrase if catch_phrase is defined and
+catch_phrase else 'Family-run AAU program transforming Austin, Texas students
+into honor-roll athletes and leaders.') %} {% set _hero_src = ( (hero_image_url
+if hero_image_url is defined and hero_image_url) or (team.hero_bg if team and
+team.hero_bg) or (team.hero_image if team and team.hero_image) or
+(team.team_photo if team and team.team_photo) or (team.photo_url if team and
+team.photo_url) or 'images/connect-atx-team.jpg' ) %} {% set _hero_mobile =
+(hero_image_mobile_url if hero_image_mobile_url is defined and
+hero_image_mobile_url else _hero_src) %} {% set hero_src = (_hero_src if '://'
+in _hero_src else (url_for('static', filename=_hero_src.lstrip('/')) if url_for
+is defined else '/static/' ~ _hero_src.lstrip('/'))) %} {% set hero_src_mobile=
+(_hero_mobile if '://' in _hero_mobile else (url_for('static',
+filename=_hero_mobile.lstrip('/')) if url_for is defined else '/static/' ~
+_hero_mobile.lstrip('/'))) %} {% set hero_alt = (hero_image_alt if
+hero_image_alt is defined and hero_image_alt else team_name ~ ' team photo') %}
+{% set _raw_cta = (stripe_payment_link if stripe_payment_link else (cta_href if
+cta_href is defined else url_for('main.donate'))) %} {% set _sep = '&' if '?' in
+_raw_cta else '?' %} {% set cta_href = _raw_cta ~ _sep ~
+'utm_source=hero&utm_medium=cta&utm_campaign=' ~ (team_name|urlencode) %}
+
+<link
+  rel="preload"
+  as="image"
+  href="{{ hero_src }}"
+  imagesizes="100vw"
+  fetchpriority="high"
+/>
+
+<section id="fc-hero" class="relative section section--flush-top">
+  <div class="sf-container">
+    <figure
+      class="sf-card sf-grad sf-shadow overflow-hidden rounded-2xl relative"
+    >
+      <picture>
+        <source media="(max-width: 767px)" srcset="{{ hero_src_mobile }}" />
+        <img
+          src="{{ hero_src }}"
+          alt="{{ hero_alt }}"
+          class="w-full h-[48svh] md:h-[64svh] object-cover object-center block"
+          decoding="async"
+          fetchpriority="high"
+        />
+      </picture>
+
+      <figcaption
+        class="absolute inset-x-0 bottom-0 p-4 md:p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+      >
+        <p class="sf-eyebrow">Community • Academics • Competition</p>
+        <h1 class="sf-h1 text-balance drop-shadow-[0_6px_18px_rgba(0,0,0,.65)]">
+          {{ hero_title }}
+        </h1>
+        <p class="sf-reading opacity-95">{{ catch_line|safe }}</p>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <a
+            href="{{ cta_href }}"
+            class="sf-btn sf-btn-primary"
+            data-analytics="cta:hero:donate"
+            >Donate</a
+          >
+          <a href="#tiers" class="sf-btn sf-btn-ghost">Sponsor a Tier</a>
+        </div>
+      </figcaption>
+    </figure>
+  </div>
+</section>

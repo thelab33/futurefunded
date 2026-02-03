@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2025-09-05",
+    "name": "Preseason Scrimmage",
+    "location": "East Austin Gym",
+    "time": "6:30 PM",
+    "is_upcoming": true,
+    "opponent": "River City",
+    "result": "",
+    "highlight": "Rookies debut",
+    "sponsor": "Gameday Pizza",
+    "type": "Scrimmage"
+  },
+  {
+    "date": "2025-09-10",
+    "name": "Fundraiser Night",
+    "location": "Booster Hall",
+    "time": "7:00 PM",
+    "is_upcoming": true,
+    "opponent": "",
+    "result": "",
+    "highlight": "Silent auction + merch",
+    "sponsor": "Austin Realty",
+    "type": "Fundraiser"
+  }
+]

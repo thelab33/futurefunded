@@ -1,0 +1,360 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% include "partials/ui_bootstrap.html" ignore missing with context %} {% set
+NONCE = NONCE if NONCE is defined else (csp_nonce if csp_nonce is defined else
+'') %} {% set brand_color = (team.theme_color if team and team.theme_color else
+'#facc15') %} {% set team_slug = (team.slug if team and team.slug is defined
+else 'default') %} {% set sponsors_sorted = sponsors_sorted if sponsors_sorted
+is defined and sponsors_sorted else [] %} {% set sponsors_total = sponsors_total
+if sponsors_total is defined else (sponsors_sorted | sum(attribute='amount')) %}
+{% set recent_donations = recent_donations if recent_donations is defined else
+[] %} {% set donation_ticker_url = donation_ticker_url|default(None) %} {% set
+has_ticker = donation_ticker_url is not none %} {% set default_logo =
+(url_for('static', filename='images/logo.webp') if url_for is defined else
+'/static/images/logo.webp') %} {% set data_ui_name =
+(name|default('sponsor_wall_widget'))|replace('_','-') %} {% set MAX_SLOTS = 12
+%} {% macro sponsor_key(s) -%} {{- (s.id|string if s.id is defined and s.id is
+not none else (s.name|lower|trim)) -}} {%- endmacro %}
+
+<section
+  id="sponsor-wall-widget"
+  data-ui="{{ data_ui_name }}"
+  class="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] right-6 z-50 w-[min(92vw,26rem)] max-h-[85vh] rounded-3xl bg-zinc-900/95 ring-1 ring-[color:var(--fc-brand-200)] backdrop-blur-lg opacity-0 pointer-events-none translate-y-6 scale-95 transition-all duration-300 ease-out shadow-[0_6px_30px_rgba(251,191,36,0.15)]"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="sponsor-wall-title"
+  aria-describedby="sponsor-wall-desc"
+  tabindex="-1"
+  aria-hidden="true"
+  style="--fc-brand: {{ brand_color }}; --fc-brand-200: color-mix(in srgb, {{ brand_color }} 24%, transparent);"
+  data-team="{{ team_slug }}"
+  data-initial-sponsors="{{ sponsors_sorted|tojson }}"
+  data-initial-total="{{ (sponsors_total or 0)|float }}">
+  <style {{ nonce_attr() }}>
+    #sponsor-wall-widget .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #sponsor-wall-widget.is-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    #sponsor-wall-list.fc-scroll-shadow::before {
+      content: "";
+      position: sticky;
+      top: 0;
+      height: 8px;
+      width: 100%;
+      background: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--fc-brand) 28%, transparent),
+        transparent
+      );
+      pointer-events: none;
+      z-index: 10;
+      display: block;
+    }
+    #sponsor-wall-widget :focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--fc-brand) 75%, transparent);
+      outline-offset: 2px;
+      border-radius: 0.5rem;
+    }
+
+    /* Density tweaks */
+    html[data-density="compact"] #sponsor-wall-widget .vip-card {
+      padding: 0.5rem 0.6rem;
+    }
+    html[data-density="compact"] #sponsor-wall-widget img {
+      height: 2.25rem;
+      width: 2.25rem;
+    }
+    html[data-density="compact"] #sponsor-wall-list {
+      gap: 0.5rem;
+    }
+  </style>
+
+  <!-- 0) SR live region for new donations -->
+  <p id="sponsor-sr" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+  <!-- 1) Header -->
+  <header
+    class="flex items-center justify-between px-5 py-3 border-b border-[color:var(--fc-brand-200)] bg-gradient-to-r from-[color:var(--fc-brand-200)]/20 to-transparent rounded-t-3xl">
+    <h2
+      id="sponsor-wall-title"
+      class="flex items-center gap-2 text-lg font-extrabold tracking-tight">
+      <span aria-hidden="true">🙌</span>
+      <span class="text-yellow-300">Meet Our Champions</span>
+    </h2>
+    <button
+      data-widget-close
+      type="button"
+      aria-label="Close sponsor wall"
+      class="ml-2 p-1 rounded-full text-yellow-300 hover:bg-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+      <span aria-hidden="true" class="text-2xl font-bold">&times;</span>
+    </button>
+  </header>
+
+  <!-- 2) Live Donation Ticker (optional) -->
+  <div
+    id="donation-ticker-wall"
+    class="flex items-center px-5 py-1 text-sm font-semibold text-yellow-200 bg-yellow-900/30 min-h-[1.7em]"
+    aria-live="polite"
+    {%
+    if
+    has_ticker
+    %}hx-get="{{ donation_ticker_url }}"
+    hx-trigger="every 30s"
+    hx-swap="innerHTML"
+    {%
+    endif
+    %}>
+    <div class="w-full overflow-hidden whitespace-nowrap" data-ticker>
+      {% if recent_donations %}
+      <div class="inline-flex gap-6 pr-6" data-ticker-track>
+        {% for d in recent_donations %}
+        <span class="inline-block">💸 <strong>{{ d.sponsor_name }}</strong> just donated ${{
+          '{:,.0f}'.format((d.amount or 0)|float) }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <span class="opacity-80">Be the first to donate today 💛</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 3) Description / Impact -->
+  <div
+    id="sponsor-wall-desc"
+    class="flex items-center gap-3 px-5 pt-3 pb-1 text-sm text-yellow-200/80">
+    <span>
+      <span class="font-bold text-yellow-300"><span data-count>{{ sponsors_sorted|length }}</span> supporters</span>
+      &mdash;
+      <span class="font-bold text-yellow-400">$
+        <span data-total>{{ '{:,.0f}'.format((sponsors_total or 0)|float) }}</span>
+        raised</span>
+    </span>
+    <span class="hidden md:inline">• fuels gym, travel & academics</span>
+  </div>
+
+  <!-- 4) VIP Row: Top 3 -->
+  <div
+    class="flex gap-2 px-5 pt-2 pb-1 sticky top-0 z-10 bg-gradient-to-b from-zinc-900/80 to-transparent">
+    {% for s in (sponsors_sorted | sort(attribute='amount', reverse=True))[:3]
+    %} {% set tier = s.tier|default('default') %} {% set raw_logo = s.logo if
+    s.logo else 'images/logo.webp' %} {% set logo_src = (raw_logo if '://' in
+    raw_logo else (url_for('static', filename=raw_logo) if url_for is defined
+    else '/static/' ~ raw_logo)) %}
+    <article
+      data-key="{{ sponsor_key(s) }}"
+      class="vip-card group flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl border {% if tier == 'Platinum' %}bg-yellow-300 text-yellow-900 ring-1 ring-yellow-400 {% elif tier == 'Gold' %}bg-yellow-200 text-yellow-800 ring ring-yellow-300 {% elif tier == 'Silver' %}bg-yellow-100 text-yellow-700 ring ring-yellow-200 {% elif tier == 'Bronze' %}bg-orange-200 text-orange-900 ring ring-orange-300 {% else %}bg-indigo-900 text-yellow-300 ring ring-indigo-600{% endif %}">
+      {% if s.url %}<a
+        href="{{ s.url }}"
+        target="_blank"
+        rel="noopener sponsored"
+        tabindex="-1"
+        aria-label="Visit {{ s.name }}">{% endif %}
+        <img
+          src="{{ logo_src }}"
+          alt="{{ s.name }} logo"
+          width="72"
+          height="72"
+          class="h-12 w-12 rounded-lg border border-yellow-400/40 bg-white/90 object-contain shadow-inner"
+          loading="lazy"
+          decoding="async"
+        />
+        {% if s.url %}</a>{% endif %}
+      <div class="text-center leading-tight">
+        <div class="text-xs font-extrabold">{{ s.name }}</div>
+        <div class="text-[11px] text-yellow-800">
+          $ {{ '{:,.0f}'.format((s.amount or 0)|float) }}
+        </div>
+      </div>
+    </article>
+    {% endfor %} {% if sponsors_sorted|length == 0 %}
+    <div class="flex-1 text-yellow-200/80 text-xs">
+      Become our first VIP sponsor ✨
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 5) Sponsor Grid -->
+  <div
+    id="sponsor-wall-list"
+    class="grid grid-cols-2 gap-2.5 px-5 pb-4 overflow-y-auto max-h-64"
+    role="list"
+    tabindex="0"
+    aria-label="Sponsor List">
+    {% for s in (sponsors_sorted | sort(attribute='amount', reverse=True))[3:]
+    %} {% set tier = s.tier|default('default') %} {% set raw_logo = s.logo if
+    s.logo else 'images/logo.webp' %} {% set logo_src = (raw_logo if '://' in
+    raw_logo else (url_for('static', filename=raw_logo) if url_for is defined
+    else '/static/' ~ raw_logo)) %}
+    <article
+      data-key="{{ sponsor_key(s) }}"
+      class="vip-card group flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border {% if tier == 'Platinum' %}bg-yellow-300 text-yellow-900 ring-1 ring-yellow-400 {% elif tier == 'Gold' %}bg-yellow-200 text-yellow-800 ring ring-yellow-300 {% elif tier == 'Silver' %}bg-yellow-100 text-yellow-700 ring ring-yellow-200 {% elif tier == 'Bronze' %}bg-orange-200 text-orange-900 ring ring-orange-300 {% else %}bg-indigo-900 text-yellow-300 ring ring-indigo-600{% endif %}"
+      role="listitem">
+      {% if s.url %}<a
+        href="{{ s.url }}"
+        target="_blank"
+        rel="noopener sponsored"
+        tabindex="-1"
+        aria-label="Visit {{ s.name }}">{% endif %}
+        <img
+          src="{{ logo_src }}"
+          alt="{{ s.name }} logo"
+          width="64"
+          height="64"
+          class="h-10 w-10 rounded-md border border-yellow-400/40 bg-white/90 object-contain shadow-inner"
+          loading="lazy"
+          decoding="async"
+        />
+        {% if s.url %}</a>{% endif %}
+      <div class="text-center leading-tight">
+        <div class="text-[12px] font-bold">{{ s.name }}</div>
+        <div class="text-[11px] text-yellow-800">
+          $ {{ '{:,.0f}'.format((s.amount or 0)|float) }}
+        </div>
+      </div>
+    </article>
+    {% endfor %} {% set slots = MAX_SLOTS - (sponsors_sorted|length) if
+    sponsors_sorted|length < MAX_SLOTS else 0 %} {% for _ in range(slots) %}
+    <div
+      role="listitem"
+      tabindex="0"
+      aria-label="Available sponsorship spot"
+      class="flex flex-col items-center justify-center border-2 border-[color:var(--fc-brand-200)] bg-zinc-900/70 rounded-2xl p-4 min-h-[88px] cursor-pointer hover:bg-yellow-400/5"
+      data-open-sponsor>
+      <span class="text-xl mb-1" aria-hidden="true">✨</span>
+      <span class="text-[11px] text-yellow-200/70 mt-0.5">Limited premium slots left!</span>
+      <button
+        type="button"
+        class="mt-1 px-3 py-1 bg-yellow-400/90 text-black font-bold rounded-lg hover:bg-yellow-300 transition text-xs"
+        tabindex="-1"
+        data-open-sponsor>
+        🌟 Become a Sponsor
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 6) Footer CTA + Social -->
+  <footer
+    class="flex flex-col gap-2 px-5 pb-4 pt-2 border-t border-[color:var(--fc-brand-200)] bg-gradient-to-t from-yellow-900/10 to-zinc-900/80 rounded-b-3xl">
+    <button
+      type="button"
+      class="w-full py-2 bg-yellow-400/90 text-black font-extrabold rounded-2xl shadow-inner ring-2 ring-yellow-300/30 hover:bg-yellow-300 transition text-base"
+      aria-label="Become a Sponsor"
+      data-open-sponsor>
+      Become a Sponsor →
+    </button>
+
+    <div class="text-[11px] text-yellow-200/70">
+      Brand your business, inspire kids, make an impact.
+    </div>
+
+    <div class="flex gap-2 mt-1">
+      <button
+        data-share="x"
+        aria-label="Share on X"
+        class="p-1 rounded-full hover:bg-yellow-400/10 transition">
+        <svg
+          width="18"
+          height="18"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true">
+          <path
+            d="M18.1 2.3h3.8l-8.3 9.3 9.7 10.1h-7.6l-6-6.6-6.8 6.6H-0.1l8.9-9.7L-0.6 2.3h7.8l5.3 5.7 5.6-5.7z"
+          />
+        </svg>
+      </button>
+      <button
+        data-share="fb"
+        aria-label="Share on Facebook"
+        class="p-1 rounded-full hover:bg-yellow-400/10 transition">
+        <svg
+          width="18"
+          height="18"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true">
+          <path
+            d="M22.7 0H1.3C.6 0 0 .6 0 1.3v21.3C0 23.4.6 24 1.3 24H12.8v-9.3H9.7V11.1h3.1V8.4c0-3 1.9-4.7 4.6-4.7 1.3 0 2.4.1 2.7.1v3.1h-1.8c-1.4 0-1.7.7-1.7 1.7v2.2h3.4l-.4 3.6h-3v9.3h5.9c.7 0 1.3-.6 1.3-1.3V1.3c0-.7-.6-1.3-1.3-1.3z"
+          />
+        </svg>
+      </button>
+      <button
+        data-share="ln"
+        aria-label="Share on LinkedIn"
+        class="p-1 rounded-full hover:bg-yellow-400/10 transition">
+        <svg
+          width="18"
+          height="18"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true">
+          <path
+            d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.039-1.852-3.039-1.853 0-2.136 1.446-2.136 2.939v5.669h-3.554v-11.5h3.414v1.571h.048c.476-.901 1.635-1.852 3.367-1.852 3.599 0 4.265 2.368 4.265 5.455v6.326zm-16.229-13.71c-1.144 0-2.067-.924-2.067-2.066 0-1.144.924-2.067 2.067-2.067 1.142 0 2.067.923 2.067 2.067 0 1.142-.925 2.066-2.067 2.066zm1.778 13.71h-3.555v-11.5h 3.555v11.5z"
+          />
+        </svg>
+      </button>
+    </div>
+  
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+</section>
+
+<!-- 7) Floating Toggle Button -->
+<button
+  id="sponsor-wall-toggle"
+  aria-expanded="false"
+  aria-controls="sponsor-wall-widget"
+  aria-label="Open Sponsor Wall"
+  class="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] right-6 z-[51] flex items-center gap-2 bg-gradient-to-tr from-yellow-400/95 to-yellow-200/80 shadow-xl rounded-full px-4 py-2.5 text-base font-extrabold text-black ring-2 ring-[color:var(--fc-brand-200)] hover:ring-4 hover:scale-105 transition-all duration-300">
+  🙌 <span>Sponsors</span>
+  <span
+    id="sponsor-nudge-dot"
+    class="ml-1 w-2 h-2 rounded-full bg-red-500 hidden motion-safe:animate-pulse"></span>
+</button>
+
+<div id="sponsor-modal-root"></div>
+
+<script {{ nonce_attr() }} type="module" src="{{ url_for('static', filename='js/extracted/partials__sponsor_wall_widget.html__1.js', v='1.0.0') }}"></script>
+JINJA

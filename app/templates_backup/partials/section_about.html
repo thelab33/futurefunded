@@ -1,0 +1,45 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<section id="about" class="section">
+  <div class="sf-container">
+    <h2 class="sf-h2 mb-3">What families say</h2>
+    <div class="sf-snap">
+      {% for q,who in [ ("This platform doubled our travel budget in two
+      weeks.","Coach Rivers, ATX Elite"), ("So easy to sponsor and the kids’
+      updates are priceless.","Maria G., Parent"), ("Receipt + shoutout in
+      seconds. We’ll sponsor again.","Austin Realty") ] %}
+      <blockquote class="sf-card sf-card-inner sf-reading">
+        <p class="text-zinc-100 leading-relaxed">“{{ q }}”</p>
+        <footer class="text-sm text-zinc-400 mt-2">— {{ who }}</footer>
+      </blockquote>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight">
+  <div class="sf-container sf-card sf-grad sf-shadow">
+    <div class="sf-card-inner grid md:grid-cols-2 gap-4 items-center">
+      <div>
+        <h3 class="sf-h2 mb-2">More than basketball — we’re family</h3>
+        <p class="text-zinc-300 sf-reading">
+          Every gift funds gym time, tutoring, travel, and gear. Help us build
+          honor-roll athletes and leaders.
+        </p>
+      </div>
+      <div class="flex gap-2 md:justify-end">
+        <a href="{{ url_for('main.donate') }}" class="sf-btn sf-btn-primary"
+          >Donate Now</a
+        >
+        <a href="#tiers" class="sf-btn sf-btn-ghost">Sponsor a Tier</a>
+      </div>
+    </div>
+  </div>
+</section>

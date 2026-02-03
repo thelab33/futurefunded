@@ -1,0 +1,181 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% macro demo(icon, title, copy, href, label='Learn More', badge='') -%}
+  {% if badge %}
+    <span class="badge">{{ badge }}</span>
+  {% endif %}
+  <span class="tile-icon" aria-hidden="true">{{ icon }}</span>
+  <h3 class="tile-title">{{ title }}</h3>
+  <p class="tile-copy">{{ copy }}</p>
+  <a href="{{ href }}" class="btn gold mt-4 w-max">{{ label }}</a>
+{%- endmacro %}
+
+<section class="feature-tiles-wrap mx-auto mt-12 max-w-6xl px-4 relative z-10">
+
+  {# ── 1 ▸ Sponsor / Tiers ─────────────────────────── #}
+  <article class="feature-tile flex flex-col">
+    {% set card_mode = False %}
+    {% include 'partials/tiers.html' ignore missing %}
+    {% if not card_mode %}
+      {{ demo('🏆', 'Sponsor Tiers',
+               'Unlock premium perks for brands that back your athletes.',
+               '#tiers', 'Explore Tiers', badge='2025 SEASON') }}
+    {% endif %}
+  </article>
+
+  {# ── 2 ▸ Impact Live ─────────────────────────────── #}
+  <article class="feature-tile flex flex-col">
+    {% set card_mode = False %}
+    {% include 'partials/impact_lockers_premium.html' ignore missing %}
+    {% if not card_mode %}
+      {{ demo('📊', 'Impact Live',
+               'Real-time progress on travel, gear, tutoring & more.',
+               '#impact', 'See Impact', badge='LIVE') }}
+    {% endif %}
+  </article>
+
+  {# ── 3 ▸ About Club ──────────────────────────────── #}
+  <article class="feature-tile flex flex-col">
+    {% set card_mode = False %}
+    {% include 'partials/about_section.html' ignore missing %}
+    {% if not card_mode %}
+      {{ demo('📖', 'About the Club',
+               'Meet coaches, read our story, and join the journey.',
+               '#about', 'Read Story') }}
+    {% endif %}
+  </article>
+
+</section>
+
+{% block extra_head %}
+<style {{ nonce_attr(NONCE) }}>
+/* ────────────────────────────────
+   Feature Tiles · Agency Ultra Polish
+   • Equal height balance
+   • Fade-slide in with stagger
+   • Icon motion + glowing edge
+────────────────────────────────── */
+
+:root{
+  --tile-bg: rgba(24,25,34,.9);
+  --tile-edge: color-mix(in srgb, var(--accent) 50%, transparent);
+  --tile-radius: 1.5rem;
+  --tile-shadow: 0 12px 36px rgba(0,0,0,.35);
+  --tile-shadow-hover: 0 18px 56px rgba(0,0,0,.50),
+                       0 0 0 1px var(--tile-edge);
+}
+
+/* Layout */
+.feature-tiles-wrap{
+  display:grid;
+  gap:2rem;
+  grid-template-columns: 1fr;
+  align-items:stretch;
+}
+@media(min-width:700px){
+  .feature-tiles-wrap{grid-template-columns:repeat(2,1fr);}
+}
+@media(min-width:1024px){
+  .feature-tiles-wrap{grid-template-columns:repeat(3,1fr);gap:2.4rem;}
+}
+
+/* Tile surface */
+.feature-tile{
+  position:relative;
+  border-radius:var(--tile-radius);
+  background:linear-gradient(150deg,rgba(28,28,40,.96),rgba(15,15,22,.92));
+  backdrop-filter:blur(18px) saturate(1.25);
+  padding:2.3rem 1.6rem 2.4rem;
+  box-shadow:var(--tile-shadow);
+  transition:box-shadow .25s ease,transform .25s ease;
+  min-height: 340px;
+  opacity:0;
+  transform:translateY(20px);
+}
+.feature-tile::before{
+  content:"";
+  position:absolute;inset:0;
+  border-radius:inherit;
+  padding:1px;
+  pointer-events:none;
+  background:linear-gradient(135deg,transparent 0%,var(--tile-edge) 100%);
+  mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  mask-composite:xor;
+}
+
+/* Hover */
+.feature-tile:hover{
+  box-shadow:var(--tile-shadow-hover);
+  transform:translateY(-6px) scale(1.02);
+}
+
+/* Animate in when visible */
+.feature-tile.visible{
+  opacity:1;
+  transform:translateY(0);
+  transition:opacity .6s ease, transform .6s ease, box-shadow .25s ease;
+}
+.feature-tile:nth-child(2).visible{ transition-delay:.1s; }
+.feature-tile:nth-child(3).visible{ transition-delay:.2s; }
+
+/* Content */
+.tile-title{
+  font:900 1.28rem/1.25 "Poppins",sans-serif;
+  color:#fff;
+  margin-bottom:.6rem;
+}
+.tile-copy{
+  font:500 1rem/1.6 "Inter",sans-serif;
+  color:#d1d5db;
+}
+.tile-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:46px;height:46px;
+  font-size:1.5rem;
+  margin-bottom:1.1rem;
+  color:var(--accent);
+  transition:transform .3s ease;
+}
+.feature-tile:hover .tile-icon{transform:scale(1.2) rotate(-5deg);}
+
+/* Badge */
+.badge{
+  display:inline-block;
+  font:700 .7rem/1 "Inter",sans-serif;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  background:var(--accent);
+  color:#18181b;
+  padding:.25em .7em;
+  border-radius:6px;
+  margin-bottom:.8rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script {{ nonce_attr(NONCE) }}>
+document.addEventListener("DOMContentLoaded", () => {
+  const tiles = document.querySelectorAll(".feature-tile");
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add("visible");
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.2 });
+  tiles.forEach(t => io.observe(t));
+});
+</script>
+{% endblock %}
+

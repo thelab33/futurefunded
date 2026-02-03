@@ -1,0 +1,556 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{# ===========================================================
+   Footer — Enterprise Slim v5.3 (Dark-Locked, Hardened)
+   =========================================================== #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+
+{# Inline payment logos (monochrome-friendly; inherits currentColor) #}
+{% macro pay_logo(kind, w=72, h=18) -%}
+  {% if kind == 'stripe' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="Stripe" focusable="false"><title>Stripe</title><path fill="currentColor" d="M9.8 23.5V8.6h5.2v14.9H9.8zm21.4-8c0-4.8-2.4-7-6-7-1.9 0-3.3.7-4 1.7h-.1V8.6H16v14.9h5.3v-7.4c0-2 1-3.3 2.6-3.3 1.6 0 2.3 1.2 2.3 3.1v7.6h5.3v-8zM54 11h-5v8.2c0 2-1 3.1-2.5 3.1-1.5 0-2.2-1.1-2.2-3.1V11h-5v8.6c0 4.9 2.6 7 6.2 7 1.9 0 3.4-.7 4.3-1.9h.1v1.6H54V11zm12.9 2.8c-.8-1.4-2.2-2.8-4.6-2.8-2.7 0-4.8 1.4-4.8 4 0 2.6 1.9 3.6 3.9 4.2l1.6.5c1.1.4 1.8.7 1.8 1.4 0 .7-.6 1.2-1.7 1.2-1.4 0-2.1-.8-2.8-1.7l-2.9 3.1c1.1 1.7 3 2.8 5.8 2.8 3.2 0 5.4-1.6 5.4-4.3 0-2.6-1.5-3.7-4.2-4.5L63 17c-1-.3-1.6-.6-1.6-1.3s.6-1.1 1.5-1.1c1 0 1.7.5 2.3 1.4l2.7-3.2zm17.9-2.8h-5.2l-3.2 11.2h-.1L73.2 11H68l5 14.9h5.3L83 17.2h.1l4.8 8.7h5.4L84.8 11z"/></svg>
+  {% elif kind == 'paypal' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="PayPal" focusable="false"><title>PayPal</title><path fill="currentColor" d="M17.5 8.7h7.2c3.6 0 5.9 1.6 5.9 4.6 0 4-3.1 6.2-7.3 6.2h-2.6l-.9 4.9H14L17.5 8.7zm4.6 7.3h2.1c1.6 0 2.7-.9 2.7-2.3 0-1.1-.9-1.7-2.2-1.7h-2l-.6 4z"/><path fill="currentColor" d="M42.7 8.7h6.7c3.9 0 6.1 1.8 6.1 5 0 4.1-3.2 6.1-7.2 6.1h-2.6l-.9 4.6h-4.7l3-15.7zm4.7 7.1h2c1.6 0 2.7-.8 2.7-2.3 0-1.1-.9-1.7-2.2-1.7h-1.9l-.6 4z"/></svg>
+  {% elif kind == 'visa' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="Visa" focusable="false"><title>Visa</title><path fill="currentColor" d="M12.5 23.6 17 8.4h5.2l-4.6 15.2h-5.1zm20.5 0L29.1 8.4h4.9l3.9 8.6 1.6-8.6h4.7l-2.7 15.2h-4.9l-4-8.8-1.6 8.8H33zm31.8 0-2.1-15.2h4.8l1 8.6 5.5-8.6h5.5l-9.4 15.2h-5.3zm-13.8-7.7c.2-2.9 2.8-7.9 9.2-7.9 2.2 0 4 .5 5.4 1.3l-1.7 3.9c-1-.6-2.2-1-3.8-1-2.4 0-4.2 1.3-4.2 3.5 0 1.6 1.4 2.6 3.2 2.6 1.1 0 2-.2 2.9-.6l-.6 3.9c-1 .4-2.4.7-3.8.7-4.4 0-7-2.6-6.6-6.4z"/></svg>
+  {% elif kind == 'mastercard' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="Mastercard" focusable="false"><title>Mastercard</title><circle cx="50" cy="16" r="8" fill="currentColor" opacity=".7"/><circle cx="58" cy="16" r="8" fill="currentColor"/></svg>
+  {% elif kind == 'amex' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="American Express" focusable="false"><title>American Express</title><rect x="12" y="8" width="104" height="16" rx="3" fill="currentColor" opacity=".15"/><text x="22" y="21" font-size="10" font-weight="900" fill="currentColor">AMERICAN EXPRESS</text></svg>
+  {% elif kind == 'discover' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="Discover" focusable="false"><title>Discover</title><text x="16" y="21" font-size="12" font-weight="900" fill="currentColor">DISCOVER</text><circle cx="90" cy="16" r="6" fill="currentColor" opacity=".25"/></svg>
+  {% elif kind == 'applepay' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="Apple Pay" focusable="false"><title>Apple&nbsp;Pay</title><text x="22" y="21" font-size="12" font-weight="900" fill="currentColor">Pay</text><path d="M14.8 12.6c.6-.7 1.1-1.6 1.2-2.6-1 .1-2 .6-2.6 1.3-.6.7-1.1 1.6-1.2 2.6 1-.1 1.9-.6 2.6-1.3z" fill="currentColor"/><path d="M18.5 16.2c0-1.9 1.6-2.8 1.6-2.8-.9-1.3-2.2-1.4-2.6-1.4-1.1-.1-2.1.6-2.6.6-.5 0-1.3-.6-2.2-.6-1.1 0-2.2.7-2.8 1.7-1.2 2.1-.3 5.2.9 6.9.6.9 1.3 1.8 2.3 1.8.9 0 1.2-.6 2.3-.6 1 .1 1.3.6 2.3.6.9 0 1.6-.9 2.2-1.8.6-.8.8-1.7.8-1.7s-1.5-.6-1.5-2.7z" fill="currentColor"/></svg>
+  {% elif kind == 'gpay' %}
+    <svg viewBox="0 0 128 32" width="{{ w }}" height="{{ h }}" role="img" aria-label="Google Pay" focusable="false"><title>Google&nbsp;Pay</title><text x="18" y="21" font-size="12" font-weight="900" fill="currentColor">G Pay</text><circle cx="10" cy="16" r="6" fill="currentColor" opacity=".25"/></svg>
+  {% endif %}
+{%- endmacro %}
+
+{% set ACCENT         = ACCENT        | default('#facc15') %}
+{% set YEAR           = YEAR          | default(utcnow().year if utcnow is defined else 2025) %}
+{% set BRAND          = BRAND         | default(_brand_name if _brand_name is defined else 'FundChamps') %}
+{% set PLATFORM_URL   = PLATFORM_URL  | default('/') %}
+{% set DONATE_URL     = DONATE_URL    | default(donate_href | default(HREF_DONATE | default('/donate'))) %}
+{% set SPONSOR_URL    = SPONSOR_URL   | default(sponsor_href | default('#tiers')) %}
+{% set PRIVACY_URL    = PRIVACY_URL   | default('/privacy') %}
+{% set TERMS_URL      = TERMS_URL     | default('/terms') %}
+{% set LOGO_URL       = LOGO_URL      | default(None) %}
+{% set LOGO_URL_DARK  = LOGO_URL_DARK | default(None) %}
+{% set LOGO_URL_LIGHT = LOGO_URL_LIGHT| default(None) %}
+{% set LOGO_IS_LOCKUP = LOGO_IS_LOCKUP| default(false) %}
+{% set HIDE_POWERED   = HIDE_POWERED  | default(false) %}
+{% set LOGO_SIZE      = LOGO_SIZE     | default(28) %}
+
+<footer id="site-footer" class="fc-footer fc-footer--slim" role="contentinfo"
+        data-cookie-key="fc_cookie_choice_v1" data-mobile-max="(max-width: 820px)"
+        style="--accent: {{ ACCENT }};">
+  <div class="ft-shell">
+
+    <!-- Brand · nav · compact CTAs -->
+    <div class="ft-bar" role="navigation" aria-label="Site footer">
+      <a href="{{ PLATFORM_URL }}"
+         class="ft-brand{{ ' ft-brand--lockup' if LOGO_IS_LOCKUP else '' }}"
+         aria-label="{{ BRAND }} home">
+        {% if LOGO_URL or LOGO_URL_DARK or LOGO_URL_LIGHT %}
+          <picture class="ft-mark" aria-hidden="true">
+            {% if LOGO_URL_DARK %}<source srcset="{{ LOGO_URL_DARK }}" media="(prefers-color-scheme: dark)">{% endif %}
+            {% if LOGO_URL_LIGHT %}<source srcset="{{ LOGO_URL_LIGHT }}" media="(prefers-color-scheme: light)">{% endif %}
+            <img src="{{ LOGO_URL or LOGO_URL_LIGHT or LOGO_URL_DARK }}"
+                 alt="" width="{{ LOGO_SIZE }}" height="{{ LOGO_SIZE }}"
+                 loading="lazy" decoding="async" fetchpriority="low">
+          </picture>
+        {% else %}
+          <span class="ft-mark ft-mark--svg" aria-hidden="true"
+                style="inline-size:{{ LOGO_SIZE }}px; block-size:{{ LOGO_SIZE }}px">
+            <svg viewBox="0 0 64 64" role="img" focusable="false" aria-hidden="true">
+              <defs><linearGradient id="fcGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%"  stop-color="var(--accent, #facc15)"/>
+                <stop offset="100%" stop-color="color-mix(in srgb, var(--accent, #facc15) 25%, #ffea80)"/>
+              </linearGradient></defs>
+              <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#fcGrad)"/>
+              <rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none"
+                    stroke="color-mix(in srgb, #fff 40%, transparent)" stroke-width="1"/>
+              <text x="15.5" y="39" font-size="26" font-weight="900"
+                    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif"
+                    fill="currentColor" letter-spacing=".5">Fu</text>
+            </svg>
+          </span>
+        {% endif %}
+        {% if not LOGO_IS_LOCKUP %}<span class="ft-brand-name">{{ BRAND }}</span>{% endif %}
+      </a>
+
+      <nav class="ft-nav" aria-label="Footer links">
+        <a class="ft-link" href="#about">About</a>
+        <a class="ft-link" href="#impact">Impact</a>
+        <a class="ft-link" href="{{ SPONSOR_URL }}">Sponsor</a>
+        <a class="ft-link" href="{{ PRIVACY_URL }}">Privacy</a>
+        <a class="ft-link" href="{{ TERMS_URL }}">Terms</a>
+      </nav>
+
+      <div class="ft-ctas" role="group" aria-label="Quick actions">
+        <a class="ft-btn ft-btn--gold"  href="{{ DONATE_URL }}"  data-cta="donate-footer">Donate</a>
+        <a class="ft-btn ft-btn--ghost" href="{{ SPONSOR_URL }}" data-cta="sponsor-footer">Sponsor</a>
+        <button class="ft-btn ft-btn--lite" type="button" data-share data-cta="share-footer" aria-label="Share this page">Share</button>
+      </div>
+    </div>
+
+    <!-- Trust row (inline SVGs; CSP-safe) -->
+    <ul class="ft-trust-logos" aria-label="Secure checkout & partners">
+      <li>{{ pay_logo('stripe') }}</li>
+      <li>{{ pay_logo('paypal') }}</li>
+      <li>{{ pay_logo('visa', 54, 18) }}</li>
+      <li>{{ pay_logo('mastercard', 96, 18) }}</li>
+      <li>{{ pay_logo('amex', 88, 18) }}</li>
+      <li>{{ pay_logo('discover', 86, 18) }}</li>
+      <li>{{ pay_logo('applepay', 78, 18) }}</li>
+      <li>{{ pay_logo('gpay', 78, 18) }}</li>
+    </ul>
+
+    <!-- Legal / attribution -->
+    <div class="ft-legal">
+      <span class="ft-copy">© {{ YEAR }} {{ BRAND }}</span>
+      {% if not HIDE_POWERED %}
+        <span class="ft-powered">
+          Powered by <a class="ft-powered-link" href="https://fundchamps.org" target="_blank" rel="noopener">FundChamps</a>
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Back to top -->
+  <button id="backtop" class="ft-backtop" aria-label="Back to top" hidden>↑</button>
+
+  <!-- A11y live region -->
+  <div id="ft-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+
+<style {{ nonce_attr() }}>
+/* ==========================================================================
+   FOOTER · Enterprise SaaS v5.3
+   --------------------------------------------------------------------------
+   - All branding/tokens via config (see: --accent)
+   - Dark-mode locked (override fg/bg as needed)
+   - Accessible, keyboard nav, and motion friendly
+   - No !important, no hand-edits for tenants/orgs
+   ========================================================================== */
+
+#site-footer,
+.fc-footer {
+  --accent: {{ ACCENT }};
+  --fg: #f8fafc;
+  --bg: #111827;
+  --muted: #9ca3af;
+  --hair: #222631;
+  --gap: 1.25rem;
+  --brand: var(--accent);
+  color: var(--fg);
+  background: var(--bg);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  border-top: 1px solid var(--hair);
+  margin-top: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.fc-footer--slim {
+  padding: clamp(1.2rem, 3vw, 2.2rem) var(--gap);
+}
+
+.ft-shell,
+.footer-inner {
+  max-width: 1340px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.4rem;
+  align-items: center;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+  .footer-inner {
+    grid-template-columns: 2.2fr 1.5fr;
+    gap: 2rem;
+  }
+}
+
+/* === Brand / Nav / CTAs === */
+.ft-bar,
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-bottom: .6rem;
+}
+
+.ft-brand {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  font-weight: 900;
+  font-size: 1.17rem;
+  color: var(--brand);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.ft-brand--lockup { font-size: 1.35rem; }
+.ft-brand-name { color: var(--fg); font-weight: 900; }
+.ft-mark { display: inline-flex; align-items: center; }
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .2rem;
+  color: var(--fg);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.footer-brand p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: .97rem;
+  line-height: 1.5;
+}
+
+/* === NAV LINKS === */
+.ft-nav {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+}
+.ft-link {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 700;
+  padding: .35em 0;
+  border-radius: .3em;
+  transition: background .17s;
+  outline: none;
+}
+.ft-link:focus-visible,
+.ft-link:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* === CALL TO ACTIONS === */
+.ft-ctas {
+  display: flex;
+  gap: .7rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+.ft-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .45em;
+  border-radius: 999px;
+  padding: .62em 1.2em;
+  font-weight: 900;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg);
+  box-shadow: 0 2px 10px #0004;
+  transition: transform .16s, box-shadow .16s, background .17s;
+}
+.ft-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ft-btn:hover, .ft-btn:active { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent); }
+
+.ft-btn--gold {
+  background: linear-gradient(92deg,var(--accent), color-mix(in srgb,var(--accent)68%,#fff) 95%);
+  color: #2e1600;
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent)20%,transparent);
+}
+.ft-btn--ghost {
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+}
+.ft-btn--lite {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--fg);
+}
+
+/* === TRUST LOGOS === */
+.ft-trust-logos {
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+  list-style: none;
+  margin: .6rem 0 0 0;
+  padding: 0;
+  opacity: .94;
+  flex-wrap: wrap;
+}
+.ft-trust-logos svg,
+.ft-trust-logos img {
+  height: 20px;
+  width: auto;
+  filter: grayscale(100%);
+  opacity: .92;
+  display: inline-block;
+  vertical-align: middle;
+  transition: filter .16s, opacity .16s;
+}
+.ft-trust-logos svg:focus-visible,
+.ft-trust-logos img:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+/* === LEGAL / ATTRIBUTION === */
+.ft-legal {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: .99rem;
+  color: var(--muted);
+  padding-top: .2rem;
+  border-top: 1px solid var(--hair);
+  margin-top: 1.2rem;
+  justify-content: space-between;
+}
+.ft-copy { font-weight: 700; }
+.ft-powered { font-weight: 600; }
+.ft-powered-link {
+  color: var(--accent); text-decoration: underline;
+  font-weight: 900;
+}
+.ft-powered-link:focus-visible, .ft-powered-link:hover {
+  color: #fbbf24;
+}
+
+/* === BACK TO TOP === */
+.ft-backtop {
+  display: none;
+  position: fixed;
+  right: 1.8rem;
+  bottom: 2.3rem;
+  z-index: 60;
+  padding: .7em 1.15em;
+  border-radius: 999px;
+  font-size: 1.3rem;
+  font-weight: 900;
+  background: var(--accent);
+  color: #222;
+  box-shadow: 0 4px 32px color-mix(in srgb, var(--accent)20%, transparent);
+  border: none;
+  cursor: pointer;
+  opacity: .98;
+  outline: none;
+  transition: background .18s, color .18s, opacity .18s;
+}
+.ft-backtop:focus-visible,
+.ft-backtop:hover {
+  background: #fde68a;
+  color: #c2410c;
+}
+
+/* === A11Y UTILITIES === */
+.sr-only,
+.u-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* === DARK-MODE LOCK (all colors inherit from tokens above) === */
+@media (prefers-color-scheme: dark) {
+  #site-footer,
+  .fc-footer {
+    --fg: #f3f5fa;
+    --bg: #0e1018;
+    --muted: #8b9bb7;
+    --hair: #1c2230;
+  }
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .ft-btn, .ft-link, .ft-backtop { transition: none !important; }
+}
+
+/* === MOBILE / RESPONSIVE === */
+@media (max-width: 820px) {
+  .footer-inner, .ft-shell {
+    grid-template-columns: 1fr !important;
+    gap: .85rem;
+  }
+  .ft-nav, .ft-ctas { flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .ft-legal { flex-direction: column; align-items: flex-start; gap: .5rem; margin-top: .7rem; }
+  .ft-backtop { right: 1rem; bottom: 1.3rem; font-size: 1.05rem; }
+}
+
+/* ==========================================================================
+   END FOOTER · Premium SaaS CSS
+   ========================================================================== */
+</style>
+
+<script {{ nonce_attr() }} type="module">
+/* Footer Pro v5.3 — Idempotent, CSP-safe */
+(() => {
+  const root = document.getElementById('site-footer');
+  if (!root || root.dataset.wired === '1') return;
+  root.dataset.wired = '1';
+
+  const $ = (s, el = root) => el.querySelector(s);
+  const on = (t, h, opt) => addEventListener(t, h, opt);
+
+  /* Back-to-top via IntersectionObserver */
+  const back = $('#backtop');
+  let io;
+  if (back) {
+    const sentry = document.createElement('div');
+    sentry.style.cssText = 'position:absolute;top:120px;height:1px;width:1px;';
+    (document.body || document.documentElement).prepend(sentry);
+
+    const show = (on) => {
+      back.toggleAttribute('hidden', !on);
+      back.classList.toggle('show', on);
+    };
+
+    io = new IntersectionObserver(([e]) => show(!e.isIntersecting), { threshold: 0 });
+    io.observe(sentry);
+
+    back.addEventListener('click', () => {
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      scrollTo(reduce ? { top: 0 } : { top: 0, behavior: 'smooth' });
+    }, { passive: true });
+  }
+
+  /* Smart Share (Web Share → Clipboard → prompt) */
+  root.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-share]');
+    if (!btn) return;
+
+    const canonical = document.querySelector('link[rel="canonical"]')?.href;
+    const url   = btn.getAttribute('data-share-url')   || canonical || location.href;
+    const title = btn.getAttribute('data-share-title') || document.title || '{{ BRAND }}';
+    const text  = btn.getAttribute('data-share-text')  || title;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        root.dispatchEvent(new CustomEvent('fc:track', { detail: { type: 'share', method: 'webshare', url, ctx: 'footer' }}));
+        return;
+      }
+    } catch {/* fall through */}
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        const prev = btn.textContent;
+        btn.textContent = 'Copied!';
+        const live = $('#ft-live'); if (live) live.textContent = 'Link copied to clipboard';
+        setTimeout(() => { btn.textContent = prev; }, 1400);
+        root.dispatchEvent(new CustomEvent('fc:track', { detail: { type: 'share', method: 'clipboard', url, ctx: 'footer' }}));
+        return;
+      }
+    } catch {/* fall through */}
+
+    // Final fallback
+    prompt('Copy this link:', url);
+    root.dispatchEvent(new CustomEvent('fc:track', { detail: { type: 'share', method: 'prompt', url, ctx: 'footer' }}));
+  }, { passive: true });
+
+  /* UTM auto-tagging (safe, respects existing queries & anchors) */
+  root.querySelectorAll('[data-cta][href]').forEach((el) => {
+    const href = el.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return;
+    if (/[?&]utm_(source|medium|campaign)=/i.test(href)) return; // already tagged
+    try {
+      const u = new URL(href, location.href);
+      u.searchParams.set('utm_source', 'site');
+      u.searchParams.set('utm_medium', 'footer');
+      u.searchParams.set('utm_campaign', el.dataset.cta || 'cta');
+      el.setAttribute('href', u.toString());
+    } catch {/* ignore invalid URLs */}
+  });
+
+  /* Enhance trust logos (title from aria-label if missing) */
+  root.querySelectorAll('.ft-trust-logos [role="img"], .ft-trust-logos svg').forEach((svg) => {
+    const label = svg.getAttribute('aria-label') || svg.querySelector('title')?.textContent;
+    if (label && !svg.getAttribute('title')) svg.setAttribute('title', label);
+    // Make keyboard-focusable if not already (purely decorative? then skip)
+    if (label && !svg.hasAttribute('tabindex')) svg.setAttribute('tabindex', '0');
+  });
+
+  /* Cleanup on bfcache/pagehide */
+  const cleanup = () => { try { io?.disconnect(); } catch {} };
+  on('pagehide', cleanup, { passive: true });
+})();
+</script>
+
+<script {{ nonce_attr() }} type="module">
+/* Footer ↔ Header chroma sync (tokens aligned across layout) */
+(() => {
+  const header = document.querySelector('.fcx-header');
+  const footer = document.getElementById('site-footer');
+  if (!header || !footer) return;
+
+  const apply = () => {
+    const cs = getComputedStyle(header);
+    // Pull from header custom props (or dataset accent)
+    const map = {
+      '--header-bg':     cs.getPropertyValue('--bg'),
+      '--header-fg':     cs.getPropertyValue('--fg'),
+      '--header-muted':  cs.getPropertyValue('--muted'),
+      '--header-ring':   cs.getPropertyValue('--ring'),
+      '--header-accent': (header.dataset.accent || cs.getPropertyValue('--accent') || '').trim()
+    };
+    for (const [k, v] of Object.entries(map)) {
+      if (v && String(v).trim()) footer.style.setProperty(k, String(v).trim());
+    }
+    // Mirror onto footer’s own variables as fallbacks
+    footer.style.setProperty('--bg',     map['--header-bg']     || '');
+    footer.style.setProperty('--fg',     map['--header-fg']     || '');
+    footer.style.setProperty('--muted',  map['--header-muted']  || '');
+    footer.style.setProperty('--ring',   map['--header-ring']   || '');
+    footer.style.setProperty('--accent', map['--header-accent'] || '{{ ACCENT }}');
+  };
+
+  // Initial paint
+  apply();
+
+  // React to header attribute/style changes (theme toggles, live accent updates)
+  const mo = new MutationObserver(apply);
+  mo.observe(header, { attributes: true, attributeFilter: ['data-theme', 'style', 'data-accent'] });
+
+  // Also re-apply on resize (container query boundary shifts)
+  addEventListener('resize', () => requestAnimationFrame(apply), { passive: true });
+
+  // bfcache safety
+  addEventListener('pagehide', () => mo.disconnect(), { passive: true });
+})();
+</script>
+

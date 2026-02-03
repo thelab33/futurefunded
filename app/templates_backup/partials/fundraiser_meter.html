@@ -1,0 +1,322 @@
+{# =======================================================================
+   partials/fundraiser_panel.html — SV SaaS Elite (standalone card)
+   - No absolute/overlay positioning; sits below the hero cleanly
+   - IDs prefixed with `fp-` to avoid collisions with hero
+   - CSP-safe styles/scripts; motion/contrast guards
+   ======================================================================= #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set theme_hex   = theme_hex|default('#facc15') %}
+{% set team_name   = (team.team_name if team and team.team_name else 'Connect ATX Elite') %}
+{% set catch_line  = catch_phrase if catch_phrase is defined and catch_phrase else 'Fuel the Season, Fund the Future' %}
+
+{# Numbers (self-contained) #}
+{% set _fr = (funds_raised|string)|replace('$','')|replace(',','')|float if funds_raised is defined else 0.0 %}
+{% set _fg = (fundraising_goal|string)|replace('$','')|replace(',','')|float if fundraising_goal is defined and fundraising_goal else 10000.0 %}
+{% set _goal = (_fg if _fg > 0 else 1.0) %}
+{% set _pct_raw = 100.0 * (_fr / _goal) %}
+{% set _pct = (0 if _pct_raw < 0 else (100 if _pct_raw > 100 else _pct_raw)) | round(1) %}
+{% set deadline_dt = fundraiser_deadline|default('') %}
+{% set stripe_payment_link = (stripe_payment_link if stripe_payment_link is defined and stripe_payment_link else '') %}
+
+<div id="fundraiser-panel" class="fp-card" style="--accent: {{ theme_hex }};">
+  <!-- Heading + tagline -->
+  <div class="fp-head">
+    <div class="legacy-chip" aria-label="{{ team_name }}"><span class="txt">{{ team_name }}</span></div>
+    <p class="title-sub fp-tagline">{{ catch_line }}</p>
+  </div>
+
+  <!-- Countdown -->
+  <div class="fp-count grid" role="timer" aria-live="polite" aria-atomic="true">
+    {% for key in ['Days','Hrs','Min','Sec'] %}
+      <div class="fp-count__cell">
+        <div class="fp-count__num tabular" id="fp-ct-{{ key|lower }}" aria-label="{{ key }}">00</div>
+        <div class="fp-count__lbl">{{ key }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Body grid -->
+  <div class="fp-grid">
+    <!-- Stats -->
+    <section class="fp-stats" aria-labelledby="fp-stats-title">
+      <h2 class="sr-only" id="fp-stats-title">Fundraising progress</h2>
+
+      <div class="fp-statrow">
+        <div>
+          <div class="fp-muted">Raised</div>
+          <div id="fp-raised" class="fp-figure tabular">${{ ('%0.0f' % _fr) }}</div>
+        </div>
+        <div class="text-right">
+          <div class="fp-muted">Goal</div>
+          <div id="fp-goal" class="fp-figure fp-figure--sm tabular">${{ ('%0.0f' % _goal) }}</div>
+        </div>
+      </div>
+
+      <!-- Meter -->
+      <div class="fp-meterwrap">
+        <div id="fundraiser-meter"
+             class="prestige-meter"
+             data-raised="{{ _fr }}" data-goal="{{ _goal }}"
+             role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ ('%.1f' % _pct) }}"
+             aria-label="Fundraising progress">
+          <div class="pm__track" aria-hidden="true"></div>
+          <div id="fp-bar" class="pm__fill" style="width: {{ _pct }}%"></div>
+          <div class="pm__ticks" aria-hidden="true"></div>
+          <div class="pm__sheen" aria-hidden="true"></div>
+        </div>
+
+        <div class="fp-between">
+          <div><span class="sr-only">Progress:</span><span id="fp-pct" class="fp-pct tabular">{{ ('%.1f' % _pct) }}</span>% funded</div>
+          <div>Deadline: <time id="fp-deadline" class="fp-deadline" datetime="{{ deadline_dt or '' }}">{{ deadline_dt or '' }}</time></div>
+        </div>
+
+        <div class="fp-chips" aria-hidden="true">
+          {% for m in [25,50,75,100] %}<span class="chip" data-m="{{ m }}">🎯 {{ m }}%</span>{% endfor %}
+        </div>
+
+        <div id="fp-next" class="fp-next" aria-live="polite">Great momentum — keep it rolling!</div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <aside class="fp-cta">
+      <a {% if stripe_payment_link %}href="{{ stripe_payment_link }}"{% else %}href="/donate"{% endif %}
+         class="fc-btn fc-btn-primary sheen-btn w-full justify-center text-[1rem] sm:text-[1.125rem] font-black shadow-sm ring-1 ring-white/10"
+         id="fp-primary-cta" data-cta="panel:primary"
+         {% if not stripe_payment_link %}data-open-donate-modal{% endif %}>
+         💛 Fuel the Season
+      </a>
+
+      <div class="fp-qgrid">
+        {% for amt in (quick_donate_amounts if quick_donate_amounts is defined else [25,50,100,250]) %}
+          <button type="button"
+                  class="fc-btn fc-btn-primary w-full justify-center font-black tabular leading-none ring-1 ring-white/10 hover:scale-[1.02]"
+                  style="--brand: var(--accent); font-size:.95rem; padding:.6rem .7rem;"
+                  data-amount="{{ amt }}" aria-label="Quick donate {{ amt }} dollars">
+            <span class="sr-only">Donate</span>${{ amt }}<span class="sr-only"> now</span>
+          </button>
+        {% endfor %}
+      </div>
+
+      <div class="fp-paybox">
+        <div class="fp-payrow">
+          <span>Payments Secured • PCI-DSS</span><span>Apple/Google Pay • Card</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Trust row -->
+  {% set AV = ['T','R','S','A','J','A'] %}
+  <div class="fp-trust">
+    <div class="fp-avatars">
+      {% for s in AV %}
+        <div class="fp-avatar" aria-hidden="true">{{ s }}</div>
+      {% endfor %}
+    </div>
+    <div class="fp-trusttxt">Trusted by our community</div>
+  </div>
+</div>
+
+<style nonce="{{ NONCE }}">
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  .fp-card{
+    border-radius:18px;
+    background: rgba(255,255,255,.06);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10);
+    padding: clamp(12px, 1.6vw, 18px);
+  }
+  .fp-head{ display:grid; place-items:center; row-gap:.35rem; margin-bottom:.35rem; }
+  .legacy-chip{
+    position:relative; padding:.55rem 1.2rem; border-radius:1.25rem;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+      linear-gradient(90deg, color-mix(in srgb, var(--accent, #facc15) 86%, #fff) 0%, #fff7cc 100%);
+    box-shadow: 0 8px 24px rgba(0,0,0,.30), inset 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .legacy-chip .txt{ font-weight:950; letter-spacing:-.015em; line-height:1; font-size:clamp(20px,2.6vw,32px); color:#0b0c0f; }
+  .title-sub.fp-tagline{ letter-spacing:.002em; text-wrap:balance; font-weight:600; color:#fff; opacity:.95; font-size:clamp(.95rem, 1.2vw, 1.35rem); text-align:center; }
+
+  .fp-count{ grid-template-columns:repeat(4,1fr); gap:.45rem; margin-top:.4rem; margin-bottom:.6rem; user-select:none; }
+  .fp-count__cell{ border-radius:.85rem; background: rgb(255 255 255 / .12); border:1px solid rgb(255 255 255 / .15); padding:.45rem .5rem; text-align:center; }
+  .fp-count__num{ color:#fff; font-weight:900; font-size: clamp(1.1rem, 2.2vw, 1.5rem); line-height:1; }
+  .fp-count__lbl{ color:#d4d4d8; font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; }
+
+  .fp-grid{ display:grid; grid-template-columns:1fr; gap: clamp(12px, 1.4vw, 16px); }
+  @media (min-width: 900px){
+    .fp-grid{ grid-template-columns:7fr 5fr; }
+  }
+
+  .fp-stats{ border-radius:14px; padding:clamp(12px,1.2vw,18px); background:linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,0)); border:1px solid rgba(255,255,255,.10); }
+  .fp-muted{ color: rgb(212 212 216 / .95); font-size:.82rem; }
+  .fp-statrow{ display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; }
+  .fp-figure{ color:#fff; font-weight:900; font-size: clamp(1.6rem, 3.2vw, 2.2rem); line-height:1; }
+  .fp-figure--sm{ font-size: clamp(1.4rem, 2.6vw, 1.9rem); }
+
+  .fp-meterwrap{ margin-top:.5rem; }
+  .fp-between{ display:flex; align-items:center; justify-content:space-between; gap:1rem; color:#e5e7eb; font-size:.88rem; margin-top:.45rem; }
+  .fp-pct{ font-weight:800; }
+  .fp-deadline{ font-weight:700; }
+  .fp-chips{ display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.35rem; }
+  .chip{ display:inline-flex; align-items:center; gap:.4rem; padding:.28rem .55rem; border-radius:.65rem; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
+  .fp-next{ margin-top:.35rem; font-size:.86rem; color:#d4d4d8; }
+
+  .fp-cta .fp-qgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:.45rem; margin-top:.6rem; }
+  .fp-paybox{ border-radius:.75rem; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:.55rem; margin-top:.6rem; }
+  .fp-payrow{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; color:#d6d3d1; font-size:.82rem; }
+
+  /* Prestige meter (shared look) */
+  .prestige-meter{
+    --h: clamp(12px, 1.6cqi, 16px);
+    position:relative; height:var(--h); border-radius:999px; overflow:hidden;
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .prestige-meter .pm__track{
+    position:absolute; inset:0;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02)),
+      linear-gradient(90deg, #3f3f46 0%, #171717 100%);
+  }
+  .prestige-meter .pm__ticks{
+    position:absolute; inset:0; mix-blend-mode:soft-light; opacity:.55;
+    background:
+      repeating-linear-gradient(90deg,
+        rgba(255,255,255,.18) 0, rgba(255,255,255,.18) 1px, transparent 1px, transparent 5%),
+      linear-gradient(90deg,
+        transparent 0%,
+        rgba(255,255,255,.22) 25%, transparent 25.2%,
+        rgba(255,255,255,.22) 50%, transparent 50.2%,
+        rgba(255,255,255,.22) 75%, transparent 75.2%,
+        rgba(255,255,255,.22) 100%);
+    background-size: 5% 100%, 100% 100%;
+  }
+  .prestige-meter .pm__fill{
+    position:absolute; left:0; top:0; bottom:0; width:0%;
+    background: linear-gradient(90deg,#f2d14b 0%, #edd43d 40%, #34d399 78%, #22c55e 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), 0 8px 18px rgba(34,197,94,.28);
+    transition: width .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .prestige-meter .pm__sheen{
+    position:absolute; inset:0; pointer-events:none; opacity:.25;
+    background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0));
+    mask: linear-gradient(0deg, rgba(0,0,0,.0) 0%, rgba(0,0,0,1) 38%, rgba(0,0,0,.0) 100%);
+  }
+
+  /* Trust row */
+  .fp-trust{ display:flex; align-items:center; justify-content:center; gap:.7rem; margin-top:.75rem; }
+  .fp-avatars{ display:flex; gap:.35rem; }
+  .fp-avatar{ width:2.1rem; height:2.1rem; border-radius:9999px; ring:2px; ring-color: rgb(0 0 0 / .5);
+              background: rgba(255,255,255,.15); display:grid; place-items:center; font-weight:900; color:#fde68a; }
+  .fp-trusttxt{ color:#e7e5e4; font-size:.9rem; }
+
+  /* Button sheen */
+  @keyframes shine { from{ transform: translateX(-120%) } to{ transform: translateX(120%) } }
+  .sheen-btn{ position:relative; overflow:hidden; }
+  .sheen-btn::before{
+    content:""; position:absolute; top:0; bottom:0; width:40%;
+    transform: translateX(-120%) skewX(-16deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+    animation: shine 2.6s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .sheen-btn::before{ animation:none !important; opacity:0; }
+  }
+</style>
+
+<script nonce="{{ NONCE }}">
+(() => {
+  if (window.__fpPanel) return; window.__fpPanel = true;
+  const $ = (s, r=document) => r.querySelector(s);
+
+  // Countdown (defaults: if no deadline, we leave zeros or derive from page if you prefer)
+  (function(){
+    const rootDeadline = document.getElementById('fc-hero')?.dataset?.deadline || '';
+    const ddl = {{ deadline_dt|tojson }} || rootDeadline || '';
+    if (!ddl) return; // keep the cells if not configured
+    const target = new Date(ddl); if (isNaN(target)) return;
+    const pad = v => String(v).padStart(2,'0');
+    const set = (id,val) => { const el = $('#'+id); if (el) el.textContent = val; };
+    const tick = () => {
+      const t = Math.max(0, target.getTime() - Date.now());
+      const dd = Math.floor(t/86400000),
+            hh = Math.floor((t%86400000)/3600000),
+            mm = Math.floor((t%3600000)/60000),
+            ss = Math.floor((t%60000)/1000);
+      set('fp-ct-days', String(dd));
+      set('fp-ct-hrs',  pad(hh));
+      set('fp-ct-min',  pad(mm));
+      set('fp-ct-sec',  pad(ss));
+    };
+    tick(); setInterval(tick, 1000);
+    const dl = $('#fp-deadline');
+    if (dl && !{{ (deadline_dt|default('')) and 'true' or 'false' }}){
+      try{ dl.dateTime = target.toISOString(); dl.textContent = target.toISOString().slice(0,19).replace('T',' '); }catch{}
+    }
+  })();
+
+  // Meter updater (listens to global fc:meter:update as well)
+  (function(){
+    const nf = new Intl.NumberFormat(undefined,{ maximumFractionDigits:0 });
+    const fmt$ = n => '$' + nf.format(Math.round(+n||0));
+    const bar   = $('#fp-bar');
+    const pctEl = $('#fp-pct');
+    const raisedEl = $('#fp-raised');
+    const goalEl   = $('#fp-goal');
+    const nextEl   = $('#fp-next');
+
+    function nextText(r,g){
+      if(!g) return 'Great momentum — keep it rolling!';
+      const T=[.25,.5,.75,1], p=g?(r/g):0;
+      for(const t of T){ if(p<t) return `Only ${fmt$((g*t)-r)} to reach ${Math.round(t*100)}%`; }
+      return 'Great momentum — keep it rolling!';
+    }
+
+    function setMeter(r,g){
+      const R=+r||0, G=Math.max(0,+g||0), P=Math.max(0,Math.min(100,G?(R/G*100):0));
+      if (bar)     bar.style.width = P.toFixed(1) + '%';
+      if (pctEl)   pctEl.textContent = P.toFixed(1);
+      if (raisedEl)raisedEl.textContent = fmt$(R);
+      if (goalEl)  goalEl.textContent   = fmt$(G);
+      document.querySelectorAll('.chip').forEach(c=>{
+        const m=+c.dataset.m||0, hit=P>=m;
+        c.style.background = hit ? 'rgba(250,204,21,.9)' : 'rgba(255,255,255,.06)';
+        c.style.color      = hit ? '#111827' : '';
+        c.style.boxShadow  = hit ? '0 0 0 3px rgba(250,204,21,.25)' : '';
+      });
+      nextEl && (nextEl.textContent = nextText(R,G));
+      const sr = document.getElementById('sr-live');
+      if (sr) sr.textContent = `Progress: ${P.toFixed(1)}% funded — ${fmt$(R)} raised of ${fmt$(G)}.`;
+    }
+
+    setMeter({{ _fr|round(0) }}, {{ _goal|round(0) }});
+    addEventListener('fc:meter:update', ev => { const d=ev.detail||{}; setMeter(d.raised,d.goal); }, {passive:true});
+  })();
+
+  // Payment link aware quick-donate
+  async function getCfg(){
+    try{
+      const r = await fetch('/api/payments/config', { headers: { accept: 'application/json' } });
+      if (!r.ok) throw 0; return await r.json();
+    }catch{ return {}; }
+  }
+  async function pay(amount){
+    const c = await getCfg(); const link = c.payment_link_url || c.link || {{ stripe_payment_link|tojson }};
+    const cents = Math.max(0, Math.round((Number(amount)||0)*100));
+    if (link){
+      const sep = link.includes('?') ? '&' : '?';
+      location.assign(`${link}${sep}client_reference_id=${encodeURIComponent(String(cents||0))}&utm_source=site&utm_medium=panel&utm_campaign=fundraiser`);
+    }else{
+      location.assign('/donate?amount=' + encodeURIComponent(String(amount||0)));
+    }
+  }
+  document.querySelectorAll('#fundraiser-panel [data-amount]').forEach(b=>{
+    b.addEventListener('click',()=>pay(+b.getAttribute('data-amount')||0),{passive:true});
+  });
+})();
+</script>
+

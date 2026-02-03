@@ -1,0 +1,4965 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<doctype html>
+<html
+  lang="en"
+  data-theme="dark"
+  data-ff-build="flagship-v10"
+  data-ff-compat="compat-first"
+  data-ff-page="fundraiser"
+>
+<head>
+  <!-- =========================================
+    FutureFunded • Flagship v10 (index.html)
+    - Ultra-premium multi-tenant fundraiser shell
+    - NO inline app logic (ff-app.js owns behaviors)
+    - NO inline design system (ff.css owns tokens/components)
+    - Preserve IDs/anchors + template tokens + data-ff-* hooks
+
+    v10 refactor fixes (HTML-side):
+    - ff-alert -> ff-notice (noscript block)
+    - ff-mini__title -> ff-card__title (class mismatch fix)
+  ========================================== -->
+
+  <!-- Core -->
+  <meta charset="utf-8" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5"
+  />
+  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="supported-color-schemes" content="dark light" />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="x-dns-prefetch-control" content="on" />
+  <meta name="generator" content="FutureFunded Flagship v10" />
+
+  <!-- Prevent theme flash (run BEFORE CSS paints) -->
+  <script>
+    (function () {
+      try {
+        // v10 key (with fallbacks to older keys)
+        var k = "ff_theme_v10";
+        var t = localStorage.getItem(k);
+
+        if (t !== "dark" && t !== "light") {
+          var t2 =
+            localStorage.getItem("ff_theme_v9") ||
+            localStorage.getItem("ff_theme_v8") ||
+            localStorage.getItem("ff_theme");
+          if (t2 === "dark" || t2 === "light") t = t2;
+        }
+
+        if (t !== "dark" && t !== "light") {
+          var m = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          t = m ? "dark" : "light";
+        }
+
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Optional: capture mode via ?capture=1 -->
+  <script>
+    (function () {
+      try {
+        var qs = new URLSearchParams(location.search);
+        if (qs.has("capture")) document.documentElement.setAttribute("data-ff-capture", "true");
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Payments config (Stripe + optional PayPal) -->
+  <meta name="ff-stripe-pk" content="{{ stripe_pk|default('') }}" />
+  <meta
+    name="ff-checkout-endpoint"
+    content="{{ checkout_endpoint|default('/payments/stripe/intent') }}"
+  />
+  <meta name="csrf-token" content="{{ csrf_token|default('') }}" />
+
+  <!-- Optional PayPal config (loaded on-demand) -->
+  <meta name="ff-paypal-client-id" content="{{ paypal_client_id|default('') }}" />
+  <meta name="ff-paypal-currency" content="{{ paypal_currency|default('USD') }}" />
+  <meta name="ff-paypal-intent" content="{{ paypal_intent|default('capture') }}" />
+
+  <!-- QR endpoint override -->
+  <meta
+    name="ff-qr-endpoint"
+    content="{{ qr_endpoint|default('https://api.qrserver.com/v1/create-qr-code/') }}"
+  />
+
+  <!-- Security baseline (prefer real headers in prod) -->
+  <meta
+    http-equiv="Permissions-Policy"
+    content="camera=(), microphone=(), geolocation=(), payment=(self), usb=()"
+  />
+
+  <!-- SEO -->
+  <title>{{ page_title|default('FutureFunded • Fundraiser') }}</title>
+  <meta
+    name="description"
+    content="{{ page_description|default('Fuel the season. Fund the future. Secure donations, sponsor leaderboards, and share-ready tools for youth teams and community programs.') }}"
+  />
+  <meta name="author" content="{{ org_name|default('FutureFunded') }}" />
+
+  <link rel="canonical" href="{{ request.base_url }}" />
+  <link rel="alternate" hreflang="en" href="{{ request.base_url }}" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ canonical }}" />
+  <meta property="og:site_name" content="{{ org_name|default('FutureFunded') }}" />
+  <meta property="og:locale" content="en_US" />
+  <meta
+    property="og:title"
+    content="{{ og_title|default(page_title|default('FutureFunded • Fundraiser')) }}"
+  />
+  <meta
+    property="og:description"
+    content="{{ og_description|default(page_description|default('Secure checkout, instant receipts, and premium sponsor recognition.')) }}"
+  />
+  <meta
+    property="og:image"
+    content="{{ og_image|default(url_for('static', filename='images/og.webp', _external=True)) }}"
+  />
+  <meta
+    property="og:image:secure_url"
+    content="{{ og_image|default(url_for('static', filename='images/og.webp', _external=True)) }}"
+  />
+  <meta property="og:image:type" content="image/webp" />
+  <meta property="og:image:alt" content="{{ og_image_alt|default('Fundraiser preview') }}" />
+  <meta property="og:image:width" content="{{ og_image_width|default('1200') }}" />
+  <meta property="og:image:height" content="{{ og_image_height|default('630') }}" />
+  {% if page_modified_iso|default('') %}
+  <meta property="og:updated_time" content="{{ page_modified_iso }}" />
+  {% endif %}
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta
+    name="twitter:title"
+    content="{{ og_title|default(page_title|default('FutureFunded • Fundraiser')) }}"
+  />
+  <meta
+    name="twitter:description"
+    content="{{ og_description|default(page_description|default('Secure checkout, instant receipts, and premium sponsor recognition.')) }}"
+  />
+  <meta
+    name="twitter:image"
+    content="{{ og_image|default(url_for('static', filename='images/og.webp', _external=True)) }}"
+  />
+  {% if twitter_site|default('') %}<meta name="twitter:site" content="{{ twitter_site }}" />{% endif %}
+  {% if twitter_creator|default('') %}<meta name="twitter:creator" content="{{ twitter_creator }}" />{% endif %}
+
+  <!-- Brand / PWA -->
+  <meta
+    name="theme-color"
+    media="(prefers-color-scheme: light)"
+    content="{{ theme_color_light|default(theme_color|default('#f97316')) }}"
+  />
+  <meta
+    name="theme-color"
+    media="(prefers-color-scheme: dark)"
+    content="{{ theme_color_dark|default('#0b0f17') }}"
+  />
+  <meta name="application-name" content="{{ org_name|default('FutureFunded') }}" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="{{ org_name|default('FutureFunded') }}" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" sizes="any" />
+  <link
+    rel="icon"
+    type="image/png"
+    href="{{ url_for('static', filename='images/icon-32.png') }}"
+    sizes="32x32"
+  />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}" />
+  <link
+    rel="mask-icon"
+    href="{{ url_for('static', filename='images/safari-pinned-tab.svg') }}"
+    color="{{ theme_color|default('#f97316') }}"
+  />
+
+  <!-- Perf: preconnect/dns (Stripe + QR + PayPal) -->
+  <link rel="preconnect" href="https://js.stripe.com" crossorigin />
+  <link rel="dns-prefetch" href="https://js.stripe.com" />
+  <link rel="preconnect" href="https://api.qrserver.com" crossorigin />
+  <link rel="dns-prefetch" href="https://api.qrserver.com" />
+  <link rel="preconnect" href="https://www.paypal.com" crossorigin />
+  <link rel="dns-prefetch" href="https://www.paypal.com" />
+
+  <!-- Preload logo (hero/brand) -->
+  <link
+    rel="preload"
+    as="image"
+    href="{{ org_logo|default(url_for('static', filename='images/logo.webp')) }}"
+    fetchpriority="high"
+  />
+
+  <!-- Critical baseline (avoid flash/CLS while ff.css loads) -->
+  <style>
+    :root { color-scheme: dark light; background: #070a11; }
+    html[data-theme="light"] { background: #f6f7fb; }
+    body { margin: 0; min-height: 100dvh; }
+    [hidden] { display: none !important; }
+  </style>
+
+  <!-- Design system stylesheet -->
+  <style>
+  @layer ff_reset, ff_tokens, ff_base, ff_utils, ff_components, ff_pages, ff_overrides;
+
+/* =========================================================
+   ff_reset
+========================================================= */
+@layer ff_reset {
+  :where(.ff-body) {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  :where(.ff-body),
+  :where(.ff-body) * ,
+  :where(.ff-body) *::before,
+  :where(.ff-body) *::after {
+    box-sizing: border-box;
+  }
+
+  :where(.ff-body) {
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  :where(.ff-body) :where(h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd) {
+    margin: 0;
+  }
+
+  :where(.ff-body) :where(ul, ol) {
+    margin: 0;
+    padding: 0;
+  }
+
+  :where(.ff-body) :where(li) {
+    list-style: none;
+  }
+
+  :where(.ff-body) :where(img, svg, video, canvas, audio, iframe, embed, object) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  :where(.ff-body) :where(img) {
+    image-rendering: auto;
+  }
+
+  :where(.ff-body) :where(button, input, textarea, select) {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+
+  :where(.ff-body) :where(button) {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  :where(.ff-body) :where(input, textarea, select) {
+    background: none;
+    border: 0;
+    padding: 0;
+    outline: none;
+  }
+
+  :where(.ff-body) :where(textarea) {
+    resize: vertical;
+  }
+
+  :where(.ff-body) :where(a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :where(.ff-body) :where(hr) {
+    border: 0;
+    height: 1px;
+    margin: 0;
+  }
+
+  :where(.ff-body) :where([hidden]) {
+    display: none !important;
+  }
+
+  :where(.ff-body) :where(summary) {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  :where(.ff-body) :where(summary::-webkit-details-marker) {
+    display: none;
+  }
+
+  :where(.ff-body) :where(:focus) {
+    outline: none;
+  }
+}
+
+/* =========================================================
+   ff_tokens
+========================================================= */
+@layer ff_tokens {
+  :root {
+    /* Breakpoints (documented tokens; media queries use literals for compatibility) */
+    --ff-bp-mobile: 640px;
+    --ff-bp-tablet-min: 641px;
+    --ff-bp-tablet-max: 1024px;
+    --ff-bp-desktop: 1025px;
+
+    /* Typography */
+    --ff-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    --ff-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+    --ff-tracking-tight: -0.015em;
+    --ff-tracking-normal: -0.005em;
+    --ff-tracking-wide: 0.06em;
+
+    --ff-lh-tight: 1.15;
+    --ff-lh-snug: 1.35;
+    --ff-lh-normal: 1.55;
+
+    --ff-fw-regular: 450;
+    --ff-fw-medium: 560;
+    --ff-fw-semibold: 650;
+    --ff-fw-bold: 760;
+    --ff-fw-black: 840;
+
+    /* Responsive type scale */
+    --ff-text-xs: clamp(0.75rem, 0.73rem + 0.12vw, 0.82rem);
+    --ff-text-sm: clamp(0.875rem, 0.84rem + 0.16vw, 0.95rem);
+    --ff-text-base: clamp(1rem, 0.96rem + 0.22vw, 1.08rem);
+    --ff-text-md: clamp(1.125rem, 1.05rem + 0.32vw, 1.2rem);
+    --ff-text-lg: clamp(1.25rem, 1.16rem + 0.45vw, 1.42rem);
+    --ff-text-xl: clamp(1.5rem, 1.34rem + 0.72vw, 1.72rem);
+    --ff-text-2xl: clamp(1.875rem, 1.6rem + 1.2vw, 2.25rem);
+    --ff-text-3xl: clamp(2.25rem, 1.85rem + 1.8vw, 2.85rem);
+    --ff-text-4xl: clamp(2.75rem, 2.1rem + 2.7vw, 3.6rem);
+
+    /* Spacing scale */
+    --ff-space-0: 0;
+    --ff-space-1: clamp(0.25rem, 0.22rem + 0.14vw, 0.35rem);
+    --ff-space-2: clamp(0.5rem, 0.46rem + 0.18vw, 0.65rem);
+    --ff-space-3: clamp(0.75rem, 0.68rem + 0.22vw, 0.95rem);
+    --ff-space-4: clamp(1rem, 0.92rem + 0.3vw, 1.25rem);
+    --ff-space-5: clamp(1.25rem, 1.12rem + 0.45vw, 1.6rem);
+    --ff-space-6: clamp(1.5rem, 1.32rem + 0.6vw, 2rem);
+    --ff-space-7: clamp(1.875rem, 1.6rem + 0.9vw, 2.5rem);
+    --ff-space-8: clamp(2.25rem, 1.9rem + 1.2vw, 3rem);
+    --ff-space-9: clamp(2.75rem, 2.25rem + 1.6vw, 3.75rem);
+    --ff-space-10: clamp(3.25rem, 2.6rem + 2vw, 4.5rem);
+    --ff-space-11: clamp(4rem, 3.1rem + 2.6vw, 5.5rem);
+    --ff-space-12: clamp(4.75rem, 3.6rem + 3.2vw, 6.75rem);
+
+    /* Radii */
+    --ff-radius-1: 10px;
+    --ff-radius-2: 14px;
+    --ff-radius-3: 18px;
+    --ff-radius-4: 22px;
+    --ff-radius-5: 28px;
+    --ff-radius-6: 34px;
+    --ff-radius-pill: 999px;
+
+    /* Borders */
+    --ff-border-1: 1px;
+    --ff-border-2: 2px;
+
+    /* Z-index map */
+    --ff-z-base: 0;
+    --ff-z-sticky: 30;
+    --ff-z-tabs: 35;
+    --ff-z-drawer: 60;
+    --ff-z-modal: 70;
+    --ff-z-toast: 80;
+    --ff-z-tooltip: 90;
+
+    /* Motion */
+    --ff-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ff-ease-out: cubic-bezier(0.12, 0.86, 0.25, 1);
+    --ff-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ff-dur-1: 120ms;
+    --ff-dur-2: 180ms;
+    --ff-dur-3: 260ms;
+    --ff-dur-4: 420ms;
+    --ff-blur-1: 6px;
+    --ff-blur-2: 10px;
+    --ff-blur-3: 16px;
+
+    /* Neutral scale (semantic mapping occurs per theme) */
+    --ff-n-0: #ffffff;
+    --ff-n-50: #f7f8fb;
+    --ff-n-100: #eff1f6;
+    --ff-n-150: #e7eaf2;
+    --ff-n-200: #dfe3ee;
+    --ff-n-300: #c8cfde;
+    --ff-n-400: #a9b2c8;
+    --ff-n-500: #7b86a2;
+    --ff-n-600: #55607b;
+    --ff-n-700: #3a4360;
+    --ff-n-800: #232a3f;
+    --ff-n-850: #161b2a;
+    --ff-n-900: #0f1421;
+    --ff-n-950: #070a11;
+
+    /* Accent system (warm flagship + cool support) */
+    --ff-accent-500: #ff6a3d;
+    --ff-accent-600: #ff4d2a;
+    --ff-accent-700: #e53d22;
+
+    --ff-accent2-500: #58d6ff;
+    --ff-accent2-600: #1fbef2;
+    --ff-accent2-700: #0aa6dd;
+
+    /* Derived accents (theme-safe via alpha tokens) */
+    --ff-accent: var(--ff-accent-500);
+    --ff-accent-hover: var(--ff-accent-600);
+    --ff-accent-active: var(--ff-accent-700);
+    --ff-accent-soft: color-mix(in oklab, var(--ff-accent-500) 16%, transparent);
+
+    --ff-accent2: var(--ff-accent2-500);
+    --ff-accent2-hover: var(--ff-accent2-600);
+    --ff-accent2-active: var(--ff-accent2-700);
+    --ff-accent2-soft: color-mix(in oklab, var(--ff-accent2-500) 14%, transparent);
+
+    /* Focus ring */
+    --ff-ring: 3px;
+    --ff-ring-offset: 2px;
+    --ff-ring-color: color-mix(in oklab, var(--ff-accent2-500) 70%, white);
+    --ff-ring-shadow: 0 0 0 var(--ff-ring-offset) color-mix(in oklab, var(--ff-bg) 70%, transparent),
+      0 0 0 calc(var(--ff-ring) + var(--ff-ring-offset)) var(--ff-ring-color);
+
+    /* Shadows (base scale; final feel depends on theme surfaces) */
+    --ff-shadow-1: 0 1px 0 rgba(0, 0, 0, 0.12);
+    --ff-shadow-2: 0 8px 18px rgba(0, 0, 0, 0.18);
+    --ff-shadow-3: 0 14px 34px rgba(0, 0, 0, 0.22);
+    --ff-shadow-4: 0 22px 60px rgba(0, 0, 0, 0.28);
+    --ff-shadow-5: 0 40px 90px rgba(0, 0, 0, 0.34);
+    --ff-shadow-lift: 0 18px 50px rgba(0, 0, 0, 0.26);
+    --ff-shadow-focus: 0 0 0 1px color-mix(in oklab, var(--ff-ring-color) 28%, transparent),
+      0 18px 55px rgba(0, 0, 0, 0.24);
+
+    /* App chrome sizes */
+    --ff-topbar-h: 46px;
+    --ff-header-h: 68px;
+    --ff-chrome-h: calc(var(--ff-topbar-h) + var(--ff-header-h));
+    --ff-tabs-h: 66px;
+    --ff-sticky-h: 104px;
+
+    /* Layout */
+    --ff-container-max: 1160px;
+    --ff-container-pad: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+
+    /* Theme semantic tokens (overridden per html[data-theme]) */
+    --ff-bg: var(--ff-n-950);
+    --ff-bg-elev: color-mix(in oklab, var(--ff-n-950) 80%, var(--ff-n-900));
+    --ff-surface-0: color-mix(in oklab, var(--ff-n-950) 90%, var(--ff-n-900));
+    --ff-surface-1: color-mix(in oklab, var(--ff-n-950) 80%, var(--ff-n-900));
+    --ff-surface-2: color-mix(in oklab, var(--ff-n-950) 65%, var(--ff-n-900));
+    --ff-text-1: color-mix(in oklab, var(--ff-n-0) 94%, var(--ff-n-200));
+    --ff-text-2: color-mix(in oklab, var(--ff-n-0) 72%, var(--ff-n-400));
+    --ff-text-3: color-mix(in oklab, var(--ff-n-0) 56%, var(--ff-n-500));
+    --ff-border: color-mix(in oklab, var(--ff-n-0) 12%, transparent);
+    --ff-border-strong: color-mix(in oklab, var(--ff-n-0) 18%, transparent);
+    --ff-divider: color-mix(in oklab, var(--ff-n-0) 10%, transparent);
+
+    --ff-glow: color-mix(in oklab, var(--ff-accent2-500) 40%, transparent);
+    --ff-glow-warm: color-mix(in oklab, var(--ff-accent-500) 34%, transparent);
+
+    --ff-success: #2fe7a7;
+    --ff-warning: #ffd36b;
+    --ff-danger: #ff5d6c;
+
+    --ff-link: color-mix(in oklab, var(--ff-accent2-500) 78%, white);
+    --ff-link-hover: color-mix(in oklab, var(--ff-accent2-600) 80%, white);
+
+    --ff-control-bg: color-mix(in oklab, var(--ff-surface-1) 84%, var(--ff-bg));
+    --ff-control-bg-hover: color-mix(in oklab, var(--ff-surface-2) 88%, var(--ff-bg));
+    --ff-control-border: color-mix(in oklab, var(--ff-border) 90%, transparent);
+    --ff-control-border-hover: color-mix(in oklab, var(--ff-border-strong) 90%, transparent);
+    --ff-placeholder: color-mix(in oklab, var(--ff-text-3) 85%, transparent);
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+
+    --ff-bg: #070a11;
+    --ff-bg-elev: #0a0f1a;
+
+    --ff-surface-0: #0b0f17;
+    --ff-surface-1: #0f1521;
+    --ff-surface-2: #141c2a;
+
+    --ff-text-1: #f2f5ff;
+    --ff-text-2: #c6cfe4;
+    --ff-text-3: #9aa6c2;
+
+    --ff-border: rgba(255, 255, 255, 0.1);
+    --ff-border-strong: rgba(255, 255, 255, 0.16);
+    --ff-divider: rgba(255, 255, 255, 0.08);
+
+    --ff-control-bg: rgba(255, 255, 255, 0.06);
+    --ff-control-bg-hover: rgba(255, 255, 255, 0.085);
+    --ff-control-border: rgba(255, 255, 255, 0.12);
+    --ff-control-border-hover: rgba(255, 255, 255, 0.18);
+    --ff-placeholder: rgba(198, 207, 228, 0.55);
+
+    --ff-shadow-1: 0 1px 0 rgba(0, 0, 0, 0.28);
+    --ff-shadow-2: 0 10px 22px rgba(0, 0, 0, 0.34);
+    --ff-shadow-3: 0 18px 42px rgba(0, 0, 0, 0.42);
+    --ff-shadow-4: 0 28px 70px rgba(0, 0, 0, 0.5);
+    --ff-shadow-5: 0 46px 110px rgba(0, 0, 0, 0.62);
+    --ff-shadow-lift: 0 22px 62px rgba(0, 0, 0, 0.54);
+
+    --ff-ring-color: color-mix(in oklab, var(--ff-accent2-500) 78%, white);
+    --ff-ring-shadow: 0 0 0 var(--ff-ring-offset) rgba(7, 10, 17, 0.78),
+      0 0 0 calc(var(--ff-ring) + var(--ff-ring-offset)) var(--ff-ring-color);
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+
+    --ff-bg: #f6f7fb;
+    --ff-bg-elev: #ffffff;
+
+    --ff-surface-0: #ffffff;
+    --ff-surface-1: #f1f3f8;
+    --ff-surface-2: #e9edf6;
+
+    --ff-text-1: #111627;
+    --ff-text-2: #37415a;
+    --ff-text-3: #5c6a86;
+
+    --ff-border: rgba(17, 22, 39, 0.12);
+    --ff-border-strong: rgba(17, 22, 39, 0.18);
+    --ff-divider: rgba(17, 22, 39, 0.1);
+
+    --ff-control-bg: rgba(17, 22, 39, 0.035);
+    --ff-control-bg-hover: rgba(17, 22, 39, 0.055);
+    --ff-control-border: rgba(17, 22, 39, 0.14);
+    --ff-control-border-hover: rgba(17, 22, 39, 0.2);
+    --ff-placeholder: rgba(55, 65, 90, 0.55);
+
+    --ff-shadow-1: 0 1px 0 rgba(10, 13, 22, 0.08);
+    --ff-shadow-2: 0 12px 26px rgba(10, 13, 22, 0.12);
+    --ff-shadow-3: 0 18px 46px rgba(10, 13, 22, 0.14);
+    --ff-shadow-4: 0 28px 76px rgba(10, 13, 22, 0.16);
+    --ff-shadow-5: 0 44px 120px rgba(10, 13, 22, 0.18);
+    --ff-shadow-lift: 0 22px 70px rgba(10, 13, 22, 0.14);
+
+    --ff-ring-color: color-mix(in oklab, var(--ff-accent2-600) 70%, black);
+    --ff-ring-shadow: 0 0 0 var(--ff-ring-offset) rgba(246, 247, 251, 0.85),
+      0 0 0 calc(var(--ff-ring) + var(--ff-ring-offset)) var(--ff-ring-color);
+  }
+}
+
+/* =========================================================
+   ff_base
+========================================================= */
+@layer ff_base {
+  :where(.ff-body) {
+    font-family: var(--ff-font-sans);
+    font-size: var(--ff-text-base);
+    line-height: var(--ff-lh-normal);
+    letter-spacing: var(--ff-tracking-normal);
+    color: var(--ff-text-1);
+    background: radial-gradient(1200px 700px at 18% -10%, var(--ff-glow) 0%, transparent 60%),
+      radial-gradient(900px 520px at 86% 10%, var(--ff-glow-warm) 0%, transparent 60%),
+      linear-gradient(180deg, var(--ff-bg) 0%, var(--ff-bg-elev) 100%);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+    overflow-x: clip;
+  }
+
+  :where(.ff-body) ::selection {
+    background: color-mix(in oklab, var(--ff-accent2-500) 35%, transparent);
+    color: var(--ff-text-1);
+  }
+
+  :where(.ff-body) :where(a) {
+    color: var(--ff-link);
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1.5px;
+    text-decoration-line: underline;
+    text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
+    transition: color var(--ff-dur-2) var(--ff-ease-out),
+      text-decoration-color var(--ff-dur-2) var(--ff-ease-out),
+      transform var(--ff-dur-2) var(--ff-ease-out);
+  }
+  :where(.ff-body) :where(a:hover) {
+    color: var(--ff-link-hover);
+    text-decoration-color: color-mix(in oklab, currentColor 68%, transparent);
+  }
+  :where(.ff-body) :where(a:active) {
+    transform: translateY(0.5px);
+  }
+
+  :where(.ff-body) :where(.ff-h1, .ff-h2, .ff-h3) {
+    letter-spacing: var(--ff-tracking-tight);
+    line-height: var(--ff-lh-tight);
+    font-weight: var(--ff-fw-black);
+  }
+
+  :where(.ff-body) .ff-h1 {
+    font-size: var(--ff-text-4xl);
+  }
+  :where(.ff-body) .ff-h2 {
+    font-size: var(--ff-text-2xl);
+    font-weight: var(--ff-fw-bold);
+  }
+  :where(.ff-body) .ff-h3 {
+    font-size: var(--ff-text-xl);
+    font-weight: var(--ff-fw-bold);
+  }
+
+  :where(.ff-body) .ff-lead {
+    font-size: var(--ff-text-md);
+    color: var(--ff-text-2);
+    line-height: var(--ff-lh-normal);
+  }
+
+  :where(.ff-body) .ff-help {
+    font-size: var(--ff-text-sm);
+    color: var(--ff-text-2);
+    line-height: var(--ff-lh-snug);
+  }
+
+  :where(.ff-body) .ff-kicker {
+    font-size: var(--ff-text-xs);
+    letter-spacing: var(--ff-tracking-wide);
+    text-transform: uppercase;
+    color: var(--ff-text-3);
+    font-weight: var(--ff-fw-semibold);
+  }
+
+  :where(.ff-body) .ff-num {
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-feature-settings: "tnum" 1, "ss01" 1, "ss02" 1;
+    letter-spacing: -0.01em;
+  }
+
+  :where(.ff-body) .ff-big {
+    font-size: var(--ff-text-3xl);
+    font-weight: var(--ff-fw-black);
+    line-height: 1.05;
+    color: var(--ff-text-1);
+    letter-spacing: -0.02em;
+  }
+
+  :where(.ff-body) .ff-accent {
+    color: color-mix(in oklab, var(--ff-accent-500) 85%, var(--ff-text-1));
+  }
+
+  :where(.ff-body) :where(.container, .ff-container) {
+    width: min(var(--ff-container-max), 100%);
+    margin-inline: auto;
+    padding-inline: var(--ff-container-pad);
+  }
+
+  :where(.ff-body) hr,
+  :where(.ff-body) .ff-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--ff-divider) 14%,
+      var(--ff-divider) 86%,
+      transparent 100%
+    );
+  }
+
+  /* Premium focus-visible system */
+  :where(.ff-body)
+    :where(a, button, input, textarea, select, summary, [role="button"], [tabindex]):focus-visible {
+    box-shadow: var(--ff-ring-shadow);
+    border-radius: max(10px, var(--ff-radius-2));
+  }
+
+  :where(.ff-body) :where(button, [role="button"], a, summary) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :where(.ff-body) :where([tabindex="-1"]) {
+    outline: none !important;
+  }
+
+  :where(.ff-body) :where(.ff-main) {
+    display: block;
+  }
+
+  /* Safer media sizing */
+  :where(.ff-body) :where(.ff-brand__logo, .ff-hero__logo, .ff-qr) {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--ff-radius-2);
+  }
+
+  :where(.ff-body) :where(.ff-brand__logo, .ff-hero__logo) {
+    background: color-mix(in oklab, var(--ff-surface-2) 75%, transparent);
+    border: 1px solid var(--ff-border);
+  }
+
+  :where(.ff-body) :where(.ff-qr) {
+    border-radius: var(--ff-radius-3);
+    background: var(--ff-bg-elev);
+    border: 1px solid var(--ff-border);
+  }
+}
+
+/* =========================================================
+   ff_utils
+========================================================= */
+@layer ff_utils {
+  :where(.ff-body) .ff-row {
+    display: flex;
+    gap: var(--ff-space-3);
+    align-items: center;
+  }
+
+  :where(.ff-body) .ff-row--between {
+    justify-content: space-between;
+  }
+
+  :where(.ff-body) .ff-wrap {
+    flex-wrap: wrap;
+  }
+
+  :where(.ff-body) .ff-ais {
+    align-items: start;
+  }
+
+  :where(.ff-body) .ff-grid {
+    display: grid;
+    gap: var(--ff-space-4);
+  }
+
+  :where(.ff-body) .ff-grid--2 {
+    grid-template-columns: 1fr;
+  }
+
+  :where(.ff-body) .ff-grid--3 {
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    :where(.ff-body) .ff-grid--2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    :where(.ff-body) .ff-grid--3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1025px) {
+    :where(.ff-body) .ff-grid--2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    :where(.ff-body) .ff-grid--3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  :where(.ff-body) .ff-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ff-space-3);
+  }
+
+  :where(.ff-body) .ff-pad {
+    padding: var(--ff-space-5);
+  }
+
+  :where(.ff-body) .ff-sr {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  :where(.ff-body) .ff-divider {
+    width: 100%;
+  }
+
+  /* Tiny alignment helpers */
+  :where(.ff-body) .ff-grow {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  :where(.ff-body) .ff-center {
+    display: grid;
+    place-items: center;
+  }
+}
+
+/* =========================================================
+   ff_components
+========================================================= */
+@layer ff_components {
+  /* Shell */
+  :where(.ff-body) .ff-shell {
+    position: relative;
+    min-height: 100dvh;
+  }
+
+  :where(.ff-body) .ff-main {
+    outline: none;
+  }
+
+  /* Skiplinks */
+  :where(.ff-body) .ff-skiplinks {
+    position: absolute;
+    top: var(--ff-space-2);
+    left: var(--ff-space-2);
+    z-index: var(--ff-z-tooltip);
+    display: grid;
+    gap: var(--ff-space-2);
+  }
+
+  :where(.ff-body) .ff-skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: var(--ff-radius-2);
+    background: var(--ff-surface-2);
+    color: var(--ff-text-1);
+    border: 1px solid var(--ff-border-strong);
+    box-shadow: var(--ff-shadow-3);
+    text-decoration: none;
+  }
+
+  :where(.ff-body) .ff-skip:focus-visible {
+    left: 0;
+    position: relative;
+  }
+
+  /* Announcement bar */
+  :where(.ff-body) .ff-announce {
+    position: sticky;
+    top: 0;
+    z-index: calc(var(--ff-z-sticky) + 2);
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-accent2-soft) 60%, var(--ff-bg)) 0%,
+      color-mix(in oklab, var(--ff-surface-1) 88%, var(--ff-bg)) 100%
+    );
+    border-bottom: 1px solid var(--ff-border);
+    backdrop-filter: blur(var(--ff-blur-2));
+  }
+
+  :where(.ff-body) .ff-announce__row {
+    display: flex;
+    gap: var(--ff-space-3);
+    align-items: center;
+    justify-content: space-between;
+    padding-block: var(--ff-space-2);
+  }
+
+  :where(.ff-body) .ff-announce__content {
+    min-width: 0;
+  }
+
+  :where(.ff-body) .ff-announce__text {
+    font-size: var(--ff-text-sm);
+    color: var(--ff-text-1);
+    line-height: var(--ff-lh-snug);
+  }
+
+  /* Chrome stack */
+  :where(.ff-body) .ff-chrome {
+    position: sticky;
+    top: 0;
+    z-index: var(--ff-z-sticky);
+    isolation: isolate;
+    backdrop-filter: blur(var(--ff-blur-2));
+  }
+
+  :where(.ff-body) .ff-chrome::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--ff-bg-elev) 82%, transparent) 0%,
+        color-mix(in oklab, var(--ff-bg) 86%, transparent) 100%
+      );
+    border-bottom: 1px solid var(--ff-border);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Topbar */
+  :where(.ff-body) .ff-topbar {
+    position: relative;
+    min-height: var(--ff-topbar-h);
+    display: grid;
+    align-items: center;
+  }
+
+  :where(.ff-body) .ff-topbar__row {
+    display: flex;
+    gap: var(--ff-space-3);
+    align-items: center;
+    justify-content: space-between;
+    padding-block: var(--ff-space-2);
+  }
+
+  :where(.ff-body) .ff-topbar__left {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ff-space-2);
+    align-items: center;
+    min-width: 0;
+  }
+
+  :where(.ff-body) .ff-topbar__right {
+    display: flex;
+    gap: var(--ff-space-2);
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* Header */
+  :where(.ff-body) .ff-header {
+    position: relative;
+    min-height: var(--ff-header-h);
+    display: grid;
+    align-items: center;
+    border-top: 1px solid color-mix(in oklab, var(--ff-border) 75%, transparent);
+  }
+
+  :where(.ff-body) .ff-header__row {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-3);
+    justify-content: space-between;
+    padding-block: var(--ff-space-2);
+  }
+
+  :where(.ff-body) .ff-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-3);
+    min-height: 44px;
+    padding: 6px 8px;
+    margin-left: -8px;
+    border-radius: var(--ff-radius-3);
+    transition: background var(--ff-dur-2) var(--ff-ease-out), transform var(--ff-dur-2) var(--ff-ease-out);
+    text-decoration: none;
+  }
+
+  :where(.ff-body) .ff-brand:hover {
+    background: color-mix(in oklab, var(--ff-control-bg-hover) 85%, transparent);
+  }
+
+  :where(.ff-body) .ff-brand:active {
+    transform: translateY(0.5px);
+  }
+
+  :where(.ff-body) .ff-brand__mark {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+  }
+
+  :where(.ff-body) .ff-brand__logo {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--ff-radius-3);
+    object-fit: cover;
+  }
+
+  :where(.ff-body) .ff-brand__meta {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  :where(.ff-body) .ff-brand__title {
+    font-weight: var(--ff-fw-bold);
+    letter-spacing: var(--ff-tracking-tight);
+    font-size: var(--ff-text-md);
+    color: var(--ff-text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 42vw;
+  }
+
+  :where(.ff-body) .ff-brand__sub {
+    font-size: var(--ff-text-sm);
+    color: var(--ff-text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 48vw;
+  }
+
+  :where(.ff-body) .ff-nav {
+    display: none;
+    align-items: center;
+    gap: var(--ff-space-2);
+    padding: 6px;
+    border-radius: var(--ff-radius-4);
+    background: color-mix(in oklab, var(--ff-control-bg) 85%, transparent);
+    border: 1px solid var(--ff-border);
+  }
+
+  :where(.ff-body) .ff-nav a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: var(--ff-radius-3);
+    color: var(--ff-text-2);
+    text-decoration: none;
+    font-size: var(--ff-text-sm);
+    font-weight: var(--ff-fw-semibold);
+    letter-spacing: var(--ff-tracking-normal);
+    transition: background var(--ff-dur-2) var(--ff-ease-out), color var(--ff-dur-2) var(--ff-ease-out),
+      transform var(--ff-dur-2) var(--ff-ease-out);
+  }
+
+  :where(.ff-body) .ff-nav a:hover {
+    background: var(--ff-control-bg-hover);
+    color: var(--ff-text-1);
+  }
+
+  :where(.ff-body) .ff-nav a:active {
+    transform: translateY(0.5px);
+  }
+
+  :where(.ff-body) .ff-nav a[aria-current="true"],
+  :where(.ff-body) .ff-nav a[aria-current="page"],
+  :where(.ff-body) .ff-nav a.is-active,
+  :where(.ff-body) .ff-nav a[data-ff-active="true"] {
+    color: var(--ff-text-1);
+    background: color-mix(in oklab, var(--ff-accent2-soft) 55%, var(--ff-control-bg));
+    border: 1px solid color-mix(in oklab, var(--ff-accent2-500) 24%, var(--ff-border));
+  }
+
+  :where(.ff-body) .ff-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-2);
+  }
+
+  @media (min-width: 1025px) {
+    :where(.ff-body) .ff-nav {
+      display: flex;
+    }
+    :where(.ff-body) .ff-brand__title {
+      max-width: 320px;
+    }
+    :where(.ff-body) .ff-brand__sub {
+      max-width: 360px;
+    }
+  }
+
+  /* Scroll progress */
+  :where(.ff-body) .ff-scroll {
+    height: 3px;
+    width: 100%;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  :where(.ff-body) #scrollProgressBar {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--ff-accent2-500) 86%, white),
+      color-mix(in oklab, var(--ff-accent-500) 82%, white)
+    );
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--ff-accent2-500) 18%, transparent),
+      0 10px 22px color-mix(in oklab, var(--ff-accent2-500) 18%, transparent);
+    transform-origin: left;
+    transition: width var(--ff-dur-2) var(--ff-ease-out);
+  }
+
+  /* Buttons */
+  :where(.ff-body) .ff-btn {
+    --_btn-bg: var(--ff-control-bg);
+    --_btn-fg: var(--ff-text-1);
+    --_btn-brd: var(--ff-control-border);
+    --_btn-shadow: none;
+
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 14px;
+    border-radius: var(--ff-radius-3);
+    border: 1px solid var(--_btn-brd);
+    background: var(--_btn-bg);
+    color: var(--_btn-fg);
+    font-weight: var(--ff-fw-semibold);
+    letter-spacing: var(--ff-tracking-normal);
+    font-size: var(--ff-text-sm);
+    line-height: 1;
+    box-shadow: var(--_btn-shadow);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background var(--ff-dur-2) var(--ff-ease-out),
+      border-color var(--ff-dur-2) var(--ff-ease-out),
+      transform var(--ff-dur-2) var(--ff-ease-out),
+      box-shadow var(--ff-dur-2) var(--ff-ease-out),
+      filter var(--ff-dur-2) var(--ff-ease-out);
+  }
+
+  :where(.ff-body) .ff-btn:hover {
+    background: var(--ff-control-bg-hover);
+    border-color: var(--ff-control-border-hover);
+  }
+
+  :where(.ff-body) .ff-btn:active {
+    transform: translateY(0.75px);
+    filter: saturate(1.02);
+  }
+
+  :where(.ff-body) .ff-btn[disabled],
+  :where(.ff-body) .ff-btn[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.1);
+  }
+
+  :where(.ff-body) .ff-btn--primary {
+    --_btn-bg: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-accent2-500) 80%, white) 0%,
+      color-mix(in oklab, var(--ff-accent2-600) 76%, var(--ff-accent-500)) 100%
+    );
+    --_btn-fg: color-mix(in oklab, white 92%, var(--ff-text-1));
+    --_btn-brd: color-mix(in oklab, var(--ff-accent2-500) 45%, transparent);
+    --_btn-shadow: 0 1px 0 rgba(0, 0, 0, 0.14), 0 18px 44px color-mix(in oklab, var(--ff-accent2-500) 22%, transparent);
+  }
+
+  :where(.ff-body) .ff-btn--primary:hover {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-accent2-500) 86%, white) 0%,
+      color-mix(in oklab, var(--ff-accent2-700) 72%, var(--ff-accent-500)) 100%
+    );
+    border-color: color-mix(in oklab, var(--ff-accent2-500) 55%, transparent);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.16), 0 22px 56px color-mix(in oklab, var(--ff-accent2-500) 26%, transparent);
+  }
+
+  :where(.ff-body) .ff-btn--secondary {
+    --_btn-bg: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-control-bg) 76%, transparent) 0%,
+      color-mix(in oklab, var(--ff-control-bg-hover) 82%, transparent) 100%
+    );
+    --_btn-fg: var(--ff-text-1);
+    --_btn-brd: color-mix(in oklab, var(--ff-border-strong) 80%, transparent);
+    --_btn-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  :where(.ff-body) .ff-btn--ghost {
+    --_btn-bg: transparent;
+    --_btn-fg: var(--ff-text-1);
+    --_btn-brd: color-mix(in oklab, var(--ff-border) 85%, transparent);
+  }
+
+  :where(.ff-body) .ff-btn--ghost:hover {
+    background: color-mix(in oklab, var(--ff-control-bg-hover) 70%, transparent);
+  }
+
+  :where(.ff-body) .ff-btn--sm {
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: var(--ff-radius-3);
+    font-size: var(--ff-text-xs);
+  }
+
+  /* Icon buttons */
+  :where(.ff-body) .ff-icon {
+    width: 44px;
+    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--ff-radius-3);
+    border: 1px solid color-mix(in oklab, var(--ff-border) 85%, transparent);
+    background: color-mix(in oklab, var(--ff-control-bg) 70%, transparent);
+    color: var(--ff-text-1);
+    box-shadow: var(--ff-shadow-1);
+    transition: background var(--ff-dur-2) var(--ff-ease-out),
+      border-color var(--ff-dur-2) var(--ff-ease-out),
+      transform var(--ff-dur-2) var(--ff-ease-out),
+      box-shadow var(--ff-dur-2) var(--ff-ease-out);
+  }
+
+  :where(.ff-body) .ff-icon:hover {
+    background: var(--ff-control-bg-hover);
+    border-color: var(--ff-control-border-hover);
+    box-shadow: var(--ff-shadow-2);
+  }
+
+  :where(.ff-body) .ff-icon:active {
+    transform: translateY(0.75px);
+    box-shadow: var(--ff-shadow-1);
+  }
+
+  :where(.ff-body) .ff-icon > span {
+    display: inline-block;
+    font-size: 18px;
+    line-height: 1;
+    translate: 0 -0.5px;
+  }
+
+  /* Pills */
+  :where(.ff-body) .ff-pill {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border-radius: var(--ff-radius-pill);
+    border: 1px solid var(--ff-border);
+    background: color-mix(in oklab, var(--ff-surface-1) 80%, transparent);
+    color: var(--ff-text-2);
+    font-size: var(--ff-text-xs);
+    font-weight: var(--ff-fw-semibold);
+    letter-spacing: var(--ff-tracking-normal);
+    white-space: nowrap;
+  }
+
+  :where(.ff-body) .ff-pill--accent {
+    border-color: color-mix(in oklab, var(--ff-accent-500) 22%, var(--ff-border));
+    background: color-mix(in oklab, var(--ff-accent-soft) 58%, var(--ff-surface-1));
+    color: color-mix(in oklab, var(--ff-text-1) 82%, var(--ff-accent-500));
+  }
+
+  :where(.ff-body) .ff-pill--verified {
+    border-color: color-mix(in oklab, var(--ff-success) 22%, var(--ff-border));
+    background: color-mix(in oklab, var(--ff-success) 14%, var(--ff-surface-1));
+    color: color-mix(in oklab, var(--ff-success) 44%, var(--ff-text-1));
+  }
+
+  :where(.ff-body) .ff-pill--live {
+    border-color: color-mix(in oklab, var(--ff-danger) 28%, var(--ff-border));
+    background: color-mix(in oklab, var(--ff-danger) 14%, var(--ff-surface-1));
+    color: color-mix(in oklab, var(--ff-danger) 52%, var(--ff-text-1));
+  }
+
+  :where(.ff-body) .ff-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--ff-danger);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--ff-danger) 16%, transparent);
+  }
+
+  @keyframes ff_pulse {
+    0% { transform: scale(0.92); opacity: 0.85; }
+    55% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(0.92); opacity: 0.85; }
+  }
+
+  :where(.ff-body) .ff-pill--live .ff-dot {
+    animation: ff_pulse 1.35s var(--ff-ease-out) infinite;
+  }
+
+  /* Card system */
+  :where(.ff-body) .ff-card {
+    position: relative;
+    border-radius: var(--ff-radius-5);
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-surface-0) 88%, transparent) 0%,
+      color-mix(in oklab, var(--ff-surface-1) 92%, transparent) 100%
+    );
+    border: 1px solid var(--ff-border);
+    box-shadow: var(--ff-shadow-1);
+    overflow: clip;
+  }
+
+  :where(.ff-body) .ff-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(900px 420px at 12% 0%, color-mix(in oklab, var(--ff-accent2-soft) 50%, transparent) 0%, transparent 55%),
+      radial-gradient(700px 380px at 96% 8%, color-mix(in oklab, var(--ff-accent-soft) 46%, transparent) 0%, transparent 60%);
+    opacity: 0.65;
+    pointer-events: none;
+    mix-blend-mode: normal;
+  }
+
+  :where(.ff-body) .ff-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  :where(.ff-body) .ff-card--lift {
+    box-shadow: var(--ff-shadow-3);
+    border-color: color-mix(in oklab, var(--ff-border-strong) 85%, transparent);
+  }
+
+  :where(.ff-body) .ff-card__title {
+    font-weight: var(--ff-fw-bold);
+    letter-spacing: var(--ff-tracking-tight);
+    color: var(--ff-text-1);
+    line-height: var(--ff-lh-tight);
+    font-size: var(--ff-text-lg);
+  }
+
+  :where(.ff-body) .ff-mini {
+    border-radius: var(--ff-radius-4);
+    background: color-mix(in oklab, var(--ff-control-bg) 75%, transparent);
+    border: 1px solid color-mix(in oklab, var(--ff-border) 90%, transparent);
+    padding: var(--ff-space-4);
+    box-shadow: var(--ff-shadow-1);
+  }
+
+  :where(.ff-body) .ff-mini--callout {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-accent2-soft) 32%, var(--ff-control-bg)) 0%,
+      color-mix(in oklab, var(--ff-control-bg) 86%, transparent) 100%
+    );
+    border-color: color-mix(in oklab, var(--ff-accent2-500) 18%, var(--ff-border));
+  }
+
+  /* Notice */
+  :where(.ff-body) .ff-notice {
+    border-radius: var(--ff-radius-4);
+    border: 1px solid color-mix(in oklab, var(--ff-warning) 28%, var(--ff-border));
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-warning) 12%, var(--ff-surface-1)) 0%,
+      color-mix(in oklab, var(--ff-control-bg) 88%, transparent) 100%
+    );
+    padding: var(--ff-space-4);
+    box-shadow: var(--ff-shadow-2);
+  }
+
+  :where(.ff-body) #payError.ff-notice {
+    border-color: color-mix(in oklab, var(--ff-danger) 34%, var(--ff-border));
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-danger) 12%, var(--ff-surface-1)) 0%,
+      color-mix(in oklab, var(--ff-control-bg) 88%, transparent) 100%
+    );
+  }
+
+  :where(.ff-body) #paySuccess.ff-notice {
+    border-color: color-mix(in oklab, var(--ff-success) 34%, var(--ff-border));
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-success) 11%, var(--ff-surface-1)) 0%,
+      color-mix(in oklab, var(--ff-control-bg) 88%, transparent) 100%
+    );
+  }
+
+  /* Disclosure / details */
+  :where(.ff-body) .ff-disc {
+    border-radius: var(--ff-radius-4);
+    border: 1px solid color-mix(in oklab, var(--ff-border) 92%, transparent);
+    background: color-mix(in oklab, var(--ff-control-bg) 78%, transparent);
+    overflow: clip;
+  }
+
+  :where(.ff-body) .ff-disc__sum {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ff-space-3);
+    padding: 12px 14px;
+    border-radius: inherit;
+    background: transparent;
+    transition: background var(--ff-dur-2) var(--ff-ease-out),
+      border-color var(--ff-dur-2) var(--ff-ease-out);
+  }
+
+  :where(.ff-body) .ff-disc__sum:hover {
+    background: color-mix(in oklab, var(--ff-control-bg-hover) 70%, transparent);
+  }
+
+  :where(.ff-body) .ff-disc__sum:active {
+    background: color-mix(in oklab, var(--ff-control-bg-hover) 82%, transparent);
+  }
+
+  :where(.ff-body) .ff-disc__meta {
+    min-width: 0;
+  }
+
+  :where(.ff-body) .ff-disc__body {
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--ff-divider);
+  }
+
+  :where(.ff-body) details.ff-disc[open] {
+    border-color: color-mix(in oklab, var(--ff-border-strong) 88%, transparent);
+    box-shadow: var(--ff-shadow-2);
+  }
+
+  :where(.ff-body) details.ff-disc[open] > .ff-disc__sum {
+    background: color-mix(in oklab, var(--ff-accent2-soft) 34%, transparent);
+  }
+
+  /* Bulleted lists */
+  :where(.ff-body) .ff-bul {
+    display: grid;
+    gap: 10px;
+    padding-left: 18px;
+    list-style: none;
+  }
+
+  :where(.ff-body) .ff-bul > li {
+    position: relative;
+    font-size: var(--ff-text-sm);
+    color: var(--ff-text-2);
+    line-height: var(--ff-lh-snug);
+  }
+
+  :where(.ff-body) .ff-bul > li::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 0.62em;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--ff-accent2-500) 60%, var(--ff-accent-500));
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--ff-accent2-500) 12%, transparent);
+    transform: translateY(-50%);
+  }
+
+/* Hero */
+:where(.ff-body) .ff-hero {
+  position: relative;
+  padding: calc(var(--ff-space-8) + 10px) 0 var(--ff-space-9);
+}
+
+:where(.ff-body) .ff-hero__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:where(.ff-body) .ff-hero__glow {
+  position: absolute;
+  inset: -30% -20%;
+  background:
+    radial-gradient(
+      900px 600px at 20% 12%,
+      color-mix(in oklab, var(--ff-accent2-500) 22%, transparent) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      760px 520px at 86% 18%,
+      color-mix(in oklab, var(--ff-accent-500) 20%, transparent) 0%,
+      transparent 66%
+    ),
+    radial-gradient(
+      1100px 700px at 45% -10%,
+      color-mix(in oklab, var(--ff-accent2-500) 12%, transparent) 0%,
+      transparent 68%
+    );
+  filter: blur(var(--ff-blur-3));
+  opacity: 0.95;
+}
+
+:where(.ff-body) .ff-hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--ff-border) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--ff-border) 40%, transparent) 1px, transparent 1px);
+  background-size: 68px 68px;
+  opacity: 0.18;
+  mask-image: radial-gradient(60% 55% at 50% 10%, black 0%, transparent 72%);
+}
+
+:where(.ff-body) .ff-hero__noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.28) 0px,
+      rgba(255, 255, 255, 0.28) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  mix-blend-mode: overlay;
+  mask-image: radial-gradient(70% 60% at 50% 8%, black 0%, transparent 70%);
+}
+
+:where(.ff-body) .ff-hero__layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--ff-space-6);
+  align-items: start;
+}
+
+:where(.ff-body) .ff-hero__left {
+  display: grid;
+  gap: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-hero__rail {
+  display: grid;
+  gap: var(--ff-space-4);
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-hero__layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: var(--ff-space-7);
+  }
+  :where(.ff-body) .ff-hero__rail {
+    position: sticky;
+    top: calc(var(--ff-chrome-h) + var(--ff-space-4));
+    align-self: start;
+  }
+}
+
+:where(.ff-body) .ff-hero__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ff-space-2);
+  padding: 0;
+  margin: 0;
+}
+
+:where(.ff-body) .ff-hero__card {
+  overflow: clip;
+}
+
+:where(.ff-body) .ff-hero__cardhead {
+  gap: var(--ff-space-3);
+  align-items: center;
+}
+
+:where(.ff-body) .ff-hero__logo {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: var(--ff-radius-3);
+  flex: 0 0 auto;
+}
+
+:where(.ff-body) .ff-hero__headmeta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+:where(.ff-body) .ff-hero__trust {
+  align-items: center;
+  gap: 8px;
+  color: var(--ff-text-2);
+}
+
+:where(.ff-body) .ff-hero__trusticon {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: color-mix(in oklab, var(--ff-success) 60%, var(--ff-accent2-500));
+}
+
+:where(.ff-body) .ff-hero__actions {
+  flex-wrap: wrap;
+}
+
+:where(.ff-body) .ff-hero__highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ff-space-2);
+}
+
+:where(.ff-body) .ff-hero__proof {
+  margin-top: 2px;
+}
+
+:where(.ff-body) .ff-hero__bar {
+  border-radius: var(--ff-radius-5);
+}
+
+:where(.ff-body) .ff-hero__barrow {
+  display: flex;
+  gap: var(--ff-space-4);
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+:where(.ff-body) .ff-hero__barcopy {
+  min-width: 0;
+}
+
+:where(.ff-body) .ff-hero__baractions {
+  gap: var(--ff-space-2);
+  flex-shrink: 0;
+}
+
+/* Console / progress rail */
+:where(.ff-body) .ff-console__head {
+  gap: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-console__meta {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+:where(.ff-body) .ff-console__quick .ff-kicker {
+  margin-top: 2px;
+}
+
+:where(.ff-body) .ff-console__numbers {
+  gap: var(--ff-space-3);
+  flex-wrap: wrap;
+}
+
+:where(.ff-body) .ff-console__actions {
+  flex-wrap: wrap;
+}
+
+:where(.ff-body) .ff-console__fineprint {
+  margin-top: 10px;
+  color: var(--ff-text-3);
+}
+
+:where(.ff-body) .ff-kpi {
+  gap: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-kpi__right {
+  text-align: right;
+}
+
+/* Meter */
+:where(.ff-body) .ff-meter {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--ff-border-strong) 80%, transparent);
+  background: color-mix(in oklab, var(--ff-control-bg) 85%, transparent);
+  overflow: clip;
+  box-shadow: var(--ff-shadow-1);
+}
+
+:where(.ff-body) .ff-meter__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+:where(.ff-body) .ff-meter__ticks i {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: calc(100% + 4px);
+  background: color-mix(in oklab, var(--ff-border) 85%, transparent);
+}
+
+:where(.ff-body) #overallBar {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ff-accent2-500) 84%, white),
+    color-mix(in oklab, var(--ff-accent-500) 84%, white)
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--ff-accent2-500) 18%, transparent),
+    0 10px 20px color-mix(in oklab, var(--ff-accent2-500) 16%, transparent);
+  transition: width var(--ff-dur-3) var(--ff-ease-out);
+}
+
+/* Chips */
+:where(.ff-body) .ff-chips {
+  gap: var(--ff-space-2);
+}
+
+:where(.ff-body) .ff-chip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: var(--ff-radius-pill);
+  border: 1px solid color-mix(in oklab, var(--ff-control-border) 90%, transparent);
+  background: color-mix(in oklab, var(--ff-control-bg) 74%, transparent);
+  color: var(--ff-text-1);
+  font-size: var(--ff-text-xs);
+  font-weight: var(--ff-fw-semibold);
+  letter-spacing: var(--ff-tracking-normal);
+  transition: background var(--ff-dur-2) var(--ff-ease-out),
+    border-color var(--ff-dur-2) var(--ff-ease-out),
+    transform var(--ff-dur-2) var(--ff-ease-out),
+    box-shadow var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-chip:hover {
+  background: var(--ff-control-bg-hover);
+  border-color: var(--ff-control-border-hover);
+  box-shadow: var(--ff-shadow-2);
+}
+
+:where(.ff-body) .ff-chip:active {
+  transform: translateY(0.75px);
+}
+
+:where(.ff-body) .ff-chip[aria-pressed="true"],
+:where(.ff-body) .ff-chip.is-selected,
+:where(.ff-body) .ff-chip[data-selected="true"] {
+  background: color-mix(in oklab, var(--ff-accent2-soft) 60%, var(--ff-control-bg));
+  border-color: color-mix(in oklab, var(--ff-accent2-500) 28%, var(--ff-control-border));
+  box-shadow: var(--ff-shadow-3);
+}
+
+/* Forms */
+:where(.ff-body) .ff-form {
+  display: grid;
+  gap: var(--ff-space-3);
+}
+
+:where(.ff-body) .ff-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--ff-space-3);
+}
+
+:where(.ff-body) .ff-label {
+  font-size: var(--ff-text-sm);
+  font-weight: var(--ff-fw-semibold);
+  color: var(--ff-text-2);
+  margin-top: 2px;
+}
+
+:where(.ff-body) .ff-inputrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: var(--ff-radius-3);
+  border: 1px solid var(--ff-control-border);
+  background: var(--ff-control-bg);
+  box-shadow: var(--ff-shadow-1);
+  overflow: clip;
+  transition: border-color var(--ff-dur-2) var(--ff-ease-out),
+    background var(--ff-dur-2) var(--ff-ease-out),
+    box-shadow var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-inputrow:hover {
+  border-color: var(--ff-control-border-hover);
+  background: var(--ff-control-bg-hover);
+}
+
+:where(.ff-body) .ff-inputrow:focus-within {
+  border-color: color-mix(in oklab, var(--ff-accent2-500) 34%, var(--ff-control-border-hover));
+  box-shadow: var(--ff-shadow-focus);
+}
+
+:where(.ff-body) .ff-inputrow__prefix {
+  padding-left: 12px;
+  padding-right: 8px;
+  font-weight: var(--ff-fw-bold);
+  color: var(--ff-text-2);
+  user-select: none;
+}
+
+:where(.ff-body) .ff-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: var(--ff-radius-3);
+  border: 1px solid var(--ff-control-border);
+  background: var(--ff-control-bg);
+  box-shadow: var(--ff-shadow-1);
+  color: var(--ff-text-1);
+  transition: border-color var(--ff-dur-2) var(--ff-ease-out),
+    background var(--ff-dur-2) var(--ff-ease-out),
+    box-shadow var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-input::placeholder {
+  color: var(--ff-placeholder);
+}
+
+:where(.ff-body) .ff-input:hover {
+  border-color: var(--ff-control-border-hover);
+  background: var(--ff-control-bg-hover);
+}
+
+:where(.ff-body) .ff-input:focus {
+  border-color: color-mix(in oklab, var(--ff-accent2-500) 34%, var(--ff-control-border-hover));
+  box-shadow: var(--ff-shadow-focus);
+}
+
+:where(.ff-body) .ff-inputrow .ff-input {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+:where(.ff-body) textarea.ff-input {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  min-height: 96px;
+}
+
+:where(.ff-body) .ff-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: var(--ff-radius-3);
+  border: 1px solid color-mix(in oklab, var(--ff-border) 88%, transparent);
+  background: color-mix(in oklab, var(--ff-control-bg) 70%, transparent);
+  color: var(--ff-text-2);
+}
+
+:where(.ff-body) .ff-check:hover {
+  background: color-mix(in oklab, var(--ff-control-bg-hover) 70%, transparent);
+}
+
+:where(.ff-body) .ff-check input[type="checkbox"] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--ff-control-border);
+  background: color-mix(in oklab, var(--ff-bg) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ff-border) 55%, transparent);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+:where(.ff-body) .ff-check input[type="checkbox"]::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+:where(.ff-body) .ff-check input[type="checkbox"]:checked {
+  border-color: color-mix(in oklab, var(--ff-accent2-500) 35%, var(--ff-control-border));
+  background: color-mix(in oklab, var(--ff-accent2-500) 18%, var(--ff-control-bg));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ff-accent2-500) 12%, transparent);
+}
+
+:where(.ff-body) .ff-check input[type="checkbox"]:checked::after {
+  border-left-color: color-mix(in oklab, var(--ff-text-1) 92%, white);
+  border-bottom-color: color-mix(in oklab, var(--ff-text-1) 92%, white);
+}
+
+:where(.ff-body) .ff-check input[type="checkbox"]:focus-visible {
+  box-shadow: var(--ff-ring-shadow);
+}
+
+/* QR block */
+:where(.ff-body) .ff-qrrow {
+  align-items: start;
+  gap: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-qr {
+  width: 112px;
+  height: 112px;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+:where(.ff-body) #shareQr.ff-qr {
+  width: 140px;
+  height: 140px;
+}
+
+:where(.ff-body) .ff-qrmeta {
+  min-width: 0;
+}
+
+:where(.ff-body) .ff-qractions {
+  gap: var(--ff-space-2);
+  flex-wrap: wrap;
+}
+
+/* Sections */
+:where(.ff-body) .ff-section {
+  padding: var(--ff-space-9) 0;
+}
+
+/* Impact */
+:where(.ff-body) .ff-impact__headrow {
+  display: grid;
+  gap: var(--ff-space-5);
+  align-items: start;
+}
+
+:where(.ff-body) .ff-impact__actions {
+  gap: var(--ff-space-2);
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+:where(.ff-body) .ff-impact__pills {
+  gap: var(--ff-space-2);
+  flex-wrap: wrap;
+  margin-top: var(--ff-space-3);
+}
+
+:where(.ff-body) .ff-impact__details {
+  display: grid;
+  gap: var(--ff-space-3);
+}
+
+:where(.ff-body) .ff-impact__grid {
+  display: grid;
+  gap: var(--ff-space-4);
+  margin-top: var(--ff-space-4);
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-impact__headrow {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
+    align-items: center;
+  }
+  :where(.ff-body) .ff-impact__actions {
+    justify-content: flex-end;
+  }
+  :where(.ff-body) .ff-impact__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+:where(.ff-body) .ff-impact__panelhead {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-impact__cards {
+  display: grid;
+  gap: var(--ff-space-3);
+  grid-template-columns: 1fr;
+  margin-top: var(--ff-space-3);
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  :where(.ff-body) .ff-impact__cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-impact__cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+:where(.ff-body) .ff-impact__alloclist {
+  margin-top: var(--ff-space-3);
+}
+
+:where(.ff-body) .ff-impact__microtrust {
+  margin-top: var(--ff-space-3);
+  color: var(--ff-text-3);
+}
+
+:where(.ff-body) .ff-impact__steps {
+  padding: 14px;
+  border-top: 1px solid var(--ff-divider);
+  background: color-mix(in oklab, var(--ff-control-bg) 78%, transparent);
+}
+
+/* Sponsors */
+:where(.ff-body) .ff-sponsors__headrow,
+:where(.ff-body) .ff-teams__headrow,
+:where(.ff-body) .ff-donate__headrow {
+  gap: var(--ff-space-4);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+:where(.ff-body) .ff-sponsors__actions,
+:where(.ff-body) .ff-teams__pills,
+:where(.ff-body) .ff-sponsors__pills,
+:where(.ff-body) .ff-donate__trust {
+  gap: var(--ff-space-2);
+  flex-wrap: wrap;
+}
+
+:where(.ff-body) .ff-sponsors__grid {
+  margin-top: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-sponsors__panelhead {
+  gap: var(--ff-space-4);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+:where(.ff-body) .ff-sponsors__tiers,
+:where(.ff-body) .ff-sponsors__board {
+  gap: var(--ff-space-3);
+}
+
+:where(.ff-body) .ff-sponsors__spotlight {
+  display: grid;
+  gap: 8px;
+}
+
+:where(.ff-body) .ff-sponsors__wall {
+  display: grid;
+  gap: var(--ff-space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 641px) {
+  :where(.ff-body) .ff-sponsors__wall {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-sponsors__wall {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Dynamic sponsor/team cards (injected by JS): style safely by container hooks */
+:where(.ff-body) [data-ff-sponsor-tiers] > :where(li, a, button, div),
+:where(.ff-body) [data-ff-sponsor-leaderboard] > :where(li, a, button, div),
+:where(.ff-body) [data-ff-sponsor-wall] > :where(div, a, button),
+:where(.ff-body) [data-ff-teams-grid] > :where(div, a, button),
+:where(.ff-body) [data-ff-impact-grid] > :where(div, a, button),
+:where(.ff-body) [data-ff-updates-list] > :where(div, article, a),
+:where(.ff-body) [data-ff-allocation-list] > :where(div, a, button) {
+  border-radius: var(--ff-radius-4);
+  background: color-mix(in oklab, var(--ff-control-bg) 76%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ff-border) 90%, transparent);
+  padding: var(--ff-space-4);
+  box-shadow: var(--ff-shadow-1);
+  transition: transform var(--ff-dur-2) var(--ff-ease-out),
+    box-shadow var(--ff-dur-2) var(--ff-ease-out),
+    border-color var(--ff-dur-2) var(--ff-ease-out),
+    background var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body)
+  [data-ff-sponsor-tiers] > :where(li, a, button, div):hover,
+:where(.ff-body)
+  [data-ff-sponsor-leaderboard] > :where(li, a, button, div):hover,
+:where(.ff-body)
+  [data-ff-sponsor-wall] > :where(div, a, button):hover,
+:where(.ff-body)
+  [data-ff-teams-grid] > :where(div, a, button):hover,
+:where(.ff-body)
+  [data-ff-impact-grid] > :where(div, a, button):hover {
+  background: color-mix(in oklab, var(--ff-control-bg-hover) 78%, transparent);
+  border-color: color-mix(in oklab, var(--ff-border-strong) 85%, transparent);
+  box-shadow: var(--ff-shadow-3);
+  transform: translateY(-1px);
+}
+
+/* Donate grid */
+:where(.ff-body) .ff-donate__grid {
+  align-items: start;
+}
+
+/* Sticky donate bar */
+:where(.ff-body) .ff-sticky {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + var(--ff-tabs-h));
+  z-index: var(--ff-z-tabs);
+  padding: var(--ff-space-3);
+  pointer-events: none;
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-sticky {
+    bottom: calc(env(safe-area-inset-bottom) + var(--ff-space-3));
+    max-width: min(var(--ff-container-max), 100%);
+    margin-inline: auto;
+  }
+}
+
+:where(.ff-body) .ff-sticky__inner {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ff-space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ff-space-3);
+  border-radius: var(--ff-radius-5);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--ff-bg-elev) 82%, transparent) 0%,
+    color-mix(in oklab, var(--ff-surface-1) 92%, transparent) 100%
+  );
+  border: 1px solid color-mix(in oklab, var(--ff-border-strong) 85%, transparent);
+  box-shadow: var(--ff-shadow-4);
+  backdrop-filter: blur(var(--ff-blur-2));
+}
+
+:where(.ff-body) .ff-sticky__mini {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+:where(.ff-body) .ff-sticky__org {
+  font-weight: var(--ff-fw-bold);
+  letter-spacing: var(--ff-tracking-tight);
+  color: var(--ff-text-1);
+}
+
+:where(.ff-body) .ff-sticky__bar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--ff-border) 85%, transparent);
+  background: color-mix(in oklab, var(--ff-control-bg) 85%, transparent);
+  overflow: clip;
+}
+
+:where(.ff-body) #stickyBarFill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ff-accent2-500) 85%, white),
+    color-mix(in oklab, var(--ff-accent-500) 85%, white)
+  );
+  transition: width var(--ff-dur-3) var(--ff-ease-out);
+}
+
+/* Back to top */
+:where(.ff-body) .ff-top {
+  position: fixed;
+  right: var(--ff-space-3);
+  bottom: calc(env(safe-area-inset-bottom) + var(--ff-tabs-h) + var(--ff-space-3));
+  z-index: var(--ff-z-tabs);
+  width: 46px;
+  height: 46px;
+  border-radius: var(--ff-radius-3);
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--ff-control-bg) 78%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ff-border-strong) 85%, transparent);
+  box-shadow: var(--ff-shadow-3);
+  color: var(--ff-text-1);
+  text-decoration: none;
+  transition: transform var(--ff-dur-2) var(--ff-ease-out),
+    background var(--ff-dur-2) var(--ff-ease-out),
+    box-shadow var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-top:hover {
+  background: var(--ff-control-bg-hover);
+  box-shadow: var(--ff-shadow-4);
+  transform: translateY(-1px);
+}
+
+:where(.ff-body) .ff-top:active {
+  transform: translateY(0.5px);
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-top {
+    bottom: calc(env(safe-area-inset-bottom) + var(--ff-space-4));
+  }
+}
+
+/* Mobile tabs */
+:where(.ff-body) .ff-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--ff-z-tabs);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  padding: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--ff-bg-elev) 70%, transparent) 0%,
+    color-mix(in oklab, var(--ff-bg) 90%, transparent) 100%
+  );
+  border-top: 1px solid var(--ff-border);
+  backdrop-filter: blur(var(--ff-blur-2));
+}
+
+:where(.ff-body) .ff-tab {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ff-radius-3);
+  color: var(--ff-text-2);
+  font-weight: var(--ff-fw-semibold);
+  font-size: var(--ff-text-xs);
+  text-decoration: none;
+  transition: background var(--ff-dur-2) var(--ff-ease-out),
+    color var(--ff-dur-2) var(--ff-ease-out),
+    transform var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-tab:hover {
+  background: color-mix(in oklab, var(--ff-control-bg-hover) 75%, transparent);
+  color: var(--ff-text-1);
+}
+
+:where(.ff-body) .ff-tab:active {
+  transform: translateY(0.75px);
+}
+
+:where(.ff-body) .ff-tab[aria-current="true"],
+:where(.ff-body) .ff-tab[aria-current="page"],
+:where(.ff-body) .ff-tab.is-active,
+:where(.ff-body) .ff-tab[data-ff-active="true"] {
+  background: color-mix(in oklab, var(--ff-accent2-soft) 55%, var(--ff-control-bg));
+  color: var(--ff-text-1);
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-tabs {
+    display: none;
+  }
+}
+
+/* Drawer */
+:where(.ff-body) .ff-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ff-z-drawer);
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+:where(.ff-body) .ff-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, black 55%, transparent);
+  backdrop-filter: blur(var(--ff-blur-1));
+}
+
+:where(.ff-body) .ff-drawer__panel {
+  position: relative;
+  margin-left: auto;
+  width: min(420px, 92vw);
+  height: 100%;
+  padding: var(--ff-space-5);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--ff-bg-elev) 88%, transparent) 0%,
+    color-mix(in oklab, var(--ff-surface-1) 92%, transparent) 100%
+  );
+  border-left: 1px solid var(--ff-border);
+  box-shadow: var(--ff-shadow-5);
+  transform: translateX(6%);
+  opacity: 0;
+  transition: transform var(--ff-dur-4) var(--ff-ease-out), opacity var(--ff-dur-3) var(--ff-ease-out);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+
+:where(.ff-body) .ff-drawer__list {
+  display: grid;
+  gap: var(--ff-space-2);
+}
+
+:where(.ff-body) .ff-drawer__link {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--ff-radius-3);
+  border: 1px solid color-mix(in oklab, var(--ff-border) 88%, transparent);
+  background: color-mix(in oklab, var(--ff-control-bg) 78%, transparent);
+  color: var(--ff-text-1);
+  font-weight: var(--ff-fw-semibold);
+  font-size: var(--ff-text-sm);
+  text-decoration: none;
+  transition: background var(--ff-dur-2) var(--ff-ease-out),
+    border-color var(--ff-dur-2) var(--ff-ease-out),
+    transform var(--ff-dur-2) var(--ff-ease-out),
+    box-shadow var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-drawer__link:hover {
+  background: var(--ff-control-bg-hover);
+  border-color: var(--ff-control-border-hover);
+  box-shadow: var(--ff-shadow-2);
+  transform: translateY(-0.5px);
+}
+
+:where(.ff-body) .ff-drawer__link:active {
+  transform: translateY(0.5px);
+}
+
+/* Drawer open state (JS removes [hidden] and sets aria-hidden=false) */
+:where(.ff-body) .ff-drawer[aria-hidden="false"] .ff-drawer__panel {
+  transform: translateX(0%);
+  opacity: 1;
+}
+
+/* Modal */
+:where(.ff-body) .ff-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ff-z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--ff-space-4);
+}
+
+:where(.ff-body) .ff-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, black 58%, transparent);
+  backdrop-filter: blur(var(--ff-blur-1));
+}
+
+:where(.ff-body) .ff-modal__panel {
+  position: relative;
+  width: min(760px, 92vw);
+  max-height: min(82dvh, 760px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--ff-space-6);
+  border-radius: var(--ff-radius-6);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--ff-bg-elev) 88%, transparent) 0%,
+    color-mix(in oklab, var(--ff-surface-1) 92%, transparent) 100%
+  );
+  border: 1px solid color-mix(in oklab, var(--ff-border-strong) 90%, transparent);
+  box-shadow: var(--ff-shadow-5);
+  transform: translateY(10px) scale(0.985);
+  opacity: 0;
+  transition: transform var(--ff-dur-4) var(--ff-ease-out), opacity var(--ff-dur-3) var(--ff-ease-out);
+  scrollbar-gutter: stable both-edges;
+}
+
+:where(.ff-body) .ff-modal[aria-hidden="false"] .ff-modal__panel {
+  transform: translateY(0px) scale(1);
+  opacity: 1;
+}
+
+/* Toasts */
+:where(.ff-body) .ff-toasts {
+  position: fixed;
+  right: var(--ff-space-3);
+  top: calc(var(--ff-chrome-h) + var(--ff-space-3));
+  z-index: var(--ff-z-toast);
+  display: grid;
+  gap: var(--ff-space-2);
+  width: min(380px, calc(100vw - 2 * var(--ff-space-3)));
+  pointer-events: none;
+}
+
+:where(.ff-body) .ff-toast {
+  pointer-events: auto;
+  padding: 12px 14px;
+  border-radius: var(--ff-radius-4);
+  border: 1px solid color-mix(in oklab, var(--ff-border-strong) 88%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--ff-bg-elev) 86%, transparent) 0%,
+    color-mix(in oklab, var(--ff-surface-1) 92%, transparent) 100%
+  );
+  box-shadow: var(--ff-shadow-4);
+  color: var(--ff-text-1);
+  display: grid;
+  gap: 6px;
+}
+
+:where(.ff-body) .ff-toast--success {
+  border-color: color-mix(in oklab, var(--ff-success) 32%, var(--ff-border));
+}
+:where(.ff-body) .ff-toast--error {
+  border-color: color-mix(in oklab, var(--ff-danger) 36%, var(--ff-border));
+}
+:where(.ff-body) .ff-toast--info {
+  border-color: color-mix(in oklab, var(--ff-accent2-500) 28%, var(--ff-border));
+}
+
+/* Skeletons */
+@keyframes ff_shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+:where(.ff-body) .ff-skel {
+  border-radius: var(--ff-radius-4);
+  border: 1px solid color-mix(in oklab, var(--ff-border) 80%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ff-control-bg) 82%, transparent) 0%,
+    color-mix(in oklab, var(--ff-control-bg-hover) 92%, transparent) 30%,
+    color-mix(in oklab, var(--ff-control-bg) 82%, transparent) 60%
+  );
+  background-size: 220% 100%;
+  animation: ff_shimmer 1.15s var(--ff-ease-standard) infinite;
+}
+
+/* Footer */
+:where(.ff-body) .ff-footer {
+  padding: var(--ff-space-9) 0 calc(var(--ff-space-10) + var(--ff-tabs-h));
+}
+
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-footer {
+    padding-bottom: var(--ff-space-10);
+  }
+}
+
+:where(.ff-body) .ff-footer__grid {
+  display: grid;
+  gap: var(--ff-space-5);
+}
+
+@media (min-width: 641px) {
+  :where(.ff-body) .ff-footer__grid {
+    grid-template-columns: 1.2fr 0.8fr 1fr;
+    align-items: start;
+  }
+}
+
+:where(.ff-body) .ff-footer__links {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+:where(.ff-body) .ff-footer__links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--ff-radius-3);
+  border: 1px solid transparent;
+  color: var(--ff-text-2);
+  text-decoration: none;
+  font-weight: var(--ff-fw-semibold);
+  font-size: var(--ff-text-sm);
+  transition: background var(--ff-dur-2) var(--ff-ease-out),
+    border-color var(--ff-dur-2) var(--ff-ease-out),
+    color var(--ff-dur-2) var(--ff-ease-out);
+}
+
+:where(.ff-body) .ff-footer__links a:hover {
+  background: color-mix(in oklab, var(--ff-control-bg-hover) 65%, transparent);
+  border-color: color-mix(in oklab, var(--ff-border) 70%, transparent);
+  color: var(--ff-text-1);
+}
+
+:where(.ff-body) .ff-footer__meta a {
+  color: var(--ff-link);
+}
+
+/* Ensure adequate bottom spacing so tabs don't overlap content */
+:where(.ff-body) .ff-main {
+  padding-bottom: calc(var(--ff-tabs-h) + env(safe-area-inset-bottom) + var(--ff-space-6));
+}
+@media (min-width: 1025px) {
+  :where(.ff-body) .ff-main {
+    padding-bottom: var(--ff-space-8);
+  }
+}
+
+/* =========================================================
+   ff_pages
+========================================================= */
+@layer ff_pages {
+  :where(.ff-body)[data-ff-skin="flagship"] {
+    background-attachment: fixed;
+  }
+
+  :where(.ff-body) [data-ff-page="fundraiser"]
+    :where(#progress, #impact, #sponsors, #teams, #donate, #faq, #updates) {
+    scroll-margin-top: calc(var(--ff-chrome-h) + var(--ff-space-4));
+  }
+
+  :where(.ff-body) #content {
+    scroll-margin-top: calc(var(--ff-chrome-h) + var(--ff-space-3));
+  }
+
+  :where(.ff-body) .ff-section > .container.ff-container > :where(.ff-card) {
+    box-shadow: var(--ff-shadow-3);
+  }
+
+  :where(.ff-body) .ff-section :where(.ff-card, .ff-mini, .ff-notice, .ff-disc) {
+    scroll-margin-top: calc(var(--ff-chrome-h) + var(--ff-space-4));
+  }
+
+  /* Rhythm tuning */
+  :where(.ff-body) .ff-section :where(.ff-h2) {
+    margin-top: 2px;
+  }
+
+  :where(.ff-body) .ff-section :where(.ff-lead) {
+    margin-top: 8px;
+  }
+
+  :where(.ff-body) .ff-section :where(.ff-card--lift) {
+    border-color: color-mix(in oklab, var(--ff-border-strong) 88%, transparent);
+  }
+}
+
+/* =========================================================
+   ff_overrides
+========================================================= */
+@layer ff_overrides {
+  @media (prefers-reduced-motion: reduce) {
+    :where(.ff-body) {
+      scroll-behavior: auto !important;
+    }
+
+    :where(.ff-body) *,
+    :where(.ff-body) *::before,
+    :where(.ff-body) *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    :where(.ff-body) .ff-skel {
+      animation: none !important;
+      background: color-mix(in oklab, var(--ff-control-bg) 85%, transparent) !important;
+    }
+
+    :where(.ff-body) .ff-pill--live .ff-dot {
+      animation: none !important;
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--ff-danger) 14%, transparent) !important;
+    }
+
+    :where(.ff-body) .ff-drawer__panel,
+    :where(.ff-body) .ff-modal__panel {
+      transition: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+
+    :where(.ff-body) #scrollProgressBar {
+      transition: none !important;
+    }
+  }
+
+  /* High-contrast helper (keeps AA defaults intact; boosts borders if user agent requests) */
+  @media (prefers-contrast: more) {
+    :where(.ff-body) :where(.ff-card, .ff-mini, .ff-disc, .ff-notice, .ff-btn, .ff-icon, .ff-input) {
+      border-color: color-mix(in oklab, var(--ff-text-1) 22%, var(--ff-border-strong));
+    }
+    :where(.ff-body) :where(.ff-help) {
+      color: color-mix(in oklab, var(--ff-text-2) 85%, var(--ff-text-1));
+    }
+  }
+
+  /* Print-safe */
+  @media print {
+    html { background: white !important; }
+    :where(.ff-body) {
+      background: white !important;
+      color: #111 !important;
+    }
+
+    :where(.ff-body) .ff-chrome,
+    :where(.ff-body) .ff-tabs,
+    :where(.ff-body) .ff-sticky,
+    :where(.ff-body) .ff-top,
+    :where(.ff-body) .ff-toasts,
+    :where(.ff-body) .ff-drawer,
+    :where(.ff-body) .ff-modal,
+    :where(.ff-body) .ff-scroll,
+    :where(.ff-body) .ff-hero__bg {
+      display: none !important;
+    }
+
+    :where(.ff-body) :where(.ff-card, .ff-mini, .ff-disc, .ff-notice) {
+      box-shadow: none !important;
+      background: white !important;
+      border-color: #d6d6d6 !important;
+    }
+
+    :where(.ff-body) a {
+      color: #0b57d0 !important;
+      text-decoration: underline !important;
+    }
+
+    :where(.ff-body) .ff-section {
+      padding: 18px 0 !important;
+    }
+
+    :where(.ff-body) .ff-footer {
+      padding: 18px 0 !important;
+    }
+  }
+}
+
+/* =========================================================
+   v10 FINAL AUDIT PATCH (append-only)
+========================================================= */
+
+/* Share modal input row: allow input + button to coexist cleanly */
+:where(.ff-body) .ff-modal [data-ff-share-row] {
+  gap: 8px;
+  padding: 6px;
+}
+
+:where(.ff-body) .ff-modal [data-ff-share-row] .ff-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 10px 10px;
+}
+
+:where(.ff-body) .ff-modal [data-ff-share-row] .ff-btn {
+  flex: 0 0 auto;
+}
+
+/* Search inputs used inside ff-row: prevent them from stretching awkwardly */
+:where(.ff-body) .ff-row > .ff-input[type="search"],
+:where(.ff-body) .ff-row > input.ff-input[type="search"] {
+  flex: 1 1 240px;
+  min-width: min(280px, 100%);
+}
+
+/* Footer buttons inside links column: consistent spacing */
+:where(.ff-body) .ff-footer__links .ff-row {
+  gap: 10px;
+}
+
+/* Make “Back to top” tap target consistent if content scales */
+:where(.ff-body) .ff-top {
+  width: 46px;
+  height: 46px;
+}
+
+/* Prevent long org names from pushing layout in sticky bar */
+:where(.ff-body) .ff-sticky__org {
+  max-width: min(520px, 62vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Improve focus outline radius inside very round containers */
+:where(.ff-body) .ff-disc__sum:focus-visible,
+:where(.ff-body) .ff-drawer__link:focus-visible,
+:where(.ff-body) .ff-tab:focus-visible {
+  border-radius: var(--ff-radius-4);
+}
+/* =====================
+   Flagship v10 Premium Team Cards
+===================== */
+
+[data-ff-teams-grid] {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.ff-team {
+  text-align: left;
+  padding: 18px 20px;
+  background: var(--ff-surface-2, rgba(255,255,255,0.04));
+  border-radius: 22px;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+}
+.ff-team:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.ff-team__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.ff-team__img {
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
+}
+.ff-team__body {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+}
+.ff-team__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.ff-team__title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+}
+.ff-team__meta {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.ff-team__badge {
+  font-size: 0.7rem;
+  background: var(--ff-accent, #f97316);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.ff-team__bar {
+  background: rgba(255,255,255,0.1);
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.ff-team__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ff-accent, #f97316);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.ff-team__progress {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+@media (max-width: 600px) {
+  .ff-team__img {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+  }
+}
+</style>
+
+<!-- Vendor scripts -->
+
+<!-- App script (defer keeps paint fast + consistent) -->
+<script
+  src="{{ url_for('static', filename='js/ff-app.js') }}?v={{ static_version|default('1') }}"
+  defer
+></script>
+
+<!-- Optional PayPal loader (on-demand). Call window.ffLoadPayPal() when needed. -->
+<script>
+  window.ffLoadPayPal = function ffLoadPayPal() {
+    try {
+      if (window.paypal) return Promise.resolve(true);
+
+      var cid = (document.querySelector('meta[name="ff-paypal-client-id"]') || {}).content || "";
+      if (!cid) return Promise.resolve(false);
+
+      var currency = (document.querySelector('meta[name="ff-paypal-currency"]') || {}).content || "USD";
+      var intent = (document.querySelector('meta[name="ff-paypal-intent"]') || {}).content || "capture";
+
+      return new Promise(function (resolve, reject) {
+        var s = document.createElement("script");
+        s.src =
+          "https://www.paypal.com/sdk/js?client-id=" +
+          encodeURIComponent(cid) +
+          "&currency=" +
+          encodeURIComponent(currency) +
+          "&intent=" +
+          encodeURIComponent(intent);
+        s.async = true;
+        s.onload = function () { resolve(true); };
+        s.onerror = function () { reject(new Error("PayPal SDK failed to load")); };
+        document.head.appendChild(s);
+      });
+    } catch (e) {
+      return Promise.resolve(false);
+    }
+  };
+</script>
+
+
+<!-- =========================================================
+  FutureFunded • Flagship+ Global Style Upgrade (append-only)
+========================================================== -->
+<style id="ffFlagshipPlus">
+  :root {
+    --ff-tier-platinum: #a9c7ff;
+    --ff-tier-gold: #ffd36b;
+    --ff-tier-silver: #d6dde9;
+    --ff-tier-bronze: #ffb08c;
+
+    --ff-tier-platinum-soft: color-mix(in oklab, var(--ff-tier-platinum) 18%, transparent);
+    --ff-tier-gold-soft: color-mix(in oklab, var(--ff-tier-gold) 18%, transparent);
+    --ff-tier-silver-soft: color-mix(in oklab, var(--ff-tier-silver) 16%, transparent);
+    --ff-tier-bronze-soft: color-mix(in oklab, var(--ff-tier-bronze) 16%, transparent);
+
+    --ff-glass-bg: color-mix(in oklab, var(--ff-bg-elev) 78%, transparent);
+    --ff-glass-brd: color-mix(in oklab, var(--ff-border-strong) 78%, transparent);
+    --ff-glass-blur: 14px;
+
+    --ff-shadow-pill: 0 1px 0 rgba(0,0,0,.12), 0 12px 30px rgba(0,0,0,.18);
+    --ff-shadow-btn: 0 1px 0 rgba(0,0,0,.14), 0 16px 44px rgba(0,0,0,.22);
+    --ff-shadow-card-hi: 0 1px 0 rgba(0,0,0,.12), 0 26px 78px rgba(0,0,0,.34);
+
+    --ff-inner-stroke: inset 0 1px 0 color-mix(in oklab, white 10%, transparent);
+  }
+
+  body.ff-body { position: relative; }
+  body.ff-body::before {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      radial-gradient(1100px 720px at 22% 8%, color-mix(in oklab, var(--ff-accent2-500) 18%, transparent) 0%, transparent 62%),
+      radial-gradient(920px 620px at 86% 12%, color-mix(in oklab, var(--ff-accent-500) 16%, transparent) 0%, transparent 66%),
+      conic-gradient(from 220deg at 55% 15%,
+        color-mix(in oklab, var(--ff-accent2-500) 10%, transparent),
+        transparent 35%,
+        color-mix(in oklab, var(--ff-accent-500) 9%, transparent),
+        transparent 75%,
+        color-mix(in oklab, var(--ff-accent2-500) 8%, transparent)
+      );
+    filter: blur(18px);
+    opacity: 0.85;
+    transform: translateZ(0);
+  }
+
+  .ff-chrome::before,
+  .ff-announce,
+  .ff-tabs,
+  .ff-sticky__inner {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--ff-glass-bg) 88%, transparent) 0%,
+      color-mix(in oklab, var(--ff-surface-1) 90%, transparent) 100%
+    ) !important;
+    border-color: var(--ff-glass-brd) !important;
+    backdrop-filter: blur(var(--ff-glass-blur));
+  }
+
+  .ff-btn { box-shadow: var(--ff-shadow-1); }
+  .ff-btn--primary { box-shadow: var(--ff-shadow-btn); }
+  .ff-btn:hover { box-shadow: var(--ff-shadow-2); }
+  .ff-btn--primary:hover { box-shadow: var(--ff-shadow-3); }
+
+  .ff-chip, .ff-pill { box-shadow: 0 1px 0 rgba(0,0,0,.10); }
+  .ff-chip:hover { box-shadow: var(--ff-shadow-2); }
+  .ff-pill { box-shadow: var(--ff-shadow-1); backdrop-filter: blur(8px); }
+  .ff-pill--accent, .ff-pill--verified { box-shadow: var(--ff-shadow-pill); }
+
+  .ff-card, .ff-mini, .ff-notice, .ff-disc, .ff-modal__panel, .ff-drawer__panel { box-shadow: var(--ff-shadow-2); }
+  .ff-card--lift { box-shadow: var(--ff-shadow-card-hi); }
+  .ff-card, .ff-mini, .ff-notice, .ff-disc { box-shadow: var(--ff-inner-stroke), var(--ff-shadow-2); }
+
+  .ff-input, .ff-inputrow { box-shadow: var(--ff-shadow-1); }
+  .ff-input:hover, .ff-inputrow:hover { box-shadow: var(--ff-shadow-2); }
+  .ff-input:focus, .ff-inputrow:focus-within { box-shadow: var(--ff-shadow-focus); }
+
+  :where([data-ff-sponsor-tiers], [data-ff-sponsor-leaderboard], [data-ff-sponsor-wall])
+    :where([data-tier="platinum"], [data-ff-tier="platinum"]) {
+    border-color: color-mix(in oklab, var(--ff-tier-platinum) 30%, var(--ff-border-strong));
+    background: linear-gradient(180deg, var(--ff-tier-platinum-soft), color-mix(in oklab, var(--ff-control-bg) 84%, transparent));
+  }
+  :where([data-ff-sponsor-tiers], [data-ff-sponsor-leaderboard], [data-ff-sponsor-wall])
+    :where([data-tier="gold"], [data-ff-tier="gold"]) {
+    border-color: color-mix(in oklab, var(--ff-tier-gold) 30%, var(--ff-border-strong));
+    background: linear-gradient(180deg, var(--ff-tier-gold-soft), color-mix(in oklab, var(--ff-control-bg) 84%, transparent));
+  }
+  :where([data-ff-sponsor-tiers], [data-ff-sponsor-leaderboard], [data-ff-sponsor-wall])
+    :where([data-tier="silver"], [data-ff-tier="silver"]) {
+    border-color: color-mix(in oklab, var(--ff-tier-silver) 30%, var(--ff-border-strong));
+    background: linear-gradient(180deg, var(--ff-tier-silver-soft), color-mix(in oklab, var(--ff-control-bg) 84%, transparent));
+  }
+  :where([data-ff-sponsor-tiers], [data-ff-sponsor-leaderboard], [data-ff-sponsor-wall])
+    :where([data-tier="bronze"], [data-ff-tier="bronze"]) {
+    border-color: color-mix(in oklab, var(--ff-tier-bronze) 30%, var(--ff-border-strong));
+    background: linear-gradient(180deg, var(--ff-tier-bronze-soft), color-mix(in oklab, var(--ff-control-bg) 84%, transparent));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:focus-within { scroll-behavior: smooth; }
+    .ff-card, .ff-mini, .ff-btn, .ff-chip, .ff-icon {
+      transition:
+        transform var(--ff-dur-2) var(--ff-ease-out),
+        box-shadow var(--ff-dur-2) var(--ff-ease-out),
+        background var(--ff-dur-2) var(--ff-ease-out),
+        border-color var(--ff-dur-2) var(--ff-ease-out),
+        filter var(--ff-dur-2) var(--ff-ease-out);
+    }
+    .ff-card:hover, .ff-mini:hover { transform: translateY(-1px); filter: saturate(1.02); }
+  }
+
+  html[data-ff-capture="true"] body.ff-body::before { opacity: 0.55; filter: blur(14px); }
+</style>
+
+
+</head>
+
+<body class="ff-body" data-ff-skin="flagship">
+  <!-- Skip links (keyboard-first) -->
+  <nav class="ff-skiplinks" aria-label="Skip links">
+    <a class="ff-skip" href="#content">Skip to content</a>
+    <a class="ff-skip" href="#donate">Skip to donate</a>
+  </nav>
+
+  <!-- Top anchor (for “Back to top” + focus targets) -->
+  <div id="top" class="ff-sr" tabindex="-1">Top</div>
+
+  <!-- Noscript -->
+  <noscript>
+    <div class="container ff-container">
+      <div class="ff-notice" role="alert" style="margin: 16px 0">
+        <div class="ff-kicker">JavaScript required</div>
+        <p class="ff-help" style="margin: 6px 0 0">
+          JavaScript is required to use secure checkout and dynamic fundraiser features.
+        </p>
+      </div>
+    </div>
+  </noscript>
+
+  <!-- Announcement bar -->
+  <aside
+    class="ff-announce"
+    role="region"
+    aria-label="Site announcement"
+    data-ff-announcement
+    hidden
+  >
+    <div class="container ff-container">
+      <div class="ff-announce__row">
+        <div class="ff-announce__content" aria-live="polite" aria-atomic="true">
+          <p class="ff-announce__text" id="announcementText"></p>
+        </div>
+
+        <button
+          class="ff-icon"
+          type="button"
+          aria-label="Dismiss announcement"
+          data-ff-announcement-dismiss
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- App shell -->
+  <div
+    class="ff-shell"
+    data-ff-shell
+    data-ff-page="fundraiser"
+    data-ff-tier="{{ 'premium' if PREMIUM_MODE else 'standard' }}"
+    data-ff-org="{{ org_id|default('default') }}"
+    data-ff-campaign="{{ campaign_id|default('season') }}"
+    data-ff-env="{{ config.get('ENV','prod') }}"
+    data-ff-embed="{{ 'true' if EMBED_MODE else 'false' }}"
+    data-ff-whitelabel="{{ 'true' if WHITELABEL_MODE else 'false' }}"
+    data-ff-version="10.0.0"
+  >
+    <!-- Sticky chrome: Topbar + Header are ONE sticky stack -->
+    <div class="ff-chrome" data-ff-chrome>
+      <!-- Status bar -->
+      <section
+        class="ff-topbar"
+        data-ff-topbar
+        aria-label="Fundraiser status bar"
+        id="ffTopbar"
+      >
+        <div class="container ff-container">
+          <div class="ff-topbar__row">
+            <!-- Live status region -->
+            <div
+              class="ff-topbar__left"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <span class="ff-pill ff-pill--live">
+                <i class="ff-dot" aria-hidden="true"></i>
+                LIVE
+              </span>
+
+              <span class="ff-pill ff-pill--accent" id="orgPill">Fundraiser</span>
+              <span class="ff-pill" id="matchPill" hidden>Match active</span>
+
+              <span class="ff-pill ff-pill--accent" id="countdownPill" hidden>
+                <span class="ff-sr">Countdown:</span>
+                Ends soon
+              </span>
+
+              <span class="ff-pill" id="lastUpdatedPill" data-status="stale">
+                Updated — <span class="ff-num" id="lastUpdatedInline">—</span>
+              </span>
+
+              <span class="ff-pill" data-ff-trust-chip>Secure checkout</span>
+              <span class="ff-pill" data-ff-trust-chip>Instant receipt</span>
+            </div>
+
+            <!-- Topbar actions -->
+            <div class="ff-topbar__right" role="group" aria-label="Top bar actions">
+              <button
+                class="ff-btn ff-btn--ghost ff-btn--sm"
+                type="button"
+                data-ff-share-open
+                aria-label="Share fundraiser"
+              >
+                Share
+              </button>
+
+              <a
+                class="ff-btn ff-btn--ghost ff-btn--sm"
+                href="#donate"
+                aria-label="Jump to donate"
+              >
+                Donate
+              </a>
+
+              <button
+                class="ff-icon"
+                type="button"
+                data-ff-topbar-dismiss
+                aria-label="Dismiss top bar"
+                aria-controls="ffTopbar"
+              >
+                <span aria-hidden="true">✕</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Header (page banner) -->
+      <header class="ff-header" data-ff-header>
+        <div class="container ff-container">
+          <div class="ff-header__row">
+            <!-- Brand -->
+            <a class="ff-brand" href="#top" data-ff-brand aria-label="Back to top">
+              <span class="ff-brand__mark" aria-hidden="true">
+                <img
+                  class="ff-brand__logo"
+                  id="brandLogo"
+                  src="{{ org_logo|default(url_for('static', filename='images/logo.webp')) }}"
+                  alt="Organization logo"
+                  width="46"
+                  height="46"
+                  loading="eager"
+                  decoding="async"
+                  fetchpriority="high"
+                />
+              </span>
+
+              <span class="ff-brand__meta">
+                <span class="ff-brand__title" id="orgName">Organization</span>
+                <span class="ff-brand__sub" id="orgMeta">City • State</span>
+              </span>
+            </a>
+
+            <!-- Desktop nav -->
+            <nav class="ff-nav" aria-label="Primary navigation">
+              <a href="#progress" data-spy="progress">Progress</a>
+              <a href="#impact" data-spy="impact">Impact</a>
+              <a href="#sponsors" data-spy="sponsors">Sponsors</a>
+              <a href="#teams" data-spy="teams">Teams</a>
+              <a href="#donate" data-spy="donate">Donate</a>
+              <a href="#updates" hidden data-ff-premium-only data-spy="updates">Updates</a>
+              <a href="#faq" data-spy="faq">FAQ</a>
+            </nav>
+
+            <!-- Header actions -->
+            <div class="ff-header__actions" role="group" aria-label="Header actions">
+              <span class="ff-pill ff-pill--verified" title="Verified fundraiser">Verified</span>
+
+              <button
+                class="ff-icon"
+                type="button"
+                data-ff-theme-toggle
+                aria-pressed="false"
+                aria-label="Toggle theme"
+                title="Toggle theme"
+              >
+                ☾
+              </button>
+
+              <button
+                class="ff-icon"
+                type="button"
+                data-ff-drawer-open
+                aria-controls="mobileDrawer"
+                aria-expanded="false"
+                aria-label="Open menu"
+                title="Open menu"
+              >
+                ≡
+              </button>
+
+              <a class="ff-btn ff-btn--primary ff-btn--sm" href="#donate" data-ff-donate-cta>
+                Donate
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scroll progress (decorative) -->
+        <div class="ff-scroll" aria-hidden="true">
+          <span id="scrollProgressBar"></span>
+        </div>
+      </header>
+    </div>
+    <!-- /ff-chrome -->
+
+    <!-- Mobile drawer (overlay, NOT sticky) -->
+    <div
+      class="ff-drawer"
+      id="mobileDrawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawerTitle"
+      aria-describedby="drawerDesc"
+      aria-hidden="true"
+      hidden
+      data-ff-drawer
+    >
+      <button
+        class="ff-drawer__backdrop"
+        type="button"
+        data-ff-drawer-close
+        aria-label="Close menu overlay"
+      ></button>
+
+      <div class="ff-drawer__panel" tabindex="-1" role="document" data-ff-drawer-panel>
+        <header class="ff-row ff-row--between ff-ais">
+          <div>
+            <div class="ff-kicker" id="drawerTitle">Navigate</div>
+            <p class="ff-help" id="drawerDesc">Fast links + share tools.</p>
+          </div>
+
+          <button class="ff-icon" type="button" data-ff-drawer-close aria-label="Close menu">
+            <span aria-hidden="true">✕</span>
+          </button>
+        </header>
+
+        <div class="ff-divider" aria-hidden="true"></div>
+
+        <nav class="ff-drawer__list" aria-label="Drawer links">
+          <a class="ff-drawer__link" href="#progress" data-ff-drawer-close>Progress →</a>
+          <a class="ff-drawer__link" href="#impact" data-ff-drawer-close>Impact →</a>
+          <a class="ff-drawer__link" href="#sponsors" data-ff-drawer-close>Sponsors →</a>
+          <a class="ff-drawer__link" href="#teams" data-ff-drawer-close>Teams →</a>
+          <a class="ff-drawer__link" href="#donate" data-ff-drawer-close>Donate →</a>
+          <a class="ff-drawer__link" href="#updates" hidden data-ff-premium-only data-ff-drawer-close>Updates →</a>
+          <a class="ff-drawer__link" href="#faq" data-ff-drawer-close>FAQ →</a>
+        </nav>
+
+        <div class="ff-divider" aria-hidden="true"></div>
+
+        <div class="ff-row ff-wrap" role="group" aria-label="Share actions">
+          <button class="ff-btn ff-btn--secondary" type="button" data-ff-share-open>Share</button>
+          <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>Copy link</button>
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-drawer-close>Close</button>
+        </div>
+
+        <div class="ff-divider" aria-hidden="true"></div>
+
+        <section class="ff-mini" aria-label="Trust and security">
+          <div class="ff-kicker">Trust</div>
+          <p class="ff-help">Secure Stripe checkout + instant receipts.</p>
+
+          <div class="ff-row ff-wrap">
+            <span class="ff-pill ff-pill--verified">Verified</span>
+            <span class="ff-pill">Encrypted</span>
+            <span class="ff-pill">Receipt email</span>
+          </div>
+
+          <details class="ff-disc" style="margin-top: 10px">
+            <summary class="ff-disc__sum">
+              <span>
+                <span class="ff-kicker">Donor confidence</span><br />
+                <span class="ff-help">What happens after I donate?</span>
+              </span>
+              <span class="ff-pill" aria-hidden="true">Open</span>
+            </summary>
+
+            <div class="ff-mini" style="margin-top: 10px">
+              <ul class="ff-bul">
+                <li>Payment is encrypted and confirmed in seconds.</li>
+                <li>Receipt is emailed immediately after success.</li>
+                <li>Recognition is optional (donate anonymously anytime).</li>
+              </ul>
+            </div>
+          </details>
+        </section>
+
+        <section class="ff-mini" hidden data-ff-premium-only aria-label="Organizer console">
+          <div class="ff-divider" aria-hidden="true"></div>
+          <div class="ff-kicker">Organizer console</div>
+          <p class="ff-help">Campaign controls + sponsor tools (premium).</p>
+
+          <div class="ff-row ff-wrap" role="group">
+            <button
+              class="ff-btn ff-btn--secondary ff-btn--sm"
+              type="button"
+              data-ff-admin-open
+              disabled
+              aria-disabled="true"
+            >
+              Open console
+            </button>
+
+            <a
+              class="ff-btn ff-btn--ghost ff-btn--sm"
+              href="mailto:support@getfuturefunded.com?subject=Organizer%20console%20access"
+            >
+              Request access
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+    <!-- /ff-drawer -->
+
+    <!-- MAIN (single, canonical #content target) -->
+<main id="content" class="ff-main" tabindex="-1">
+  <!-- HERO -->
+  <section class="ff-hero" data-ff-hero aria-labelledby="heroTitle">
+    <!-- Background layers (decorative) -->
+    <div class="ff-hero__bg" aria-hidden="true">
+      <div class="ff-hero__glow"></div>
+      <div class="ff-hero__grid"></div>
+      <div class="ff-hero__noise"></div>
+    </div>
+
+    <div class="container ff-container">
+      <div class="ff-hero__layout">
+        <!-- LEFT: Narrative / CTA -->
+        <div class="ff-hero__left">
+          <!-- Context pills -->
+          <ul class="ff-row ff-hero__context" aria-label="Fundraiser context">
+            <li><span class="ff-pill" id="seasonPill">Season Fund</span></li>
+            <li><span class="ff-pill" id="sportPill">Youth program</span></li>
+            <li><span class="ff-pill ff-pill--accent" id="heroMatchPill" hidden>Match active</span></li>
+          </ul>
+
+          <!-- Hero card -->
+          <article class="ff-card ff-card--lift ff-pad ff-hero__card">
+            <header class="ff-row ff-hero__cardhead">
+              <img
+                id="heroLogo"
+                class="ff-hero__logo"
+                src="{{ org_logo|default(url_for('static', filename='images/logo.webp')) }}"
+                alt="Organization logo"
+                width="42"
+                height="42"
+                loading="eager"
+                decoding="async"
+                fetchpriority="high"
+              />
+
+              <div class="ff-hero__headmeta">
+                <p class="ff-kicker" id="heroOrgLine">Organization • Fundraiser</p>
+
+                <p class="ff-help ff-row ff-hero__trust" id="trustLine">
+                  <span class="ff-hero__trusticon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path d="M12 2l7 4v6c0 5-3 9-7 10C8 21 5 17 5 12V6l7-4z" stroke="currentColor" stroke-width="2" opacity=".9"></path>
+                      <path d="M9 12l2 2 4-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                  </span>
+                  <span>Verified • Secure checkout • Instant receipt</span>
+                </p>
+              </div>
+            </header>
+
+            <h1 id="heroTitle" class="ff-h1">
+              Fuel the season. Fund the future.<br />
+              <span class="ff-accent" id="heroAccentLine">Keep kids playing.</span>
+            </h1>
+
+            <p id="heroCopy" class="ff-lead">
+              Your gift covers gym time, travel, and gear so families aren’t carrying the full load.
+              Sponsors unlock premium recognition and share-ready proof.
+            </p>
+
+            <!-- Flagship #1: Giving mode chips (safe + future-wired; no JS required) -->
+            <div class="ff-row ff-wrap" role="group" aria-label="Giving options" style="margin-top: 10px">
+              <button
+                class="ff-chip"
+                type="button"
+                data-ff-gift-type="one-time"
+                aria-pressed="true"
+                aria-label="One-time gift selected"
+                title="One-time gift"
+              >
+                One-time
+              </button>
+              <button
+                class="ff-chip"
+                type="button"
+                data-ff-gift-type="monthly"
+                aria-pressed="false"
+                disabled
+                aria-disabled="true"
+                aria-label="Monthly giving coming soon"
+                title="Monthly giving (coming soon)"
+              >
+                Monthly (soon)
+              </button>
+            </div>
+
+            <div class="ff-row ff-hero__actions" role="group" aria-label="Primary actions" style="margin-top: 12px">
+              <a class="ff-btn ff-btn--primary" href="#donate" data-ff-donate-cta>Donate</a>
+              <a class="ff-btn ff-btn--secondary" href="#sponsors">Sponsor leaderboard</a>
+              <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>Copy link</button>
+            </div>
+
+            <!-- Flagship #2: SR-only live feedback (future toast hook; inert if unused) -->
+            <div
+              id="heroLiveToast"
+              class="ff-sr"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              data-ff-toast
+            >
+              <!-- JS may announce actions like “Link copied” -->
+            </div>
+
+            <ul class="ff-row ff-hero__highlights" aria-label="Highlights">
+              <li><span class="ff-pill">Instant receipt</span></li>
+              <li><span class="ff-pill">No login</span></li>
+              <li><span class="ff-pill">Share-ready</span></li>
+              <li><span class="ff-pill" id="heroEventPill" hidden>Next event</span></li>
+            </ul>
+
+            <div class="ff-divider" aria-hidden="true"></div>
+
+            <ul class="ff-grid ff-grid--3 ff-hero__proof" aria-label="Proof points">
+              <li class="ff-mini">
+                <div class="ff-kicker">Speed</div>
+                <div class="ff-card__title">Donate fast</div>
+                <p class="ff-help">One tap prefills checkout.</p>
+              </li>
+
+              <li class="ff-mini">
+                <div class="ff-kicker">Security</div>
+                <div class="ff-card__title">Encrypted</div>
+                <p class="ff-help">Stripe-secured payments.</p>
+              </li>
+
+              <li class="ff-mini">
+                <div class="ff-kicker">Proof</div>
+                <div class="ff-card__title">Receipt</div>
+                <p class="ff-help">Delivered instantly by email.</p>
+              </li>
+            </ul>
+
+            <div class="ff-divider" aria-hidden="true"></div>
+
+            <details class="ff-disc" aria-label="What this funds">
+              <summary class="ff-disc__sum">
+                <span class="ff-disc__meta">
+                  <span class="ff-kicker">What this funds</span><br />
+                  <span class="ff-help">A clear plan donors trust</span>
+                </span>
+                <span class="ff-pill" aria-hidden="true">Open</span>
+              </summary>
+
+              <div class="ff-mini ff-disc__body">
+                <ul class="ff-bul">
+                  <li>Gym time, tournament fees, and travel support</li>
+                  <li>Uniforms, gear, and player development</li>
+                  <li>Scholarships for families who need help</li>
+                  <li>Sponsor recognition across wall + leaderboard</li>
+                </ul>
+              </div>
+            </details>
+
+            <details class="ff-disc" hidden data-ff-premium-only aria-label="Impact report">
+              <summary class="ff-disc__sum">
+                <span class="ff-disc__meta">
+                  <span class="ff-kicker">Impact report</span><br />
+                  <span class="ff-help">Weekly proof + transparency (premium)</span>
+                </span>
+                <span class="ff-pill" aria-hidden="true">Open</span>
+              </summary>
+
+              <div class="ff-mini ff-disc__body">
+                <ul class="ff-bul">
+                  <li>Auto-generated weekly recap</li>
+                  <li>Photo + receipts vault (private)</li>
+                  <li>Allocation changes logged + dated</li>
+                </ul>
+              </div>
+            </details>
+          </article>
+
+          <!-- Conversion bar -->
+          <article class="ff-mini ff-mini--callout ff-hero__bar" aria-label="Fast impact">
+            <div class="ff-hero__barrow">
+              <div class="ff-hero__barcopy">
+                <div class="ff-kicker">Fast impact</div>
+                <div class="ff-card__title">Pick a need → donate in under 30 seconds</div>
+                <p class="ff-help">Tap any amount in Impact or Progress. We prefill checkout automatically.</p>
+              </div>
+
+              <div class="ff-row ff-hero__baractions" role="group" aria-label="Fast actions">
+                <a class="ff-btn ff-btn--primary ff-btn--sm" href="#impact">Pick an impact</a>
+                <a class="ff-btn ff-btn--ghost ff-btn--sm" href="#donate">Open checkout</a>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- RIGHT: Progress rail -->
+        <aside class="ff-hero__rail" aria-label="Fundraising console" data-ff-progress-rail>
+          <section id="progress" data-ff-progress>
+            <article class="ff-card ff-card--lift ff-pad ff-console" aria-labelledby="progressTitle">
+              <header class="ff-row ff-row--between ff-console__head">
+                <div class="ff-console__meta">
+                  <div class="ff-kicker">Progress</div>
+                  <h2 id="progressTitle" class="ff-h2">Fundraising progress</h2>
+
+                  <div class="ff-big ff-num" id="raisedBig" aria-live="polite" aria-atomic="true">$0</div>
+
+                  <p class="ff-help" id="progressMeta">
+                    <span class="ff-num" id="remainingText">$0</span> to go •
+                    <span class="ff-num" id="deadlineText">—</span> •
+                    <span class="ff-num" id="lastUpdatedText">Updated —</span>
+                  </p>
+
+                  <!-- Flagship #3: Match detail row (safe + future-wired; hidden if not populated) -->
+                  <div
+                    class="ff-row ff-wrap"
+                    id="matchDetailRow"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    data-ff-match-details
+                    hidden
+                    style="margin-top: 8px"
+                  >
+                    <span class="ff-pill ff-pill--accent" id="matchDetailPill">Match</span>
+                    <span class="ff-pill" id="matchRemainingPill">Remaining —</span>
+                    <span class="ff-pill" id="matchEndsPill">Ends —</span>
+                  </div>
+                </div>
+
+                <span class="ff-pill" aria-label="Goal amount">
+                  Goal <span class="ff-num" id="goalPill">$0</span>
+                </span>
+              </header>
+
+              <section class="ff-console__quick" aria-label="Quick gifts">
+                <div class="ff-kicker">Quick gifts</div>
+                <p class="ff-help">One tap prefills secure checkout.</p>
+
+                <ul class="ff-row ff-chips" role="list" aria-label="Quick gift buttons">
+                  <li><button class="ff-chip" type="button" data-quick-amount="25" data-ff-quick-amount="25" aria-pressed="false">$25</button></li>
+                  <li><button class="ff-chip" type="button" data-quick-amount="75" data-ff-quick-amount="75" aria-pressed="false">$75</button></li>
+                  <li><button class="ff-chip" type="button" data-quick-amount="150" data-ff-quick-amount="150" aria-pressed="false">$150</button></li>
+                  <li><button class="ff-chip" type="button" data-quick-amount="500" data-ff-quick-amount="500" aria-pressed="false">$500</button></li>
+                  <li><button class="ff-chip" type="button" data-quick-amount="1000" data-ff-quick-amount="1000" aria-pressed="false">Sponsor $1,000</button></li>
+                </ul>
+              </section>
+
+              <details class="ff-disc ff-progress-details" aria-label="Progress details">
+                <summary class="ff-disc__sum">
+                  <span class="ff-disc__meta">
+                    <span class="ff-kicker">Progress details</span><br />
+                    <span class="ff-help">Meter, QR, and recent gifts</span>
+                  </span>
+                  <span class="ff-pill" aria-hidden="true">Open</span>
+                </summary>
+
+                <div class="ff-mini ff-disc__body">
+                  <div class="ff-divider" aria-hidden="true"></div>
+
+                  <div
+                    class="ff-meter"
+                    role="progressbar"
+                    aria-label="Overall fundraising progress"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                    aria-valuetext="0% funded"
+                    data-ff-meter="overall"
+                  >
+                    <div class="ff-meter__ticks" aria-hidden="true">
+                      <i style="left: 25%"></i><i style="left: 50%"></i><i style="left: 75%"></i><i style="left: 100%"></i>
+                    </div>
+                    <span id="overallBar"></span>
+                  </div>
+
+                  <div class="ff-row ff-row--between ff-console__numbers" aria-label="Raised and goal numbers">
+                    <span class="ff-help">Raised: <span class="ff-num" id="raisedRow">$0</span></span>
+                    <span class="ff-help">Goal: <span class="ff-num" id="goalRow">$0</span></span>
+                    <span class="ff-help"><strong class="ff-num" id="pctText">0</strong>%</span>
+                  </div>
+
+                  <div class="ff-divider" aria-hidden="true"></div>
+
+                  <div class="ff-grid ff-grid--2" aria-label="KPIs">
+                    <div class="ff-mini ff-kpi" aria-label="Donor count">
+                      <div class="ff-row ff-row--between">
+                        <div>
+                          <div class="ff-kicker">Donors</div>
+                          <div class="ff-card__title ff-num" id="donorCount">0</div>
+                        </div>
+                        <div class="ff-kpi__right">
+                          <div class="ff-kicker">Avg gift</div>
+                          <div class="ff-card__title ff-num" id="avgGift">$0</div>
+                        </div>
+                      </div>
+                      <p class="ff-help">Counts update after successful payments.</p>
+                    </div>
+
+                    <div class="ff-mini ff-kpi" aria-label="Top gift and match">
+                      <div class="ff-row ff-row--between">
+                        <div>
+                          <div class="ff-kicker">Top gift</div>
+                          <div class="ff-card__title ff-num" id="topGift">$0</div>
+                        </div>
+                        <div class="ff-kpi__right">
+                          <div class="ff-kicker">Match</div>
+                          <div class="ff-card__title ff-num" id="matchStatus">Off</div>
+                        </div>
+                      </div>
+                      <p class="ff-help">Match status appears when a sponsor activates matching.</p>
+                    </div>
+                  </div>
+
+                  <div class="ff-divider" aria-hidden="true"></div>
+
+                  <!-- QR + share tools -->
+                  <div class="ff-row ff-qrrow" aria-label="Share QR and actions">
+                    <img
+                      class="ff-qr"
+                      id="progressQr"
+                      alt="Fundraiser QR code"
+                      width="112"
+                      height="112"
+                      loading="lazy"
+                      decoding="async"
+                      data-ff-qr
+                    />
+
+                    <div class="ff-qrmeta ff-stack">
+                      <div>
+                        <div class="ff-kicker">Share</div>
+                        <div class="ff-card__title">Scan to donate</div>
+                        <p class="ff-help">
+                          Open your camera or share this link with family, friends, and sponsors.
+                        </p>
+                      </div>
+
+                      <div class="ff-row ff-qractions" role="group" aria-label="Share actions">
+                        <button class="ff-btn ff-btn--secondary ff-btn--sm" type="button" data-ff-share-open>
+                          Share tools
+                        </button>
+                        <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-copy-link>
+                          Copy link
+                        </button>
+                        <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-download-qr>
+                          Download QR
+                        </button>
+                      </div>
+
+                      <p class="ff-help ff-console__fineprint">
+                        Tip: post the QR at practices, games, and on flyers.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="ff-divider" aria-hidden="true"></div>
+
+                  <!-- Recent gifts -->
+                  <section aria-label="Recent gifts">
+                    <div class="ff-row ff-row--between">
+                      <div>
+                        <div class="ff-kicker">Recent gifts</div>
+                        <p class="ff-help">Shown only when donors allow recognition.</p>
+                      </div>
+
+                      <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-refresh>
+                        Refresh
+                      </button>
+                    </div>
+
+                    <div
+                      class="ff-stack"
+                      style="margin-top: 10px"
+                      data-ff-recent-gifts
+                      aria-live="polite"
+                      aria-atomic="false"
+                    >
+                      <!-- JS injects recognized gifts here -->
+                      <div class="ff-skel" style="height: 14px; width: 72%"></div>
+                      <div class="ff-skel" style="height: 14px; width: 58%"></div>
+                      <div class="ff-skel" style="height: 14px; width: 64%"></div>
+                    </div>
+                  </section>
+                </div>
+              </details>
+
+              <div class="ff-row ff-console__actions" role="group" aria-label="Console actions" style="margin-top: 12px">
+                <button class="ff-btn ff-btn--secondary" type="button" data-ff-share-open>Share</button>
+                <a class="ff-btn ff-btn--primary" href="#donate" data-ff-donate-cta>Donate now</a>
+                <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>Copy link</button>
+              </div>
+
+              <p class="ff-help ff-console__fineprint">
+                Payments are processed securely via Stripe. Receipts are delivered instantly by email.
+              </p>
+            </article>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <!-- /HERO -->
+  
+  <!-- IMPACT -->
+<section id="impact" class="ff-section" aria-labelledby="impactTitle" data-ff-impact>
+  <div class="container ff-container">
+    <article class="ff-card ff-card--lift ff-pad">
+      <header class="ff-impact__headrow">
+        <div>
+          <div class="ff-kicker">Impact</div>
+          <h2 id="impactTitle" class="ff-h2">Pick an impact</h2>
+          <p class="ff-lead">
+            Tap a need to prefill checkout. Sponsors get premium recognition across the wall and leaderboard.
+          </p>
+
+          <div class="ff-row ff-impact__pills" role="group" aria-label="Impact filters">
+            <button class="ff-chip is-selected" type="button" data-ff-impact-filter="all" aria-pressed="true">
+              All
+            </button>
+            <button class="ff-chip" type="button" data-ff-impact-filter="gear" aria-pressed="false">
+              Gear
+            </button>
+            <button class="ff-chip" type="button" data-ff-impact-filter="travel" aria-pressed="false">
+              Travel
+            </button>
+            <button class="ff-chip" type="button" data-ff-impact-filter="fees" aria-pressed="false">
+              Fees
+            </button>
+            <button class="ff-chip" type="button" data-ff-impact-filter="scholarship" aria-pressed="false">
+              Scholarships
+            </button>
+          </div>
+
+          <!-- Flagship #1 (wired): quick preset gifts using existing quick-amount hook -->
+          <div class="ff-row ff-wrap" role="group" aria-label="Quick impact gifts" style="margin-top: 10px">
+            <span class="ff-pill" aria-hidden="true">Quick</span>
+            <button class="ff-chip" type="button" data-quick-amount="25" data-ff-quick-amount="25" aria-pressed="false">
+              $25
+            </button>
+            <button class="ff-chip" type="button" data-quick-amount="75" data-ff-quick-amount="75" aria-pressed="false">
+              $75
+            </button>
+            <button class="ff-chip" type="button" data-quick-amount="150" data-ff-quick-amount="150" aria-pressed="false">
+              $150
+            </button>
+            <button class="ff-chip" type="button" data-quick-amount="500" data-ff-quick-amount="500" aria-pressed="false">
+              $500
+            </button>
+          </div>
+
+          <!-- Flagship #2 (future-wired + a11y): live results/selection status -->
+          <div
+            class="ff-sr"
+            id="impactStatus"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-ff-impact-status
+          >
+            <!-- JS may announce: “Showing Travel needs” / “Prefilled $75 for Gear” -->
+          </div>
+        </div>
+
+        <div class="ff-row ff-impact__actions" role="group" aria-label="Impact actions">
+          <a class="ff-btn ff-btn--primary" href="#donate" data-ff-donate-cta>Donate</a>
+          <button class="ff-btn ff-btn--secondary" type="button" data-ff-share-open>Share</button>
+          <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>Copy link</button>
+        </div>
+      </header>
+
+      <div class="ff-impact__grid">
+        <!-- Left: impact cards grid -->
+        <section aria-label="Impact options">
+          <div class="ff-row ff-row--between ff-ais">
+            <div>
+              <div class="ff-kicker">Needs</div>
+              <p class="ff-help" id="impactGridHelp" style="margin-top: 6px">
+                Choose a card to prefill checkout. Keyboard: Tab to a card, Enter to select.
+              </p>
+            </div>
+
+            <!-- Flagship #3 (safe + future-wired): compact search box (inert if unused) -->
+            <div class="ff-row ff-wrap" role="group" aria-label="Search needs">
+              <label class="ff-sr" for="impactSearch">Search needs</label>
+              <input
+                id="impactSearch"
+                class="ff-input"
+                type="search"
+                inputmode="search"
+                autocomplete="off"
+                placeholder="Search needs…"
+                aria-label="Search needs"
+                aria-describedby="impactGridHelp"
+                aria-controls="impactGrid"
+                data-ff-impact-search
+              />
+            </div>
+          </div>
+
+          <div
+            class="ff-grid ff-grid--2"
+            id="impactGrid"
+            style="margin-top: 10px"
+            data-ff-impact-grid
+            aria-describedby="impactGridHelp"
+          >
+            <!-- JS injects impact cards -->
+            <div class="ff-skel" style="height: 98px"></div>
+            <div class="ff-skel" style="height: 98px"></div>
+            <div class="ff-skel" style="height: 98px"></div>
+            <div class="ff-skel" style="height: 98px"></div>
+          </div>
+        </section>
+
+        <!-- Right: allocation + trust -->
+        <aside class="ff-impact__details" aria-label="Allocation and transparency">
+          <div>
+            <div class="ff-kicker">Allocation plan</div>
+            <p class="ff-help">A clear breakdown donors can trust.</p>
+            <div class="ff-stack ff-impact__alloclist" data-ff-allocation-list>
+              <!-- JS injects allocation rows -->
+              <div class="ff-skel" style="height: 14px; width: 82%"></div>
+              <div class="ff-skel" style="height: 14px; width: 74%"></div>
+              <div class="ff-skel" style="height: 14px; width: 66%"></div>
+            </div>
+          </div>
+
+          <div class="ff-mini">
+            <div class="ff-kicker">Transparency</div>
+            <div class="ff-card__title">Instant receipt</div>
+            <ul class="ff-bul" style="margin-top: 10px">
+              <li>Receipt emailed immediately after payment.</li>
+              <li>Recognition is optional (anonymous is always available).</li>
+              <li>Secure checkout powered by Stripe.</li>
+            </ul>
+
+            <!-- (safe): optional receipt preview link (does nothing unless wired) -->
+            <div class="ff-row ff-wrap" role="group" aria-label="Transparency actions" style="margin-top: 10px">
+              <a
+                class="ff-btn ff-btn--ghost ff-btn--sm"
+                href="#"
+                data-ff-receipt-preview
+                aria-label="Preview receipt (if available)"
+              >
+                Preview receipt
+              </a>
+            </div>
+          </div>
+
+          <div class="ff-mini" hidden data-ff-premium-only>
+            <div class="ff-kicker">Premium</div>
+            <div class="ff-card__title">Impact report</div>
+            <p class="ff-help">
+              Weekly recap posts + organizer proof vault. Upgrade unlocks “Updates” and richer sponsor tools.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- SPONSORS -->
+<section id="sponsors" class="ff-section" aria-labelledby="sponsorsTitle" data-ff-sponsors>
+  <div class="container ff-container">
+    <article class="ff-card ff-card--lift ff-pad">
+      <header class="ff-row ff-row--between ff-sponsors__headrow">
+        <div>
+          <div class="ff-kicker">Sponsors</div>
+          <h2 id="sponsorsTitle" class="ff-h2">VIP sponsor leaderboard</h2>
+          <p class="ff-lead">
+            Sponsors fuel the biggest needs and get premium recognition across the wall, leaderboard, and share tools.
+          </p>
+
+          <div class="ff-row ff-sponsors__pills" aria-label="Sponsor highlights">
+            <span class="ff-pill">Top sponsors</span>
+            <span class="ff-pill">Logo wall</span>
+            <span class="ff-pill" hidden data-ff-premium-only>Spotlight posts (premium)</span>
+          </div>
+
+          <!-- Flagship #1 (wired): sponsor quick tiers using existing sponsor CTA + prefill -->
+          <div class="ff-row ff-wrap" role="group" aria-label="Sponsor quick tiers" style="margin-top: 10px">
+            <span class="ff-pill ff-pill--accent" aria-hidden="true">Sponsor</span>
+
+            <button
+              class="ff-chip"
+              type="button"
+              data-ff-sponsor-cta
+              data-ff-prefill-amount="250"
+              aria-label="Sponsor at $250"
+            >
+              $250
+            </button>
+
+            <button
+              class="ff-chip"
+              type="button"
+              data-ff-sponsor-cta
+              data-ff-prefill-amount="500"
+              aria-label="Sponsor at $500"
+            >
+              $500
+            </button>
+
+            <button
+              class="ff-chip"
+              type="button"
+              data-ff-sponsor-cta
+              data-ff-prefill-amount="1000"
+              aria-label="Sponsor at $1,000"
+            >
+              $1,000
+            </button>
+
+            <button
+              class="ff-chip"
+              type="button"
+              data-ff-sponsor-cta
+              data-ff-prefill-amount="2500"
+              aria-label="Sponsor at $2,500"
+            >
+              $2,500
+            </button>
+          </div>
+        </div>
+
+        <div class="ff-row ff-sponsors__actions" role="group" aria-label="Sponsor actions">
+          <button
+            class="ff-btn ff-btn--primary"
+            type="button"
+            data-ff-sponsor-cta
+            data-ff-prefill-amount="1000"
+          >
+            Become a sponsor
+          </button>
+          <a class="ff-btn ff-btn--secondary" href="#donate">Open checkout</a>
+          <button class="ff-btn ff-btn--ghost" type="button" data-ff-share-open>Share</button>
+        </div>
+      </header>
+
+      <div class="ff-sponsors__grid ff-grid ff-grid--2">
+        <!-- Left: tiers + leaderboard -->
+        <section aria-label="Sponsor tiers and leaderboard">
+          <div class="ff-sponsors__tiers ff-stack">
+            <div class="ff-kicker">Tiers</div>
+            <ul class="ff-stack" data-ff-sponsor-tiers aria-label="Sponsor tiers list">
+              <!-- JS injects tiers -->
+              <li class="ff-skel" style="height: 72px"></li>
+              <li class="ff-skel" style="height: 72px"></li>
+              <li class="ff-skel" style="height: 72px"></li>
+            </ul>
+          </div>
+
+          <div class="ff-divider" aria-hidden="true"></div>
+
+          <div class="ff-sponsors__board ff-stack" aria-label="Sponsor leaderboard">
+            <div class="ff-row ff-row--between ff-ais">
+              <div class="ff-kicker">Leaderboard</div>
+
+              <!-- Flagship #2 (safe + future-wired): sort controls -->
+              <div class="ff-row ff-wrap" role="group" aria-label="Leaderboard sort" data-ff-sponsor-sort>
+                <button class="ff-chip is-selected" type="button" aria-pressed="true" data-ff-sort="rank">
+                  Rank
+                </button>
+                <button class="ff-chip" type="button" aria-pressed="false" data-ff-sort="recent">
+                  Recent
+                </button>
+              </div>
+            </div>
+
+            <ol class="ff-stack" data-ff-sponsor-leaderboard aria-live="polite" aria-atomic="false">
+              <!-- JS injects leaderboard -->
+              <li class="ff-skel" style="height: 56px"></li>
+              <li class="ff-skel" style="height: 56px"></li>
+              <li class="ff-skel" style="height: 56px"></li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- Right: wall + spotlight -->
+        <aside aria-label="Sponsor wall and spotlight">
+          <div class="ff-row ff-row--between ff-ais">
+            <div>
+              <div class="ff-kicker">Sponsor wall</div>
+              <p class="ff-help" style="margin-top: 6px">Logos appear after successful payments.</p>
+            </div>
+
+            <!-- Flagship #3 (safe + future-wired): view toggle -->
+            <div class="ff-row ff-wrap" role="group" aria-label="Wall view" data-ff-sponsor-wall-view>
+              <button class="ff-chip is-selected" type="button" aria-pressed="true" data-ff-wall="logos">Logos</button>
+              <button class="ff-chip" type="button" aria-pressed="false" data-ff-wall="list">List</button>
+            </div>
+          </div>
+
+          <div
+            class="ff-sponsors__wall"
+            style="margin-top: 10px"
+            data-ff-sponsor-wall
+            aria-live="polite"
+            aria-atomic="false"
+          >
+            <!-- JS injects sponsor wall -->
+            <div class="ff-skel" style="height: 74px"></div>
+            <div class="ff-skel" style="height: 74px"></div>
+            <div class="ff-skel" style="height: 74px"></div>
+            <div class="ff-skel" style="height: 74px"></div>
+          </div>
+
+          <div class="ff-mini" style="margin-top: 14px">
+            <div class="ff-kicker">Sponsor perks</div>
+            <div class="ff-card__title">Premium recognition</div>
+            <ul class="ff-bul" style="margin-top: 10px">
+              <li>Logo wall + leaderboard placement</li>
+              <li>Share-ready proof + QR tools</li>
+              <li>Optional match activation</li>
+            </ul>
+          </div>
+
+          <div class="ff-mini" style="margin-top: 14px" hidden data-ff-premium-only>
+            <div class="ff-kicker">Premium</div>
+            <div class="ff-card__title">Spotlight posts</div>
+            <p class="ff-help">
+              Auto-generate sponsor spotlight posts for socials (premium).
+            </p>
+          </div>
+        </aside>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- TEAMS -->
+<!-- TEAMS -->
+<!-- TEAMS -->
+<section
+  id="teams"
+  class="ff-section ff-section--contrast"
+  aria-labelledby="teamsTitle"
+  data-ff-teams
+>
+  <div class="container ff-container">
+    <article class="ff-card ff-card--lift ff-pad-lg">
+      <header class="ff-row ff-row--between ff-teams__headrow">
+        <div>
+          <div class="ff-kicker">Teams</div>
+          <h2 id="teamsTitle" class="ff-h2">Support a team or group</h2>
+          <p class="ff-lead">
+            Choose a team to direct support. Each team can have its own mini goal and share link.
+          </p>
+
+          <div class="ff-row ff-teams__pills" aria-label="Team highlights">
+            <span class="ff-pill">Mini goals</span>
+            <span class="ff-pill">Share links</span>
+            <span class="ff-pill" hidden data-ff-premium-only>Team pages (premium)</span>
+          </div>
+
+          <!-- Flagship #1: Search + Sort -->
+          <div class="ff-row ff-wrap ff-gap-sm" role="group" aria-label="Find a team" style="margin-top: 12px">
+            <label class="ff-sr" for="teamSearch">Search teams</label>
+            <input
+              id="teamSearch"
+              class="ff-input ff-input--lg"
+              type="search"
+              inputmode="search"
+              autocomplete="off"
+              placeholder="Search teams…"
+              aria-label="Search teams"
+              aria-controls="teamsGrid"
+              data-ff-team-search
+            />
+
+            <div class="ff-row ff-wrap" role="group" aria-label="Sort teams" data-ff-team-sort>
+              <button class="ff-chip is-selected" type="button" aria-pressed="true" data-ff-sort="featured">Featured</button>
+              <button class="ff-chip" type="button" aria-pressed="false" data-ff-sort="goal">Goal %</button>
+              <button class="ff-chip" type="button" aria-pressed="false" data-ff-sort="recent">Recent</button>
+            </div>
+          </div>
+
+          <!-- Flagship #2: Live team count updates -->
+          <div
+            id="teamsStatus"
+            class="ff-sr"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-ff-teams-status
+          ></div>
+        </div>
+
+        <div class="ff-row" role="group" aria-label="Team actions">
+          <a class="ff-btn ff-btn--primary" href="#donate" data-ff-donate-cta>Donate</a>
+          <button class="ff-btn ff-btn--ghost" type="button" data-ff-share-open>Share</button>
+          <button
+            class="ff-btn ff-btn--ghost ff-btn--sm"
+            type="button"
+            data-ff-copy-link
+            aria-label="Copy fundraiser link"
+          >
+            Copy link
+          </button>
+        </div>
+      </header>
+
+      <!-- Flagship #3: Expanded team cards -->
+      <div
+        id="teamsGrid"
+        class="ff-grid ff-grid--2 ff-grid--lg"
+        style="margin-top: 18px; grid-auto-rows: minmax(140px, auto)"
+        data-ff-teams-grid
+        aria-label="Teams grid"
+        aria-live="polite"
+        aria-atomic="false"
+      >
+        <!-- JS will inject team cards here -->
+        <div class="ff-skel" style="height: 140px"></div>
+        <div class="ff-skel" style="height: 140px"></div>
+      </div>
+
+      <!-- Future-wired: hint -->
+      <p class="ff-help" style="margin-top: 10px" id="teamsHelp">
+        Tip: select a team to prefill checkout and generate a share link for that group.
+      </p>
+    </article>
+  </div>
+</section>
+
+<!-- DONATE -->
+<section id="donate" class="ff-section" aria-labelledby="donateTitle" data-ff-donate>
+  <div class="container ff-container">
+    <article class="ff-card ff-card--lift ff-pad">
+      <header class="ff-row ff-row--between ff-donate__headrow">
+        <div>
+          <div class="ff-kicker">Donate</div>
+          <h2 id="donateTitle" class="ff-h2">Secure checkout</h2>
+          <p class="ff-lead">
+            Fast, secure payment. Instant receipt by email. Recognition is optional.
+          </p>
+
+          <div class="ff-row ff-donate__trust" aria-label="Trust chips">
+            <span class="ff-pill" data-ff-trust-chip>Stripe-secured</span>
+            <span class="ff-pill" data-ff-trust-chip>Instant receipt</span>
+            <span class="ff-pill" data-ff-trust-chip>No login</span>
+          </div>
+
+          <!-- Flagship #1 (wired + a11y): live checkout status line -->
+          <div
+            class="ff-row ff-wrap"
+            id="checkoutStatusRow"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-ff-checkout-status
+            style="margin-top: 10px"
+          >
+            <span class="ff-pill" id="checkoutStatusPill">
+              Status — <span class="ff-num" id="checkoutStatusText">Ready</span>
+            </span>
+            <span class="ff-pill" id="checkoutMethodPill" hidden data-ff-payment-method>
+              Method — <span class="ff-num" id="checkoutMethodText">—</span>
+            </span>
+            <span class="ff-pill" id="checkoutHintPill">
+              Tip — <span class="ff-num">Tap a chip to prefill</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="ff-row" role="group" aria-label="Donate actions">
+          <button class="ff-btn ff-btn--secondary" type="button" data-ff-share-open>Share</button>
+          <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>Copy link</button>
+        </div>
+      </header>
+
+      <!-- Status notices -->
+      <div id="payError" class="ff-notice" role="alert" hidden tabindex="-1">
+        <div class="ff-kicker">Payment error</div>
+        <p class="ff-help" id="payErrorText">Something went wrong. Please try again.</p>
+      </div>
+
+      <div id="paySuccess" class="ff-notice" role="status" hidden tabindex="-1">
+        <div class="ff-kicker">Payment successful</div>
+        <p class="ff-help" id="paySuccessText">Thank you! Your receipt has been emailed.</p>
+      </div>
+
+      <div class="ff-grid ff-grid--2 ff-donate__grid" style="margin-top: 14px">
+        <!-- Left: form -->
+        <section aria-label="Donation form">
+          <form class="ff-form" id="donationForm" novalidate data-ff-donation-form>
+            <fieldset class="ff-fieldset">
+              <label class="ff-label" for="amount">Amount</label>
+              <div class="ff-inputrow" aria-label="Donation amount">
+                <span class="ff-inputrow__prefix" aria-hidden="true">$</span>
+                <input
+                  class="ff-input"
+                  id="amount"
+                  name="amount"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="25"
+                  required
+                  data-ff-amount
+                  aria-describedby="amountHelp"
+                />
+              </div>
+              <p class="ff-help" id="amountHelp" style="margin-top: 8px">
+                Enter a custom amount, or tap a suggestion to prefill.
+              </p>
+
+              <div class="ff-row ff-wrap" role="group" aria-label="Suggested amounts">
+                <button class="ff-chip" type="button" data-ff-quick-amount="25">$25</button>
+                <button class="ff-chip" type="button" data-ff-quick-amount="75">$75</button>
+                <button class="ff-chip" type="button" data-ff-quick-amount="150">$150</button>
+                <button class="ff-chip" type="button" data-ff-quick-amount="500">$500</button>
+                <button class="ff-chip" type="button" data-ff-quick-amount="1000">Sponsor $1,000</button>
+
+                <!-- Flagship #2 (safe + future-wired): “Most popular” nudge -->
+                <span class="ff-pill" id="popularAmountPill" data-ff-popular-amount hidden>
+                  Most popular — <span class="ff-num" id="popularAmountText">$75</span>
+                </span>
+              </div>
+            </fieldset>
+
+            <fieldset class="ff-fieldset">
+              <label class="ff-label" for="fullName">Name</label>
+              <input
+                class="ff-input"
+                id="fullName"
+                name="fullName"
+                autocomplete="name"
+                placeholder="Your name"
+                data-ff-name
+              />
+
+              <label class="ff-label" for="email">Email (for receipt)</label>
+              <input
+                class="ff-input"
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                required
+                data-ff-email
+              />
+
+              <label class="ff-label" for="message">Message (optional)</label>
+              <textarea
+                class="ff-input"
+                id="message"
+                name="message"
+                placeholder="Add a note of support"
+                data-ff-message
+              ></textarea>
+
+              <label class="ff-check">
+                <input type="checkbox" id="anonymous" name="anonymous" data-ff-anonymous />
+                Donate anonymously (hide name)
+              </label>
+
+              <label class="ff-check">
+                <input type="checkbox" id="coverFees" name="coverFees" data-ff-cover-fees />
+                Cover processing fees (helps the program)
+              </label>
+
+              <!-- Flagship #3 (safe + future-wired): recognition preview + toggle helper -->
+              <div class="ff-mini" style="margin-top: 12px" aria-label="Recognition settings">
+                <div class="ff-kicker">Recognition</div>
+                <p class="ff-help" id="recognitionHelp" style="margin-top: 6px">
+                  If you donate anonymously, your name won’t appear in public lists.
+                </p>
+
+                <div class="ff-row ff-wrap" role="group" aria-label="Recognition quick settings" style="margin-top: 10px">
+                  <button
+                    class="ff-chip"
+                    type="button"
+                    data-ff-recognition="public"
+                    aria-pressed="true"
+                    aria-describedby="recognitionHelp"
+                    title="Recognition on (default)"
+                  >
+                    Public
+                  </button>
+                  <button
+                    class="ff-chip"
+                    type="button"
+                    data-ff-recognition="anonymous"
+                    aria-pressed="false"
+                    aria-describedby="recognitionHelp"
+                    title="Donate anonymously (will check the box if wired)"
+                  >
+                    Anonymous
+                  </button>
+                  <span class="ff-pill" id="recognitionPreviewPill" data-ff-recognition-preview>
+                    Shows as — <span class="ff-num" id="recognitionPreviewText">Your name</span>
+                  </span>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- Stripe payment element mount -->
+            <fieldset class="ff-fieldset" aria-label="Payment details">
+              <div class="ff-kicker">Payment</div>
+              <div class="ff-mini" id="stripeMount" aria-label="Stripe payment element">
+                <div id="paymentElement" data-ff-stripe-element></div>
+                <p class="ff-help" style="margin-top: 10px">
+                  Card or wallet options appear here (Stripe).
+                </p>
+              </div>
+
+              <!-- Optional PayPal mount -->
+              <div class="ff-mini" id="paypalMount" hidden aria-label="PayPal buttons">
+                <div class="ff-kicker">PayPal</div>
+                <div id="paypalButtons" data-ff-paypal-buttons></div>
+              </div>
+
+              <!-- (a11y): payment region announcements -->
+              <div class="ff-sr" role="status" aria-live="polite" aria-atomic="true" data-ff-payment-live>
+                <!-- JS may announce: “PayPal enabled” / “Stripe element loaded” -->
+              </div>
+            </fieldset>
+
+            <div class="ff-row ff-wrap" role="group" aria-label="Submit actions">
+              <button class="ff-btn ff-btn--primary" id="payBtn" type="submit" data-ff-pay-btn>
+                Donate securely
+              </button>
+              <button class="ff-btn ff-btn--secondary" type="button" data-ff-paypal-enable>
+                Pay with PayPal
+              </button>
+              <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>
+                Copy link
+              </button>
+            </div>
+
+            <p class="ff-help">
+              By donating, you agree to our terms and acknowledge your receipt will be emailed.
+            </p>
+          </form>
+        </section>
+
+        <!-- Right: reassurance + sponsor CTA -->
+        <aside aria-label="Donor reassurance">
+          <div class="ff-mini">
+            <div class="ff-kicker">What happens next</div>
+            <div class="ff-card__title">Instant confirmation</div>
+            <ul class="ff-bul" style="margin-top: 10px">
+              <li>Secure payment confirmation within seconds</li>
+              <li>Receipt emailed immediately</li>
+              <li>Optional recognition on sponsor wall/leaderboard</li>
+            </ul>
+          </div>
+
+          <div class="ff-mini" style="margin-top: 14px">
+            <div class="ff-kicker">Want VIP recognition?</div>
+            <div class="ff-card__title">Sponsor packages</div>
+            <p class="ff-help">
+              Sponsorships unlock premium placement and optional matching.
+            </p>
+            <div class="ff-row ff-wrap" role="group" aria-label="Sponsor actions">
+              <button
+                class="ff-btn ff-btn--primary ff-btn--sm"
+                type="button"
+                data-ff-sponsor-cta
+                data-ff-prefill-amount="1000"
+              >
+                Sponsor $1,000
+              </button>
+              <a class="ff-btn ff-btn--ghost ff-btn--sm" href="#sponsors">View leaderboard</a>
+            </div>
+          </div>
+
+          <details class="ff-disc" style="margin-top: 14px">
+            <summary class="ff-disc__sum">
+              <span class="ff-disc__meta">
+                <span class="ff-kicker">Security</span><br />
+                <span class="ff-help">How are payments handled?</span>
+              </span>
+              <span class="ff-pill" aria-hidden="true">Open</span>
+            </summary>
+            <div class="ff-disc__body">
+              <p class="ff-help">
+                Payments are processed by Stripe. Card data never touches this site’s server. Receipts are sent instantly.
+              </p>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- UPDATES (premium) -->
+<section
+  id="updates"
+  class="ff-section"
+  aria-labelledby="updatesTitle"
+  hidden
+  data-ff-premium-only
+  data-ff-updates
+>
+  <div class="container ff-container">
+    <article class="ff-card ff-card--lift ff-pad">
+      <header class="ff-row ff-row--between">
+        <div>
+          <div class="ff-kicker">Updates</div>
+          <h2 id="updatesTitle" class="ff-h2">Weekly impact updates</h2>
+          <p class="ff-lead">Proof posts, receipts, and progress notes (premium).</p>
+
+          <!-- Flagship #1 (safe + future-wired): summary pills (hidden until populated) -->
+          <div class="ff-row ff-wrap" role="group" aria-label="Update summary" style="margin-top: 10px">
+            <span class="ff-pill ff-pill--accent" id="updatesWeekPill" data-ff-updates-week hidden>
+              Week — <span class="ff-num" id="updatesWeekText">—</span>
+            </span>
+            <span class="ff-pill" id="updatesCountPill" data-ff-updates-count hidden>
+              Posts — <span class="ff-num" id="updatesCountText">0</span>
+            </span>
+            <span class="ff-pill" id="updatesReceiptPill" data-ff-updates-receipts hidden>
+              Receipts — <span class="ff-num" id="updatesReceiptText">0</span>
+            </span>
+          </div>
+
+          <!-- Flagship #2 (a11y): live announcements for filter + new posts -->
+          <div
+            class="ff-sr"
+            id="updatesStatus"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-ff-updates-status
+          >
+            <!-- JS may announce: “Showing receipts” / “2 new updates” -->
+          </div>
+        </div>
+
+        <div class="ff-row" role="group" aria-label="Update actions">
+          <button class="ff-btn ff-btn--secondary" type="button" data-ff-share-open>Share</button>
+          <button class="ff-btn ff-btn--ghost" type="button" data-ff-copy-link>Copy link</button>
+
+          <!-- Flagship #3 (safe + future-wired): subscribe button -->
+          <button
+            class="ff-btn ff-btn--ghost ff-btn--sm"
+            type="button"
+            data-ff-updates-subscribe
+            aria-describedby="updatesSubscribeHelp"
+          >
+            Subscribe
+          </button>
+        </div>
+      </header>
+
+      <!-- Flagship premium features (Updates) -->
+      <div class="ff-row ff-wrap" style="margin-top: 12px; gap: 8px" aria-label="Premium update features">
+        <span class="ff-pill ff-pill--accent">Receipt gallery</span>
+        <span class="ff-pill">Photo/video proof</span>
+        <span class="ff-pill">Donor shoutouts</span>
+      </div>
+
+      <div class="ff-help" style="margin-top: 8px" id="updatesSubscribeHelp">
+        Premium updates can include verified receipts, media proof posts, and optional sponsor/donor recognition—posted weekly.
+        Subscriptions (if enabled) send new-post alerts by email.
+      </div>
+
+      <div class="ff-row ff-wrap" style="margin-top: 10px; gap: 8px" role="group" aria-label="Update filtering">
+        <button
+          class="ff-btn ff-btn--secondary ff-btn--sm"
+          type="button"
+          data-ff-updates-filter="all"
+          aria-pressed="true"
+        >
+          All
+        </button>
+        <button
+          class="ff-btn ff-btn--ghost ff-btn--sm"
+          type="button"
+          data-ff-updates-filter="receipts"
+          aria-pressed="false"
+        >
+          Receipts
+        </button>
+        <button
+          class="ff-btn ff-btn--ghost ff-btn--sm"
+          type="button"
+          data-ff-updates-filter="media"
+          aria-pressed="false"
+        >
+          Media
+        </button>
+
+        <!-- (safe + future-wired): search within updates -->
+        <label class="ff-sr" for="updatesSearch">Search updates</label>
+        <input
+          id="updatesSearch"
+          class="ff-input"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          placeholder="Search updates…"
+          aria-label="Search updates"
+          aria-controls="updatesList"
+          data-ff-updates-search
+        />
+      </div>
+
+      <div
+        class="ff-stack"
+        id="updatesList"
+        style="margin-top: 12px"
+        data-ff-updates-list
+        aria-label="Updates list"
+        aria-live="polite"
+        aria-atomic="false"
+      >
+        <!-- JS injects updates -->
+        <div class="ff-skel" style="height: 88px"></div>
+        <div class="ff-skel" style="height: 88px"></div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="ff-section" aria-labelledby="faqTitle" data-ff-faq>
+  <div class="container ff-container">
+    <article class="ff-card ff-card--lift ff-pad">
+      <header>
+        <div class="ff-kicker">FAQ</div>
+        <h2 id="faqTitle" class="ff-h2">Common questions</h2>
+        <p class="ff-lead">Clear answers that increase donor confidence.</p>
+
+        <!-- Flagship #1 (safe + future-wired): search FAQs -->
+        <div class="ff-row ff-wrap" role="group" aria-label="Search FAQ" style="margin-top: 10px">
+          <label class="ff-sr" for="faqSearch">Search FAQ</label>
+          <input
+            id="faqSearch"
+            class="ff-input"
+            type="search"
+            inputmode="search"
+            autocomplete="off"
+            placeholder="Search questions…"
+            aria-label="Search questions"
+            aria-controls="faqItems"
+            data-ff-faq-search
+          />
+          <span class="ff-pill" id="faqCountPill" data-ff-faq-count hidden>
+            Showing — <span class="ff-num" id="faqCountText">—</span>
+          </span>
+        </div>
+
+        <!-- Flagship #2 (wired if supported): expand/collapse controls using data-ff-faq-* hooks -->
+        <div class="ff-row ff-wrap" role="group" aria-label="FAQ controls" style="margin-top: 10px">
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-faq-expand>
+            Expand all
+          </button>
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-faq-collapse>
+            Collapse all
+          </button>
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-copy-link aria-label="Copy fundraiser link">
+            Copy link
+          </button>
+        </div>
+
+        <!-- Flagship #3 (a11y): live announcements for filtering/toggles -->
+        <div
+          class="ff-sr"
+          id="faqStatus"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-ff-faq-status
+        >
+          <!-- JS may announce: “Showing 5 results” / “Expanded all items” -->
+        </div>
+      </header>
+
+      <div class="ff-stack" id="faqItems" style="margin-top: 14px" aria-label="FAQ items" data-ff-faq-items>
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Receipts</span><br />
+              <span class="ff-help">Will I get a receipt?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">Yes. A receipt is emailed immediately after a successful donation.</p>
+          </div>
+        </details>
+
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Recognition</span><br />
+              <span class="ff-help">Can I donate anonymously?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">
+              Yes. Choose “Donate anonymously” in checkout. Recognition is always optional.
+            </p>
+          </div>
+        </details>
+
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Security</span><br />
+              <span class="ff-help">Is this secure?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">
+              Payments are processed through Stripe using encrypted payment methods. Card data is not stored on this site.
+            </p>
+          </div>
+        </details>
+
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Sponsors</span><br />
+              <span class="ff-help">How do sponsorships work?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">
+              Sponsors donate at set tiers for premium recognition (logo wall + leaderboard). Matching can be enabled by organizers.
+            </p>
+          </div>
+        </details>
+
+        <!-- Flagship FAQ additions -->
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Transparency</span><br />
+              <span class="ff-help">Where do funds go?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">
+              Funds are allocated according to the “Where funds go” breakdown on this page. Premium campaigns can post receipts and weekly updates for added transparency.
+            </p>
+          </div>
+        </details>
+
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Matching</span><br />
+              <span class="ff-help">Does my donation get matched?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">
+              If matching is active, your gift may be multiplied up to the match limit shown on the page. If matching isn’t enabled, your donation still counts toward the main goal.
+            </p>
+          </div>
+        </details>
+
+        <details class="ff-disc">
+          <summary class="ff-disc__sum">
+            <span class="ff-disc__meta">
+              <span class="ff-kicker">Refunds</span><br />
+              <span class="ff-help">Can I request a refund?</span>
+            </span>
+            <span class="ff-pill" aria-hidden="true">Open</span>
+          </summary>
+          <div class="ff-disc__body">
+            <p class="ff-help">
+              If you donated in error, contact support and include your receipt email. We’ll help review the request based on the campaign’s refund policy and processor rules.
+            </p>
+          </div>
+        </details>
+
+        <!-- Optional help footer (safe + future-wired) -->
+        <div class="ff-mini" aria-label="Need help?" style="margin-top: 6px">
+          <div class="ff-kicker">Need help?</div>
+          <div class="ff-card__title">We’re quick to respond</div>
+          <p class="ff-help">
+            For donation issues, include your receipt email subject line and approximate time of donation.
+          </p>
+          <div class="ff-row ff-wrap" role="group" aria-label="Help actions" style="margin-top: 10px">
+            <a
+              class="ff-btn ff-btn--secondary ff-btn--sm"
+              href="mailto:support@getfuturefunded.com?subject=Fundraiser%20support%20request"
+              data-ff-support-email
+            >
+              Email support
+            </a>
+            <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-copy-link>
+              Copy link
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="ff-footer" data-ff-footer>
+  <div class="container ff-container">
+    <div class="ff-footer__grid">
+      <section aria-label="Organization info">
+        <a class="ff-brand" href="#top" aria-label="Back to top">
+          <span class="ff-brand__mark" aria-hidden="true">
+            <img
+              class="ff-brand__logo"
+              src="{{ org_logo|default(url_for('static', filename='images/logo.webp')) }}"
+              alt="{{ org_name|default('Organization')|e }} logo"
+              width="46"
+              height="46"
+              loading="lazy"
+              decoding="async"
+            />
+          </span>
+
+          <span class="ff-brand__meta">
+            <!-- JS can overwrite these via applyOrgMeta() -->
+            <span class="ff-brand__title" id="footerOrgName" data-ff-org-name>
+              {{ org_name|default('Organization')|e }}
+            </span>
+
+            <span class="ff-brand__sub" data-ff-org-location>
+              {{ org_location|default('City • State')|e }}
+            </span>
+          </span>
+        </a>
+
+        <p class="ff-help" style="margin-top: 10px">
+          {{ footer_blurb|default('Thank you for helping our program. Every gift makes a measurable difference.')|e }}
+        </p>
+
+        <p class="ff-help" style="margin-top: 10px">
+          Contact:
+          {% set _email = support_email|default('support@getfuturefunded.com') %}
+          <a href="mailto:{{ _email|e }}">{{ _email|e }}</a>
+        </p>
+
+        <div class="ff-row ff-wrap" role="group" aria-label="Trust badges" style="margin-top: 10px">
+          <span class="ff-pill" data-ff-trust-chip>Stripe-secured</span>
+          <span class="ff-pill" data-ff-trust-chip>Instant receipt</span>
+          <span class="ff-pill" data-ff-trust-chip>Verified</span>
+        </div>
+      </section>
+
+      <section class="ff-footer__links" aria-label="Links">
+        <a href="#donate">Donate</a>
+        <a href="#sponsors">Sponsors</a>
+        <a href="#impact">Impact</a>
+        <a href="#faq">FAQ</a>
+        <a href="#updates" hidden data-ff-premium-only>Updates</a>
+
+        <div class="ff-row ff-wrap" role="group" aria-label="Footer actions" style="margin-top: 12px">
+          <button class="ff-btn ff-btn--secondary ff-btn--sm" type="button" data-ff-share-open>
+            Share
+          </button>
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-copy-link>
+            Copy link
+          </button>
+        </div>
+      </section>
+
+      <section class="ff-footer__meta" aria-label="Legal and platform">
+        <div class="ff-kicker">Powered by</div>
+        <p class="ff-help">
+          FutureFunded • Secure fundraising pages for teams, schools, and nonprofits.
+        </p>
+
+        <p class="ff-help" style="margin-top: 10px">
+          <a href="{{ terms_url|default('#')|e }}">Terms</a> •
+          <a href="{{ privacy_url|default('#')|e }}">Privacy</a>
+        </p>
+
+        <p class="ff-help" style="margin-top: 10px" aria-label="Campaign details">
+          <!-- JS will set text + unhide -->
+          <span class="ff-pill" data-ff-version-pill hidden></span>
+
+          <span class="ff-pill" data-ff-campaign-pill hidden>
+            Campaign — <span class="ff-num" id="footerCampaignText">—</span>
+          </span>
+        </p>
+
+        <p class="ff-help" style="margin-top: 10px; color: var(--ff-text-3)">
+          © {{ current_year|default('2026')|e }}
+          <span data-ff-org-name>{{ org_name|default('Organization')|e }}</span>.
+        </p>
+      </section>
+    </div>
+  </div>
+
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+
+<!-- SHARE MODAL -->
+<div
+  class="ff-modal"
+  id="shareModal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="shareTitle"
+  aria-describedby="shareDesc"
+  aria-hidden="true"
+  hidden
+  data-ff-modal
+  data-ff-share-modal
+>
+  <button
+    class="ff-modal__backdrop"
+    type="button"
+    data-ff-modal-close
+    aria-label="Close share modal"
+  ></button>
+
+  <div class="ff-modal__panel" role="document" tabindex="-1" data-ff-modal-panel>
+    <header class="ff-row ff-row--between ff-ais">
+      <div>
+        <div class="ff-kicker" id="shareTitle">Share</div>
+        <p class="ff-help" id="shareDesc">Copy a link, download a QR, or share.</p>
+      </div>
+
+      <button class="ff-icon" type="button" data-ff-modal-close aria-label="Close share modal">
+        <span aria-hidden="true">✕</span>
+      </button>
+    </header>
+
+    <div class="ff-divider" aria-hidden="true"></div>
+
+    <section class="ff-stack" aria-label="Share link">
+      <label class="ff-label" for="shareLink">Fundraiser link</label>
+
+      <div class="ff-inputrow" data-ff-share-row>
+        <input
+          id="shareLink"
+          class="ff-input ff-num"
+          type="url"
+          readonly
+          inputmode="url"
+          aria-label="Fundraiser share link"
+          data-ff-share-link
+        />
+        <button class="ff-btn ff-btn--secondary ff-btn--sm" type="button" data-ff-copy-link>Copy</button>
+      </div>
+
+      <p class="ff-help">Tip: select a team first to generate a team-ready link (if enabled).</p>
+    </section>
+
+    <div class="ff-divider" aria-hidden="true"></div>
+
+    <section class="ff-row ff-wrap" role="group" aria-label="Share actions">
+      <button class="ff-btn ff-btn--primary" type="button" data-ff-native-share>Share…</button>
+      <button class="ff-btn ff-btn--secondary" type="button" data-ff-download-qr>Download QR</button>
+
+      <!-- real schemes (JS should set href/body) -->
+      <a class="ff-btn ff-btn--ghost" href="sms:" data-ff-share-sms rel="nofollow noopener">Text</a>
+      <a class="ff-btn ff-btn--ghost" href="mailto:" data-ff-share-email rel="nofollow noopener">Email</a>
+    </section>
+
+    <div class="ff-divider" aria-hidden="true"></div>
+
+    <section class="ff-row ff-qrrow" aria-label="Share QR">
+      <img
+        class="ff-qr"
+        id="shareQr"
+        alt="Share QR code"
+        width="140"
+        height="140"
+        loading="lazy"
+        decoding="async"
+        data-ff-qr
+      />
+
+      <div class="ff-qrmeta ff-stack">
+        <div>
+          <div class="ff-kicker">QR</div>
+          <div class="ff-card__title">Scan to donate</div>
+          <p class="ff-help">Print for flyers and events.</p>
+        </div>
+
+        <div class="ff-row ff-qractions" role="group" aria-label="QR actions">
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-copy-link>Copy link</button>
+          <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-modal-close>Close</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="ff-toasts" aria-live="polite" aria-atomic="false" data-ff-toasts></div>
+
+<!-- STICKY DONATE BAR -->
+<div class="ff-sticky" hidden data-ff-sticky>
+  <div class="ff-sticky__inner">
+    <div class="ff-sticky__mini">
+      <div class="ff-sticky__org" id="stickyOrgName" data-ff-org-name>Organization</div>
+      <div class="ff-sticky__bar" aria-hidden="true"><span id="stickyBarFill"></span></div>
+    </div>
+
+    <div class="ff-row ff-wrap" role="group" aria-label="Sticky actions">
+      <button class="ff-btn ff-btn--secondary ff-btn--sm" type="button" data-ff-share-open>Share</button>
+      <a class="ff-btn ff-btn--primary ff-btn--sm" href="#donate" data-ff-donate-cta>Donate</a>
+    </div>
+  </div>
+</div>
+
+<!-- BACK TO TOP -->
+<a class="ff-top" href="#top" aria-label="Back to top" data-ff-top hidden>↑</a>
+
+<!-- MOBILE TABS -->
+<nav class="ff-tabs" aria-label="Mobile navigation" data-ff-tabs>
+  <a class="ff-tab" href="#progress" data-spy="progress">Progress</a>
+  <a class="ff-tab" href="#impact" data-spy="impact">Impact</a>
+  <a class="ff-tab" href="#sponsors" data-spy="sponsors">Sponsors</a>
+  <a class="ff-tab" href="#donate" data-spy="donate">Donate</a>
+</nav>
+
+</div><!-- /#content (KEEP ONLY IF #content WAS OPENED ABOVE) -->
+
+<!-- Single config blob (keep ONLY ONE #ffConfig) -->
+<!-- ffConfig — SINGLE SOURCE OF TRUTH (JSON ONLY) -->
+<script id="ffConfig" type="application/json"{% if csp_nonce|default('') %} nonce="{{ csp_nonce }}"{% endif %}>
+{{ ff_config|tojson }}
+</script>
+
+<script>
+  (function () {
+    "use strict";
+
+    // --- config read helper ---
+    function getCfg() {
+      var el = document.getElementById("ffConfig");
+      if (!el) return {};
+      try { return JSON.parse(el.textContent || "{}") || {}; } catch (e) { return {}; }
+    }
+
+    // --- apply version pill from config ---
+    (function applyVersion() {
+      var cfg = getCfg();
+      var ver = cfg && cfg.flagship && cfg.flagship.version ? String(cfg.flagship.version) : "";
+      if (!ver) return;
+      var pill = document.querySelector("[data-ff-version-pill]");
+      if (!pill) return;
+      pill.textContent = "v" + ver.replace(/^v/i, "");
+      pill.hidden = false;
+    })();
+
+    // --- PWA SW registration (config can disable) ---
+    (function registerSW() {
+      try {
+        if (window.__FF_SW_MANAGED__) return;
+        if (!("serviceWorker" in navigator)) return;
+
+        var cfg = getCfg();
+        if (cfg && cfg.flagship && cfg.flagship.features && cfg.flagship.features.pwa === false) return;
+
+        var sw = "{{ url_for('static', filename='sw.js') }}";
+        navigator.serviceWorker.register(sw).catch(function () {});
+      } catch (e) {}
+    })();
+  })();
+</script>

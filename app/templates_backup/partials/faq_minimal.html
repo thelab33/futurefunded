@@ -1,0 +1,135 @@
+{# ===================== FundChamps — Minimal FAQ (SV-Polish) ===================== #}
+{# Props (optional):
+   - faqs: list of {q, a} items
+   - contact_email: string (used in default copy)
+   - section_title: string (defaults to “Questions? We’ve got answers.”)
+#}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set contact_email = contact_email or 'hello@example.com' %}
+{% set section_title = section_title or 'Questions? We’ve got answers.' %}
+
+{# sensible defaults if nothing passed in #}
+{% set faqs = faqs if faqs is defined and faqs else [
+  {"q":"Is my gift tax-deductible?",
+   "a":"Yes. Your contribution is made to our program and may be tax-deductible to the extent allowed by law. We’ll email a receipt for your records."},
+  {"q":"Where does my sponsorship go?",
+   "a":"100% supports gym rental, tournament travel, uniforms/gear, and academic tutoring. Our funds allocation bar updates in real time."},
+  {"q":"Can I sponsor anonymously?",
+   "a":"Absolutely. Choose anonymous during checkout or tell us and we’ll omit your name/logo from public listings."},
+  {"q":"Do you support employer matching?",
+   "a":"Yes—many sponsors double their impact with employer matching. After checkout we’ll send a receipt with the details your HR portal needs."},
+  {"q":"Refunds or cancellations?",
+   "a":"If an event is cancelled or you donated in error, contact us at {{ contact_email }} and we’ll make it right."}
+] %}
+
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 relative py-12 sm:py-16 bg-neutral-50/5 dark:bg-zinc-900/40" id="faq"  aria-labelledby="faq-heading">
+  <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <h2 id="faq-heading" class="text-3xl font-extrabold tracking-tight text-yellow-300 sm:text-4xl">
+      {{ section_title }}
+    </h2>
+    <p class="mt-1 text-sm text-zinc-300">The five answers donors ask for most—clear and simple.</p>
+
+    <div class="mt-6 divide-y divide-white/10 rounded-2xl border border-white/10 bg-black/40 backdrop-blur supports-backdrop-blur:bg-black/30">
+      {% for item in faqs %}
+        {% set qid = 'faq-q-' ~ loop.index %}
+        {% set aid = 'faq-a-' ~ loop.index %}
+        <article class="group" role="region" aria-labelledby="{{ qid }}">
+          <button
+            id="{{ qid }}"
+            type="button"
+            class="flex w-full items-center justify-between gap-4 px-4 py-4 text-left hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
+            aria-expanded="{{ 'true' if loop.first else 'false' }}"
+            aria-controls="{{ aid }}"
+            data-faq-toggle>
+            <span class="text-base font-semibold text-yellow-200">{{ item.q }}</span>
+            <span class="shrink-0 rounded-full border border-white/15 bg-black/30 px-2 py-0.5 text-[11px] text-zinc-300" aria-hidden="true">▼</span>
+          </button>
+          <div id="{{ aid }}" class="px-4 pb-4 pt-0 text-sm text-zinc-200 {% if not loop.first %}hidden{% endif %}" hidden="{{ 'false' if loop.first else 'true' }}">
+            <p class="leading-relaxed">{{ item.a }}</p>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-2 text-sm">
+      <a href="#sponsor-form" class="rounded-lg border border-yellow-300/30 bg-zinc-900/70 px-3 py-1.5 font-semibold text-yellow-200 hover:bg-zinc-900">Sponsor now</a>
+      <a href="#tiers" class="rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-zinc-200 hover:bg-black/50">See tiers</a>
+    </div>
+  </div>
+
+  <style nonce="{{ NONCE }}">
+    #faq .supports-backdrop-blur\:bg-black\/30 { background-color: rgba(0,0,0,.3); }
+    @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+      #faq .supports-backdrop-blur\:bg-black\/30 { -webkit-backdrop-filter: blur(10px) saturate(120%); backdrop-filter: blur(10px) saturate(120%); }
+    }
+    @media (prefers-reduced-motion: reduce){ #faq [data-faq-toggle] { scroll-behavior: auto; } }
+  </style>
+
+  <script nonce="{{ NONCE }}">
+    (() => {
+      if (window.__faqInit) return; window.__faqInit = true;
+      const root = document.getElementById('faq'); if (!root) return;
+      const buttons = root.querySelectorAll('[data-faq-toggle]');
+
+      const KEY = 'fc:faq:open'; // persist last open panel
+      function setOpen(btn, open){
+        const panel = document.getElementById(btn.getAttribute('aria-controls'));
+        btn.setAttribute('aria-expanded', String(open));
+        panel.hidden = !open;
+        panel.classList.toggle('hidden', !open);
+        try { if (open) sessionStorage.setItem(KEY, panel.id); } catch {}
+        try { window.dispatchEvent(new CustomEvent('fundchamps:faq:toggle', { detail: { id: panel.id, open } })); } catch {}
+      }
+
+      buttons.forEach((btn, i) => {
+        btn.addEventListener('click', () => {
+          const isOpen = btn.getAttribute('aria-expanded') === 'true';
+          // close others
+          buttons.forEach(b => setOpen(b, b === btn ? !isOpen : false));
+          if (!isOpen) { try { btn.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} }
+        });
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+        });
+      });
+
+      // restore last open, else open first when scrolled into view
+      let restored = false;
+      try {
+        const id = sessionStorage.getItem(KEY);
+        if (id) {
+          const b = root.querySelector(`[aria-controls="${id}"]`);
+          if (b) { buttons.forEach(x => setOpen(x, x === b)); restored = true; }
+        }
+      } catch {}
+
+      if (!restored && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((ents) => {
+          if (ents.some(e => e.isIntersecting)) {
+            const first = buttons[0]; if (first && first.getAttribute('aria-expanded') !== 'true') setOpen(first, true);
+            io.disconnect();
+          }
+        }, { threshold: .15 });
+        io.observe(root);
+      }
+    })();
+  </script>
+
+  {# SEO: FAQPage — generated from items #}
+  <script type="application/ld+json" nonce="{{ NONCE }}">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {% for item in faqs %}
+      {
+        "@type": "Question",
+        "name": {{ item.q|tojson }},
+        "acceptedAnswer": { "@type": "Answer", "text": {{ item.a|tojson }} }
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+  </script>
+</section>
+

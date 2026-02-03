@@ -1,0 +1,416 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{# ===================== impact_action_rail_elite.html — Enterprise v1 (drop-in, CSP-safe) ===================== #}
+{# Single-file: markup + styles + JS. Flask/Jinja compatible. Honors NONCE or csp_nonce() callable. #}
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+
+{# -------------------- Inputs & sensible defaults -------------------- #}
+{% set TEAM_NAME      = TEAM_NAME if (TEAM_NAME is defined and TEAM_NAME) else (team.team_name if team is defined and team.team_name is defined else 'Connect ATX Elite') %}
+{% set GOAL           = (fundraising_goal if fundraising_goal is defined else GOAL if GOAL is defined else 50000)|int %}
+{% set RAISED         = (funds_raised if funds_raised is defined else RAISED if RAISED is defined else 21000)|int %}
+{% set CURRENCY       = CURRENCY if (CURRENCY is defined and CURRENCY) else (currency if currency is defined else 'USD') %}
+{% set LOCALE         = LOCALE if (LOCALE is defined and LOCALE) else (locale if locale is defined else 'en-US') %}
+{% set ACCENT         = ACCENT if (ACCENT is defined and ACCENT) else (team.theme_color if team is defined and team.theme_color is defined else '#facc15') %}
+{% set DONATE_URL     = (DONATE_URL if (DONATE_URL is defined and DONATE_URL) else (HREF_DONATE if HREF_DONATE is defined and HREF_DONATE else (stripe_payment_link if stripe_payment_link is defined and stripe_payment_link else (safe_url_for('main.donate') if (safe_url_for is defined and has_endpoint is defined and has_endpoint('main.donate')) else '/donate')))) %}
+{% set CHIPS          = CHIPS if (CHIPS is defined and CHIPS) else (quick_amounts if quick_amounts is defined and quick_amounts else [25,50,100]) %}
+{% set SHARE_URL      = share_url if share_url is defined else (request.url if request is defined else '') %}
+{% set ABOUT_HTML     = about_html if about_html is defined else '<b>Where it goes:</b> gym time, travel, and academic support.' %}
+{% set TOP_SPONSORS   = top_sponsors if top_sponsors is defined else [
+  {'name':'Nike', 'amount':3500, 'logo':'images/sponsors/nike.png'},
+  {'name':'Austin Eats', 'amount':2100, 'logo':'images/sponsors/austineats.png'},
+  {'name':'Community Bank', 'amount':1200, 'logo':'images/sponsors/communitybank.png'},
+] %}
+{% set RECENT_DONORS  = recent_donors if recent_donors is defined else [
+  {'name':'Sarah','amount':100,'ago':'2m'},
+  {'name':'James','amount':50,'ago':'8m'},
+  {'name':'Anonymous','amount':250,'ago':'23m'},
+] %}
+{% set PLATFORM_TAG   = platform_tagline|default('Back youth. Build future.', true) %}
+
+    <!-- SPONSORS + FEED -->
+    <aside class="momentum-card" role="complementary" aria-label="Sponsors and recent donors">
+      <div class="leaderboard-wrapper" aria-hidden="false">
+        <h3 class="momentum-title">🏆 Top Sponsors</h3>
+        <ul class="leaderboard" role="list">
+          {% for s in TOP_SPONSORS %}
+          <li role="listitem">
+            {% set logo_path = (s.logo if '://' in s.logo else (url_for('static', filename=s.logo, v='1') if url_for is defined else '/static/' ~ s.logo)) %}
+            <img src="{{ logo_path }}" alt="" aria-hidden="true">
+            <span class="sponsor-name">{{ s.name }}</span> <b>${{ '{:,}'.format(s.amount) }}</b>
+          </li>
+          {% endfor %}
+        </ul>
+        <a class="leaderboard-link" href="{{ url_for('main.sponsors') if url_for is defined and has_endpoint is defined and has_endpoint('main.sponsors') else '#' }}" role="link">View Full Leaderboard →</a>
+      </div>
+
+      <div class="donor-feed-wrapper" aria-hidden="false">
+        <h3 class="momentum-title">🎉 Recent Donors</h3>
+        <ul class="donor-feed" role="list" aria-live="polite">
+          {% for d in RECENT_DONORS %}
+          <li role="listitem">
+            <span class="bubble" aria-hidden="true">{{ d.name[:1] if d.name else '?' }}</span>
+            {{ d.name }} <b>${{ '{:,}'.format(d.amount) }}</b><small>{{ d.ago }}</small>
+          </li>
+          {% endfor %}
+        </ul>
+        <a class="donor-feed-link" href="{{ url_for('main.stats') if url_for is defined and has_endpoint is defined and has_endpoint('main.stats') else '#' }}" role="link">See All Donors →</a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- LIVE TICKER -->
+  <div class="impact-ticker" role="region" aria-label="Live donation updates">
+    <div id="ia-rail" class="ticker-rail" aria-hidden="false">
+      <span>🎉 Alex M. just donated $100 — 8 kids funded!</span>
+      <span>💪 Team Sponsor matched $500!</span>
+      <span>🏀 Anonymous backed $250 — travel covered!</span>
+    </div>
+    <button class="ticker-pause" aria-pressed="false" aria-label="Pause updates">❚❚</button>
+  </div>
+</section>
+
+{# -------------------- Styles -------------------- #}
+<style {{ nonce_attr() }}>
+/* Impact Action Rail — Enterprise v1 (compact, accessible, mobile-first) */
+#site-main[data-page="fundraiser"]{ --fcx-accent: {{ ACCENT }}; --bg: #07080b; --card-bg: rgba(255,255,255,0.02); --muted:#b9c2d0; }
+.fcx-impact-hub{ width:100%; box-sizing:border-box; padding: clamp(14px, 4vw, 36px); background: linear-gradient(180deg,#06070a,#050507); color:#eef3ff; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; border-top:1px solid rgba(255,255,255,0.02); }
+.hub-grid{ display:grid; grid-template-columns: 1fr; gap: 18px; max-width:1200px; margin-inline:auto; }
+@media(min-width:980px){ .hub-grid{ grid-template-columns: 1fr 420px; align-items:start } }
+
+.impact-card, .momentum-card{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); border-radius:14px; padding:18px; box-shadow: 0 12px 40px rgba(0,0,0,.55); }
+.eyebrow{ font-weight:900; opacity:.9; color:var(--fcx-accent); margin-bottom:.5rem }
+.title{ margin:0 0 .4rem; font-size:1.2rem; font-weight:900 }
+.team-name{ color:var(--fcx-accent) }
+.subtitle{ color:var(--muted); margin:0 0 .8rem; font-weight:700 }
+
+.impact-progress{ display:flex; gap:16px; align-items:center; margin-bottom:.8rem; flex-wrap:wrap }
+.ring{ width:120px; height:120px; position:relative; }
+.ring-svg{ width:100%; height:100%; position:absolute; inset:0; }
+.ring-bg{ stroke:#222; stroke-width:10; fill:none; opacity:.55; }
+.ring-fg{ stroke:var(--fcx-accent); stroke-width:10; fill:none; stroke-linecap:round; stroke-dasharray: 326.7256; stroke-dashoffset: 326.7256; transition: stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1) }
+.ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center }
+.ring-pct{ font-weight:900; font-size:1.4rem; color:var(--fcx-accent) }
+.ring-cap{ font-size:.85rem; color:var(--muted) }
+
+.impact-money{ font-weight:900; font-size:1.05rem; color:#fff; margin:0 }
+.sep{ margin:0 .4rem; color:var(--muted) }
+.impact-metric{ display:inline-block; background:#121213; padding:.35rem .6rem; border-radius:.45rem; color:#e9d991; font-weight:800; margin-top:.3rem }
+
+.impact-action{ margin-top: .9rem }
+.impact-title{ margin:0 0 .4rem; font-weight:900; font-size:1.05rem }
+.fcx-accent{ color:var(--fcx-accent) }
+
+.quick-donate{ display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem }
+.qd{ background:#111217; border:1px solid rgba(255,255,255,0.04); color:#fff; padding:.55rem .85rem; border-radius:.65rem; font-weight:900; cursor:pointer }
+.qd[aria-pressed="true"], .qd.active{ background:var(--fcx-accent); color:#071017; border-color:transparent }
+.row-lite{ display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:.6rem }
+.monthly{ color:var(--muted); font-weight:800; display:inline-flex; gap:.4rem; align-items:center }
+.share{ background:transparent; border:1px solid rgba(255,255,255,0.06); padding:.35rem .6rem; border-radius:.5rem; color:var(--fcx-accent); font-weight:900; cursor:pointer }
+
+.fcx-btn{ display:inline-flex; align-items:center; gap:.5rem; text-decoration:none; border-radius:999px; padding:.7rem 1rem; font-weight:900; border:1px solid rgba(0,0,0,0.12) }
+.fcx-btn-accent{ background: linear-gradient(180deg,#fffbe6,var(--fcx-accent)); color:#071017; box-shadow: 0 10px 28px rgba(0,0,0,0.25) }
+.donate-cta .ia-amt{ font-weight:900; margin-left:.45rem }
+
+.impact-hint{ margin-top:.6rem; color:var(--muted); font-weight:800 }
+
+.about-box{ margin-top:.8rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:.6rem; padding:.6rem .75rem }
+.about-title{ font-weight:900; font-size:.95rem; color:var(--fcx-accent); margin-bottom:.25rem }
+.about-body{ font-weight:700; color:#d8deee }
+
+.momentum-card .momentum-title{ margin:0 0 .75rem; font-weight:900; color:var(--fcx-accent) }
+.leaderboard, .donor-feed{ list-style:none; margin:0; padding:0; display:grid; gap:.55rem }
+.leaderboard li, .donor-feed li{ display:flex; align-items:center; gap:.6rem; background:rgba(255,255,255,0.02); padding:.5rem; border-radius:.6rem; font-weight:800 }
+.leaderboard li img{ width:28px; height:28px; border-radius:6px; object-fit:cover }
+.donor-feed .bubble{ width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--fcx-accent); color:#071017; font-weight:900 }
+.donor-feed small{ margin-left:auto; color:var(--muted) }
+
+.impact-ticker{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; background: linear-gradient(90deg,#0b0c10,#0a0a0c); padding:.6rem .8rem; border-radius:10px; border:1px solid rgba(255,255,255,0.03) }
+.ticker-rail{ display:flex; gap:1rem; white-space:nowrap; overflow:hidden; flex:1; transform: translateX(0); will-change: transform }
+.ticker-rail>span{ font-weight:900; opacity:.95; display:inline-block; padding-right:1rem }
+.ticker-pause{ background:transparent; border:1px solid rgba(255,255,255,0.04); padding:.25rem .5rem; border-radius:.45rem; color:var(--muted) }
+
+/* Responsive tweaks */
+@media(max-width:680px){
+  .hub-grid{ grid-template-columns: 1fr; }
+  .impact-progress{ justify-content:flex-start }
+  .ring{ width:96px; height:96px }
+  .impact-card, .momentum-card{ padding:14px }
+}
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .ring-fg{ transition:none !important }
+  .ticker-rail{ transition:none !important }
+}
+</style>
+
+<!-- ========== Elite Enhancements ========== -->
+<style {{ nonce_attr() }}>
+.fcx-impact-hub { box-shadow: 0 2px 32px 0 rgba(42,39,99,0.10), 0 1.5px 0 0 var(--fcx-accent, #facc15); border-top: 2.5px solid var(--fcx-accent, #facc15); }
+@media (min-width: 980px) { .fcx-impact-hub .impact-card { border-top-right-radius: 28px; } .fcx-impact-hub .momentum-card { border-bottom-left-radius: 28px; } }
+.impact-card, .momentum-card { transition: box-shadow .24s cubic-bezier(.22,.7,.37,1), border .24s; }
+.impact-card:focus-within, .momentum-card:focus-within { box-shadow: 0 0 0 2px var(--fcx-accent, #facc15), 0 10px 40px rgba(0,0,0,0.26); outline: none; }
+.hub-grid { transition: gap .2s cubic-bezier(.42,0,.58,1); }
+.fcx-impact-hub .title { font-size: 1.38rem; line-height: 1.18; letter-spacing: -.01em; }
+.fcx-impact-hub .impact-title { font-size: 1.09rem; margin-top: .1rem; }
+.fcx-impact-hub .ring { background: radial-gradient(circle at 55% 60%, rgba(255, 255, 250, 0.07) 60%, transparent 100%); box-shadow: 0 3px 14px rgba(255,239,155,0.04); }
+.fcx-impact-hub .ring-pct { font-size: 1.65rem; text-shadow: 0 1.5px 0 #fffde3, 0 2.5px 18px var(--fcx-accent, #facc15, .12); }
+.fcx-impact-hub .ring-fg { filter: drop-shadow(0 0 4px var(--fcx-accent, #facc15)); }
+.fcx-impact-hub .impact-money { font-size: 1.17rem; letter-spacing: -.015em; }
+.fcx-impact-hub .qd, .fcx-impact-hub .qd[aria-pressed="true"], .fcx-impact-hub .qd.active { transition: background .18s, color .18s, box-shadow .19s; }
+.fcx-impact-hub .qd.active, .fcx-impact-hub .qd[aria-pressed="true"] { box-shadow: 0 2.5px 14px 0 var(--fcx-accent, #facc15, .19); }
+.fcx-impact-hub .fcx-btn-accent.donate-cta { background: linear-gradient(92deg,#fffde6 0%,var(--fcx-accent, #facc15) 88%); border-width: 2px; font-size: 1.13rem; letter-spacing: .01em; transition: filter .16s cubic-bezier(.45,0,.65,1); filter: drop-shadow(0 2.5px 22px #fae88d80); }
+.fcx-impact-hub .fcx-btn-accent.donate-cta:hover, .fcx-impact-hub .fcx-btn-accent.donate-cta:focus-visible { filter: brightness(1.04) drop-shadow(0 2.5px 22px #facc15cc); outline: none; }
+.fcx-impact-hub .leaderboard li, .fcx-impact-hub .donor-feed li { border: 1.5px solid rgba(255,255,255,0.055); box-shadow: 0 1.5px 8px 0 rgba(246, 213, 84, 0.05); transition: border .13s, box-shadow .15s; }
+.fcx-impact-hub .leaderboard li:hover, .fcx-impact-hub .donor-feed li:hover { border: 1.5px solid var(--fcx-accent, #facc15); box-shadow: 0 2.5px 22px -8px var(--fcx-accent, #facc15, .13); }
+.fcx-impact-hub .leaderboard li img { background: #fff8c8; border: 2.5px solid var(--fcx-accent, #facc15); }
+.fcx-impact-hub .donor-feed .bubble { background: linear-gradient(120deg,var(--fcx-accent, #facc15) 60%,#fef9c3 100%); color: #0b0b0b; border: 1.5px solid #fffde6; box-shadow: 0 1.5px 6px #facc1565; }
+.fcx-impact-hub .impact-ticker { font-size: 1.09rem; border-radius: 11px; background: linear-gradient(90deg,#18181c,#100f0a 80%); border: 2px solid var(--fcx-accent, #facc15); box-shadow: 0 2px 14px 0 var(--fcx-accent, #facc15, .10); margin-bottom: 2px; }
+.fcx-impact-hub .ticker-rail>span { color: var(--fcx-accent, #facc15); text-shadow: 0 1.5px 0 #fff8cc90; letter-spacing: .01em; }
+.fcx-impact-hub .ticker-pause { background: #0e0d08; color: var(--fcx-accent, #facc15); border: 2px solid var(--fcx-accent, #facc15); font-weight: 900; transition: background .17s, color .17s; }
+.fcx-impact-hub .ticker-pause[aria-pressed="true"] { background: #fcf3a5; color: #1a1406; }
+.fcx-impact-hub .momentum-title { letter-spacing: .02em; text-transform: uppercase; font-size: .98rem; color: var(--fcx-accent, #facc15); margin-bottom: .49rem; }
+.fcx-impact-hub .leaderboard-link, .fcx-impact-hub .donor-feed-link { color: var(--fcx-accent, #facc15); text-decoration: underline; font-weight: 900; font-size: .93rem; margin-top: .25rem; display: inline-block; }
+.fcx-impact-hub .impact-hint { color: #ffe97b; font-size: .97rem; font-weight: 900; margin-top: .9rem; text-shadow: 0 1.5px 0 #fff6bb30; }
+</style>
+
+{# -------------------- UX/Analytics micro feedback (CSP-safe) -------------------- #}
+<script {{ nonce_attr() }}>
+(function () {
+  'use strict';
+  const root = document.getElementById('ia-root');
+  if (!root) return;
+  const cta = root.querySelector('.donate-cta');
+  const shareBtn = root.querySelector('[data-share]');
+  // Donate feedback toast
+  if (cta) {
+    cta.addEventListener('click', function() {
+      try {
+        const ann = document.createElement('div');
+        ann.className = 'fcx-ann';
+        ann.textContent = '💛 Thank you for supporting youth!';
+        Object.assign(ann.style, { position:'fixed', left:'50%', top:'12%', transform:'translate(-50%,0)', background:'#111217', color:'var(--fcx-accent, #facc15)', border:'2px solid var(--fcx-accent, #facc15)', borderRadius:'16px', fontWeight:'900', fontSize:'1.18rem', zIndex:'9999', padding:'18px 36px', boxShadow:'0 6px 32px #facc1585', pointerEvents:'none', opacity:'0' });
+        document.body.appendChild(ann);
+        requestAnimationFrame(()=>{ ann.style.opacity='1'; });
+        setTimeout(()=>{ ann.style.opacity='0'; setTimeout(()=>ann.remove(), 750); }, 2200);
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({event:'donate_click', ts:Date.now(), src:'impact-rail'});
+      } catch(e){}
+    }, { passive:true });
+  }
+  // Share feedback + haptic
+  if (shareBtn) {
+    shareBtn.addEventListener('click', function() {
+      if (window.navigator?.vibrate) window.navigator.vibrate([18,38,18]);
+      const ann = document.createElement('div');
+      ann.textContent = '🔗 Share link ready!';
+      Object.assign(ann.style, { position:'fixed', left:'50%', top:'12%', transform:'translate(-50%,0)', background:'#18181c', color:'var(--fcx-accent, #facc15)', border:'2px solid var(--fcx-accent, #facc15)', borderRadius:'16px', fontWeight:'900', fontSize:'1.12rem', zIndex:'9999', padding:'14px 30px', boxShadow:'0 4px 18px #facc1575', pointerEvents:'none', opacity:'0' });
+      document.body.appendChild(ann);
+      requestAnimationFrame(()=>{ ann.style.opacity='1'; });
+      setTimeout(()=>{ ann.style.opacity='0'; setTimeout(()=>ann.remove(), 600); }, 1200);
+    }, { passive:true });
+  }
+})();
+</script>
+
+{# -------------------- Core behavior (CSP-safe) -------------------- #}
+<script {{ nonce_attr() }}>
+(function () {
+  'use strict';
+  const root = document.getElementById('ia-root');
+  if (!root || window.__FC_IMPACT__) return; window.__FC_IMPACT__ = true;
+
+  // Helpers
+  const $ = (s, r = root) => r.querySelector(s);
+  const $$ = (s, r = root) => Array.from((r || document).querySelectorAll(s));
+  const num = v => Number(v || 0);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const fmt = (n, locale = root.dataset.locale || 'en-US', curr = root.dataset.currency || 'USD') => {
+    try { return new Intl.NumberFormat(locale, { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(n); }
+    catch (e) { return '$' + Math.round(n).toLocaleString(); }
+  };
+
+  // Elements
+  const ringFG = $('.ring-fg');
+  const pctEl = $('#ia-pct');
+  const raisedEl = $('#ia-raised');
+  const goalEl = $('#ia-goal');
+  const gapEl = $('#ia-gap');
+  const chips = $$('.qd');
+  const monthly = $('#ia-monthly');
+  const cta = $('#ia-cta');
+  const amtSpan = cta?.querySelector('.ia-amt') || null;
+  const railWrap = document.querySelector('.impact-ticker');
+  const rail = $('#ia-rail');
+  const pauseBtn = railWrap?.querySelector('.ticker-pause') || root.querySelector('.ticker-pause');
+
+  // Data
+  const GOAL = Math.max(1, num(root.dataset.goal || root.getAttribute('data-goal') || {{ GOAL }}));
+  const RAISED = Math.max(0, num(root.dataset.raised || root.getAttribute('data-raised') || {{ RAISED }}));
+  const BASE_DONATE = root.dataset.donateUrl || root.getAttribute('data-donate-url') || '{{ DONATE_URL|e }}';
+  const TEAM = root.dataset.team || '';
+
+  // Init numbers
+  raisedEl.textContent = fmt(RAISED);
+  goalEl.textContent = fmt(GOAL);
+
+  // Ring math
+  const R = 52;
+  const circumference = 2 * Math.PI * R;
+  if (ringFG) {
+    ringFG.style.strokeDasharray = String(circumference);
+    ringFG.style.strokeDashoffset = String(circumference);
+  }
+
+  const targetPct = clamp(Math.round((RAISED / GOAL) * 100), 0, 100);
+  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function setRing(p) {
+    if (!ringFG) return;
+    const off = circumference - (circumference * (p / 100));
+    ringFG.style.strokeDashoffset = String(off);
+    pctEl && (pctEl.textContent = p + '%');
+  }
+
+  if (prefersReduced) setRing(targetPct);
+  else {
+    let p = 0;
+    const step = () => {
+      p = Math.min(targetPct, p + Math.max(1, Math.round(targetPct / 20)));
+      setRing(p);
+      if (p < targetPct) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // Gap text
+  const remaining = Math.max(0, GOAL - RAISED);
+  gapEl.textContent = remaining> 0 ? `Only ${fmt(remaining)} to go!` : 'Goal reached — thank you!';
+
+  // Build donate URL helper
+  function buildDonateURL(amount, monthlyFlag) {
+    try {
+      const u = new URL(BASE_DONATE, location.origin);
+      if (TEAM) u.searchParams.set('team', TEAM);
+      if (amount) u.searchParams.set('amount', String(Math.max(1, Math.round(amount))));
+      if (monthlyFlag) u.searchParams.set('interval', 'month');
+      u.searchParams.set('utm_source', 'site');
+      u.searchParams.set('utm_medium', 'impact-rail');
+      return u.toString();
+    } catch (e) {
+      return BASE_DONATE;
+    }
+  }
+
+  // CTA state
+  let selectedAmt = null;
+  let monthlyFlag = false;
+  function updateCTA() {
+    if (!cta) return;
+    cta.href = buildDonateURL(selectedAmt, monthlyFlag);
+    if (amtSpan) amtSpan.textContent = selectedAmt ? ' ' + fmt(selectedAmt) : '';
+  }
+
+  // Chips
+  chips.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const amt = num(btn.dataset.amt);
+      selectedAmt = amt || selectedAmt;
+      chips.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
+      updateCTA();
+      window.dispatchEvent(new CustomEvent('fc:donate:prefill', { detail: { amount: selectedAmt, source: 'impact-rail' } }));
+    }, { passive: true });
+  });
+
+  monthly && monthly.addEventListener('change', () => { monthlyFlag = !!monthly.checked; updateCTA(); }, { passive: true });
+
+  // Ticker behavior — seamless loop (duplicate for continuous scroll)
+  if (rail && railWrap) {
+    // duplicate rail for looping
+    try {
+      const clone = rail.cloneNode(true);
+      clone.classList.add('ticker-rail--clone');
+      railWrap.insertBefore(clone, pauseBtn);
+    } catch (e) { /* fail gracefully */ }
+
+    let paused = false;
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', ()=> {
+        paused = !paused;
+        pauseBtn.setAttribute('aria-pressed', String(paused));
+      }, { passive:true });
+      railWrap.addEventListener('mouseenter', ()=> paused = true, { passive:true });
+      railWrap.addEventListener('mouseleave', ()=> paused = false, { passive:true });
+    }
+
+    if (!prefersReduced) {
+      let x = 0;
+      const speed = 0.45; // px/frame
+      const width = () => rail.scrollWidth || 1;
+      const loop = () => {
+        if (!paused) {
+          x -= speed;
+          const w = width();
+          if (Math.abs(x)>= w) x = 0;
+          railWrap.querySelectorAll('.ticker-rail').forEach(el => el.style.transform = `translateX(${x}px)`);
+        }
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }
+  }
+
+  // External refresh API for sockets
+  window.fcxImpactRefresh = function (opts) {
+    try {
+      if (!opts) return;
+      if (opts.raised != null) {
+        const newRaised = Math.max(0, Number(opts.raised));
+        raisedEl.textContent = fmt(newRaised);
+        const newPct = clamp(Math.round((newRaised / GOAL) * 100), 0, 100);
+        setRing(newPct);
+        gapEl.textContent = Math.max(0, GOAL - newRaised)> 0 ? `Only ${fmt(Math.max(0, GOAL - newRaised))} to go!` : 'Goal reached — thank you!';
+      }
+      if (opts.goal != null) {
+        const newGoal = Math.max(1, Number(opts.goal));
+        goalEl.textContent = fmt(newGoal);
+      }
+      if (opts.prefill) {
+        const ev = new CustomEvent('fc:donate:prefill', { detail: { amount: Number(opts.prefill), source: 'fcxImpactRefresh' }});
+        window.dispatchEvent(ev);
+      }
+      if (opts.ticker) {
+        // add new ticker message at front
+        try {
+          const railEl = document.getElementById('ia-rail');
+          if (railEl && typeof opts.ticker === 'string') {
+            const span = document.createElement('span');
+            span.textContent = opts.ticker;
+            railEl.prepend(span);
+          }
+        } catch(e){}
+      }
+    } catch (e) { /* ignore */ }
+  };
+
+  // initial CTA
+  updateCTA();
+})();
+</script>
+

@@ -1,0 +1,446 @@
+{# ================================
+  Newsletter Modal — SV-ELITE (v3.0 “smarter”)
+  - CSP-safe (nonce), a11y-first, motion/contrast safe
+  - Triggers: timed, exit-intent, scroll%, hash, [data-open-newsletter]
+  - Cooldown: per-session + N-day cooldown (configurable)
+  - Bot guards: honeypot + min dwell
+  - Offline queue + retry
+  - Optional POST endpoint: set newsletter_action in context
+================================ #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set TEAM_NAME = (team.team_name if team and team.team_name else 'Connect ATX Elite') %}
+{% set NEWSLETTER_ACTION = newsletter_action if newsletter_action is defined and newsletter_action else None %}
+
+<dialog
+  id="newsletter-modal"
+  class="fixed inset-0 z-[12000] hidden items-center justify-center bg-black/80 backdrop-blur-lg opacity-0 pointer-events-none transition-opacity duration-300"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="newsletter-title"
+  aria-describedby="newsletter-desc"
+  tabindex="-1"
+  data-action="{{ NEWSLETTER_ACTION or '' }}"
+  data-delay="10"                 {# seconds before timed open #}
+  data-scroll="60"                {# % scrolled to trigger #}
+  data-exit-intent="1"            {# enable exit-intent #}
+  data-cooldown-days="7"          {# days between prompts #}
+  data-min-dwell-ms="3500"        {# min time on page before submit valid #}
+>
+  <div
+    id="newsletter-box"
+    class="relative w-[min(92vw,28rem)] rounded-3xl bg-zinc-900 p-6 sm:p-8 text-center font-geist text-yellow-100 shadow-2xl ring-4 ring-amber-400/40 ring-offset-4 ring-offset-zinc-900 opacity-0 scale-95 transition-transform duration-200 ease-out"
+    role="document"
+    tabindex="0"
+  >
+    <!-- Close -->
+    <button
+      id="newsletter-close"
+      aria-label="Close newsletter signup"
+      class="absolute top-3 right-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-yellow-200 hover:bg-black/60 hover:text-yellow-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-yellow-300"
+      type="button"
+      data-newsletter-close
+    >
+      <span aria-hidden="true" class="text-3xl select-none">&times;</span>
+    </button>
+
+    <!-- Animated Basketball -->
+    <div class="mx-auto mb-5 flex justify-center cursor-pointer select-none" tabindex="0" role="img" aria-label="Spinning basketball icon" id="newsletter-ball">
+      <svg viewBox="0 0 48 48" fill="none" class="h-16 w-16 animate-spin-slow" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" fill="#FBBF24" stroke="#F59E0B" stroke-width="3"/>
+        <path d="M24 2v44M2 24h44" stroke="#78350F" stroke-width="2"/>
+        <path d="M10 10c9 9 19 29 28 28M38 10C29 19 9 29 10 38" stroke="#92400E" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <!-- Headline -->
+    <h2 id="newsletter-title" class="mb-2 flex flex-col items-center gap-1 text-3xl font-extrabold tracking-tight text-yellow-300 relative group">
+      Stay in the Loop with
+      <span class="text-amber-400" aria-live="polite">{{ TEAM_NAME }}</span>
+      <span class="pointer-events-none absolute left-1/2 top-full mt-1 block max-w-xs -translate-x-1/2 rounded bg-yellow-900/90 px-2 py-1 text-xs font-normal text-amber-200 opacity-0 transition-opacity group-hover:opacity-100" role="tooltip">
+        Get exclusive updates &amp; help our team shine! ✨
+      </span>
+    </h2>
+
+    <p class="mx-auto mb-6 max-w-[90%] text-base opacity-90">
+      Get <strong class="font-bold text-yellow-200">exclusive updates, game invites</strong> and ways to help
+      <strong>{{ TEAM_NAME }}</strong> shine.<br />
+      <span class="font-semibold text-yellow-200">One email a month, no spam.</span>
+    </p>
+
+    <!-- Form -->
+    <form
+      id="newsletter-form"
+      novalidate
+      autocomplete="off"
+      role="form"
+      aria-live="polite"
+      aria-atomic="true"
+      {% if NEWSLETTER_ACTION %}action="{{ NEWSLETTER_ACTION }}"{% endif %}
+      method="post"
+    >
+      <span id="newsletter-desc" class="sr-only">Enter your email to subscribe. Optional: invite a friend.</span>
+
+      {# Honeypot (bot trap) #}
+      <div class="sr-only" aria-hidden="true">
+        <label for="newsletter-company">Company</label>
+        <input id="newsletter-company" name="company" type="text" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="relative mx-auto flex w-[90%] items-center justify-center">
+        <input
+          id="newsletter-email" name="email" type="email" placeholder="your@email.com" required
+          autocomplete="email" inputmode="email"
+          class="peer w-full rounded-full bg-yellow-50 py-3 px-5 text-zinc-900 shadow-sm opacity-90 outline-none transition focus:ring-2 focus:ring-yellow-300"
+          aria-describedby="email-error email-suggestion" aria-required="true" aria-invalid="false"
+        />
+        <span class="absolute right-5 top-1/2 -translate-y-1/2 select-none text-2xl text-yellow-400 peer-focus:text-amber-500" aria-hidden="true">🏀</span>
+      </div>
+
+      <!-- Domain suggestion (email typo helper) -->
+      <p id="email-suggestion" class="mt-2 min-h-[1.25rem] text-sm text-yellow-200/90"></p>
+
+      <!-- Invite a friend (optional) -->
+      <input
+        id="newsletter-invite" name="invite" type="email" placeholder="Friend’s email (optional)"
+        class="mt-3 w-[90%] rounded-full bg-yellow-50 py-2 px-5 text-zinc-900 opacity-80 shadow-sm" inputmode="email"
+        aria-label="Invite a friend"
+      />
+
+      <!-- Hidden context (utm/referrer/page) -->
+      <input type="hidden" name="source_url" id="nl-source-url" />
+      <input type="hidden" name="referrer" id="nl-referrer" />
+      <input type="hidden" name="utm" id="nl-utm" />
+
+      <!-- Error -->
+      <p id="email-error" class="mt-2 min-h-[1.25rem] text-sm font-bold text-red-600 sr-only" role="alert" aria-live="assertive"></p>
+
+      <!-- Submit -->
+      <button
+        type="submit" id="newsletter-submit"
+        class="mt-6 relative overflow-hidden rounded-full bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 px-10 py-3 font-bold text-zinc-900 shadow-lg transition-all duration-300 ease-in-out focus-visible:ring-4 focus-visible:ring-yellow-400 active:scale-95"
+        aria-live="polite"
+      >
+        Subscribe
+        <span id="swish-confetti" class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none text-3xl opacity-0 transition-opacity duration-700" aria-hidden="true">🏆🎉</span>
+      </button>
+
+      <!-- Thank you -->
+      <p id="newsletter-thankyou" aria-live="polite" class="mt-6 hidden select-none text-lg font-semibold tracking-wide text-cyan-400">
+        Swish! Never miss an invite—welcome to the fam!
+      </p>
+
+      <!-- Opt-out -->
+      <button id="newsletter-nothanks" type="button" class="mt-4 mx-auto block select-none text-sm text-yellow-300 hover:underline focus:underline focus:outline-none" data-newsletter-close>
+        No thanks, maybe later
+      </button>
+
+      <!-- Tiny compliance note -->
+      <p class="mt-3 text-[11px] text-zinc-400/80">
+        By subscribing you agree to receive emails from {{ TEAM_NAME }}. Unsubscribe anytime.
+      </p>
+    </form>
+  </div>
+</dialog>
+
+<style nonce="{{ NONCE }}">
+  #newsletter-modal::backdrop { background: transparent; }
+  #newsletter-modal:not(.hidden){ opacity:1; pointer-events:auto; }
+  .animate-spin-slow { animation: spin 3.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ripple-effect { position:absolute; border-radius:50%; transform:scale(0); animation:ripple 600ms linear forwards; pointer-events:none; background:color-mix(in srgb, var(--fc-brand,#facc15) 55%, transparent); }
+  @keyframes ripple { to { transform:scale(4); opacity:0; } }
+  .bounce-temp { animation:bounce 600ms ease forwards; }
+  @keyframes bounce { 50% { transform: translateY(-10%); } }
+
+  /* High-contrast assist */
+  @media (prefers-contrast: more){
+    #newsletter-box { box-shadow: 0 0 0 3px rgba(255,255,255,.35), 0 0 0 6px rgba(250,204,21,.35); }
+    #newsletter-submit { text-decoration: underline; }
+  }
+
+  @media (prefers-reduced-motion: reduce){ .animate-spin-slow{animation:none}.bounce-temp{animation:none} }
+</style>
+
+<script nonce="{{ NONCE }}">
+(() => {
+  const modal   = document.getElementById('newsletter-modal');
+  const box     = document.getElementById('newsletter-box');
+  const form    = document.getElementById('newsletter-form');
+  const email   = document.getElementById('newsletter-email');
+  const invite  = document.getElementById('newsletter-invite');
+  const errEl   = document.getElementById('email-error');
+  const suggest = document.getElementById('email-suggestion');
+  const thanks  = document.getElementById('newsletter-thankyou');
+  const confEmo = document.getElementById('swish-confetti');
+  const submitB = document.getElementById('newsletter-submit');
+  const ball    = document.getElementById('newsletter-ball');
+  const action  = (modal?.dataset?.action || '').trim();
+  const hp      = document.getElementById('newsletter-company');
+
+  // Triggers / gating
+  const DELAY_SEC      = parseInt(modal.dataset.delay || '10', 10);
+  const SCROLL_PCT     = parseInt(modal.dataset.scroll || '0', 10);
+  const EXIT_INTENT    = (modal.dataset.exitIntent || modal.dataset.exit_intent || '0') === '1';
+  const COOLDOWN_DAYS  = parseInt(modal.dataset.cooldownDays || '7', 10);
+  const MIN_DWELL_MS   = parseInt(modal.dataset.minDwellMs || '3500', 10);
+
+  const nowTs   = () => Date.now();
+  const coolKey = 'fc_nl_last';
+  const optKey  = 'fc_nl_optout';
+  const subKey  = 'fc_nl_subscribed';
+  const seenKey = 'fc_nl_shown_session';
+
+  let openedAt = 0;
+  let lastFocus = null, debounceId = null;
+  const startedAt = nowTs();
+
+  // Telemetry (privacy-friendly)
+  const sendBeacon = (name, payload={}) => {
+    try {
+      const blob = new Blob([JSON.stringify({name, at:nowTs(), ...payload})], {type:'application/json'});
+      navigator.sendBeacon?.('/metrics/newsletter', blob);
+    } catch {}
+  };
+
+  // Email helpers
+  const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'').trim());
+  const COMMON = ['gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','aol.com','live.com','msn.com','proton.me','protonmail.com'];
+  const ldist = (a,b) => { // tiny Levenshtein (domain only)
+    a=String(a||''); b=String(b||''); const m=a.length,n=b.length; const dp=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+    for(let j=1;j<=n;j++) dp[0][j]=j;
+    for(let i=1;i<=m;i++){ for(let j=1;j<=n;j++){ dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); } }
+    return dp[m][n];
+  };
+  function domainSuggestion(addr){
+    const parts = String(addr||'').split('@'); if(parts.length!==2) return null;
+    const dom = parts[1].toLowerCase();
+    let best = null, dmin = 99;
+    for(const cand of COMMON){ const d = ldist(dom, cand); if (d < dmin){ dmin=d; best=cand; } }
+    return (best && dmin>0 && dmin<=2) ? (parts[0] + '@' + best) : null;
+  }
+
+  // Offline queue
+  const qkey='fcNewsletterQueue';
+  const enqueue = (obj) => {
+    try {
+      const q = JSON.parse(localStorage.getItem(qkey)||'[]'); q.push(obj);
+      localStorage.setItem(qkey, JSON.stringify(q));
+    } catch {}
+  };
+  const flushQueue = async () => {
+    try {
+      const q = JSON.parse(localStorage.getItem(qkey)||'[]'); if(!q.length) return;
+      const next = q.shift();
+      const ok = await postJSON(next);
+      if (ok){ localStorage.setItem(qkey, JSON.stringify(q)); if(q.length) setTimeout(flushQueue, 500); }
+    } catch {}
+  };
+  addEventListener('online', flushQueue, {passive:true});
+
+  // Programmatic API
+  const API = {
+    open: () => openModal(true),
+    close: () => closeModal(),
+    update: (opts={}) => {
+      if ('delay' in opts) modal.dataset.delay = String(opts.delay);
+      if ('scroll' in opts) modal.dataset.scroll = String(opts.scroll);
+      if ('exitIntent' in opts) modal.dataset.exitIntent = opts.exitIntent ? '1':'0';
+      if ('cooldownDays' in opts) modal.dataset.cooldownDays = String(opts.cooldownDays);
+    }
+  };
+  try { window.fcNewsletter = Object.assign({}, window.fcNewsletter||{}, API); } catch {}
+
+  // Open/close
+  function openModal(manual=false){
+    if (modal.classList.contains('flex')) return; // already open
+    lastFocus = document.activeElement;
+    modal.classList.remove('hidden');
+    modal.showModal?.();
+    requestAnimationFrame(() => { modal.classList.add('flex'); modal.style.opacity = '1'; box.style.opacity = '1'; box.style.transform = 'scale(1)'; });
+    document.documentElement.style.overflow = 'hidden';
+    email?.focus(); modal.setAttribute('aria-hidden','false');
+    openedAt = nowTs();
+    try { sessionStorage.setItem(seenKey,'1'); localStorage.setItem(coolKey,String(nowTs())); } catch {}
+    sendBeacon('open', { manual });
+    try { dispatchEvent(new CustomEvent('fc:newsletter:open', { detail:{ manual } })); } catch {}
+  }
+  function closeModal(){
+    box.style.opacity = '0'; box.style.transform = 'scale(0.95)'; modal.style.opacity = '0';
+    setTimeout(() => {
+      modal.close?.(); modal.classList.add('hidden'); modal.classList.remove('flex');
+      document.documentElement.style.overflow = '';
+      form?.reset(); thanks?.classList.add('hidden');
+      errEl.textContent=''; errEl.classList.add('sr-only'); email?.setAttribute('aria-invalid','false');
+      confEmo.style.opacity = 0; modal.setAttribute('aria-hidden','true'); lastFocus && lastFocus.focus?.();
+      try { dispatchEvent(new CustomEvent('fc:newsletter:close')); } catch {}
+    }, 180);
+  }
+
+  // Trigger gating
+  function eligible(){
+    try {
+      if (localStorage.getItem(subKey)==='1') return false;        // already subscribed
+      if (sessionStorage.getItem(seenKey)==='1') return false;     // shown this tab
+      if (localStorage.getItem(optKey)==='1') return false;        // opted out
+      const last = parseInt(localStorage.getItem(coolKey)||'0',10);
+      if (last && (nowTs()-last) < COOLDOWN_DAYS*86400000) return false;
+    } catch {}
+    return true;
+  }
+
+  // Timed
+  try {
+    if (eligible() && DELAY_SEC>0){
+      setTimeout(() => { if(eligible()) openModal(false); }, DELAY_SEC*1000);
+    }
+  } catch {}
+
+  // Hash / buttons
+  const tryHashOpen = () => { if (location.hash.replace('#','') === 'newsletter') openModal(true); };
+  addEventListener('hashchange', tryHashOpen, {passive:true}); tryHashOpen();
+  addEventListener('click', (e) => {
+    const openEl = e.target.closest('[data-open-newsletter]');
+    const closeEl = e.target.closest('[data-newsletter-close]');
+    if (openEl){ e.preventDefault(); openModal(true); }
+    if (closeEl){ e.preventDefault(); try{localStorage.setItem(optKey,'1');}catch{} closeModal(); }
+  }, {passive:false});
+
+  // Scroll trigger
+  if (SCROLL_PCT>0){
+    const onScroll = () => {
+      const pct = (window.scrollY / Math.max(1, document.body.scrollHeight - innerHeight))*100;
+      if (pct >= SCROLL_PCT && eligible()){ openModal(false); removeEventListener('scroll', onScroll); }
+    };
+    addEventListener('scroll', onScroll, {passive:true});
+  }
+
+  // Exit intent
+  if (EXIT_INTENT){
+    const onLeave = (e) => {
+      if (e.clientY <= 0 && eligible()) { openModal(false); removeEventListener('mouseout', onLeave); }
+    };
+    addEventListener('mouseout', onLeave, {passive:true});
+  }
+
+  // Backdrop click & Esc
+  modal?.addEventListener('click', (e)=>{ if (e.target === modal) closeModal(); });
+  addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+
+  // Focus trap
+  modal?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const f = modal.querySelectorAll('a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+    if (!f.length) return; const first = f[0], last = f[f.length-1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  });
+
+  // Live validation + suggestion (debounced)
+  email?.addEventListener('input', () => {
+    clearTimeout(debounceId);
+    debounceId = setTimeout(() => {
+      const v = email.value.trim();
+      const hint = domainSuggestion(v);
+      suggest.textContent = hint && isEmail(hint) ? `Did you mean ${hint}? Click to fix.` : '';
+      suggest.onclick = hint ? () => { email.value = hint; suggest.textContent=''; email.dispatchEvent(new Event('input')); } : null;
+
+      if (!v){ errEl.textContent=''; errEl.classList.add('sr-only'); email.setAttribute('aria-invalid','false'); return; }
+      if (!isEmail(v)){ errEl.textContent='Please enter a valid email address.'; errEl.classList.remove('sr-only'); email.setAttribute('aria-invalid','true'); }
+      else { errEl.textContent=''; errEl.classList.add('sr-only'); email.setAttribute('aria-invalid','false'); }
+    }, 180);
+  });
+
+  // Ripple & fun ball bounce
+  submitB?.addEventListener('click', (e) => {
+    const r = document.createElement('span'); r.className='ripple-effect';
+    const rect = submitB.getBoundingClientRect(); const x = (e.clientX|| (rect.left+rect.width/2)) - rect.left; const y = (e.clientY|| (rect.top+rect.height/2)) - rect.top;
+    r.style.left = x+'px'; r.style.top = y+'px'; submitB.appendChild(r); setTimeout(()=>r.remove(), 650);
+  });
+  const bounce = () => { ball.classList.add('bounce-temp'); setTimeout(()=>ball.classList.remove('bounce-temp'), 600); };
+  ball?.addEventListener('click', bounce);
+  ball?.addEventListener('keydown', (e)=>{ if (e.key==='Enter'||e.key===' ') { e.preventDefault(); bounce(); } });
+
+  // Confetti
+  function confettiBurst(originY = 0.5){
+    try { window.confetti?.({ particleCount: 80, spread: 70, origin: { y: originY } }); } catch {}
+    confEmo.style.opacity = 1; setTimeout(()=> confEmo.style.opacity = 0, 900);
+  }
+
+  // Context fields (utm/referrer/page)
+  try {
+    document.getElementById('nl-source-url').value = location.href;
+    document.getElementById('nl-referrer').value = document.referrer || '';
+    const params = new URLSearchParams(location.search); const utm = {};
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(k => { if (params.get(k)) utm[k]=params.get(k); });
+    document.getElementById('nl-utm').value = JSON.stringify(utm);
+  } catch {}
+
+  async function postJSON(payload){
+    if (!action) return false;
+    try {
+      const res = await fetch(action, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(payload) });
+      return res.ok;
+    } catch { return false; }
+  }
+
+  function maskedEmailHash(eVal){
+    try {
+      // super lightweight hash surrogate (not cryptographic)
+      let h=0; for (let i=0;i<eVal.length;i++){ h=(h*31 + eVal.charCodeAt(i))>>>0; }
+      return 'h'+h.toString(16);
+    } catch { return 'h0'; }
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const eVal = email.value.trim(), iVal = (invite.value||'').trim();
+    const dwell = nowTs() - startedAt;
+
+    // Bot & validity checks
+    if (hp && hp.value){ return closeModal(); }                 // honeypot: silently drop
+    if (dwell < MIN_DWELL_MS){ errEl.textContent='Please take a moment and try again.'; errEl.classList.remove('sr-only'); return; }
+    if (!isEmail(eVal)){
+      errEl.textContent='Please enter a valid email address.'; errEl.classList.remove('sr-only'); email.setAttribute('aria-invalid','true');
+      box.classList.add('ring-red-400'); setTimeout(()=>box.classList.remove('ring-red-400'), 600);
+      return;
+    }
+
+    errEl.textContent=''; errEl.classList.add('sr-only');
+    submitB.classList.add('opacity-60','pointer-events-none'); email.disabled = true; invite.disabled = true;
+
+    const payload = {
+      email: eVal, invite: iVal || undefined,
+      source_url: document.getElementById('nl-source-url')?.value || '',
+      referrer: document.getElementById('nl-referrer')?.value || '',
+      utm: (()=>{ try { return JSON.parse(document.getElementById('nl-utm').value||'{}'); } catch { return {}; } })(),
+      t_opened: openedAt || null,
+      t_submitted: nowTs()
+    };
+
+    let ok = false;
+    if (navigator.onLine){
+      ok = await postJSON(payload);
+      if (!ok && !action){
+        try { location.href = `mailto:news@connectatx.org?subject=Newsletter%20Subscribe&body=${encodeURIComponent(eVal)}${iVal? '%0AInvite:%20'+encodeURIComponent(iVal):''}`; ok = true; } catch {}
+      }
+    } else {
+      enqueue(payload); ok = true; // queued for retry
+    }
+
+    if (ok){
+      thanks.classList.remove('hidden'); confettiBurst(0.5);
+      sendBeacon('subscribed', { email_hash: maskedEmailHash(eVal) });
+      try { localStorage.setItem(subKey,'1'); } catch {}
+      try { dispatchEvent(new CustomEvent('fc:newsletter:subscribed', { detail:{ email_hash: maskedEmailHash(eVal) } })); } catch {}
+      setTimeout(closeModal, 1400);
+    } else {
+      errEl.textContent='Something went wrong. Please try again in a moment.'; errEl.classList.remove('sr-only');
+      submitB.classList.remove('opacity-60','pointer-events-none'); email.disabled = false; invite.disabled = false;
+    }
+  });
+
+  // Kick off any queued payloads if we’re already online
+  flushQueue().catch(()=>{});
+})();
+</script>
+

@@ -1,0 +1,2898 @@
+/* ff.css — FutureFunded “Flagship Elite” (v7)
+   - Dark/Light theme via <html data-theme="dark|light">
+   - Mobile-first, premium glass + lift, accessibility-first
+   - Customize: set --ff-accent on :root / html inline style for org branding
+*/
+
+/* =========================
+   0) Reset + base
+   ========================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  color-scheme: dark light;
+
+  /* Brand hook (override per org) */
+  --ff-accent: #f97316; /* fallback (orange) */
+  --ff-accent2: #22c55e;
+  --ff-danger: #fb7185;
+  --ff-warn: #fbbf24;
+
+  /* Layout */
+  --ff-container: 1160px;
+  --ff-gutter: clamp(14px, 2.4vw, 22px);
+  --ff-radius-lg: 22px;
+  --ff-radius-md: 16px;
+  --ff-radius-sm: 12px;
+
+  --ff-shadow1:
+    0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --ff-shadow2:
+    0 2px 0 rgba(255, 255, 255, 0.06), 0 18px 55px rgba(0, 0, 0, 0.55);
+  --ff-shadow3: 0 28px 120px rgba(0, 0, 0, 0.72);
+
+  --ff-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ff-ease2: cubic-bezier(0.2, 0.9, 0.2, 1);
+  --ff-speed: 180ms;
+  --ff-speed2: 320ms;
+
+  --ff-topbar-h: 52px; /* header offset; set 0 if you disable topbar */
+
+  /* Type */
+  --ff-font:
+    ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --ff-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+
+  /* Spacing helpers */
+  --ff-6: 6px;
+  --ff-8: 8px;
+  --ff-10: 10px;
+  --ff-12: 12px;
+  --ff-14: 14px;
+  --ff-16: 16px;
+  --ff-18: 18px;
+  --ff-20: 20px;
+  --ff-24: 24px;
+  --ff-28: 28px;
+  --ff-32: 32px;
+  --ff-36: 36px;
+  --ff-40: 40px;
+  --ff-48: 48px;
+
+  --ff-focus:
+    0 0 0 2px rgba(255, 255, 255, 0.16), 0 0 0 5px rgba(249, 115, 22, 0.35);
+}
+
+html[data-theme="dark"] {
+  --ff-bg: #070a11;
+  --ff-bg2: #0b1020;
+  --ff-text: rgba(255, 255, 255, 0.92);
+  --ff-muted: rgba(255, 255, 255, 0.68);
+  --ff-faint: rgba(255, 255, 255, 0.52);
+
+  --ff-surface: rgba(255, 255, 255, 0.06);
+  --ff-surface2: rgba(255, 255, 255, 0.085);
+  --ff-surface3: rgba(255, 255, 255, 0.11);
+
+  --ff-b: rgba(255, 255, 255, 0.12);
+  --ff-b2: rgba(255, 255, 255, 0.18);
+
+  --ff-glow: rgba(249, 115, 22, 0.22);
+  --ff-glow2: rgba(34, 197, 94, 0.16);
+
+  --ff-link: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] {
+  --ff-bg: #f6f7fb;
+  --ff-bg2: #eef1f8;
+  --ff-text: rgba(9, 12, 20, 0.92);
+  --ff-muted: rgba(9, 12, 20, 0.7);
+  --ff-faint: rgba(9, 12, 20, 0.56);
+
+  --ff-surface: rgba(255, 255, 255, 0.72);
+  --ff-surface2: rgba(255, 255, 255, 0.9);
+  --ff-surface3: rgba(255, 255, 255, 1);
+
+  --ff-b: rgba(9, 12, 20, 0.12);
+  --ff-b2: rgba(9, 12, 20, 0.18);
+
+  --ff-glow: rgba(249, 115, 22, 0.18);
+  --ff-glow2: rgba(34, 197, 94, 0.12);
+
+  --ff-link: rgba(9, 12, 20, 0.92);
+
+  --ff-shadow1:
+    0 1px 0 rgba(255, 255, 255, 0.6), 0 10px 28px rgba(0, 0, 0, 0.12);
+  --ff-shadow2:
+    0 2px 0 rgba(255, 255, 255, 0.75), 0 18px 50px rgba(0, 0, 0, 0.18);
+  --ff-shadow3: 0 35px 120px rgba(0, 0, 0, 0.2);
+
+  --ff-focus: 0 0 0 2px rgba(0, 0, 0, 0.12), 0 0 0 5px rgba(249, 115, 22, 0.35);
+}
+
+@supports (color: color-mix(in srgb, white, black)) {
+  html {
+    --ff-accent-soft: color-mix(in srgb, var(--ff-accent) 24%, transparent);
+    --ff-accent-softer: color-mix(in srgb, var(--ff-accent) 14%, transparent);
+  }
+}
+@supports not (color: color-mix(in srgb, white, black)) {
+  html {
+    --ff-accent-soft: rgba(249, 115, 22, 0.22);
+    --ff-accent-softer: rgba(249, 115, 22, 0.14);
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--ff-font);
+  color: var(--ff-text);
+  background:
+    radial-gradient(1200px 600px at 18% -10%, var(--ff-glow), transparent 55%),
+    radial-gradient(900px 520px at 92% 0%, var(--ff-glow2), transparent 55%),
+    linear-gradient(180deg, var(--ff-bg), var(--ff-bg2));
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--ff-link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--ff-accent-soft);
+}
+
+/* =========================
+   1) Utilities
+   ========================= */
+.container {
+  width: 100%;
+  max-width: var(--ff-container);
+  margin-inline: auto;
+  padding-inline: var(--ff-gutter);
+}
+
+.ff-body {
+  min-height: 100dvh;
+}
+
+.ff-sr {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip links */
+.ff-skip {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 9999;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ff-b2);
+  background: var(--ff-surface2);
+  box-shadow: var(--ff-shadow1);
+  transform: translateY(-140%);
+  transition: transform var(--ff-speed) var(--ff-ease);
+}
+.ff-skip:focus {
+  transform: translateY(0);
+  outline: none;
+  box-shadow: var(--ff-focus), var(--ff-shadow1);
+}
+
+/* Spacing helpers used in markup */
+.ff-mt-6 {
+  margin-top: var(--ff-6);
+}
+.ff-mt-8 {
+  margin-top: var(--ff-8);
+}
+.ff-mt-10 {
+  margin-top: var(--ff-10);
+}
+.ff-mt-12 {
+  margin-top: var(--ff-12);
+}
+.ff-mt-16 {
+  margin-top: var(--ff-16);
+}
+.ff-ml-6 {
+  margin-left: var(--ff-6);
+}
+
+.ff-wrap {
+  flex-wrap: wrap;
+}
+.ff-minw0 {
+  min-width: 0;
+}
+
+.ff-gap-sm {
+  gap: 10px;
+}
+.ff-align-start {
+  align-items: start;
+}
+.ff-align-end {
+  align-items: end;
+}
+
+/* Flex row system */
+.ff-row {
+  display: flex;
+  gap: 12px;
+}
+.ff-row--between {
+  justify-content: space-between;
+}
+.ff-row--top {
+  align-items: flex-start;
+}
+.ff-ais {
+  align-items: center;
+}
+.ff-ae {
+  align-items: flex-end;
+}
+
+/* Stack */
+.ff-stack {
+  display: grid;
+  gap: 12px;
+}
+.ff-stack.ff-gap-sm {
+  gap: 10px;
+}
+
+/* Grid */
+.ff-grid {
+  display: grid;
+  gap: 14px;
+}
+.ff-grid--2 {
+  grid-template-columns: 1fr;
+}
+.ff-grid--3 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 860px) {
+  .ff-grid--2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ff-grid--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Divider */
+.ff-divider {
+  height: 1px;
+  width: 100%;
+  margin: 14px 0;
+  background: linear-gradient(90deg, transparent, var(--ff-b), transparent);
+}
+
+/* =========================
+   2) Typography
+   ========================= */
+.ff-kicker {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ff-faint);
+  font-weight: 700;
+}
+
+.ff-help {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ff-muted);
+  margin: 0;
+}
+
+.ff-lead {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ff-muted);
+  margin: 0;
+}
+
+.ff-h1 {
+  margin: 12px 0 0;
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.ff-h2 {
+  margin: 8px 0 0;
+  font-size: clamp(20px, 2.1vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.ff-big {
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-weight: 850;
+}
+
+.ff-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "ss01" 1;
+}
+
+.ff-accent {
+  color: var(--ff-accent);
+}
+
+/* =========================
+   3) Surfaces
+   ========================= */
+.ff-pad {
+  padding: 16px;
+}
+@media (min-width: 860px) {
+  .ff-pad {
+    padding: 18px;
+  }
+}
+
+.ff-card,
+.ff-mini,
+.ff-notice {
+  border-radius: var(--ff-radius-lg);
+  border: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-surface2), var(--ff-surface));
+  box-shadow: var(--ff-shadow1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.ff-card--lift {
+  transition:
+    transform var(--ff-speed2) var(--ff-ease),
+    box-shadow var(--ff-speed2) var(--ff-ease),
+    border-color var(--ff-speed) var(--ff-ease);
+}
+@media (hover: hover) {
+  .ff-card--lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ff-shadow2);
+    border-color: var(--ff-b2);
+  }
+}
+
+.ff-card__title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.ff-mini {
+  border-radius: var(--ff-radius-md);
+  padding: 14px;
+  background: linear-gradient(180deg, var(--ff-surface3), var(--ff-surface2));
+}
+
+.ff-mini__title {
+  font-size: 14px;
+  font-weight: 850;
+  margin: 6px 0 0;
+  letter-spacing: -0.01em;
+}
+
+.ff-mini--callout {
+  border-color: color-mix(in srgb, var(--ff-accent) 40%, var(--ff-b));
+  box-shadow:
+    var(--ff-shadow1),
+    0 0 0 1px var(--ff-accent-softer) inset;
+}
+
+/* Notices / Alerts */
+.ff-notice {
+  border-radius: var(--ff-radius-md);
+  padding: 14px;
+  background:
+    linear-gradient(180deg, var(--ff-accent-softer), transparent 65%),
+    linear-gradient(180deg, var(--ff-surface2), var(--ff-surface));
+}
+
+.ff-alert {
+  border-radius: var(--ff-radius-md);
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--ff-danger) 55%, var(--ff-b));
+  background: color-mix(in srgb, var(--ff-danger) 14%, var(--ff-surface2));
+  box-shadow: var(--ff-shadow1);
+}
+
+/* =========================
+   4) Pills, dots, chips
+   ========================= */
+.ff-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 85%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ff-text);
+  white-space: nowrap;
+}
+
+.ff-pill--accent {
+  border-color: color-mix(in srgb, var(--ff-accent) 40%, var(--ff-b));
+  background:
+    linear-gradient(180deg, var(--ff-accent-soft), transparent 70%),
+    color-mix(in srgb, var(--ff-surface2) 85%, transparent);
+}
+
+.ff-pill--verified {
+  border-color: color-mix(in srgb, var(--ff-accent2) 45%, var(--ff-b));
+  background: color-mix(in srgb, var(--ff-accent2) 14%, var(--ff-surface2));
+}
+
+.ff-pill--live {
+  border-color: color-mix(in srgb, var(--ff-accent) 50%, var(--ff-b));
+  background: color-mix(in srgb, var(--ff-accent) 16%, var(--ff-surface2));
+}
+
+.ff-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ff-accent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--ff-accent) 18%, transparent);
+  animation: ffPulse 1.6s var(--ff-ease2) infinite;
+}
+@keyframes ffPulse {
+  0% {
+    transform: scale(0.98);
+    opacity: 0.95;
+  }
+  55% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.98);
+    opacity: 0.95;
+  }
+}
+
+/* Chip buttons (quick gifts + payment method) */
+.ff-chip {
+  appearance: none;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 80%, transparent);
+  color: var(--ff-text);
+  border-radius: 999px;
+  padding: 10px 12px;
+  font-weight: 850;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform var(--ff-speed) var(--ff-ease),
+    border-color var(--ff-speed) var(--ff-ease),
+    box-shadow var(--ff-speed) var(--ff-ease),
+    background var(--ff-speed) var(--ff-ease);
+}
+.ff-chip:hover {
+  border-color: var(--ff-b2);
+  transform: translateY(-1px);
+  box-shadow: var(--ff-shadow1);
+}
+.ff-chip[aria-pressed="true"],
+.ff-chip.is-active {
+  border-color: color-mix(in srgb, var(--ff-accent) 60%, var(--ff-b));
+  background:
+    linear-gradient(180deg, var(--ff-accent-soft), transparent 65%),
+    color-mix(in srgb, var(--ff-surface2) 85%, transparent);
+}
+
+/* =========================
+   5) Buttons + icon buttons
+   ========================= */
+.ff-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 84%, transparent);
+  color: var(--ff-text);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--ff-speed) var(--ff-ease),
+    box-shadow var(--ff-speed2) var(--ff-ease),
+    border-color var(--ff-speed) var(--ff-ease),
+    background var(--ff-speed) var(--ff-ease);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.ff-btn:hover {
+  border-color: var(--ff-b2);
+  transform: translateY(-1px);
+  box-shadow: var(--ff-shadow1);
+}
+
+.ff-btn:active {
+  transform: translateY(0);
+}
+
+.ff-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ff-focus), var(--ff-shadow1);
+}
+
+.ff-btn--sm {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.ff-btn--primary {
+  border-color: color-mix(in srgb, var(--ff-accent) 70%, var(--ff-b));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ff-accent) 70%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, var(--ff-accent-soft), transparent 70%),
+    color-mix(in srgb, var(--ff-surface2) 88%, transparent);
+  box-shadow:
+    var(--ff-shadow1),
+    0 0 0 1px var(--ff-accent-softer) inset;
+}
+
+.ff-btn--secondary {
+  border-color: color-mix(in srgb, var(--ff-accent2) 55%, var(--ff-b));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ff-accent2) 45%, transparent),
+      transparent 72%
+    ),
+    color-mix(in srgb, var(--ff-surface2) 88%, transparent);
+}
+
+.ff-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.ff-btn--ghost:hover {
+  border-color: var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 72%, transparent);
+  box-shadow: none;
+}
+
+.ff-btn[disabled],
+.ff-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ff-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 80%, transparent);
+  color: var(--ff-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform var(--ff-speed) var(--ff-ease),
+    box-shadow var(--ff-speed2) var(--ff-ease),
+    border-color var(--ff-speed) var(--ff-ease),
+    background var(--ff-speed) var(--ff-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.ff-icon:hover {
+  transform: translateY(-1px);
+  border-color: var(--ff-b2);
+  box-shadow: var(--ff-shadow1);
+}
+.ff-icon:focus-visible {
+  outline: none;
+  box-shadow: var(--ff-focus), var(--ff-shadow1);
+}
+
+/* =========================
+   6) Announcement + Topbar
+   ========================= */
+.ff-announce {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  border-bottom: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-surface2), var(--ff-surface));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.ff-announce__row {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+}
+.ff-announce__text {
+  margin: 0;
+  font-weight: 800;
+  font-size: 13px;
+}
+.ff-announce__content {
+  min-width: 0;
+}
+
+.ff-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  border-bottom: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-surface2), var(--ff-surface));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.ff-topbar__row {
+  min-height: var(--ff-topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+}
+.ff-topbar__left,
+.ff-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* =========================
+   7) Header + Nav + Scroll bar
+   ========================= */
+.ff-header {
+  position: sticky;
+  top: var(--ff-topbar-h);
+  z-index: 60;
+  border-bottom: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-surface2), var(--ff-surface));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.ff-header__row {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding-block: 12px;
+}
+@media (min-width: 980px) {
+  .ff-header__row {
+    grid-template-columns: 1fr auto auto;
+  }
+}
+
+.ff-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+}
+.ff-brand:hover {
+  border-color: var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 70%, transparent);
+}
+
+.ff-brand__mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 70%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.ff-brand__logo {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+}
+
+.ff-brand__meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.ff-brand__title {
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ff-brand__sub {
+  font-size: 12px;
+  color: var(--ff-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ff-nav {
+  display: none;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 70%, transparent);
+}
+.ff-nav a {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 13px;
+  color: var(--ff-muted);
+  border: 1px solid transparent;
+  transition:
+    background var(--ff-speed) var(--ff-ease),
+    border-color var(--ff-speed) var(--ff-ease),
+    color var(--ff-speed) var(--ff-ease);
+}
+.ff-nav a:hover {
+  color: var(--ff-text);
+  background: color-mix(in srgb, var(--ff-surface2) 75%, transparent);
+  border-color: var(--ff-b);
+}
+.ff-nav a[aria-current="true"],
+.ff-nav a.is-active {
+  color: var(--ff-text);
+  border-color: color-mix(in srgb, var(--ff-accent) 55%, var(--ff-b));
+  background:
+    linear-gradient(180deg, var(--ff-accent-soft), transparent 70%),
+    color-mix(in srgb, var(--ff-surface2) 72%, transparent);
+}
+
+@media (min-width: 980px) {
+  .ff-nav {
+    display: inline-flex;
+  }
+}
+
+.ff-header__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ff-scroll {
+  height: 2px;
+  background: transparent;
+}
+.ff-scroll span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    var(--ff-accent),
+    color-mix(in srgb, var(--ff-accent2) 55%, var(--ff-accent))
+  );
+  box-shadow: 0 0 18px var(--ff-accent-soft);
+}
+
+/* =========================
+   8) Main sections + Hero
+   ========================= */
+.ff-main {
+  outline: none;
+}
+
+.ff-section {
+  padding: 22px 0;
+}
+@media (min-width: 860px) {
+  .ff-section {
+    padding: 34px 0;
+  }
+}
+.ff-section--compact {
+  padding-top: 10px;
+}
+
+.ff-hero {
+  position: relative;
+  padding: 18px 0 8px;
+}
+@media (min-width: 860px) {
+  .ff-hero {
+    padding: 28px 0 12px;
+  }
+}
+
+.ff-hero__bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ff-hero__glow {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(800px 380px at 18% 10%, var(--ff-glow), transparent 55%),
+    radial-gradient(760px 420px at 88% 20%, var(--ff-glow2), transparent 60%);
+  filter: blur(6px);
+  opacity: 0.95;
+}
+.ff-hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(circle at 30% 10%, black, transparent 65%);
+  opacity: 0.32;
+}
+html[data-theme="light"] .ff-hero__grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  opacity: 0.22;
+}
+
+.ff-hero__noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  mix-blend-mode: overlay;
+}
+
+.ff-hero__layout {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  align-items: start;
+}
+@media (min-width: 980px) {
+  .ff-hero__layout {
+    grid-template-columns: 1.25fr 0.85fr;
+    gap: 18px;
+  }
+}
+
+.ff-hero__logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 75%, transparent);
+}
+
+.ff-console {
+  position: sticky;
+  top: calc(var(--ff-topbar-h) + 86px);
+}
+
+/* =========================
+   9) Lists / bullets
+   ========================= */
+.ff-bul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ff-muted);
+  line-height: 1.55;
+}
+.ff-bul li {
+  margin: 6px 0;
+}
+
+/* =========================
+   10) Disclosure (details)
+   ========================= */
+.ff-disc {
+  border-radius: var(--ff-radius-md);
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 74%, transparent);
+  overflow: hidden;
+}
+.ff-disc__sum {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  user-select: none;
+}
+.ff-disc__sum::-webkit-details-marker {
+  display: none;
+}
+.ff-disc[open] {
+  border-color: var(--ff-b2);
+  box-shadow: var(--ff-shadow1);
+}
+.ff-disc[open] .ff-disc__sum {
+  background:
+    linear-gradient(180deg, var(--ff-accent-softer), transparent 70%),
+    color-mix(in srgb, var(--ff-surface2) 74%, transparent);
+}
+
+/* =========================
+   11) Progress meter
+   ========================= */
+.ff-meter {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 70%, transparent);
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+.ff-meter__ticks i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="light"] .ff-meter__ticks i {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.ff-meter > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--ff-accent),
+    color-mix(in srgb, var(--ff-accent2) 55%, var(--ff-accent))
+  );
+  box-shadow: 0 0 22px var(--ff-accent-soft);
+  transition: width var(--ff-speed2) var(--ff-ease);
+}
+
+/* =========================
+   12) Skeleton loading
+   ========================= */
+.ff-skel {
+  border-radius: 18px;
+  border: 1px solid var(--ff-b);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ff-surface2) 70%, transparent),
+    color-mix(in srgb, var(--ff-surface3) 70%, transparent),
+    color-mix(in srgb, var(--ff-surface2) 70%, transparent)
+  );
+  background-size: 200% 100%;
+  animation: ffShimmer 1.3s linear infinite;
+}
+@keyframes ffShimmer {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+
+/* =========================
+   13) Forms
+   ========================= */
+.ff-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ff-faint);
+  margin-bottom: 8px;
+}
+
+.ff-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 78%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  transition:
+    border-color var(--ff-speed) var(--ff-ease),
+    box-shadow var(--ff-speed) var(--ff-ease),
+    background var(--ff-speed) var(--ff-ease);
+  outline: none;
+}
+
+textarea.ff-input {
+  height: auto;
+  padding: 12px 14px;
+  border-radius: 16px;
+  resize: vertical;
+  min-height: 96px;
+}
+
+.ff-input:focus,
+.ff-input:focus-visible {
+  border-color: color-mix(in srgb, var(--ff-accent) 55%, var(--ff-b));
+  box-shadow:
+    var(--ff-focus),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.ff-input::placeholder {
+  color: color-mix(in srgb, var(--ff-muted) 75%, transparent);
+}
+
+.ff-inputrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ff-prefix {
+  height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 78%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: var(--ff-muted);
+}
+
+/* Segmented control */
+.ff-seg {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 70%, transparent);
+  padding: 4px;
+  gap: 4px;
+}
+.ff-seg button {
+  border: 1px solid transparent;
+  background: transparent;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-weight: 950;
+  font-size: 13px;
+  color: var(--ff-muted);
+  cursor: pointer;
+  transition:
+    background var(--ff-speed) var(--ff-ease),
+    border-color var(--ff-speed) var(--ff-ease),
+    color var(--ff-speed) var(--ff-ease);
+}
+.ff-seg button:hover {
+  color: var(--ff-text);
+  background: color-mix(in srgb, var(--ff-surface2) 78%, transparent);
+  border-color: var(--ff-b);
+}
+.ff-seg button[aria-pressed="true"] {
+  color: var(--ff-text);
+  border-color: color-mix(in srgb, var(--ff-accent) 60%, var(--ff-b));
+  background:
+    linear-gradient(180deg, var(--ff-accent-soft), transparent 70%),
+    color-mix(in srgb, var(--ff-surface2) 74%, transparent);
+}
+
+/* Checkbox rows */
+.ff-checkrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 72%, transparent);
+  color: var(--ff-muted);
+  font-weight: 800;
+}
+.ff-checkrow input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ff-accent);
+}
+
+/* =========================
+   14) Team images
+   ========================= */
+.ff-team__img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 70%, transparent);
+  box-shadow: var(--ff-shadow1);
+}
+
+/* =========================
+   15) Drawer
+   ========================= */
+.ff-drawer[hidden] {
+  display: none !important;
+}
+.ff-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.ff-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  border: 0;
+}
+html[data-theme="light"] .ff-drawer__backdrop {
+  background: rgba(9, 12, 20, 0.35);
+}
+
+.ff-drawer__panel {
+  position: relative;
+  margin-left: auto;
+  width: min(420px, 92vw);
+  height: 100%;
+  border-left: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-surface3), var(--ff-surface2));
+  box-shadow: var(--ff-shadow3);
+  padding: 16px;
+  transform: translateX(6px);
+  animation: ffSlideIn var(--ff-speed2) var(--ff-ease) both;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@keyframes ffSlideIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.ff-drawer__list {
+  display: grid;
+  gap: 10px;
+}
+.ff-drawer__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 76%, transparent);
+  font-weight: 900;
+}
+.ff-drawer__link:hover {
+  border-color: var(--ff-b2);
+  box-shadow: var(--ff-shadow1);
+}
+
+/* =========================
+   16) Modals
+   ========================= */
+.ff-modal[hidden] {
+  display: none !important;
+}
+.ff-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.ff-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  border: 0;
+}
+html[data-theme="light"] .ff-modal__backdrop {
+  background: rgba(9, 12, 20, 0.35);
+}
+
+.ff-modal__panel {
+  position: relative;
+  width: min(720px, 92vw);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-surface3), var(--ff-surface2));
+  box-shadow: var(--ff-shadow3);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: ffPop var(--ff-speed2) var(--ff-ease) both;
+}
+.ff-modal__panel--narrow {
+  width: min(560px, 92vw);
+}
+
+@keyframes ffPop {
+  from {
+    transform: translateY(10px) scale(0.985);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.ff-paywrap {
+  border-radius: 18px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-surface2) 72%, transparent);
+  padding: 12px;
+}
+
+/* =========================
+   17) Embed/whitelabel hooks (optional)
+   ========================= */
+.ff-shell[data-ff-embed="true"] .ff-header,
+.ff-shell[data-ff-embed="true"] .ff-topbar,
+.ff-shell[data-ff-embed="true"] .ff-announce {
+  border-radius: 0;
+}
+.ff-shell[data-ff-embed="true"] .ff-card--lift:hover {
+  transform: none;
+}
+
+/* =========================
+   18) Motion + accessibility
+   ========================= */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =========================
+   19) Scrollbar (nice-to-have)
+   ========================= */
+@supports selector(::-webkit-scrollbar) {
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ff-surface3) 70%, transparent);
+    border: 1px solid var(--ff-b);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+/* ff.css — Contract hardening additions (append near end) */
+
+/* Hidden attribute must always win */
+[hidden] {
+  display: none !important;
+}
+
+/* Skip links (already in HTML) */
+.ff-skip {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  transform: translateY(-150%);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgb(0 0 0 / 0.72);
+  border: 1px solid var(--ff-b);
+  color: var(--ff-t);
+  z-index: 9999;
+}
+.ff-skip:focus {
+  transform: translateY(0);
+}
+
+/* Focus visibility (buttons/links/chips/icons/inputs) */
+.ff-btn:focus-visible,
+.ff-icon:focus-visible,
+.ff-chip:focus-visible,
+.ff-tab:focus-visible,
+.ff-input:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgb(249 115 22 / 0.85);
+  outline-offset: 3px;
+}
+
+/* Nav active state when JS applies aria-current */
+.ff-nav a[aria-current="page"] {
+  text-decoration: none;
+  box-shadow: inset 0 -2px 0 rgb(249 115 22 / 0.85);
+}
+
+/* Toast host + items (JS no longer injects inline styles) */
+.ff-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  display: grid;
+  gap: 10px;
+  max-width: min(520px, calc(100vw - 32px));
+}
+.ff-toast__item {
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgb(15 22 33 / 0.96);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: var(--ff-shadow2);
+  color: var(--ff-t);
+}
+.ff-toast__item p {
+  margin: 6px 0 0;
+}
+.ff-toast__item.is-leaving {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-toast__item.is-leaving {
+    transition: none;
+  }
+}
+/* =========================================================
+   FutureFunded • PRO CSS PACK (append-only) — v7.1
+   Paste this AT THE VERY END of your existing <style> block.
+   Safe overrides: layout rhythm, anchor offsets, pro grids,
+   consistent card heights, sticky console polish.
+   ========================================================= */
+
+/* ---------- 1) Global layout rhythm + anchor offsets ---------- */
+html {
+  /* Slightly wider enterprise canvas on big screens */
+  --ff-container: 1200px;
+
+  /* Pro spacing scale */
+  --ff-space-1: 6px;
+  --ff-space-2: 10px;
+  --ff-space-3: 14px;
+  --ff-space-4: 18px;
+  --ff-space-5: 24px;
+  --ff-space-6: 32px;
+  --ff-space-7: 44px;
+
+  /* Section padding */
+  --ff-section-y: clamp(20px, 3.2vw, 46px);
+
+  /* Anchor offset for sticky topbar/header */
+  --ff-anchor-offset: calc(var(--ff-topbar-h) + var(--ff-header-h) + 18px);
+}
+
+.ff-section,
+.ff-hero,
+.ff-footer,
+.ff-header,
+#donate,
+#teams,
+#sponsors,
+#impact,
+#progress,
+#faq {
+  scroll-margin-top: var(--ff-anchor-offset);
+}
+
+/* Optional: highlight the section you jumped to (subtle + premium) */
+:target {
+  outline: none;
+}
+:target > .container > .ff-card:first-child,
+:target .ff-card:first-child {
+  box-shadow:
+    var(--ff-sh2),
+    0 0 0 1px var(--ff-accentSofter) inset;
+  border-color: var(--ff-accentBorder);
+}
+
+/* ---------- 2) Section framing (no “scroll of death”) ---------- */
+.ff-section {
+  padding-block: var(--ff-section-y);
+  position: relative;
+  isolation: isolate;
+}
+
+/* Soft divider between major sections (enterprise cadence) */
+.ff-section::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-b), transparent);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* Performance: don’t render offscreen sections until needed */
+@supports (content-visibility: auto) {
+  .ff-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 800px;
+  }
+}
+
+/* ---------- 3) Typography polish (better line length + clarity) ---------- */
+.ff-lead,
+.ff-help {
+  max-width: 72ch;
+}
+
+.ff-h1,
+.ff-h2,
+.ff-card__title {
+  text-wrap: balance;
+}
+
+.ff-help a,
+.ff-lead a {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ff-accent) 55%, transparent);
+  text-underline-offset: 3px;
+}
+.ff-help a:hover,
+.ff-lead a:hover {
+  text-decoration-color: var(--ff-accent);
+}
+
+/* ---------- 4) Cards: premium spacing + better “stack” density ---------- */
+.ff-card,
+.ff-mini,
+.ff-notice {
+  /* crisper borders on retina */
+  border-color: color-mix(in srgb, var(--ff-b) 88%, transparent);
+}
+
+.ff-pad {
+  padding: 16px;
+}
+@media (min-width: 860px) {
+  .ff-pad {
+    padding: 20px;
+  }
+}
+
+.ff-stack {
+  gap: 12px;
+}
+.ff-grid {
+  gap: 16px;
+}
+
+/* Make sticky console feel “app-like” and avoid overlong right column */
+.ff-console {
+  max-height: calc(100vh - var(--ff-anchor-offset) - 18px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Nicer scroll inside sticky card */
+.ff-console::-webkit-scrollbar {
+  width: 10px;
+}
+.ff-console::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+}
+
+/* ---------- 5) Header/nav refinement (more enterprise) ---------- */
+.ff-header__row {
+  gap: 12px;
+}
+
+.ff-nav {
+  max-width: 620px;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.ff-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Nav active state a touch more “product” */
+.ff-nav a[aria-current="true"],
+.ff-nav a.is-active {
+  box-shadow: 0 0 0 1px var(--ff-accentSofter) inset;
+}
+
+/* ---------- 6) Hero layout: reduce dead space + tighten right rail ---------- */
+.ff-hero__layout {
+  gap: 16px;
+}
+@media (min-width: 980px) {
+  .ff-hero__layout {
+    grid-template-columns: 1.18fr 0.82fr;
+    gap: 18px;
+  }
+}
+
+/* ---------- 7) Teams: PRO grid + consistent card heights ---------- */
+/* Responsive teams grid (only affects the Teams section grid) */
+#teamsGrid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  #teamsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1020px) {
+  #teamsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Card uniformity: makes the grid feel “enterprise catalog” */
+#teamsGrid [data-team-card] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Image polish */
+#teamsGrid [data-team-image],
+#teamsGrid .ff-team__img {
+  border-radius: 18px;
+  box-shadow: var(--ff-sh1);
+}
+
+/* Keep actions aligned; push “ask” to the bottom for equal-height cards */
+#teamsGrid [data-team-ask] {
+  margin-top: auto !important;
+  padding-top: 10px;
+}
+
+/* Badge row spacing */
+#teamsGrid .ff-row.ff-gap-sm {
+  gap: 10px;
+}
+
+/* ---------- 8) Sponsor wall: tighter logo grid + uniform tiles ---------- */
+#sponsorWall {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 740px) {
+  #sponsorWall {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1040px) {
+  #sponsorWall {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* If sponsor tiles are divs, make them look intentional */
+#sponsorWall > * {
+  border-radius: 18px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s2) 72%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* ---------- 9) Donate section: better two-column balance ---------- */
+@media (min-width: 980px) {
+  #donate .ff-grid--2 {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+}
+
+/* Inputs: slightly more premium focus and spacing */
+.ff-inputrow {
+  gap: 10px;
+}
+.ff-input:focus,
+.ff-input:focus-visible {
+  background: color-mix(in srgb, var(--ff-s3) 70%, transparent);
+}
+
+/* ---------- 10) Sticky donate bar: make it feel like a real app ---------- */
+.ff-sticky {
+  border-top: 1px solid var(--ff-b);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ff-s3) 86%, transparent),
+    var(--ff-s1)
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.ff-sticky__inner {
+  max-width: var(--ff-container);
+  margin: 0 auto;
+  padding-inline: var(--ff-gutter);
+}
+
+/* ---------- 11) Mobile tabs: better touch + clearer selection ---------- */
+.ff-tabs {
+  border-top: 1px solid var(--ff-b);
+  background: linear-gradient(180deg, var(--ff-s3), var(--ff-s1));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.ff-tab {
+  padding: 14px 10px;
+  font-weight: 950;
+  color: var(--ff-muted);
+}
+.ff-tab:hover {
+  color: var(--ff-text);
+}
+
+/* ---------- 12) Footer grid polish (if your footer grid exists) ---------- */
+.ff-footer__grid {
+  display: grid;
+  gap: 18px;
+}
+@media (min-width: 920px) {
+  .ff-footer__grid {
+    grid-template-columns: 1.2fr 0.8fr 1fr;
+    align-items: start;
+  }
+}
+
+.ff-footer__links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ff-footer__links a {
+  display: inline-flex;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+}
+.ff-footer__links a:hover {
+  border-color: var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s2) 72%, transparent);
+}
+
+/* ---------- 13) Micro “pro” details ---------- */
+/* Reduce accidental layout shifts from images */
+img {
+  image-rendering: auto;
+}
+
+/* Better tap behavior on mobile */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Slightly stronger separators inside dense cards */
+.ff-divider {
+  margin: 16px 0;
+  opacity: 0.95;
+}
+/* =========================================================
+   FutureFunded • iOS / Mobile PRO PACK — v7.2 (append-only)
+   Paste at VERY END of your CSS.
+   Goals:
+   - True mobile-first layout (hero becomes 1-column)
+   - iOS safe-area (notch + home indicator)
+   - Prevent iOS input zoom (16px)
+   - Fix “blank sections in long iOS screenshots” (disable content-visibility on mobile)
+   - Faster Safari performance (tone down blur on small screens)
+   ========================================================= */
+
+/* ---------- 0) iOS safe-area tokens ---------- */
+:root {
+  --ff-safe-top: env(safe-area-inset-top, 0px);
+  --ff-safe-right: env(safe-area-inset-right, 0px);
+  --ff-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ff-safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* ---------- 1) iOS long-screenshot / Safari render fix ----------
+   content-visibility can produce “blank stitched” sections on iOS.
+   Keep it for desktop only. */
+@media (max-width: 980px) {
+  .ff-section {
+    content-visibility: visible !important;
+    contain-intrinsic-size: auto !important;
+  }
+}
+
+/* ---------- 2) Touch + text rendering polish ---------- */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  overscroll-behavior-y: none; /* reduces rubber-band weirdness in nested scroll areas */
+}
+
+/* iOS: prevent inputs from zooming on focus */
+.ff-input,
+.ff-inputrow input,
+textarea.ff-input,
+select.ff-input {
+  font-size: 16px !important;
+}
+
+/* Make tap targets feel “native” */
+.ff-btn,
+.ff-icon,
+.ff-chip,
+.ff-tab {
+  min-height: 44px;
+}
+
+/* ---------- 3) Safe-area padding for sticky UI (header/topbars/tabs) ---------- */
+.ff-announce {
+  padding-top: var(--ff-safe-top);
+}
+.ff-topbar {
+  top: var(--ff-safe-top);
+}
+.ff-header {
+  top: calc(var(--ff-safe-top) + var(--ff-topbar-h));
+}
+
+/* Keep bottom UI above the iOS home indicator */
+.ff-tabs {
+  padding-bottom: calc(8px + var(--ff-safe-bottom));
+}
+.ff-sticky {
+  padding-bottom: calc(8px + var(--ff-safe-bottom));
+}
+#backToTop {
+  bottom: calc(16px + var(--ff-safe-bottom));
+}
+
+/* Ensure main content doesn’t hide under bottom tabs */
+.ff-main {
+  padding-bottom: calc(84px + var(--ff-safe-bottom));
+}
+
+/* ---------- 4) Mobile layout: hero becomes single column ----------
+   (removes cramped right rail on iPhone) */
+@media (max-width: 980px) {
+  .ff-hero__layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Sticky console is great on desktop; on mobile it harms flow */
+  .ff-console {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Hero card spacing/stacking */
+  .ff-h1 {
+    line-height: 1.06;
+  }
+  .ff-lead {
+    max-width: 44ch;
+  }
+
+  /* Buttons: make primary CTA full width, reduce “row cramp” */
+  .ff-hero [role="group"][aria-label="Hero actions"] {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .ff-hero [role="group"][aria-label="Hero actions"] .ff-btn--primary {
+    width: 100%;
+  }
+
+  /* Pills wrap cleanly without overflow */
+  .ff-row {
+    flex-wrap: wrap;
+  }
+  .ff-pill {
+    height: 28px;
+    max-width: 100%;
+  }
+
+  /* Section padding tighter (premium, not tall) */
+  .ff-section {
+    padding-block: clamp(16px, 4.2vw, 28px) !important;
+  }
+
+  /* Reduce heavy blur on mobile Safari (performance) */
+  .ff-card,
+  .ff-mini,
+  .ff-notice,
+  .ff-header,
+  .ff-topbar,
+  .ff-announce,
+  .ff-tabs,
+  .ff-sticky {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* ---------- 5) Teams on mobile: cleaner grid + action layout ---------- */
+@media (max-width: 740px) {
+  #teamsGrid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Team action buttons wrap nicely */
+  #teamsGrid [role="group"][aria-label="Team actions"] {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #teamsGrid [role="group"][aria-label="Team actions"] .ff-btn--primary {
+    width: 100%;
+  }
+}
+
+/* ---------- 6) Donate section: mobile-first stacking ---------- */
+@media (max-width: 980px) {
+  #donate .ff-grid--2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Donation CTA row wraps; primary becomes full width */
+  #donationForm [role="group"][aria-label="Donation CTA"] {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #donationForm [role="group"][aria-label="Donation CTA"] .ff-btn--primary {
+    width: 100%;
+  }
+
+  /* Make segmented controls and chips easier to tap */
+  .ff-seg {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .ff-seg button {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
+
+/* ---------- 7) Modals + Drawer: iOS-friendly “sheet” behavior ---------- */
+@media (max-width: 740px) {
+  .ff-modal {
+    padding: 0 !important;
+  }
+  .ff-modal__panel {
+    width: 100vw !important;
+    max-height: 100dvh !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+  .ff-modal__panel .ff-pad {
+    padding-top: calc(16px + var(--ff-safe-top));
+    padding-bottom: calc(16px + var(--ff-safe-bottom));
+  }
+
+  .ff-drawer__panel {
+    width: 100vw !important;
+    border-radius: 0 !important;
+    padding-top: calc(16px + var(--ff-safe-top));
+    padding-bottom: calc(16px + var(--ff-safe-bottom));
+  }
+}
+
+/* ---------- 8) Tiny “pro” refinements for iOS Safari ---------- */
+@media (max-width: 980px) {
+  /* Avoid accidental horizontal scroll from long pills/inputs */
+  body {
+    overflow-x: hidden;
+  }
+  .container {
+    overflow-x: clip;
+  }
+
+  /* Better “card breathing room” */
+  .ff-pad {
+    padding: 16px !important;
+  }
+  .ff-divider {
+    margin: 14px 0 !important;
+  }
+}
+/* =========================================================
+   FF PRO CSS PACK — v7.1 (append AFTER your current ff.css)
+   Layout rhythm • iOS polish • anchor offsets • capture-safe
+   ========================================================= */
+
+/* ---- 0) Micro-tokens + safer viewport behavior ---- */
+html {
+  --ff-safe-t: env(safe-area-inset-top, 0px);
+  --ff-safe-r: env(safe-area-inset-right, 0px);
+  --ff-safe-b: env(safe-area-inset-bottom, 0px);
+  --ff-safe-l: env(safe-area-inset-left, 0px);
+
+  --ff-topbar-total: calc(var(--ff-topbar-h) + var(--ff-safe-t));
+  --ff-header-total: calc(var(--ff-header-h));
+
+  --ff-section-y: clamp(18px, 3.6vw, 36px);
+  --ff-gap: clamp(12px, 1.6vw, 18px);
+
+  /* slightly more premium spacing on wide screens */
+  --ff-container: 1200px;
+  --ff-gutter: clamp(14px, 2.8vw, 28px);
+
+  scroll-padding-top: calc(
+    var(--ff-topbar-total) + var(--ff-header-total) + 14px
+  );
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Anchor targets sit below sticky chrome (fixes “jump under header”) */
+[id] {
+  scroll-margin-top: calc(
+    var(--ff-topbar-total) + var(--ff-header-total) + 16px
+  );
+}
+
+/* Give the page breathing room for bottom tabs / sticky bars (especially iOS) */
+.ff-main {
+  padding-bottom: calc(112px + var(--ff-safe-b));
+}
+
+/* ---- 1) Section rhythm + “not a scroll of death” structure ---- */
+.ff-section {
+  padding-block: var(--ff-section-y);
+}
+.ff-section--compact {
+  padding-top: clamp(10px, 2.2vw, 16px);
+}
+
+/* Subtle premium separators between major sections */
+.ff-section > .container {
+  position: relative;
+}
+@media (min-width: 860px) {
+  .ff-section > .container::after {
+    content: "";
+    position: absolute;
+    left: var(--ff-gutter);
+    right: var(--ff-gutter);
+    bottom: calc(-1 * (var(--ff-section-y) / 2));
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ff-b) 85%, transparent),
+      transparent
+    );
+    pointer-events: none;
+  }
+  .ff-section:last-of-type > .container::after {
+    display: none;
+  }
+}
+
+/* Tighten default grids just a touch */
+.ff-row {
+  gap: var(--ff-gap);
+}
+.ff-grid {
+  gap: var(--ff-gap);
+}
+.ff-stack {
+  gap: var(--ff-gap);
+}
+
+/* ---- 2) Header/topbar iOS-safe-area polish ---- */
+.ff-announce,
+.ff-topbar {
+  padding-top: var(--ff-safe-t);
+}
+
+.ff-topbar {
+  top: 0; /* keep sticky stable */
+}
+
+.ff-header {
+  top: var(--ff-topbar-total);
+}
+
+.ff-console {
+  top: calc(var(--ff-topbar-total) + var(--ff-header-h) + 18px);
+}
+
+/* Slightly crisper nav pill sizing and overflow safety */
+.ff-nav {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ff-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- 3) Hero + right-rail structure upgrades ---- */
+@media (min-width: 980px) {
+  .ff-hero__layout {
+    gap: 18px;
+  }
+  .ff-hero__left {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+  .ff-hero__right {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+}
+
+/* Slightly more premium type rhythm in hero card */
+.ff-h1 {
+  text-wrap: balance;
+}
+.ff-lead {
+  max-width: 70ch;
+}
+
+/* Make “Quick gifts” chips wrap cleaner on small widths */
+.ff-row[aria-label="Quick gift buttons"] {
+  flex-wrap: wrap;
+}
+
+/* ---- 4) Team cards image consistency (no weird cropping) ---- */
+.ff-team__img {
+  object-position: 50% 25%;
+}
+
+/* Keep team cards from feeling uneven when text lengths vary */
+[data-team-card] {
+  display: flex;
+  flex-direction: column;
+}
+[data-team-card] .ff-divider {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+[data-team-card] [data-team-ask] {
+  margin-top: auto;
+}
+
+/* ---- 5) Mobile-first: better tap targets + denser “enterprise” layout ---- */
+@media (max-width: 859px) {
+  /* Reduce perceived emptiness */
+  .ff-pad {
+    padding: 14px;
+  }
+  .ff-hero {
+    padding-top: 14px;
+  }
+
+  /* Header: keep controls tidy */
+  .ff-header__row {
+    gap: 10px;
+    padding-block: 10px;
+  }
+  .ff-brand {
+    padding: 6px 8px;
+  }
+  .ff-brand__mark {
+    width: 42px;
+    height: 42px;
+  }
+  .ff-brand__logo {
+    width: 42px;
+    height: 42px;
+  }
+  .ff-btn {
+    height: 44px;
+  }
+  .ff-btn--sm {
+    height: 38px;
+  }
+
+  /* Donation form: keep primary action visible and reduce jitter */
+  .ff-inputrow {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ff-inputrow .ff-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Two-column grids collapse with stronger hierarchy */
+  .ff-grid--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- 6) Bottom tabs + sticky bar iOS-safe-area (if your JS enables them) ---- */
+.ff-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  padding: 10px calc(12px + var(--ff-safe-r)) calc(10px + var(--ff-safe-b))
+    calc(12px + var(--ff-safe-l));
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--ff-bg0) 78%, transparent) 20%,
+    var(--ff-bg0)
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--ff-b);
+  display: grid;
+  grid-auto-flow: column;
+  gap: 10px;
+}
+.ff-tab {
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s2) 78%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 950;
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+.ff-tab:hover {
+  color: var(--ff-text);
+  border-color: var(--ff-b2);
+  box-shadow: var(--ff-sh1);
+}
+.ff-tab[aria-current="true"],
+.ff-tab.is-active {
+  color: var(--ff-text);
+  border-color: var(--ff-accentBorder);
+  background:
+    linear-gradient(180deg, var(--ff-accentSoft), transparent 70%),
+    color-mix(in srgb, var(--ff-s2) 80%, transparent);
+}
+
+/* Back-to-top button stays above tabs on iOS */
+.ff-top {
+  position: fixed;
+  right: calc(14px + var(--ff-safe-r));
+  bottom: calc(78px + var(--ff-safe-b));
+  z-index: 130;
+}
+
+/* ---- 7) iOS Safari stability: reduce full-page screenshot blanking ---- */
+/* iOS Safari detection */
+@supports (-webkit-touch-callout: none) {
+  /* Reduce heavy GPU effects that commonly break iOS “full page” capture */
+  .ff-hero__noise {
+    display: none;
+  }
+  .ff-hero__glow {
+    filter: none;
+  }
+  .ff-hero__grid {
+    mask-image: none;
+  }
+
+  .ff-card,
+  .ff-mini,
+  .ff-notice,
+  .ff-header,
+  .ff-topbar,
+  .ff-announce,
+  .ff-modal__panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* If iPad Safari ever treats the right rail as sticky and glitches, disable sticky there */
+  .ff-console {
+    position: static;
+  }
+
+  /* Prevent “rubber-band” white flashes in some iOS contexts */
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Optional: capture/print mode (set <html data-ff-capture="true"> to force) */
+html[data-ff-capture="true"] .ff-header,
+html[data-ff-capture="true"] .ff-topbar,
+html[data-ff-capture="true"] .ff-announce {
+  position: static !important;
+}
+
+html[data-ff-capture="true"] .ff-console {
+  position: static !important;
+  top: auto !important;
+}
+
+html[data-ff-capture="true"] .ff-hero__noise,
+html[data-ff-capture="true"] .ff-hero__grid {
+  display: none !important;
+}
+
+html[data-ff-capture="true"] .ff-card,
+html[data-ff-capture="true"] .ff-mini,
+html[data-ff-capture="true"] .ff-notice,
+html[data-ff-capture="true"] .ff-modal__panel {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+
+/* Print also uses capture-safe rules */
+@media print {
+  html,
+  body {
+    background: #0b0f17 !important;
+  }
+  .ff-header,
+  .ff-topbar,
+  .ff-announce,
+  .ff-tabs,
+  .ff-sticky,
+  .ff-modal {
+    display: none !important;
+  }
+  .ff-console {
+    position: static !important;
+  }
+  .ff-hero__bg {
+    display: none !important;
+  }
+}
+
+/* ==========================================================
+   FutureFunded — Pro CSS Pack (Append-Only) v7.1
+   Paste this AFTER your current <style> block to override.
+   Focus: layout structure, premium spacing, iOS/mobile polish,
+   sticky/safe-area correctness, footer/sticky/tabs/toasts.
+   ========================================================== */
+
+/* ---------- A) Global layout rhythm + anchor offsets ---------- */
+:root {
+  --ff-safe-top: env(safe-area-inset-top, 0px);
+  --ff-safe-bot: env(safe-area-inset-bottom, 0px);
+
+  /* Premium rhythm */
+  --ff-gap: clamp(12px, 1.6vw, 18px);
+  --ff-section-pad: clamp(18px, 2.6vw, 40px);
+
+  /* Tap targets */
+  --ff-tap: 44px;
+
+  /* Opt-in micro polish */
+  --ff-hair: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="light"] {
+  --ff-hair: rgba(12, 16, 26, 0.1);
+}
+
+/* Make in-page jumps land below sticky bars */
+main [id],
+section[id] {
+  scroll-margin-top: calc(
+    var(--ff-topbar-h) + var(--ff-header-h) + 18px + var(--ff-safe-top)
+  );
+}
+
+/* More consistent spacing across sections */
+.ff-section {
+  padding: var(--ff-section-pad) 0;
+}
+.ff-divider {
+  margin: calc(var(--ff-gap) + 2px) 0;
+}
+
+/* Prevent “squished” flex rows on narrow widths */
+.ff-row {
+  gap: var(--ff-gap);
+}
+@media (max-width: 520px) {
+  .ff-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------- B) iOS safe-area + sticky bar ergonomics ---------- */
+.ff-announce,
+.ff-topbar {
+  padding-top: var(--ff-safe-top);
+}
+.ff-header {
+  top: calc(var(--ff-topbar-h) + var(--ff-safe-top));
+}
+
+/* Compact sticky bars on phones (less “chrome”, more content) */
+@media (max-width: 520px) {
+  html {
+    --ff-topbar-h: 42px;
+    --ff-header-h: 68px;
+  }
+
+  .ff-topbar__row,
+  .ff-header__row {
+    padding-block: 10px;
+  }
+
+  /* Let pills scroll horizontally instead of wrapping into multiple lines */
+  .ff-topbar__left {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ff-topbar__left::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Prevent header actions from wrapping into two rows */
+  .ff-header__actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+  }
+  .ff-header__actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Slightly smaller icon buttons on phones while keeping 44px hit area */
+  .ff-icon {
+    width: var(--ff-tap);
+    height: var(--ff-tap);
+    border-radius: 14px;
+  }
+  .ff-btn--sm {
+    height: 38px;
+  }
+}
+
+/* ---------- C) Hero + console behavior (mobile-first) ---------- */
+/* Sticky right console is great on desktop, but on mobile it should flow */
+@media (max-width: 979px) {
+  .ff-console {
+    position: static;
+    top: auto;
+  }
+}
+
+/* Tighten hero card + improve action layout on small screens */
+@media (max-width: 520px) {
+  .ff-hero {
+    padding: 14px 0 6px;
+  }
+  .ff-h1 {
+    line-height: 1.06;
+  }
+  .ff-lead {
+    font-size: 14px;
+  }
+
+  /* Hero action row becomes a clean 2-up grid (no “scroll of buttons”) */
+  .ff-hero__left .ff-row[aria-label="Hero actions"] {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .ff-hero__left .ff-row[aria-label="Hero actions"] .ff-btn,
+  .ff-hero__left .ff-row[aria-label="Hero actions"] a {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Third button (Copy link) spans full width */
+  .ff-hero__left .ff-row[aria-label="Hero actions"] :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  /* Reduce visual density in pills row */
+  .ff-hero__left .ff-row[aria-label="Fundraiser highlights"] {
+    gap: 8px;
+  }
+  .ff-pill {
+    height: 26px;
+    padding: 0 10px;
+  }
+}
+
+/* ---------- D) Cards: spacing, borders, premium structure ---------- */
+.ff-card,
+.ff-mini,
+.ff-notice {
+  border-color: color-mix(in srgb, var(--ff-b) 88%, transparent);
+}
+.ff-card--lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Slightly tighter padding on phones */
+@media (max-width: 520px) {
+  .ff-pad {
+    padding: 14px;
+  }
+  .ff-mini {
+    padding: 12px;
+  }
+}
+
+/* Better grid density: 3-col becomes 2-col on mid phones, 1-col on small */
+@media (max-width: 860px) {
+  .ff-grid--3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 520px) {
+  .ff-grid--3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- E) Team cards: image visibility + consistent height ---------- */
+/* Ensures images appear consistently and don’t collapse */
+.ff-team__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 140px;
+}
+
+/* Make team cards feel more “product-grade” */
+[data-team-card] .ff-card__title {
+  letter-spacing: -0.012em;
+}
+[data-team-card] .ff-meter {
+  height: 14px;
+}
+@media (max-width: 520px) {
+  [data-team-card] .ff-row[aria-label="Team actions"] {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  [data-team-card] .ff-row[aria-label="Team actions"] .ff-btn,
+  [data-team-card] .ff-row[aria-label="Team actions"] a {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Copy link spans full width */
+  [data-team-card] .ff-row[aria-label="Team actions"] :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------- F) Sticky donate bar + mobile tabs (iOS safe-area) ---------- */
+.ff-sticky {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(56px + var(--ff-safe-bot)); /* leaves room for tabs */
+  z-index: 120;
+  padding: 10px var(--ff-gutter);
+  pointer-events: none;
+}
+.ff-sticky__inner {
+  pointer-events: auto;
+  max-width: var(--ff-container);
+  margin-inline: auto;
+  border-radius: 18px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s3) 80%, transparent);
+  box-shadow: var(--ff-sh2);
+  padding: 10px 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.ff-sticky__bar {
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ff-s2) 68%, transparent);
+  overflow: hidden;
+  border: 1px solid var(--ff-b);
+}
+.ff-sticky__barfill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--ff-accent),
+    color-mix(in srgb, var(--ff-accent) 35%, #fff)
+  );
+  box-shadow: 0 0 18px var(--ff-accentSoft);
+}
+
+/* Mobile tabs */
+.ff-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 130;
+  padding: 10px var(--ff-gutter) calc(10px + var(--ff-safe-bot));
+  border-top: 1px solid var(--ff-b);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--ff-s3) 88%, transparent)
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.ff-tab {
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s2) 76%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 950;
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+.ff-tab:hover {
+  border-color: var(--ff-b2);
+  color: var(--ff-text);
+  box-shadow: var(--ff-sh1);
+}
+.ff-tab.is-active,
+.ff-tab[aria-current="true"] {
+  border-color: var(--ff-accentBorder);
+  color: var(--ff-text);
+  background:
+    linear-gradient(180deg, var(--ff-accentSoft), transparent 70%),
+    color-mix(in srgb, var(--ff-s2) 82%, transparent);
+}
+
+/* Ensure content never hides behind fixed bottom UI */
+.ff-footer,
+.ff-main {
+  padding-bottom: calc(96px + var(--ff-safe-bot));
+}
+
+/* ---------- G) Footer polish (enterprise-grade) ---------- */
+.ff-footer {
+  border-top: 1px solid var(--ff-b);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--ff-s3) 70%, transparent)
+  );
+  padding: 26px 0 calc(26px + var(--ff-safe-bot));
+}
+.ff-footer__grid {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 860px) {
+  .ff-footer__grid {
+    grid-template-columns: 1.3fr 0.7fr 1fr;
+    align-items: start;
+  }
+}
+.ff-footer__title {
+  font-weight: 950;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.ff-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.ff-footer__links a {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s2) 72%, transparent);
+  font-weight: 950;
+  color: var(--ff-muted);
+}
+.ff-footer__links a:hover {
+  color: var(--ff-text);
+  border-color: var(--ff-b2);
+  box-shadow: var(--ff-sh1);
+}
+.ff-footer__legal {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ff-b);
+}
+
+/* ---------- H) Toasts + Back-to-top (clean, premium) ---------- */
+.ff-toast {
+  position: fixed;
+  right: 12px;
+  bottom: calc(76px + var(--ff-safe-bot));
+  z-index: 200;
+  display: grid;
+  gap: 10px;
+  max-width: min(360px, calc(100vw - 24px));
+}
+.ff-top {
+  position: fixed;
+  right: 12px;
+  bottom: calc(132px + var(--ff-safe-bot));
+  z-index: 200;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  border: 1px solid var(--ff-b);
+  background: color-mix(in srgb, var(--ff-s2) 78%, transparent);
+  box-shadow: var(--ff-sh1);
+}
+.ff-top:hover {
+  border-color: var(--ff-b2);
+  box-shadow: var(--ff-sh2);
+}
+
+/* ---------- I) Mobile performance: reduce blur cost (iOS Safari) ---------- */
+@media (max-width: 520px) {
+  .ff-card,
+  .ff-mini,
+  .ff-notice,
+  .ff-header,
+  .ff-topbar,
+  .ff-tabs {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* ---------- J) Micro fixes ---------- */
+/* Prevent input zoom on iOS (needs >=16px font-size) */
+@media (max-width: 520px) {
+  .ff-input,
+  .ff-input::placeholder,
+  select.ff-input,
+  textarea.ff-input {
+    font-size: 16px;
+  }
+}
+
+/* Make “Quick gifts” chips wrap cleanly */
+.ff-row[aria-label="Quick gift buttons"] {
+  flex-wrap: wrap;
+}
+/* --- v8 Truth box --- */
+.ff-truthbox {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.ff-truthbox__row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.ff-truthbox__pct {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+}
+.ff-truthbox__pctMark {
+  font-size: 22px;
+  opacity: 0.85;
+  margin-left: 2px;
+}
+.ff-truthbox__meta .ff-help {
+  opacity: 0.92;
+}
+
+/* --- hero CTA layout --- */
+.ff-hero-ctas {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* --- Most popular badge on preset button --- */
+.ff-popular-badge {
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* --- sticky actions: donate + share only --- */
+.ff-sticky-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* --- team overflow menu --- */
+.ff-team-more {
+  position: relative;
+  display: inline-block;
+}
+.ff-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 22, 33, 0.98);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  padding: 6px;
+  z-index: 1000;
+}
+.ff-menu__item {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ff-menu__item:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.22);
+  outline-offset: 2px;
+}
+.ff-menu__item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* --- gift does line --- */
+.ff-gift-does {
+  margin-top: 10px;
+  opacity: 0.92;
+}
+
+/* [FF PATCH] Mobile priority gate (topbar/header) */
+@media (max-width: 768px) {
+  .ff-topbar__desktop-only {
+    display: none !important;
+  }
+  .ff-header__desktop-only {
+    display: none !important;
+  }
+}
+@media (min-width: 769px) {
+  .ff-topbar__mobile-only {
+    display: none !important;
+  }
+}

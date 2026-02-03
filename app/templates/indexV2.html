@@ -1,0 +1,2171 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!doctype html>
+<html
+  lang="en"
+  class="{{ html_classes }}"
+  data-page="campaign"
+  data-progress="{{ pct_int }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ ORG_TEAM_NAME }} · {{ platform_name }}</title>
+
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="description" content="{{ SHARE_DESC }}" />
+  <meta name="robots" content="index,follow" />
+  <meta name="color-scheme" content="light dark" />
+  <meta
+    name="theme-color"
+    content="{{ brand_color|default(accent_hex|default('#f97316')) }}"
+  />
+  <meta name="application-name" content="{{ platform_name }}" />
+
+  {% if canonical_url is defined and canonical_url %}
+    <link rel="canonical" href="{{ canonical_url }}" />
+  {% endif %}
+
+  {# ---------- Open Graph & Twitter cards ---------- #}
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{{ SHARE_TITLE }}" />
+  <meta property="og:description" content="{{ SHARE_DESC }}" />
+  {% if SHARE_URL %}<meta property="og:url" content="{{ canonical }}" />{% endif %}
+  <meta property="og:image" content="{{ SHARE_IMAGE }}" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ SHARE_TITLE }}" />
+  <meta name="twitter:description" content="{{ SHARE_DESC }}" />
+  <meta name="twitter:image" content="{{ SHARE_IMAGE }}" />
+
+  {# ---------- Icons ---------- #}
+  <link rel="icon" href="{{ favicon_url|default('/static/img/favicon.png') }}" />
+  <link rel="apple-touch-icon" href="{{ apple_touch_icon_url|default('/static/img/apple-touch-icon.png') }}" />
+
+  {# ---------- Fonts ---------- #}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&family=Newsreader:opsz,wght@14..72,400..700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400..700&display=swap"
+    rel="stylesheet"
+  />
+
+  {# ---------- Theme CSS ---------- #}
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/fundchamps.css') }}?v=1"
+  />
+
+  {# ---------- Dynamic brand-color override ---------- #}
+  <style {{ nonce_attr() }}>
+    :root {
+      --accent: {{ brand_color|default('#f97316') }};
+      --accent-main: {{ brand_color|default('#f97316') }};
+      --fc-accent-primary: {{ brand_color|default('#f97316') }};
+    }
+  </style>
+
+  {# ---------- Analytics-ish campaign meta ---------- #}
+  <meta name="fc:goal" content="{{ GOAL }}" />
+  <meta name="fc:raised" content="{{ RAISED }}" />
+  <meta name="fc:progress" content="{{ pct_int }}" />
+  <meta name="fc:donor-count" content="{{ DONOR_COUNT }}" />
+  <meta name="fc:tier" content="{{ GAME_TIER }}" />
+  <meta name="fc:org" content="{{ ORG_TEAM_NAME }}" />
+
+  {# ---------- Theme bootstrap: default light ---------- #}
+  <script {{ nonce_attr() }}>
+    (function () {
+      try {
+        var doc = document.documentElement;
+        var stored = localStorage.getItem('fc-theme');
+        var t = stored || 'light';
+        doc.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
+  {# ---------- Structured data (basic) ---------- #}
+  <script {{ nonce_attr() }} type="application/ld+json">
+  {{ {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": platform_name|default('FundChamps'),
+    "url": SHARE_URL|default(request.url if request is defined else ''),
+    "description": SHARE_DESC|default('A transparent, mobile-first fundraiser for youth programs')
+  }|tojson }}
+  </script>
+
+  {# ---------- Frontend config object ---------- #}
+  <script {{ nonce_attr() }}>
+    window.FUNDRAISER_CONFIG = {
+      platformName: {{ platform_name|default('FundChamps')|tojson }},
+      teamName: {{ team_name|tojson }},
+      orgTeamName: {{ ORG_TEAM_NAME|tojson }},
+      tagline: {{ TAGLINE|tojson }},
+      sportLabel: {{ SPORT_LABEL|tojson }},
+      brandColor: {{ brand_color|default('#f97316')|tojson }},
+      goal: {{ GOAL|default(10000) }},
+      raised: {{ RAISED|default(0) }},
+      deadlineISO: {{ DEADLINE_ISO|default('')|tojson }},
+      donorCount: {{ DONOR_COUNT|default(0) }},
+      avgGiftDollars: {{ AVG_GIFT_DOLLARS|default(0) }},
+      announcement: {
+        text: {{ ANNOUNCEMENT_TEXT|tojson }},
+        id: {{ ANNOUNCEMENT_ID|tojson }},
+        linkUrl: {{ ANNOUNCEMENT_LINK_URL|default('')|tojson }},
+        linkLabel: {{ ANNOUNCEMENT_LINK_LABEL|default('Details')|tojson }}
+      },
+      currentYear: {{ current_year }},
+      donateUrl: {{ DONATE_URL|default('/donate')|tojson }},
+      share: {
+        title: {{ SHARE_TITLE|tojson }},
+        desc: {{ SHARE_DESC|tojson }},
+        url: {{ SHARE_URL|default('')|tojson }} || window.location.href,
+        image: {{ SHARE_IMAGE|tojson }}
+      },
+      poweredBy: {
+        name: {{ POWERED_BY_NAME|tojson }},
+        logoUrl: {{ POWERED_BY_LOGO_URL|tojson }}
+      },
+      taxFaqCopy: {{ TAX_FAQ_COPY|tojson }},
+      checkPayableTo: {{ check_payable_to|tojson }},
+      sponsorEmail: {{ sponsor_email|tojson }},
+      sponsorMemo: {{ sponsor_memo|tojson }},
+      footerGoal: {{ footer_goal|default(10000) }},
+      impactTiles: {{ impact_tiles|tojson }},
+      popularAmount: {{ popular_amount|default(impact_tiles[1].amount)|tojson }},
+      leaderboard: {{ LEADERBOARD_DATA|tojson }},
+      teamGallery: {{ TEAM_GALLERY|tojson }}
+    };
+  </script>
+</head>
+<body
+
+<!-- FF: Accessibility Skip Link -->
+<a href="#main" class="ff-skiplink">Skip to main content</a>
+
+  class="skin-pro"
+  style="--pct: {{ pct_int|default(0)|int }}%;"
+  data-progress="{{ pct_int|default(0)|int }}"
+  data-org="{{ ORG_TEAM_NAME|e }}"
+  data-tier="{{ GAME_TIER|default('Kickoff') }}"
+  data-platform="{{ platform_name|default('FundChamps')|e }}"
+  data-brand-color="{{ brand_color|default('#0f766e') }}"
+  data-has-deadline="{{ '1' if DEADLINE_ISO else '0' }}"
+  data-has-gallery="{{ '1' if TEAM_GALLERY is defined and TEAM_GALLERY else '0' }}"
+  data-has-leaderboard="{{ '1' if LEADERBOARD is defined and LEADERBOARD else '0' }}"
+  data-has-inline-checkout="1"
+  {% if DEADLINE_ISO %}data-deadline="{{ DEADLINE_ISO|e }}"{% endif %}>
+  <a href="#main-content" class="skip-link sr-only">Skip to main content</a>
+
+  <!-- HEADER -->
+  <header class="fc-header" role="banner">
+    <div class="shell fc-header-inner">
+
+      <div class="fc-topbar fc-topbar-grid" aria-label="Site header">
+        <!-- Brand -->
+        <a
+          href="{{ root_url|default('#') }}"
+          class="pill pill-brand fc-topbar-brand"
+          aria-label="{{ platform_name|default('FundChamps')|e }} home">
+          <span class="logo-orb" aria-hidden="true">
+            <span class="logo-initials">
+              {{ (platform_name|default('FC'))[:2]|upper }}
+            </span>
+          </span>
+          <span class="brand-text">
+            <span class="wordmark">
+              {{ platform_name|default('FundChamps')|upper }}
+            </span>
+            <span class="brand-tagline">YOUTH · SCHOOLS · CLUBS</span>
+          </span>
+        </a>
+
+        <!-- Center tagline -->
+        <div class="fc-topbar-title" role="heading" aria-level="2">
+          <span class="fc-topbar-title-primary">
+            <span class="accent-primary">Fuel the season.</span>
+          </span>
+          <span class="fc-topbar-title-sep accent" aria-hidden="true">·</span>
+          <span class="accent">Fund the future.</span>
+        </div>
+
+        <!-- Actions -->
+        <nav class="fc-topbar-actions" aria-label="Primary actions">
+          <button
+            type="button"
+            class="pill pill-outline fc-theme-toggle"
+            id="fcThemeToggle"
+            aria-label="Toggle light and dark theme">
+            <span aria-hidden="true">🌓</span>
+          </button>
+          <a
+            href="#inline-checkout"
+            class="pill pill-primary cta-sheen cta-ring"
+            data-donate-link
+            data-qa="donate"
+            data-testid="primary-donate"
+            aria-label="Donate to support {{ ORG_TEAM_NAME }}">
+            Donate
+          </a>
+        </nav>
+      </div>
+
+      <!-- PROGRESS RAIL -->
+      <section
+        class="fc-header-rail"
+        role="region"
+        aria-label="Campaign progress">
+        <div class="fc-rail-main fc-rail--compact">
+          <div
+            class="fc-rail-powered"
+            aria-label="Powered by {{ POWERED_BY_NAME|default(platform_name) }}">
+            <span class="fc-rail-powered-logo" aria-hidden="true">
+              <img
+                src="{{ POWERED_BY_LOGO_URL|default(platform_logo_url|default('/static/images/logo.webp')) }}"
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width="28"
+                height="28"
+              />
+            </span>
+            <div>
+              <span class="fc-rail-powered-eyebrow">Powered by</span>
+              <strong class="fc-rail-powered-name">
+                {{ POWERED_BY_NAME|default(platform_name) }}
+              </strong>
+            </div>
+          </div>
+
+          <div class="fc-header-progress">
+            <div class="fc-progress-header tnums" aria-live="polite">
+              <div>{{ pct_int|default(0)|int }}% funded</div>
+              <div class="fc-progress-amount">
+                {{ money(RAISED|default(0)) }} /
+                {{ money(GOAL|default(10000)) }}
+              </div>
+            </div>
+            <div
+              class="fc-progress-bar-bg"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="{{ pct_int|default(0)|int }}"
+              aria-valuetext="{{ pct_int|default(0)|int }}% funded">
+              <div class="fc-progress-bar-fg"></div>
+            </div>
+          </div>
+        </div>
+
+        {% if DEADLINE_ISO %}
+        <div
+          class="countdown fc-header-countdown"
+          data-countdown-root
+          data-deadline="{{ DEADLINE_ISO|e }}"
+          aria-live="polite">
+          <span class="hero-countdown-label">⏳ Time left to help</span>
+          <span class="tnums" data-countdown-display>Calculating…</span>
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- Announcement -->
+      {% if ANNOUNCEMENT_TEXT %}
+      <div
+        class="announcement-bar"
+        data-announcement-id="{{ ANNOUNCEMENT_ID|default('campaign-announcement') }}">
+        <div class="announcement-inner">
+          <span class="announcement-pill">
+            {% if IS_GOAL_MET %}
+              Goal met
+            {% elif IS_NEAR_GOAL %}
+              Final push
+            {% else %}
+              Update
+            {% endif %}
+          </span>
+          <span class="announcement-text">
+            {{ ANNOUNCEMENT_TEXT|default('All gifts this week help keep programs affordable for every family.') }}
+          </span>
+          {% if ANNOUNCEMENT_LINK_URL %}
+          <a
+            class="announcement-link"
+            href="{{ ANNOUNCEMENT_LINK_URL }}"
+            target="_blank"
+            rel="noopener noreferrer">
+            {{ ANNOUNCEMENT_LINK_LABEL|default('Details') }}
+          </a>
+          {% endif %}
+        </div>
+        <button
+          type="button"
+          class="announcement-close"
+          aria-label="Hide announcement"
+          data-announcement-dismiss>
+          ×
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main id="main-content" role="main">
+    <!-- HERO BAND -->
+    <section
+      class="hero hero-unified fc-band fc-band--hero"
+      id="hero"
+      aria-labelledby="hero-heading"
+      aria-describedby="hero-subcopy">
+      <div class="shell fc-band-grid fc-band-grid--2col">
+        <!-- LEFT -->
+        <div class="hero-copy fc-band-col fc-band-col-main">
+          <p class="section-eyebrow">
+            {{ SPORT_LABEL|default('season')|capitalize }} fundraiser ·
+            {{ DEADLINE_COPY|default('Now through the season') }}
+          </p>
+
+          <div class="hero-meta" aria-label="Fundraiser status">
+            <span class="hero-pill hero-pill-live">Live youth fundraiser</span>
+            <span class="hero-pill hero-pill-org">{{ ORG_TEAM_NAME }}</span>
+            <span class="hero-pill hero-pill-goal tnums">
+              Goal: {{ money(GOAL|default(10000)) }}
+            </span>
+          </div>
+
+          <h1 id="hero-heading" class="hero-title">
+            <span class="accent-primary">Fuel the {{ SPORT_LABEL|default('season') }}.</span>
+            <span class="accent">Fund the future.</span>
+          </h1>
+
+          <p id="hero-subcopy" class="hero-sub">
+            This campaign keeps {{ ORG_TEAM_NAME }} accessible — covering travel, uniforms,
+            and space so kids can grow on and off the {{ SPORT_LABEL|default('court') }}.
+          </p>
+
+          <div class="hero-ctas" role="group" aria-label="Primary actions">
+            <a
+              href="#inline-checkout"
+              class="btn btn-primary cta-ring cta-sheen"
+              data-donate-link
+              data-qa="donate"
+              data-testid="primary-donate">
+              Donate to {{ ORG_TEAM_NAME }}
+            </a>
+            <a href="#story" class="btn btn-ghost">
+              Meet the program
+            </a>
+          </div>
+
+          <ul class="hero-assurance">
+            <li>🔒 Secure checkout</li>
+            <li>💳 Cards &amp; digital wallets</li>
+          </ul>
+
+          <dl class="hero-stats-row" aria-label="Season stats">
+            <div class="hero-stat">
+              <dt>Kids in the program</dt>
+              <dd class="hero-stat-value tnums">
+                {{ PARTICIPANTS|default(24) }}
+              </dd>
+              <dd class="hero-stat-caption">
+                Every gift helps keep a roster spot affordable.
+              </dd>
+            </div>
+            <div class="hero-stat">
+              <dt>Families helped last year</dt>
+              <dd class="hero-stat-value tnums">
+                {{ FAMILIES_HELPED|default(12) }}
+              </dd>
+              <dd class="hero-stat-caption">
+                Scholarships and subsidies for local families.
+              </dd>
+            </div>
+            <div class="hero-stat">
+              <dt>Progress so far</dt>
+              <dd class="hero-stat-value tnums">
+                {{ pct_int|default(0)|int }}% · {{ money(RAISED|default(0)) }}
+              </dd>
+              <dd class="hero-stat-caption">
+                of {{ money(GOAL|default(10000)) }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- RIGHT -->
+        <aside
+          class="hero-card hero-card-scoreboard fc-band-col fc-band-col-side"
+          role="region"
+          aria-labelledby="hero-card-title">
+          <p class="section-eyebrow accent">
+            {% if IS_GOAL_MET %}
+              🎉 Goal met — every extra gift now fuels scholarships and stretch goals.
+            {% elif IS_NEAR_GOAL %}
+              ✨ Final push — just {{ 100 - pct_int|default(0)|int }}% left.
+            {% elif DONOR_COUNT|default(0) == 0 %}
+              Be the first supporter on the board.
+            {% else %}
+              Be the assist — every gift matters.
+            {% endif %}
+          </p>
+
+          <h2 id="hero-card-title" class="section-title">
+            <span class="accent-primary">Be the assist.</span>
+            <span class="accent">Fuel this program.</span>
+          </h2>
+
+          <div class="hero-card-meta tnums" aria-live="polite">
+            <span>
+              {{ money(RAISED|default(0)) }} /
+              {{ money(GOAL|default(10000)) }}
+            </span>
+            <span>{{ pct_int|default(0)|int }}% funded</span>
+          </div>
+
+          <div
+            class="meter"
+            style="--pct: {{ pct_int|default(0)|int }}%;"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="{{ pct_int|default(0)|int }}"
+            aria-valuetext="{{ pct_int|default(0)|int }}% funded">
+            <div class="fill"></div>
+          </div>
+
+          <div
+            class="gamify-tier-row"
+            data-gamify-tier="{{ GAME_TIER|default('Kickoff') }}"
+            data-progress="{{ pct_int|default(0)|int }}">
+            <div class="gamify-tier-main">
+              <span class="gamify-pill">Campaign tier</span>
+              <span class="gamify-tier-name">{{ GAME_TIER|default('Kickoff') }}</span>
+            </div>
+            <div class="gamify-tier-next tnums">
+              {% if NEXT_TIER_AT is defined and NEXT_TIER_AT %}
+                Next unlock at {{ NEXT_TIER_AT }}% funded.
+              {% else %}
+                Top tier unlocked — everything now fuels stretch goals.
+              {% endif %}
+            </div>
+            <div class="gamify-milestones" aria-hidden="true">
+              <span class="milestone{% if pct_int|default(0)|int>= 25 %} is-hit{% endif %}">25%</span>
+              <span class="milestone{% if pct_int|default(0)|int>= 50 %} is-hit{% endif %}">50%</span>
+              <span class="milestone{% if pct_int|default(0)|int>= 75 %} is-hit{% endif %}">75%</span>
+              <span class="milestone{% if pct_int|default(0)|int>= 100 %} is-hit{% endif %}">100%</span>
+            </div>
+          </div>
+
+          {% if DEADLINE_ISO %}
+          <div
+            class="hero-countdown"
+            data-countdown-root
+            data-deadline="{{ DEADLINE_ISO|e }}"
+            aria-live="polite">
+            <span class="hero-countdown-label">⏳ Time left to help</span>
+            <span
+              class="hero-countdown-values tnums"
+              data-countdown-display>
+              Calculating…
+            </span>
+          </div>
+          {% endif %}
+
+          <div class="hero-impact-snippet" aria-label="Quick impact options">
+            <p class="section-eyebrow">Choose your impact</p>
+            <div
+              class="impact-tiles impact-tiles-inline"
+              role="list"
+              aria-label="Suggested gifts and what they support">
+              {% for tile in impact_tiles %}
+                {% if loop.index <= 3 %}
+                  {% set is_pop = tile.amount == popular_amount %}
+                  <button
+                    type="button"
+                    class="impact-tile"
+                    role="listitem"
+                    aria-pressed="false"
+                    data-impact-amount="{{ tile.amount }}"
+                    data-impact-label="{{ tile.label }}">
+                    {% if is_pop %}
+                    <span class="impact-pop">Most given</span>
+                    {% endif %}
+                    <span class="impact-emoji">{{ tile.emoji }}</span>
+                    <span class="impact-amt tnums">
+                      ${{ '%s'|format(tile.amount) }}
+                    </span>
+                    <span class="impact-label">{{ tile.short }}</span>
+                  </button>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="hero-card-qr" data-qr>
+            <img
+              id="heroQr"
+              class="hero-card-qr-img"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=96x96&margin=0&data={{ SHARE_URL|default(request.url if request is defined else '')|urlencode }}"
+              alt="QR code to open this donation page"
+              width="96"
+              height="96"
+              loading="lazy"
+              decoding="async"
+            />
+            <span>
+              Scan to give from your phone in under a minute — perfect for
+              grandparents, family, or local sponsors watching from the stands.
+            </span>
+          </div>
+
+          <div
+            class="hero-card-actions"
+            role="group"
+            aria-label="Donation shortcuts">
+            <a
+              href="#inline-checkout"
+              class="btn btn-primary cta-ring cta-sheen"
+              data-donate-link
+              data-qa="donate"
+              data-testid="primary-donate">
+              Donate now
+            </a>
+            <button
+              class="btn btn-ghost"
+              type="button"
+              data-boost
+              data-amount="25">
+              $25 boost
+            </button>
+            <button
+              class="btn btn-ghost"
+              type="button"
+              data-boost
+              data-amount="50">
+              $50 boost
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              data-share-copy>
+              Copy link
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- STORY / GALLERY -->
+    <section
+      id="story"
+      class="story-section fc-band fc-band--story"
+      aria-labelledby="story-title">
+      <div class="shell story-grid fc-band-grid fc-band-grid--2col">
+        {% if TEAM_GALLERY is defined and TEAM_GALLERY %}
+        <figure
+          class="story-media fc-band-col fc-band-col-media"
+          data-gallery
+          role="group"
+          aria-roledescription="carousel"
+          aria-label="{{ ORG_TEAM_NAME }} {{ SPORT_LABEL|default('season') }} photo highlights"
+          data-gallery-count="{{ TEAM_GALLERY|length }}">
+          <div class="story-frame">
+            {% for src in TEAM_GALLERY[:6] %}
+            <img
+              id="story-slide-{{ loop.index0 }}"
+              data-slide
+              src="{{ src }}"
+              alt="{% if loop.first %}{{ ORG_TEAM_NAME }} {{ SPORT_LABEL|default('season') }} team photo{% else %}{{ ORG_TEAM_NAME }} photo {{ loop.index }}{% endif %}"
+              class="{% if loop.index0 == 0 %}is-active{% endif %}"
+              aria-hidden="{% if loop.index0 == 0 %}false{% else %}true{% endif %}"
+              loading="{% if loop.index0 == 0 %}eager{% else %}lazy{% endif %}"
+              decoding="async"
+              fetchpriority="{% if loop.index0 == 0 %}high{% else %}auto{% endif %}"
+            />
+            {% endfor %}
+
+            <figcaption class="story-glass">
+              <div class="story-caption" aria-live="polite">
+                <strong>{{ ORG_TEAM_NAME }}</strong>
+                {% if TEAM_GALLERY|length> 1 %}
+                  · {{ SPORT_LABEL|default('season') }} highlights (<span class="tnums">{{ TEAM_GALLERY|length }}</span> photos)
+                {% else %}
+                  · {{ SPORT_LABEL|default('season') }} snapshot
+                {% endif %}
+              </div>
+
+              {% if TEAM_GALLERY|length> 1 %}
+              <div class="story-controls" aria-label="Slideshow controls">
+                <button
+                  class="story-btn"
+                  type="button"
+                  data-prev
+                  aria-label="Previous photo">‹</button>
+                <button
+                  class="story-btn"
+                  type="button"
+                  data-play
+                  aria-pressed="true"
+                  aria-label="Pause slideshow">
+                  Pause
+                </button>
+                <button
+                  class="story-btn"
+                  type="button"
+                  data-next
+                  aria-label="Next photo">›</button>
+              </div>
+              {% endif %}
+            </figcaption>
+          </div>
+
+          {% if TEAM_GALLERY|length> 1 %}
+          <div
+            class="story-strip"
+            role="tablist"
+            aria-label="Select a highlight photo">
+            {% for src in TEAM_GALLERY[:6] %}
+            <button
+              class="story-thumb{% if loop.index0 == 0 %} is-active{% endif %}"
+              type="button"
+              role="tab"
+              data-thumb="{{ loop.index0 }}"
+              aria-selected="{% if loop.index0 == 0 %}true{% else %}false{% endif %}"
+              aria-controls="story-slide-{{ loop.index0 }}">
+              <span>
+                <img
+                  src="{{ src }}"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              </span>
+            </button>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </figure>
+        {% endif %}
+
+        <article class="story-copy-card fc-band-col fc-band-col-main">
+          <p class="section-eyebrow">Why this campaign matters</p>
+          <h2 id="story-title" class="section-title">
+            More than a {{ SPORT_LABEL|default('season') }}. A safe place to grow.
+          </h2>
+          <div class="story-body">
+            <p>
+              For many of our kids, this program is a second home. Your support keeps doors open,
+              covers travel and fees, and makes sure money is <strong>never</strong> the reason
+              someone steps away from what they love.
+            </p>
+            <p>
+              We’re not just chasing wins or trophies — we’re building teammates, leaders,
+              and confident young people who carry these lessons into the classroom,
+              their families, and the rest of their lives.
+            </p>
+          </div>
+          <div class="story-callout">
+            Every contribution is a vote of confidence that says:
+            <strong>“You belong here. We believe in you.”</strong>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- SCOREBOARD -->
+    <section
+      id="scoreboard"
+      class="scoreboard-section fc-band fc-band--scoreboard"
+      aria-labelledby="scoreboard-title"
+      aria-describedby="scoreboard-summary scoreboard-note">
+      <div class="shell scoreboard-card">
+        <header>
+          <p class="section-eyebrow">Campaign scoreboard</p>
+          <h2 id="scoreboard-title" class="section-title">
+            Snapshot of this fundraiser.
+          </h2>
+          <p id="scoreboard-summary" class="section-sub">
+            Live progress toward {{ money(GOAL|default(10000)) }} and how it turns into court time,
+            gear, and access for {{ ORG_TEAM_NAME }}.
+          </p>
+        </header>
+
+        <div class="scoreboard-layout fc-band-grid fc-band-grid--2col">
+          <div class="scoreboard-main fc-band-col fc-band-col-main">
+            <div class="tnums scoreboard-topline" aria-live="polite">
+              <strong>{{ pct_int|default(0)|int }}% funded</strong>
+              <span aria-hidden="true"> · </span>
+              <span>
+                {{ money(RAISED|default(0)) }} of {{ money(GOAL|default(10000)) }}
+              </span>
+            </div>
+
+            <div
+              class="score-bar"
+              role="progressbar"
+              aria-label="Campaign funding progress for {{ ORG_TEAM_NAME }}"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="{{ pct_int|default(0)|int }}"
+              aria-valuetext="{{ pct_int|default(0)|int }}% funded">
+              <div class="score-fill"></div>
+            </div>
+
+            <meter
+              class="sr-only"
+              min="0"
+              max="100"
+              value="{{ pct_int|default(0)|int }}">
+              {{ pct_int|default(0)|int }}%
+            </meter>
+
+            <p
+              id="scoreboard-note"
+              class="section-sub scoreboard-progress-note tnums">
+              {{ PROGRESS_NOTE|default('Every gift here helps ' ~ ORG_TEAM_NAME ~ ' say yes to more kids.') }}
+            </p>
+
+            <div class="scoreboard-chips" aria-label="Campaign stats">
+              {% set donor_count = DONOR_COUNT|default(0) %}
+              <span class="chip chip-score">
+                {% if donor_count> 0 %}
+                  {% if donor_count == 1 %}
+                    <strong class="tnums">1</strong> supporter so far
+                  {% else %}
+                    <strong class="tnums">{{ donor_count }}</strong> supporters so far
+                  {% endif %}
+                {% else %}
+                  0 supporters yet — first gift gets bragging rights 🤍
+                {% endif %}
+              </span>
+
+              {% set has_avg_gift = AVG_GIFT_DOLLARS is defined and AVG_GIFT_DOLLARS %}
+              <span class="chip chip-score">
+                {% if donor_count> 0 and has_avg_gift %}
+                  Avg gift
+                  <strong class="tnums">{{ money(AVG_GIFT_DOLLARS) }}</strong>
+                {% else %}
+                  Avg gift updates live as gifts come in.
+                {% endif %}
+              </span>
+
+              <span class="chip chip-score">
+                Every share means more families see this page.
+              </span>
+            </div>
+          </div>
+
+          <div class="scoreboard-side fc-band-col fc-band-col-side">
+            <p class="section-eyebrow">What this goal covers</p>
+            <ul class="scoreboard-list">
+              <li>
+                Participation fees, uniforms &amp; gear, travel &amp; events,
+                and practice space — so cost doesn’t bench a kid.
+              </li>
+            </ul>
+            <p class="section-sub scoreboard-fineprint">
+              100% of gifts stay with {{ ORG_TEAM_NAME }} and our partner programs —
+              no junk fees, no hidden cuts.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEDICATED DONATE BAND -->
+    <section
+      id="donate"
+      class="donate-section fc-band fc-band--donate"
+      aria-labelledby="donate-title"
+      aria-describedby="donate-sub">
+      <div class="shell donate-card">
+        <header class="donate-header">
+          <p class="section-eyebrow">Ready to help?</p>
+          <h2 id="donate-title" class="section-title">
+            Make your gift in under a minute.
+          </h2>
+          <p id="donate-sub" class="section-sub tnums">
+            Join supporters backing {{ ORG_TEAM_NAME }} — every dollar fuels travel, uniforms,
+            and access. Secure checkout via Stripe &amp; PayPal.
+          </p>
+        </header>
+
+        <div class="donate-facts tnums" aria-label="Fast facts about this campaign">
+          <div class="donate-fact">
+            <span class="donate-fact-label">Raised</span>
+            <span class="donate-fact-value">{{ money(RAISED|default(0)) }}</span>
+          </div>
+          <div class="donate-fact">
+            <span class="donate-fact-label">Goal</span>
+            <span class="donate-fact-value">{{ money(GOAL|default(10000)) }}</span>
+          </div>
+          <div class="donate-fact">
+            <span class="donate-fact-label">Supporters</span>
+            <span class="donate-fact-value">{{ DONOR_COUNT|default(0) }}</span>
+          </div>
+        </div>
+
+        <div class="donate-layout fc-band-grid fc-band-grid--2col">
+          <div class="donate-main fc-band-col fc-band-col-main">
+            <div class="donate-quick" aria-label="Quick gift amounts">
+              <p class="section-eyebrow">Choose a starting amount</p>
+              <div class="donate-quick-row">
+                {% for tile in impact_tiles %}
+                  {% if loop.index <= 4 %}
+                  <button
+                    type="button"
+                    class="donate-quick-pill"
+                    data-impact-amount="{{ tile.amount }}"
+                    data-impact-label="{{ tile.label }}">
+                    <span class="donate-quick-emoji">{{ tile.emoji }}</span>
+                    <span class="donate-quick-amt tnums">
+                      ${{ '%s'|format(tile.amount) }}
+                    </span>
+                  </button>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <p class="section-sub donate-quick-hint">
+                Most gifts land between <strong>$25</strong> and <strong>$150</strong> —
+                every amount matters.
+              </p>
+            </div>
+
+            <div class="donate-primary-cta">
+              <a
+                href="#inline-checkout"
+                class="btn btn-primary cta-gradient cta-sheen cta-ring donate-inline-btn"
+                data-donate-link
+                data-qa="donate"
+                data-testid="primary-donate"
+                aria-label="Open secure inline checkout to support {{ ORG_TEAM_NAME }}">
+                Give now in {{ ORG_TEAM_NAME }}’s honor
+              </a>
+              <p class="donate-secondary-copy">
+                Prefer a different method? Scroll to <a href="#ways-to-give">Ways to give</a>
+                for checks, employer match, and sponsorships.
+              </p>
+            </div>
+          </div>
+
+          <aside class="donate-side fc-band-col fc-band-col-side" aria-label="Extra impact options">
+            <h3 class="donate-side-title">Boost your impact</h3>
+            <ul class="donate-side-list">
+              <li>
+                <strong>Monthly support:</strong>
+                even a small recurring gift keeps the program stable all season.
+              </li>
+              <li>
+                <strong>Employer match:</strong>
+                many companies match gifts — double your impact in a few clicks.
+              </li>
+              <li>
+                <strong>Share the page:</strong>
+                text or email this link to a friend who loves youth programs.
+              </li>
+            </ul>
+            <p class="donate-side-note">
+              Offline or matched gifts can be added to this page so the scoreboard stays accurate.
+            </p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMPACT TILES GRID -->
+    <section
+      class="impact fc-band"
+      aria-labelledby="impact-title"
+      aria-describedby="impact-helper-text">
+      <div class="shell impact-inner">
+        <div class="impact-copy">
+          <p class="section-eyebrow" id="impact-title">Choose your impact</p>
+          <p class="section-sub" id="impact-helper-text">
+            Tap or click a tile to see what your gift unlocks for our kids — and prefill your gift below.
+          </p>
+        </div>
+
+        <div
+          class="impact-tiles"
+          role="list"
+          aria-label="Suggested gifts and what they support">
+          {% for tile in impact_tiles %}
+            {% set is_pop = tile.amount == popular_amount %}
+            <button
+              type="button"
+              class="impact-tile"
+              role="listitem"
+              aria-pressed="false"
+              data-impact-amount="{{ tile.amount }}"
+              data-impact-label="{{ tile.label }}">
+              {% if is_pop %}
+              <span class="impact-pop">Most given</span>
+              {% endif %}
+              <span class="impact-emoji">{{ tile.emoji }}</span>
+              <span class="impact-amt tnums">
+                ${{ '%s'|format(tile.amount) }}
+              </span>
+              <span class="impact-label">{{ tile.short }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- VIP WALL -->
+    <section
+      id="supporters"
+      class="leaderboard-section fc-band"
+      aria-labelledby="supporters-title"
+      aria-describedby="supporters-desc supporters-cta">
+      <div class="shell leaderboard-card{% if not (LEADERBOARD is defined and LEADERBOARD) %} leaderboard-card--sample{% endif %}">
+        <header>
+          <p class="section-eyebrow">VIP wall</p>
+          <h2 id="supporters-title" class="section-title">
+            Top sponsors &amp; supporters.
+          </h2>
+          <p id="supporters-desc" class="section-sub tnums">
+            {% if LEADERBOARD is defined and LEADERBOARD %}
+              Showing top {{ LEADERBOARD|length }} gifts so far — families, businesses,
+              and partners going above and beyond this campaign.
+            {% elif DONOR_COUNT|default(0) == 0 %}
+              Once supporters start giving, this wall will update live with real names and amounts.
+            {% else %}
+              Preview only — real top supporters will appear here as gifts are processed.
+            {% endif %}
+          </p>
+        </header>
+
+        <ul
+          class="leaderboard-list"
+          data-leaderboard
+          aria-label="Top sponsors ranked by contribution amount"
+          aria-live="polite">
+          {% set _leaderboard = LEADERBOARD if LEADERBOARD is defined and LEADERBOARD else LEADERBOARD_DATA %}
+          {% for sponsor in _leaderboard %}
+          <li class="leaderboard-item">
+            <div
+              class="leaderboard-rank tnums"
+              aria-label="Rank {{ loop.index }}">
+              #{{ loop.index }}
+            </div>
+
+            <div class="leaderboard-main">
+              <div class="leaderboard-header">
+                {% if sponsor.avatar_url %}
+                <div class="leaderboard-avatar" aria-hidden="true">
+                  <img
+                    src="{{ sponsor.avatar_url }}"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                {% endif %}
+                <div>
+                  <div class="leaderboard-name">{{ sponsor.name }}</div>
+                  {% if sponsor.tagline %}
+                  <div class="leaderboard-tagline">{{ sponsor.tagline }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="leaderboard-amount tnums"
+              aria-label="{{ money(sponsor.amount) }} contributed">
+              {{ money(sponsor.amount) }}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <p id="supporters-cta" class="section-sub">
+          Want your family or business on this wall?
+          Choose a sponsor tier above or talk with our staff about a custom partnership.
+        </p>
+      </div>
+    </section>
+
+    <!-- WAYS TO GIVE -->
+    <section
+      id="ways-to-give"
+      class="ways-section fc-band fc-band--ways"
+      aria-labelledby="ways-title"
+      aria-describedby="ways-desc">
+      <div class="shell ways-card">
+        <div class="ways-layout fc-band-grid fc-band-grid--2col">
+          <div class="fc-band-col fc-band-col-main">
+            <p class="section-eyebrow">More ways to support</p>
+            <h2 id="ways-title" class="section-title">
+              Give online, by check, or through your company.
+            </h2>
+            <p id="ways-desc" class="section-sub">
+              A quick online gift here is the fastest way to help, but many families
+              and businesses give through matching programs or sponsorships too.
+            </p>
+
+            <div class="ways-tabs" role="tablist" aria-label="Ways to give" aria-orientation="horizontal">
+              <button
+                class="ways-tab is-active"
+                id="tab-online"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="panel-online"
+                tabindex="0"
+                data-ways-tab="online">
+                Online
+              </button>
+              <button
+                class="ways-tab"
+                id="tab-offline"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-offline"
+                tabindex="-1"
+                data-ways-tab="offline">
+                Checks &amp; match
+              </button>
+            </div>
+
+            <div class="ways-chip-row" aria-label="Highlights of giving options">
+              <span class="chip chip-soft">Fastest way to help</span>
+              <span class="chip chip-soft">Tax-smart options</span>
+              <span class="chip chip-soft">Families &amp; businesses</span>
+            </div>
+          </div>
+
+          <div class="fc-band-col fc-band-col-side">
+            <section
+              id="panel-online"
+              class="ways-panel"
+              role="tabpanel"
+              aria-labelledby="tab-online"
+              tabindex="0"
+              data-ways-panel="online">
+              <ul class="ways-list">
+                <li class="ways-item">
+                  <span class="ways-dot" aria-hidden="true"></span>
+                  <span>
+                    <strong>Online checkout:</strong>
+                    under a minute via card or wallet — handled securely on our checkout page.
+                  </span>
+                </li>
+                <li class="ways-item">
+                  <span class="ways-dot" aria-hidden="true"></span>
+                  <span>
+                    <strong>Notes &amp; honorees:</strong>
+                    add a note or dedicate your gift at checkout.
+                  </span>
+                </li>
+                <li class="ways-item">
+                  <span class="ways-dot" aria-hidden="true"></span>
+                  <span>
+                    <strong>Shareable receipt:</strong>
+                    forward your receipt to friends or coworkers who can match.
+                  </span>
+                </li>
+              </ul>
+              <p class="section-sub ways-fineprint">
+                Encrypted &amp; secure · Visa · Mastercard · AmEx · Apple&nbsp;Pay · Google&nbsp;Pay
+              </p>
+            </section>
+
+            <section
+              id="panel-offline"
+              class="ways-panel"
+              role="tabpanel"
+              aria-labelledby="tab-offline"
+              tabindex="0"
+              data-ways-panel="offline"
+              hidden>
+              <ul class="ways-list">
+                <li class="ways-item">
+                  <span class="ways-dot" aria-hidden="true"></span>
+                  <span>
+                    <strong>Checks:</strong>
+                    payable to {{ CHECK_PAYABLE_TO|default(ORG_TEAM_NAME) }} —
+                    memo “{{ sponsor_memo|default(ORG_TEAM_NAME) }} Fundraiser”.
+                  </span>
+                </li>
+                <li class="ways-item">
+                  <span class="ways-dot" aria-hidden="true"></span>
+                  <span>
+                    <strong>Company match:</strong>
+                    submit through your employer portal, then send us your confirmation
+                    so we can add it to the scoreboard.
+                  </span>
+                </li>
+                <li class="ways-item">
+                  <span class="ways-dot" aria-hidden="true"></span>
+                  <span>
+                    <strong>Sponsorships:</strong>
+                    email <a href="mailto:{{ sponsor_email|default('sponsorships@example.org')|e }}">
+                      {{ sponsor_email|default('sponsorships@example.org') }}
+                    </a>
+                    for a sponsor packet.
+                  </span>
+                </li>
+              </ul>
+              <p class="section-sub ways-fineprint">
+                Offline gifts are added to this page so the scoreboard stays accurate.
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section
+      id="faq"
+      class="faq-section fc-band"
+      aria-labelledby="faq-title"
+      aria-describedby="faq-desc faq-security-note">
+      <div class="shell faq-card">
+        <div class="faq-header">
+          <div>
+            <p class="section-eyebrow">Questions</p>
+            <h2 id="faq-title" class="section-title">
+              Quick answers. Easy giving.
+            </h2>
+            <p id="faq-desc" class="section-sub">
+              We want giving to feel as clear and straightforward as a fast break —
+              or a standing ovation.
+            </p>
+          </div>
+
+          <div class="faq-security" id="faq-security-note" aria-live="polite">
+            🔐 Secure · Encrypted · Receipt by email
+          </div>
+        </div>
+
+        <div class="faq-grid" role="list">
+          <article role="listitem" class="faq-item">
+            <h3 class="faq-q">How is my gift used?</h3>
+            <p class="faq-a">
+              Funds go directly toward program costs like participant fees, uniforms,
+              supplies, travel, events, and space. Our staff and volunteers stretch every dollar.
+            </p>
+          </article>
+
+          <article role="listitem" class="faq-item">
+            <h3 class="faq-q">Can I support a specific player or area?</h3>
+            <p class="faq-a">
+              Often, yes — use the notes field at checkout to name a participant,
+              team, or focus area, or contact us for directed sponsorships.
+            </p>
+          </article>
+
+          <article role="listitem" class="faq-item">
+            <h3 class="faq-q">Is my donation tax-deductible?</h3>
+            <p class="faq-a">
+              {{ TAX_FAQ_COPY|default('Many contributions are processed through our nonprofit and booster partners. Receipts and details are provided after you give.') }}
+            </p>
+          </article>
+
+          <article role="listitem" class="faq-item">
+            <h3 class="faq-q">What if I can’t give right now?</h3>
+            <p class="faq-a">
+              Sharing the page is huge. Text or email the link — your network can unlock
+              opportunities our kids will remember for life.
+            </p>
+          </article>
+        </div>
+
+        <div class="faq-cta-row" style="text-align:center;">
+          <a href="#inline-checkout" class="btn btn-primary cta-ring cta-sheen" style="font-size:1.02rem;">
+            Donate now
+          </a>
+          <div style="font-size:0.9rem; color:#9ca3af; margin-top:0.55rem;">
+            Secure checkout powered by Stripe &amp; PayPal
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INLINE CHECKOUT -->
+    <section
+      id="inline-checkout"
+      class="inline-checkout"
+      aria-label="Secure online gift for {{ ORG_TEAM_NAME }}">
+      <div class="shell">
+        <div class="inline-card">
+          <header class="inline-header">
+            <div class="inline-pill">
+              <span class="inline-pill-dot" aria-hidden="true"></span>
+              SECURE ONLINE GIFT
+            </div>
+
+            <h2 class="inline-title">
+              Fuel the season for
+              <span class="inline-title-accent">{{ ORG_TEAM_NAME }}</span>
+            </h2>
+
+            <p class="inline-sub">
+              Every contribution keeps youth programs accessible for families and players.
+              Securely processed via <strong>Stripe</strong> or <strong>PayPal</strong>.
+            </p>
+
+            <ol class="inline-steps" aria-label="Checkout steps">
+              <li class="step is-active" data-step="1">
+                <span class="step-circle">1</span>
+                <span class="step-label">Details</span>
+              </li>
+              <li class="step" data-step="2">
+                <span class="step-circle">2</span>
+                <span class="step-label">Payment</span>
+              </li>
+            </ol>
+          </header>
+
+          <div class="inline-body">
+            <!-- STEP 1 -->
+            <form
+              id="inline-donation-form"
+              class="inline-form"
+              novalidate
+              autocomplete="off">
+              <div class="field-group">
+                <label for="inline-name">Your name</label>
+                <input
+                  id="inline-name"
+                  name="name"
+                  type="text"
+                  autocomplete="name"
+                  required
+                />
+              </div>
+
+              <div class="field-group">
+                <label for="inline-email">Email</label>
+                <input
+                  id="inline-email"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+
+              <div class="field-group">
+                <label for="inline-amount">Gift amount (USD)</label>
+                <input
+                  id="inline-amount"
+                  name="amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  inputmode="decimal"
+                  required
+                />
+                <div class="quick-picks" aria-label="Quick amounts">
+                  <button type="button" data-quick-amount="25">$25</button>
+                  <button type="button" data-quick-amount="50">$50</button>
+                  <button type="button" data-quick-amount="100">$100</button>
+                  <button type="button" data-quick-amount="250">$250</button>
+                </div>
+                <p class="inline-hint">
+                  Most families give between <strong>$25</strong> and <strong>$150</strong>.
+                  Give what feels right for you.
+                </p>
+              </div>
+
+              <div class="field-group field-group-row">
+                <div class="field-group-col">
+                  <span class="field-label">Frequency</span>
+                  <div
+                    class="freq-pills"
+                    role="radiogroup"
+                    aria-label="Gift frequency">
+                    <button
+                      type="button"
+                      class="freq-pill is-active"
+                      data-frequency="once"
+                      aria-pressed="true">
+                      One-time
+                    </button>
+                    <button
+                      type="button"
+                      class="freq-pill"
+                      data-frequency="monthly"
+                      aria-pressed="false">
+                      Monthly
+                    </button>
+                  </div>
+                  <input
+                    type="hidden"
+                    id="inline-frequency"
+                    name="frequency"
+                    value="once"
+                  />
+                </div>
+              </div>
+
+              <div
+                id="inline-error"
+                class="inline-error"
+                role="alert"
+                aria-live="polite"
+                hidden></div>
+
+              <button
+                id="inline-next"
+                type="submit"
+                class="btn btn-primary cta-gradient cta-sheen inline-primary-btn">
+                Continue to payment
+              </button>
+            </form>
+
+            <!-- STEP 2 -->
+            <div
+              id="inline-payment-step"
+              class="inline-payment-step"
+              hidden
+              aria-hidden="true">
+              <p class="inline-summary" id="inline-summary-text">
+                You’re giving <strong>$50.00</strong> to support {{ ORG_TEAM_NAME }}.
+              </p>
+
+              <div id="payment-element">
+                Payment form from Stripe / PayPal mounts here.
+              </div>
+
+              <button
+                id="inline-pay"
+                class="btn btn-primary cta-gradient inline-primary-btn"
+                type="button">
+                Complete secure payment
+              </button>
+
+              <p
+                id="payment-error"
+                class="inline-error"
+                role="alert"
+                aria-live="polite"
+                hidden></p>
+
+              <p class="inline-secure-note">
+                🔒 Encrypted &amp; secure · Cards, wallets, and bank options powered by Stripe.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section
+      id="final-cta"
+      class="final-cta fc-band fc-band--final"
+      aria-labelledby="final-cta-title"
+      aria-describedby="final-cta-sub">
+      <div class="shell final-cta-shell">
+        <div class="final-cta-main fc-band-grid fc-band-grid--2col">
+          <div class="final-cta-copy fc-band-col fc-band-col-main">
+            <p class="section-eyebrow final-cta-eyebrow">
+              One more way to back {{ ORG_TEAM_NAME }}
+            </p>
+
+            <h2 id="final-cta-title" class="final-title">
+              <span class="final-title-main">Back the program.</span>
+              <span class="final-title-accent">Fund the future.</span>
+            </h2>
+
+            <p id="final-cta-sub" class="final-sub tnums">
+              {{ FINAL_CTA_LINE|default('Join supporters backing this season for {{ ORG_TEAM_NAME }}.')|safe }}
+            </p>
+
+            <ul class="final-bullets">
+              <li>
+                100% of gifts stay with <strong>{{ ORG_TEAM_NAME }}</strong>
+                and partner programs.
+              </li>
+              <li>
+                Secure checkout in under a minute — cards &amp; digital wallets.
+              </li>
+            </ul>
+          </div>
+
+          <aside
+            class="final-card fc-band-col fc-band-col-side"
+            role="group"
+            aria-label="Final call to support {{ ORG_TEAM_NAME }}">
+            <header class="final-card-header">
+              <span class="final-pill tnums">
+                {{ pct_int|default(0)|int }}% funded · {{ money(GOAL|default(10000)) }} goal
+              </span>
+
+              <p class="final-card-meta tnums">
+                {{ money(RAISED|default(0)) }}
+                <span aria-hidden="true"> / </span>
+                {{ money(GOAL|default(10000)) }}
+                {% if IS_GOAL_MET %}
+                  · Goal met 🎉
+                {% elif IS_NEAR_GOAL %}
+                  · Final push
+                {% elif DONOR_COUNT|default(0) == 0 %}
+                  · Be the first on the board
+                {% endif %}
+              </p>
+            </header>
+
+            <div class="final-metrics">
+              <div class="final-metrics-row">
+                <span class="final-metric-label">Raised so far</span>
+                <span class="final-metric-value tnums">
+                  {{ money(RAISED|default(0)) }}
+                </span>
+              </div>
+              <div class="final-metrics-row">
+                <span class="final-metric-label">Goal</span>
+                <span class="final-metric-value tnums">
+                  {{ money(GOAL|default(10000)) }}
+                </span>
+              </div>
+              <div class="final-metrics-row">
+                <span class="final-metric-label">Supporters</span>
+                <span class="final-metric-value tnums">
+                  {{ DONOR_COUNT|default(0) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="final-cta-progress" aria-hidden="true">
+              <div class="final-cta-progress-track">
+                <div
+                  class="final-cta-progress-fill"
+                  style="--pct: {{ pct_int|default(0)|int }}%;"></div>
+              </div>
+            </div>
+
+            <div class="final-card-actions">
+              <a
+                href="#inline-checkout"
+                class="final-btn btn btn-primary cta-gradient cta-sheen cta-ring"
+                data-donate-link
+                data-qa="donate"
+                data-testid="primary-donate"
+                aria-label="Donate now to support {{ ORG_TEAM_NAME }}">
+                Donate now
+              </a>
+              <p class="final-secure-note">
+                🔒 Encrypted, mobile-friendly checkout powered by Stripe / PayPal.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MOBILE DONATE BAR -->
+  <section
+    class="mobile-donate-bar"
+    data-mobile-donate-bar
+    aria-label="Quick donate bar for {{ ORG_TEAM_NAME }}">
+    <div class="mobile-donate-inner tnums">
+      <div>
+        <div class="mobile-donate-copy">
+          <span class="mobile-donate-label">Support {{ ORG_TEAM_NAME }}</span>
+          <span class="mobile-donate-progress">
+            {{ pct_int|default(0)|int }}% funded · {{ money(RAISED|default(0)) }}
+          </span>
+        </div>
+        <a
+          href="#inline-checkout"
+          class="mobile-donate-btn btn btn-primary cta-gradient cta-sheen"
+          data-donate-link
+          data-qa="donate"
+          data-testid="primary-donate">
+          Donate
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer
+    id="page-footer"
+    class="site-footer site-footer--campaign"
+    role="contentinfo"
+    aria-label="Campaign footer for {{ ORG_TEAM_NAME }}">
+    <div class="footer-inner">
+      <div class="footer-main">
+        <div class="footer-meta-block">
+          <p class="footer-meta tnums">
+            <span class="footer-lock" aria-hidden="true">🔐</span>
+            <span>
+              © <span id="footer-year">{{ current_year|default(now().year) }}</span>
+              {{ ORG_TEAM_NAME }} · Powered by {{ platform_name|default('FundChamps') }}.
+            </span>
+          </p>
+          <p class="footer-tagline">
+            Built with late nights, carpools, and sideline energy.
+          </p>
+        </div>
+
+        <nav class="footer-nav" aria-label="Page sections">
+          <ul class="footer-nav-list">
+            <li><a href="#hero">Top</a></li>
+            <li><a href="#story">Story</a></li>
+            <li><a href="#scoreboard">Scoreboard</a></li>
+            <li><a href="#donate">Donate</a></li>
+            <li><a href="#supporters">VIP wall</a></li>
+            <li><a href="#ways-to-give">Ways to give</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="footer-bottom">
+        <p class="footer-thanks">
+          Thank you for fueling youth excellence.
+          <span class="footer-powered">
+            Powered by <strong>{{ platform_name|default('FundChamps') }}</strong>.
+          </span>
+        </p>
+      </div>
+    </div>
+  
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+  <script { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } }>
+    // Theme toggle
+    (function () {
+      var toggle = document.getElementById('fcThemeToggle');
+      var doc = document.documentElement;
+      function setTheme(next) {
+        doc.setAttribute('data-theme', next);
+        try { localStorage.setItem('fc-theme', next); } catch (e) {}
+      }
+      try {
+        var stored = localStorage.getItem('fc-theme');
+        if (stored) setTheme(stored);
+      } catch (e) {}
+      if (toggle) {
+        toggle.addEventListener('click', function () {
+          var current = doc.getAttribute('data-theme') || 'light';
+          setTheme(current === 'light' ? 'dark' : 'light');
+        });
+      }
+    })();
+
+    // Countdown
+    (function () {
+      var roots = document.querySelectorAll('[data-countdown-root]');
+      if (!roots.length) return;
+
+      function computeRemaining(deadline) {
+        var now = new Date();
+        var target = new Date(deadline);
+        var diff = target.getTime() - now.getTime();
+        if (isNaN(diff) || diff <= 0) return null;
+        var totalSeconds = Math.floor(diff / 1000);
+        var days = Math.floor(totalSeconds / (60 * 60 * 24));
+        var hours = Math.floor((totalSeconds % (60 * 60 * 24)) / (60 * 60));
+        var mins = Math.floor((totalSeconds % (60 * 60)) / 60);
+        return { days: days, hours: hours, mins: mins };
+      }
+
+      function fmt(v) {
+        return v.toString().padStart(2, '0');
+      }
+
+      function tick(root) {
+        var deadline = root.getAttribute('data-deadline');
+        var display = root.querySelector('[data-countdown-display]');
+        if (!deadline || !display) return;
+        var left = computeRemaining(deadline);
+        if (!left) {
+          display.textContent = 'Campaign ending soon';
+          root.setAttribute('data-countdown-finished', '1');
+          return;
+        }
+        display.textContent = left.days + 'd · ' + fmt(left.hours) + 'h ' + fmt(left.mins) + 'm';
+      }
+
+      roots.forEach(function (root) {
+        tick(root);
+        setInterval(function () { tick(root); }, 30000);
+      });
+    })();
+
+    // Announcement dismiss
+    (function () {
+      var bars = document.querySelectorAll('.announcement-bar');
+      if (!bars.length) return;
+      bars.forEach(function (bar) {
+        var id = bar.getAttribute('data-announcement-id');
+        var key = id ? 'fc-annc-' + id : null;
+        try {
+          if (key && localStorage.getItem(key) === 'hidden') {
+            bar.style.display = 'none';
+            return;
+          }
+        } catch (e) {}
+        var btn = bar.querySelector('[data-announcement-dismiss]');
+        if (btn) {
+          btn.addEventListener('click', function () {
+            bar.style.display = 'none';
+            try { if (key) localStorage.setItem(key, 'hidden'); } catch (e) {}
+          });
+        }
+      });
+    })();
+
+    // Gallery
+    (function () {
+      var galleries = document.querySelectorAll('[data-gallery]');
+      galleries.forEach(function (gallery) {
+        var slides = gallery.querySelectorAll('[data-slide]');
+        var thumbs = gallery.querySelectorAll('[data-thumb]');
+        var playBtn = gallery.querySelector('[data-play]');
+        var index = 0;
+        var playing = true;
+        var timer = null;
+
+        function show(i) {
+          index = (i + slides.length) % slides.length;
+          slides.forEach(function (img, idx) {
+            var active = idx === index;
+            img.classList.toggle('is-active', active);
+            img.setAttribute('aria-hidden', active ? 'false' : 'true');
+          });
+          thumbs.forEach(function (btn, idx) {
+            var active = idx === index;
+            btn.classList.toggle('is-active', active);
+            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+        }
+
+        function next() { show(index + 1); }
+        function prev() { show(index - 1); }
+
+        var nextBtn = gallery.querySelector('[data-next]');
+        var prevBtn = gallery.querySelector('[data-prev]');
+
+        if (nextBtn) nextBtn.addEventListener('click', function () { playing = false; show(index + 1); updatePlay(); });
+        if (prevBtn) prevBtn.addEventListener('click', function () { playing = false; show(index - 1); updatePlay(); });
+
+        thumbs.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            playing = false;
+            var idx = parseInt(btn.getAttribute('data-thumb'), 10) || 0;
+            show(idx);
+            updatePlay();
+          });
+        });
+
+        function updatePlay() {
+          if (!playBtn) return;
+          if (playing) {
+            playBtn.textContent = 'Pause';
+            playBtn.setAttribute('aria-pressed', 'true');
+          } else {
+            playBtn.textContent = 'Play';
+            playBtn.setAttribute('aria-pressed', 'false');
+          }
+        }
+
+        if (playBtn) {
+          playBtn.addEventListener('click', function () {
+            playing = !playing;
+            updatePlay();
+          });
+        }
+
+        function loop() {
+          if (playing) next();
+        }
+
+        show(0);
+        timer = setInterval(loop, 5000);
+      });
+    })();
+
+    // Impact tiles -> inline amount
+    (function () {
+      function setAmount(val) {
+        var input = document.getElementById('inline-amount');
+        if (!input) return;
+        input.value = val;
+        input.focus();
+      }
+      function attach(selector, attr) {
+        document.querySelectorAll(selector).forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var amt = btn.getAttribute(attr);
+            if (!amt) return;
+            var parsed = parseFloat(amt);
+            if (!isFinite(parsed) || parsed <= 0) return;
+            setAmount(parsed.toFixed(2));
+          });
+        });
+      }
+      attach('[data-impact-amount]', 'data-impact-amount');
+      attach('[data-quick-amount]', 'data-quick-amount');
+      attach('[data-boost]', 'data-amount');
+    })();
+
+    // Frequency pills
+    (function () {
+      var group = document.querySelector('.freq-pills');
+      if (!group) return;
+      var pills = group.querySelectorAll('.freq-pill');
+      var hidden = document.getElementById('inline-frequency');
+      pills.forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          pills.forEach(function (p) { p.classList.remove('is-active'); p.setAttribute('aria-pressed', 'false'); });
+          pill.classList.add('is-active');
+          pill.setAttribute('aria-pressed', 'true');
+          var freq = pill.getAttribute('data-frequency') || 'once';
+          if (hidden) hidden.value = freq;
+        });
+      });
+    })();
+
+    // Inline checkout stepper
+    (function () {
+      var form = document.getElementById('inline-donation-form');
+      if (!form) return;
+      var err = document.getElementById('inline-error');
+      var step2 = document.getElementById('inline-payment-step');
+      var summary = document.getElementById('inline-summary-text');
+      var steps = document.querySelectorAll('.inline-steps .step');
+
+      function setError(msg) {
+        if (!err) return;
+        if (!msg) {
+          err.hidden = true;
+          err.textContent = '';
+        } else {
+          err.hidden = false;
+          err.textContent = msg;
+        }
+      }
+
+      function activateStep(num) {
+        steps.forEach(function (li) {
+          var step = li.getAttribute('data-step');
+          li.classList.toggle('is-active', step === String(num));
+        });
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        setError('');
+        var name = form.querySelector('#inline-name');
+        var email = form.querySelector('#inline-email');
+        var amount = form.querySelector('#inline-amount');
+        var hasError = false;
+
+        if (!name.value.trim()) {
+          hasError = true;
+        }
+        if (!email.value.trim() || !email.value.includes('@')) {
+          hasError = true;
+        }
+        var value = parseFloat(amount.value);
+        if (!isFinite(value) || value <= 0) {
+          hasError = true;
+        }
+
+        if (hasError) {
+          setError('Please share your name, a valid email, and a positive gift amount to continue.');
+          return;
+        }
+
+        var pretty = '$' + value.toFixed(2);
+        if (summary) {
+          summary.innerHTML = "You’re giving <strong>" + pretty + "</strong> to support {{ ORG_TEAM_NAME|e }}.";
+        }
+
+        step2.hidden = false;
+        step2.setAttribute('aria-hidden', 'false');
+        activateStep(2);
+        step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      var payBtn = document.getElementById('inline-pay');
+      var payErr = document.getElementById('payment-error');
+      if (payBtn) {
+        payBtn.addEventListener('click', function () {
+          if (!payErr) return;
+          payErr.hidden = false;
+          payErr.textContent =
+            'This demo view is ready for your payments integration. Connect Stripe or PayPal in the platform admin to go live.';
+        });
+      }
+    })();
+
+    // Ways to give tabs
+    (function () {
+      var tabs = document.querySelectorAll('[data-ways-tab]');
+      if (!tabs.length) return;
+      var panels = document.querySelectorAll('[data-ways-panel]');
+      function showTab(id) {
+        tabs.forEach(function (t) {
+          var isActive = t.getAttribute('data-ways-tab') === id;
+          t.classList.toggle('is-active', isActive);
+          t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          t.setAttribute('tabindex', isActive ? '0' : '-1');
+        });
+        panels.forEach(function (p) {
+          var isMatch = p.getAttribute('data-ways-panel') === id;
+          p.hidden = !isMatch;
+        });
+      }
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var id = tab.getAttribute('data-ways-tab');
+          showTab(id);
+        });
+      });
+    })();
+
+    // Share copy
+    (function () {
+      var btn = document.querySelector('[data-share-copy]');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var url = "{{ SHARE_URL|default(request.url if request is defined else '') }}";
+        if (!url) url = window.location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(function () {
+            btn.textContent = 'Link copied ✓';
+            setTimeout(function () { btn.textContent = 'Copy link'; }, 1800);
+          }).catch(function () {
+            btn.textContent = 'Copy failed';
+            setTimeout(function () { btn.textContent = 'Copy link'; }, 1800);
+          });
+        } else {
+          btn.textContent = 'Copy not supported';
+          setTimeout(function () { btn.textContent = 'Copy link'; }, 1800);
+        }
+      });
+    })();
+  </script>
+  <!-- CORE INTERACTIONS JS -->
+  <script {{ nonce_attr() }}>
+  (() => {
+    "use strict";
+
+    // ======= CONFIGURATION (from Jinja / backend) =======
+    const PLATFORM_NAME = {{ platform_name|default('FundChamps')|tojson }};
+    const ORG_NAME = {{ ORG_TEAM_NAME|tojson }};
+    const DONATE_URL = {{ DONATE_URL|default('/donate')|tojson }};
+    const SHARE_URL = {{ SHARE_URL|default('')|tojson }} || window.location.href;
+    const CURRENT_YEAR = {{ current_year }};
+
+    // ======= Scroll Restoration =======
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      window.addEventListener("pageshow", (e) => {
+        if (e.persisted) return;
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+    } catch (e) {}
+
+    // ======= Theme Toggle =======
+    (() => {
+      const toggle = document.querySelector("[data-theme-toggle]");
+      if (!toggle) return;
+      toggle.addEventListener("click", () => {
+        const doc = document.documentElement;
+        const next = doc.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        doc.setAttribute("data-theme", next);
+        localStorage.setItem("fc-theme", next);
+      });
+    })();
+
+    // ======= Countdown =======
+    function initCountdown(root) {
+      if (!root) return;
+      const iso = root.getAttribute("data-deadline");
+      if (!iso) return;
+      const display = root.querySelector("[data-countdown-display]") || root;
+      function update() {
+        const now = new Date();
+        const end = new Date(iso);
+        if (isNaN(end.getTime())) {
+          display.textContent = "Campaign date coming soon";
+          return;
+        }
+        const diff = end - now;
+        if (diff <= 0) {
+          display.textContent = "Campaign ended";
+          root.dataset.urgent = "false";
+          return;
+        }
+        const totalSeconds = Math.floor(diff / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        display.textContent = days> 0
+          ? `${days}d ${hours}h left`
+          : hours> 0
+            ? `${hours}h ${mins}m left`
+            : `${mins}m left`;
+        root.dataset.urgent = days === 0 ? "true" : "false";
+      }
+      update();
+      setInterval(update, 60000);
+    }
+    document.querySelectorAll("[data-countdown-root]").forEach(initCountdown);
+
+    // ======= Announcement Dismiss =======
+    (() => {
+      const bar = document.querySelector(".announcement-bar");
+      if (!bar) return;
+      const id = bar.getAttribute("data-announcement-id") || "campaign-announcement";
+      const key = "fc-announcement-dismissed:" + id;
+      if (localStorage.getItem(key) === "1") {
+        bar.style.display = "none";
+        return;
+      }
+      const btn = bar.querySelector("[data-announcement-dismiss]");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        bar.style.display = "none";
+        localStorage.setItem(key, "1");
+      });
+    })();
+
+    // ======= Copy Share Link =======
+    (() => {
+      const btn = document.querySelector("[data-share-copy]");
+      if (!btn) return;
+      const original = btn.textContent;
+      btn.addEventListener("click", () => {
+        const url = SHARE_URL;
+        function done() {
+          btn.textContent = "Link copied ✓";
+          setTimeout(() => { btn.textContent = original; }, 1800);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(done, done);
+        } else {
+          const sel = document.createElement("input");
+          sel.value = url;
+          document.body.appendChild(sel);
+          sel.select();
+          document.execCommand("copy");
+          sel.remove();
+          done();
+        }
+      });
+    })();
+
+    // ======= Back to Top =======
+    (() => {
+      const btn = document.querySelector("[data-back-to-top]");
+      if (!btn) return;
+      window.addEventListener("scroll", () => {
+        btn.classList.toggle("is-visible", window.scrollY> 400);
+      });
+      btn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    })();
+
+    // ======= Reveal on Scroll =======
+    (() => {
+      const items = Array.from(document.querySelectorAll("[data-reveal]"));
+      if (!items.length || !("IntersectionObserver" in window)) {
+        items.forEach(el => el.classList.add("is-visible"));
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      items.forEach(el => io.observe(el));
+    })();
+
+    // ======= Gallery Carousel =======
+    (() => {
+      const gallery = document.querySelector("[data-gallery]");
+      if (!gallery) return;
+      const slides = Array.from(gallery.querySelectorAll("[data-slide]"));
+      if (!slides.length) return;
+      const thumbs = Array.from(gallery.querySelectorAll("[data-thumb]"));
+      const btnPrev = gallery.querySelector("[data-prev]");
+      const btnNext = gallery.querySelector("[data-next]");
+      const btnPlay = gallery.querySelector("[data-play]");
+      let index = 0, autoplay = true, timer;
+
+      function show(i) {
+        index = (i + slides.length) % slides.length;
+        slides.forEach((s, idx) => {
+          const active = idx === index;
+          s.classList.toggle("is-active", active);
+          s.setAttribute("aria-hidden", !active);
+        });
+        thumbs.forEach((t, idx) => {
+          const active = idx === index;
+          t.classList.toggle("is-active", active);
+          t.setAttribute("aria-selected", active);
+        });
+      }
+
+      function next() { show(index + 1); }
+      function prev() { show(index - 1); }
+      function start() {
+        if (timer) clearInterval(timer);
+        if (!autoplay) return;
+        timer = setInterval(next, 5000);
+        if (btnPlay) {
+          btnPlay.textContent = "Pause";
+          btnPlay.setAttribute("aria-pressed", "true");
+          btnPlay.setAttribute("aria-label", "Pause slideshow");
+        }
+      }
+      function stop() {
+        autoplay = false;
+        if (timer) clearInterval(timer);
+        if (btnPlay) {
+          btnPlay.textContent = "Play";
+          btnPlay.setAttribute("aria-pressed", "false");
+          btnPlay.setAttribute("aria-label", "Play slideshow");
+        }
+      }
+
+      if (btnPrev) btnPrev.addEventListener("click", () => { prev(); stop(); });
+      if (btnNext) btnNext.addEventListener("click", () => { next(); stop(); });
+      if (btnPlay) btnPlay.addEventListener("click", () => { autoplay = !autoplay; autoplay ? start() : stop(); });
+      thumbs.forEach((t, i) => t.addEventListener("click", () => { show(i); stop(); }));
+
+      show(0);
+      autoplay = true;
+      start();
+    })();
+
+    // ======= Ways to Give Tabs =======
+    (() => {
+      const tabs = Array.from(document.querySelectorAll("[data-ways-tab]"));
+      const panels = Array.from(document.querySelectorAll("[data-ways-panel]"));
+      if (!tabs.length) return;
+      function activate(name) {
+        tabs.forEach(t => {
+          const active = t.getAttribute("data-ways-tab") === name;
+          t.classList.toggle("is-active", active);
+          t.setAttribute("aria-selected", active);
+          t.setAttribute("tabindex", active ? "0" : "-1");
+        });
+        panels.forEach(p => {
+          const active = p.getAttribute("data-ways-panel") === name;
+          p.hidden = !active;
+        });
+      }
+      tabs.forEach(t => t.addEventListener("click", () => activate(t.getAttribute("data-ways-tab"))));
+      activate("online");
+    })();
+
+    // ======= Footer Year Auto-update =======
+    (() => {
+      const y = document.getElementById("footer-year");
+      if (y) y.textContent = CURRENT_YEAR;
+    })();
+
+    // ======= Pointer-follow for CTA Ring =======
+    document.addEventListener("pointermove", (e) => {
+      const t = e.target.closest(".cta-ring");
+      if (!t) return;
+      const r = t.getBoundingClientRect();
+      t.style.setProperty("--x", (e.clientX - r.left) + "px");
+      t.style.setProperty("--y", (e.clientY - r.top) + "px");
+    }, { passive: true });
+
+    // ======= Inline checkout quick picks & frequency =======
+    (() => {
+      const form = document.getElementById("inline-donation-form");
+      const amountInput = document.getElementById("inline-amount");
+      const freqHidden = document.getElementById("inline-frequency");
+      const errorEl = document.getElementById("inline-error");
+      const paymentStep = document.getElementById("inline-payment-step");
+      const summaryText = document.getElementById("inline-summary-text");
+      const nextBtn = document.getElementById("inline-next");
+
+      if (!form || !amountInput || !freqHidden || !paymentStep) return;
+
+      // Quick amounts
+      form.querySelectorAll("[data-quick-amount]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const val = btn.getAttribute("data-quick-amount");
+          amountInput.value = val;
+          amountInput.focus();
+        });
+      });
+
+      // Frequency pills
+      form.querySelectorAll(".freq-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+          const value = pill.getAttribute("data-frequency") || "once";
+          freqHidden.value = value;
+          form.querySelectorAll(".freq-pill").forEach(p => p.classList.toggle("is-active", p === pill));
+        });
+      });
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        errorEl.hidden = true;
+        errorEl.textContent = "";
+
+        const name = (form.name.value || "").trim();
+        const email = (form.email.value || "").trim();
+        const amount = parseFloat(amountInput.value || "0");
+        if (!name || !email || !(amount> 0)) {
+          errorEl.hidden = false;
+          errorEl.textContent = "Please add your name, email, and a valid amount to continue.";
+          return;
+        }
+
+        // Move to payment step (integration with Stripe/PayPal goes here)
+        form.setAttribute("aria-hidden", "true");
+        form.style.display = "none";
+        paymentStep.hidden = false;
+        paymentStep.removeAttribute("aria-hidden");
+
+        const freqLabel = freqHidden.value === "monthly" ? "monthly " : "";
+        summaryText.innerHTML = `You’re giving <strong>$${amount.toFixed(2)}</strong> ${freqLabel}to support ${ORG_NAME}.`;
+      });
+    })();
+
+    // ======= SaaS Flex Room: plug in analytics / Stripe mount here =======
+  })();
+  </script>
+</body>
+</html>
+

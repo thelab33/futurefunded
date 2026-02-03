@@ -1,0 +1,21 @@
+Thank you, {{ donor_name | default("Supporter") }}!
+
+Your donation of ${{ amount }} has been received by {{ team_name }}.
+
+Your support truly makes a difference for our athletes and our community.
+
+{% if note %}
+Your note:
+“{{ note }}”
+{% endif %}
+
+You will receive a Stripe receipt shortly.
+
+{% if sponsor_tier %}
+Sponsor Tier: {{ sponsor_tier }}
+Live Sponsor Link: {{ sponsor_url }}
+{% endif %}
+
+Powered by FundChamps  
+{{ public_base_url }}
+

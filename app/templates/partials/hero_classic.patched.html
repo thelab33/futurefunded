@@ -1,0 +1,658 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{# partials/hero_cinematic.html (refactored cinematic, bottom-locked) #}
+{% from 'partials/_core_helpers.html' import nonce_attr %}
+{% set TEAM_NAME = team_name or (team.team_name if team is defined else 'Connect ATX Elite') %}
+
+{# partials/hero_cinematic.html #}
+{% from 'partials/_core_helpers.html' import nonce_attr %}
+{% set TEAM_NAME = team_name or (team.team_name if team is defined else 'Connect ATX Elite') %}
+
+<section
+  class="fcx fcx-hero fcx-hero--cinematic not-prose"
+  style="--accent: {{ ACCENT|default('#facc15') }}; --overlay-pad-b: clamp(18px, 3.6vh, 44px);"
+  role="region"
+  aria-label="{{ TEAM_NAME|e }} Fundraiser Hero"
+  data-team="{{ TEAM_NAME|e }}"
+  data-interval="{{ hero_interval|default(6500)|int }}"
+  data-rotate="{{ hero_rotate|default(true)|string|lower }}"
+  data-live="{{ fundraising_open|default(true)|string|lower }}">
+  <div class="fcx-hero__container">
+    <div class="fcx-hero__grid">
+
+      <!-- LEFT: Mission copy -->
+      <header class="fcx-hero__content" aria-describedby="hero-sub hero-quote">
+        <span class="fcx-chip fcx-chip--lg">{{ TEAM_NAME|default('Connect ATX Elite') }}</span>
+
+        <h1 class="fcx-hero__title display-xl">
+          <span>{{ TAGLINE_LEFT_TOP|default('Fuel the Season.') }}</span>
+          <span class="fcx-accent">{{ TAGLINE_LEFT_ACCENT|default('#facc15') }}</span>
+        </h1>
+
+        <p id="hero-sub" class="fcx-hero__subtitle">
+          {{ SUBTITLE_LEFT|default('Direct support for gear, travel, and tutoring—every dollar moves a kid forward.') }}
+        </p>
+
+        <blockquote id="hero-quote" class="fcx-hero__quote">
+          <span class="fcx-hero__quote-mark" aria-hidden="true">🪶</span>
+          <span class="fcx-hero__quote-text">
+            “{{ HERO_QUOTE|default('Family means showing up, believing in each other, and making sure no one is left behind.') }}”
+          </span>
+          <cite class="fcx-hero__quote-attrib">— {{ HERO_QUOTE_ATTRIB|default('Coach Angel') }}</cite>
+        </blockquote>
+
+        <ul class="fcx-kpis" role="list" aria-label="Team stats">
+          <li class="kpi"><span class="fcx-kpi-val"><b>{{ KPI_GAMES|default(35) }}+</b></span><span class="fcx-kpi-label">Games</span></li>
+          <li class="kpi"><span class="fcx-kpi-val"><b>{{ KPI_CHIPS|default(5) }}</b></span><span class="fcx-kpi-label">Championships</span></li>
+          <li class="kpi"><span class="fcx-kpi-val"><b>{{ KPI_HOURS|default(120) }}+</b></span><span class="fcx-kpi-label">Training&nbsp;Hrs/Week</span></li>
+        </ul>
+
+        <nav class="fcx-hero__cta" aria-label="Main actions">
+          <a href="#tiers" class="fcx-btn fcx-btn-ghost" data-tip="See sponsor tiers">🏀 Back Our Ballers</a>
+          <a href="{{ DONATE_URL|default(HREF_DONATE|default('/donate')) }}" class="fcx-btn fcx-btn-accent pulse" target="_blank" rel="noopener" data-cta="donate">⛹️ Fuel the Season</a>
+          <button class="fcx-btn fcx-btn-lite" type="button" data-share aria-label="Share fundraiser">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M15.84 11.63a2.48 2.48 0 0 0-1.96.97l-5.46-2.7a2.53 2.53 0 0 0 0-1.8l5.45-2.7a2.5 2.5 0 1 0-.73-1.41L7.7 6.7a2.5 2.5 0 1 0 0 6.6l5.45 2.7a2.52 2.52 0 1 0 .73-1.41z" fill="currentColor"/>
+            </svg><span>Share</span>
+          </button>
+        </nav>
+
+        <div class="fcx-hero__qr-card" data-tip="Open camera to scan">
+          <img src="{{ QR_SRC|default('/static/images/qr.png') }}" alt="Donate QR code" class="fcx-qr-img" width="80" height="80" loading="lazy" />
+          <div class="fcx-qr-details">
+            <div class="fcx-qr-main">Scan to Give <span class="fcx-qr-shortcut">— or press <kbd>D</kbd></span></div>
+            <div class="fcx-qr-sub">Safe checkout via Stripe/PayPal</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- RIGHT: Cinematic slides + bottom-locked overlay -->
+      <figure class="fcx-hero__media" role="group" aria-label="{{ TEAM_NAME|e }} hero slideshow">
+        <div
+          class="fcx-hero__slides fcx-hero__slides--cinematic"
+          id="fcx-slides"
+          aria-live="polite"
+          data-fit="contain">>
+          {% for s in HERO_ROTATIONS|default([{'jpg': _hero_path, 'alt': 'Team', 'focus':'50% 30%'}]) %}
+            <div
+              class="fcx-slide{% if loop.first %} is-active{% endif %}"
+              role="group"
+              aria-roledescription="slide"
+              aria-label="{{ s.alt|default(TEAM_NAME)|e }}"
+              data-fit="{{ s.fit|default('auto') }}"
+              style="--focus: {{ s.focus|default('50% 30%')|e }};">
+              <picture>
+                {% if s.avif %}<source type="image/avif" srcset="{{ s.avif }}">{% endif %}
+                {% if s.webp %}<source type="image/webp" srcset="{{ s.webp }}">{% endif %}
+                <img
+                  src="{{ s.jpg|default(_hero_path) }}"
+                  alt="{{ s.alt|default('Hero slide')|e }}"
+                  class="fcx-hero__img ken"
+                  decoding="async"
+                  fetchpriority="{% if loop.first %}high{% else %}low{% endif %}"
+                  sizes="(max-width: 900px) 100vw, 56vw"
+                  loading="{% if loop.first %}eager{% else %}lazy{% endif %}"
+                  data-fit="{{ s.fit|default('auto') }}"
+                  style="object-position: {{ s.focus|default('50% 30%')|e }};"
+                  onerror="this.onerror=null; this.src='{{ _hero_path }}';"
+                />
+              </picture>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Bottom-locked overlay -->
+        <figcaption class="fcx-hero__overlay fcx-overlay--locked" id="fcx-overlay" role="group" aria-label="{{ TEAM_NAME|e }} overlay">
+          <div class="overlay-bg" aria-hidden="true"></div>
+          <div class="overlay-shell overlay-shell--lowered">
+            {% if TEAM and TEAM.logo_url %}
+              <img src="{{ TEAM.logo_url }}" alt="{{ TEAM_NAME|e }} logo" class="fcx-logo" width="36" height="36" loading="lazy" decoding="async" />
+            {% endif %}
+            <span class="fcx-chip fcx-chip--sm">{{ TEAM_NAME|e }}</span>
+            <div class="overlay-title">
+              <span class="overlay-title-main">{{ TAGLINE_RIGHT_TOP|default('Be the Assist.') }}</span>
+              <span class="fcx-accent overlay-title-accent">{{ TAGLINE_RIGHT_ACCENT|default('#facc15') }}</span>
+            </div>
+            <p class="overlay-sub">
+              {{ SUBTITLE_RIGHT|default('Powered by your generosity — every contribution drives their journey forward.') }}
+            </p>
+            <div class="fcx-hero__trust fcx-hero__trust--overlay">
+              <span class="fcx-tax-badge">💯 Tax Deductible</span>
+              <span class="fcx-secure-badge">🔒 Secure via Stripe / PayPal</span>
+            </div>
+          </div>
+
+          <div class="fcx-hero__controls" role="group" aria-label="Slideshow controls">
+            <button class="ctrl prev" type="button" aria-label="Previous slide">‹</button>
+            <div class="dots" role="tablist" aria-label="Slides">
+              {% for s in HERO_ROTATIONS|default([1]) %}
+                <button
+                  class="dot{% if loop.first %} is-active{% endif %}"
+                  role="tab"
+                  aria-selected="{% if loop.first %}true{% else %}false{% endif %}"
+                  aria-controls="fcx-slides"
+                  aria-label="Go to slide {{ loop.index }}"
+                  data-slide="{{ loop.index0 }}"></button>
+              {% endfor %}
+            </div>
+            <button class="ctrl next" type="button" aria-label="Next slide">›</button>
+            <button class="ctrl pause" aria-pressed="false" aria-label="Pause slideshow" title="Pause/Play">❚❚</button>
+          </div>
+        </figcaption>
+      </figure>
+
+    </div>
+  </div>
+  <div class="sr-only" aria-live="polite" id="hero-live"></div>
+/* === FCX ZERO-CROP PATCH (style) === */
+<style {{ nonce_attr() }} { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { nonce_attr() }>
+#site-main[data-page="fundraiser"] {}
+/* Stage accepts custom aspect via --hero-ar; default 3/2 */
+.fcx-hero__slides--cinematic{
+  aspect-ratio: var(--hero-ar, 3/2) !important;
+  position: relative;
+  isolation: isolate;
+}
+/* Blurred edge fill sits behind the slide image (only really noticeable when object-fit: contain) */
+.fcx-hero__slides--cinematic::before{
+  content:"";
+  position:absolute; inset:0;
+  background: center / cover no-repeat var(--slide-bg, none);
+  filter: blur(24px) saturate(1.15) brightness(.78);
+  transform: scale(1.08);
+  z-index:0;
+}
+/* Ensure slide content renders above the blurred fill */
+.fcx-hero__slides--cinematic> *,
+.fcx-slide,
+.fcx-hero__img{ position: relative; z-index: 1; }
+
+/* Contain-fit toggle (stage or per-slide) */
+.fcx-hero__slides[data-fit="contain"] .fcx-hero__img,
+.fcx-hero__slides--cinematic[data-fit="contain"] .fcx-hero__img,
+.fcx-slide[data-fit="contain"] .fcx-hero__img{ object-fit: contain !important; }
+
+/* Optional: keep a small interior radius & subtle mask to avoid edge bleed */
+.fcx-hero__slides--cinematic{
+  overflow: hidden;
+  border-radius: inherit;
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 50%, #000 72%, rgba(0,0,0,0.9) 100%);
+          mask-image: radial-gradient(120% 120% at 50% 50%, #000 72%, rgba(0,0,0,0.9) 100%);
+}
+</style>
+\n// === FCX ZERO-CROP PATCH (script) ===
+<script {{ nonce_attr() }} { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { { nonce_attr() } } { nonce_attr() }>
+(() => {
+  try {
+    const root = document.querySelector('.fcx-hero--cinematic');
+    if(!root || root.dataset.zeroCropInit==='1') return; root.dataset.zeroCropInit='1';
+    const stage = root.querySelector('.fcx-hero__slides--cinematic') || root.querySelector('.fcx-hero__slides');
+    if(!stage) return;
+
+    // Default: prevent side-cropping
+    if(!stage.hasAttribute('data-fit')) stage.setAttribute('data-fit','contain');
+
+    // Helper: set blurred fill bg from active slide's image
+    function updateBg() {
+      const img = root.querySelector('.fcx-slide.is-active img') || root.querySelector('.fcx-slide img') || stage.querySelector('img');
+      if(!img) return;
+      const src = img.currentSrc || img.src;
+      stage.style.setProperty('--slide-bg', `url("${src}")`);
+    }
+
+    updateBg();
+
+    // Watch for slide changes
+    const mo = new MutationObserver(() => requestAnimationFrame(updateBg));
+    mo.observe(root, {subtree:true, attributes:true, attributeFilter:['class','src']});
+
+    // Also hook the built-in controls (prev/next/dots)
+    root.addEventListener('click', (e) => {
+      if (e.target.closest('.fcx-hero__controls')) setTimeout(updateBg, 50);
+    }, {passive:true});
+
+    // Allow overriding aspect ratio via data or inline style; fallback set once
+    if(!getComputedStyle(stage).getPropertyValue('--hero-ar').trim()) {
+      stage.style.setProperty('--hero-ar', '3/2');
+    }
+  } catch(_e){}
+})();
+</script>
+\n</section>
+
+
+<style {{ nonce_attr() }}>
+@layer fundchamps.hero {
+  /* Scope vars to the component (no global :root override) */
+  .fcx-hero--cinematic{
+    --fcx-accent: var(--accent, #facc15);
+    --fcx-radius: 22px;
+    --fcx-text: #eceff6;
+    --fcx-muted: #a9afbd;
+    --fcx-bg: #0c0d11;
+    --fcx-bg-elev: #171927;
+    --fcx-border: #ffffff1a;
+    --overlay-pad-b: clamp(20px, 7vh, 64px);
+    --fcx-shadow: 0 12px 60px #05071e29, 0 0 0 1.5px var(--fcx-accent);
+  }
+
+  .fcx-hero--cinematic {
+    position: relative; color: var(--fcx-text);
+    background: linear-gradient(180deg, var(--fcx-bg-elev), var(--fcx-bg));
+    border-bottom: 3px solid color-mix(in srgb, var(--fcx-accent) 62%, transparent);
+    box-shadow: var(--fcx-shadow); overflow: hidden;
+  }
+  .fcx-hero__container { max-width: 1280px; margin-inline: auto; padding: clamp(26px, 6vw, 88px) clamp(14px, 5vw, 40px); }
+
+  /* Flex + Grid alignment */
+  .fcx-hero__grid{
+    display:grid;
+    grid-template-columns:minmax(0,0.98fr) minmax(0,1.02fr);
+    gap:clamp(24px,3.8vw,60px);
+    align-items:stretch;
+  }
+  @media (max-width:1024px){ .fcx-hero__grid{ grid-template-columns:1fr; gap:clamp(18px,3.2vw,28px); } }
+
+  .fcx-hero__content{
+    display:flex; flex-direction:column; justify-content:center;
+    gap:clamp(8px,1.6vh,14px); min-width:0;
+  }
+  @media (max-width:1024px){ .fcx-hero__content{ justify-content:flex-start; } }
+
+  .fcx-hero__title{
+    margin:.18em 0 .22em; line-height:1.03; letter-spacing:-.015em; font-weight:900;
+    font-size:clamp(2.2rem,4.6vw,3.6rem); text-wrap:balance; text-shadow:0 12px 32px #0008;
+  }
+  .fcx-hero__title .fcx-accent{
+    background:linear-gradient(90deg, color-mix(in srgb, var(--fcx-accent) 85%, #fff), var(--fcx-accent));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .fcx-hero__subtitle{ max-width:66ch; color:color-mix(in srgb, var(--fcx-text) 86%, #cfd5e7); font-size:clamp(1.02rem,1.12vw,1.18rem); margin-top:.15rem; opacity:.98; }
+
+  .fcx-hero__quote{ margin:1.1rem 0 .7rem; color:var(--fcx-muted); font-size:1.12rem; border-left:3px solid var(--fcx-accent); padding-left:.75rem; font-style:italic; line-height:1.25; }
+  .fcx-hero__quote-mark{ font-size:1.3em; margin-right:.22em; vertical-align:-.1em; }
+  .fcx-hero__quote-attrib{ display:block; margin-top:.3em; color:var(--fcx-accent); font-style:normal; font-weight:600; font-size:.95em; opacity:.87; }
+
+  .fcx-kpis{ display:flex; flex-wrap:wrap; align-items:center; gap:.72rem 1.2rem; margin:1rem 0 1.1rem; }
+  .kpi{ display:flex; flex-direction:column; align-items:flex-start; }
+  .fcx-kpi-val{ font-weight:900; color:var(--fcx-accent); font-size:1.14em; letter-spacing:.01em; }
+  .fcx-kpi-label{ font-weight:500; color:var(--fcx-muted); font-size:.98em; opacity:.92; }
+
+  .fcx-hero__cta{ display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; }
+
+  .fcx-btn{ --bcol:var(--fcx-border); display:inline-flex; align-items:center; gap:.55em; padding:.62rem 1.25rem; border-radius:999px; border:1.7px solid var(--bcol); font-weight:900; background:rgba(18,19,23,.82); color:var(--fcx-text); transition:transform .14s, box-shadow .16s, background .14s; font-size:1.09em; line-height:1.14; cursor:pointer; outline:none; box-shadow:0 2px 12px #0001; user-select:none; }
+  .fcx-btn-ghost{ background:#ffffff12; border-color:var(--fcx-accent); color:var(--fcx-accent); }
+  .fcx-btn-accent{ background:linear-gradient(180deg,#fffbe6 0%,var(--fcx-accent) 98%); color:#0f0f10; border-color:var(--fcx-accent); box-shadow:0 1px 0 #fff6 inset, 0 12px 30px color-mix(in srgb, var(--fcx-accent) 30%, transparent); }
+  .fcx-btn-lite{ background:rgba(248,248,255,.08); border-color:#e9e9e922; color:var(--fcx-muted); }
+  .fcx-btn:focus{ outline:2.5px solid var(--fcx-accent); outline-offset:1.5px; }
+  .fcx-btn:active{ transform:scale(.97); }
+  .fcx-btn-accent.pulse{ animation:fcx-pulse 2.5s ease-out infinite; }
+  @keyframes fcx-pulse{ 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--fcx-accent) 46%,transparent);} 70%{box-shadow:0 0 0 18px color-mix(in srgb,var(--fcx-accent) 0%,transparent);} 100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--fcx-accent) 0%,transparent);} }
+
+  .fcx-hero__qr-card{ display:flex; align-items:center; gap:1rem; margin-top:1rem; background:linear-gradient(120deg,#1a1b20 78%,#23242b 100%); border-radius:1.2rem; border:1.5px solid #2a2d3b; box-shadow:0 12px 36px #0b0d27aa; padding:.9rem 1.1rem; max-width:420px; align-self:flex-start; }
+  .fcx-qr-img{ width:80px; height:80px; border-radius:1rem; background:#fff; object-fit:contain; box-shadow:0 4px 18px #0006; }
+
+  /* Media column & slides */
+  .fcx-hero__media{
+    position:relative; background:#07090e; border-radius:var(--fcx-radius);
+    box-shadow:0 12px 40px rgba(0,0,0,.28), 0 0 0 3px color-mix(in srgb, var(--fcx-accent) 70%, transparent);
+    overflow:hidden; display:grid; grid-template-areas:"stack"; align-items:stretch;
+  }
+  .fcx-hero__slides--cinematic{ grid-area:stack; position:relative; width:100%; border-radius:inherit; aspect-ratio:16/7.2; min-height:clamp(360px,48vh,640px); max-height:70vh; display:flex; align-items:center; overflow:hidden; background:linear-gradient(115deg,#1a1b20 20%,#23262a 100%); }
+  @media (max-width:900px){ .fcx-hero__slides--cinematic{ aspect-ratio:16/11; min-height:clamp(320px,44vh,560px); max-height:62vh; } }
+
+  .fcx-slide{ position:absolute; inset:0; opacity:0; pointer-events:none; transition:opacity .88s cubic-bezier(.34,.7,.22,1); }
+  .fcx-slide.is-active{ opacity:1; pointer-events:auto; }
+  .fcx-hero__img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:var(--focus,50% 30%); filter:brightness(.98) saturate(1.08); opacity:.96; transition:opacity .45s, transform 6s cubic-bezier(.19,.77,.42,1); }
+  .ken{ transform:scale(1.02); } .fcx-slide.is-active .ken{ transform:scale(1.065); }
+
+  /* Bottom-locked cinematic overlay */
+  .fcx-overlay--locked{
+    grid-area:stack; position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; pointer-events:none; z-index:3;
+  }
+  .fcx-overlay--locked .overlay-bg{
+    position:absolute; left:0; right:0; bottom:0; height:46%;
+    background:linear-gradient(to top, rgba(0,0,0,.75) 0%, rgba(0,0,0,.45) 50%, rgba(0,0,0,.08) 100%);
+  }
+  .overlay-shell{ width:min(720px,94%); color:#fff; text-align:center; text-shadow:0 2px 4px rgba(0,0,0,.34); margin:0 auto var(--overlay-pad-b); }
+  .overlay-shell--lowered{
+    align-self:end; justify-self:center; pointer-events:auto;
+    padding:.9rem 1.1rem max(var(--overlay-pad-b), calc(env(safe-area-inset-bottom) + 18px));
+    backdrop-filter:blur(12px) saturate(140%); background:linear-gradient(180deg, rgba(11,14,20,.62), rgba(11,14,20,.92));
+    border:1px solid #ffffff24; border-radius:0 0 var(--fcx-radius) var(--fcx-radius); box-shadow:0 8px 22px rgba(0,0,0,.5);
+    opacity:0; transform:translateY(18px); transition:opacity .6s ease, transform .6s ease;
+  }
+  .fcx-slide.is-active ~ .fcx-overlay--locked .overlay-shell--lowered,
+  .fcx-overlay--locked .overlay-shell--lowered{ opacity:1; transform:none; }
+
+  .overlay-title{ font-size:clamp(1.45rem,2.4vw,2.2rem); font-weight:1000; line-height:1.08; letter-spacing:-.012em; margin-top:.5rem; display:flex; flex-wrap:wrap; gap:.4rem .6rem; justify-content:center; }
+  .overlay-sub{ font-size:clamp(.95rem, .2vw + .95rem, 1.08rem); font-style:italic; opacity:.92; max-width:46ch; margin:.65rem auto 0; }
+  .fcx-hero__trust{ display:flex; flex-wrap:wrap; justify-content:center; gap:1rem; margin-top:1rem; }
+  .fcx-tax-badge,.fcx-secure-badge{ display:inline-block; padding:.35em .85em; background:#22272f; border-radius:999px; font-size:.97em; color:var(--fcx-accent); font-weight:700; letter-spacing:.01em; box-shadow:0 2px 8px #0001; }
+
+  /* Controls */
+  .fcx-hero__controls{ position:absolute; left:0; right:0; bottom:clamp(12px, 2.2vh, 28px); display:flex; align-items:center; justify-content:center; gap:.9rem; z-index:4; pointer-events:auto; }
+  .fcx-hero__controls .ctrl{ background:rgba(30,30,40,.92); border:none; color:var(--fcx-accent); font-size:1.22rem; border-radius:50%; width:2.1em; height:2.1em; display:flex; align-items:center; justify-content:center; transition:background .12s, color .12s; cursor:pointer; box-shadow:0 2px 8px #0002; outline:none; }
+  .fcx-hero__controls .ctrl:focus{ background:var(--fcx-accent); color:#212129; }
+  .fcx-hero__controls .dot{ width:.7rem; height:.7rem; border-radius:999px; background:#0f1524; border:1.4px solid #1a2131; margin:0 3px; transition:background .12s, border-color .12s; }
+  .fcx-hero__controls .dot.is-active{ background:var(--fcx-accent); border-color:var(--fcx-accent); box-shadow:0 2px 8px #0002; }
+
+  /* Mobile */
+  @media (max-width:600px){
+    .fcx-hero__container{ padding:22px 6vw 16px; }
+    .overlay-shell{ padding-inline:2vw; }
+    .fcx-hero__qr-card{ max-width:98vw; font-size:.96em; padding:.7rem 1vw; }
+  }
+
+  /* A11y helpers */
+  .sr-only,.visually-hidden{ position:absolute !important; clip:rect(1px,1px,1px,1px); clip-path:inset(50%); height:1px; width:1px; overflow:hidden; white-space:nowrap; border:0; padding:0; }
+}
+/* --- Smart-Fit: side-crop guard --- */
+.fcx-slide { position:absolute; inset:0; }
+.fcx-slide::before{
+  content:"";
+  position:absolute; inset:0; z-index:0;
+  /* soft backdrop so pillar bars look intentional */
+  background: linear-gradient(115deg,#0e1016 20%,#171a24 100%);
+}
+.fcx-hero__img{ position:absolute; inset:0; z-index:1; object-fit:cover; }
+.fcx-slide.use-contain .fcx-hero__img{
+  object-fit:contain; /* show the whole image, no crop */
+  background:#0e1016; /* behind transparent edges */
+}
+/* treat 'contain' as no-crop mode */
+.fcx-slide.use-contain .fcx-hero__img,
+.fcx-hero__slides--cinematic[data-fit="contain"] .fcx-hero__img,
+.fcx-slide[data-fit="contain"] .fcx-hero__img { object-fit: contain; background:#0e1016; }
+/* replace your current aspect-ratio line */
+.fcx-hero__slides--cinematic{
+  /* …existing styles… */
+  aspect-ratio: var(--hero-ar, 16/9);   /* was 16/7.2 */
+}
+.fcx-slide{position:absolute;inset:0}
+.fcx-slide::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  background: var(--bg, linear-gradient(115deg,#0e1016 20%,#171a24 100%)) center/cover no-repeat;
+  filter: blur(24px) saturate(1.2);
+  transform: scale(1.06);
+}
+.fcx-hero__img{position:absolute;inset:0;z-index:1;object-fit:cover}
+.fcx-hero__slides--cinematic[data-fit="contain"] .fcx-hero__img,
+.fcx-slide[data-fit="contain"] .fcx-hero__img{object-fit:contain;background:#0e1016}
+
+</style>
+
+<style {{ nonce_attr() }}>
+/* Smart-Fit (auto cover/contain) */
+.fcx-slide { position:absolute; inset:0; }
+.fcx-slide::before{
+  content:"";
+  position:absolute; inset:0; z-index:0;
+  background: linear-gradient(115deg,#0e1016 20%,#171a24 100%); /* soft backdrop behind pillar bars */
+}
+.fcx-hero__img{ position:absolute; inset:0; z-index:1; object-fit:cover; }
+.fcx-slide.use-contain .fcx-hero__img{
+  object-fit:contain;
+  background:#0e1016; /* behind transparent edges when contained */
+}
+
+/* Bottom-locked overlay background fade */
+.fcx-overlay--locked { position:absolute; inset:auto 0 0 0; display:flex; justify-content:center; pointer-events:none; }
+.fcx-overlay--locked .overlay-bg{
+  position:absolute; inset:auto 0 0 0; height:48%;
+  background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,.45) 55%, transparent);
+  pointer-events:none;
+}
+.fcx-overlay--locked .overlay-shell{ pointer-events:auto; }
+@media (max-width:900px){
+  .fcx-overlay--locked .overlay-bg{ height:56%; background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.5) 60%, transparent); }
+}
+</style>
+
+<script {{ nonce_attr() }}>
+"use strict";
+(() => {
+  const root = (() => { try { return document.currentScript.closest('.fcx-hero--cinematic'); } catch { return document.querySelector('.fcx-hero--cinematic'); } })();
+  if (!root || root.dataset.fcHeroInit === "1") return; root.dataset.fcHeroInit = "1";
+
+  const slides = Array.from(root.querySelectorAll('.fcx-slide'));
+  if (!slides.length) return;
+
+  const overlayShell = root.querySelector('#fcx-overlay .overlay-shell') || root.querySelector('.overlay-shell');
+  const dots  = Array.from(root.querySelectorAll('.fcx-hero__controls .dot'));
+  const prev  = root.querySelector('.fcx-hero__controls .prev');
+  const next  = root.querySelector('.fcx-hero__controls .next');
+  const pause = root.querySelector('.fcx-hero__controls .pause');
+  const donate= root.querySelector('[data-cta="donate"]');
+  const share = root.querySelector('[data-share]');
+
+  // Live region
+  const live = document.createElement('div'); live.setAttribute('aria-live','polite'); live.className='sr-only'; root.appendChild(live);
+  const announce=(m)=>{ live.textContent=m||''; };
+
+  const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const conn = navigator.connection || {};
+  const interval = Math.max(4500, parseInt(root.getAttribute('data-interval')||'6500',10));
+  const allowAuto = root.getAttribute('data-rotate')!=='false' && !reduceMotion && !(conn.saveData) && !String(conn.effectiveType||'').includes('2g') && slides.length>1;
+
+  let idx = Math.max(0, slides.findIndex(s=>s.classList.contains('is-active')));
+  if (idx < 0) idx = 0;
+
+  const setOverlaySafeFrom = (sl) => {
+    if(!overlayShell||!sl) return;
+    overlayShell.style.setProperty('--safe-top', sl.getAttribute('data-safe-top')||'28vh');
+    overlayShell.style.setProperty('--safe-bottom', sl.getAttribute('data-safe-bottom')||'18vh');
+  };
+
+  const markActive = (i) => {
+    slides.forEach((s,j)=>{ const on=j===i; s.classList.toggle('is-active',on); s.setAttribute('aria-hidden', on?'false':'true'); });
+    dots.forEach((d,j)=>{ const on=j===i; d.classList.toggle('is-active',on); d.setAttribute('aria-selected',on?'true':'false'); d.setAttribute('tabindex', on?'0':'-1'); });
+    const alt = slides[i]?.querySelector('img')?.getAttribute('alt')||`Slide ${i+1}`;
+    announce(`Showing ${alt}`);
+    setOverlaySafeFrom(slides[i]);
+  };
+
+  const activate = (i) => { idx=((i%slides.length)+slides.length)%slides.length; markActive(idx); };
+  const nextSlide = () => activate(idx+1);
+  const prevSlide = () => activate(idx-1);
+
+  next?.addEventListener('click',()=>{ setPaused(true); nextSlide(); },{passive:true});
+  prev?.addEventListener('click',()=>{ setPaused(true); prevSlide(); },{passive:true});
+  dots.forEach((d)=>d.addEventListener('click',()=>{ setPaused(true); const n=+d.getAttribute('data-slide')||0; activate(n); d.focus?.({preventScroll:true}); },{passive:true}));
+
+  root.addEventListener('keydown',(e)=>{const k=e.key||''; if(k==='ArrowRight'){e.preventDefault(); setPaused(true); nextSlide();} else if(k==='ArrowLeft'){e.preventDefault(); setPaused(true); prevSlide();} else if(k===' '||k==='Spacebar'){e.preventDefault(); pause?.click();}});
+
+  let userPaused=false, hoverPaused=false, hiddenPaused=false, viewPaused=false; let rafId=0, lastTick=0;
+  root.addEventListener('mouseenter',()=>{ hoverPaused=true; },{passive:true});
+  root.addEventListener('mouseleave',()=>{ hoverPaused=false; },{passive:true});
+
+  const isTyping=(e)=>{const t=e.target; return t && (t.isContentEditable||/^(input|textarea|select)$/i.test(t.tagName));};
+  document.addEventListener('keydown',(e)=>{ if(isTyping(e)||e.metaKey||e.ctrlKey||e.altKey) return; if((e.key||'').toLowerCase()==='d'){ donate?.focus?.({preventScroll:true}); donate?.click?.(); }},{passive:true});
+
+  share?.addEventListener('click',async()=>{const payload={title:document.title,text:`Support {{ TEAM_NAME|e }} — every dollar moves a kid forward.`,url:location.href};
+    try{ if(navigator.share){ await navigator.share(payload); return; } }catch{}
+    try{ await navigator.clipboard?.writeText(payload.url); const prevTxt=share.textContent; share.classList.add('copied'); share.textContent='Copied!'; setTimeout(()=>{share.textContent=prevTxt||'Share'; share.classList.remove('copied'); },1100);}catch{} },
+  {passive:true});
+
+  if('IntersectionObserver' in window){
+    const io=new IntersectionObserver((es)=>{const seen=(es[0]&&es[0].isIntersecting&&es[0].intersectionRatio>0); viewPaused=!seen;},{threshold:[0,.19]});
+    io.observe(root);
+  }
+  document.addEventListener('visibilitychange',()=>{ hiddenPaused=(document.visibilityState!=='visible');});
+
+  const paused=()=> userPaused||hoverPaused||hiddenPaused||viewPaused||!allowAuto;
+  const tick=(now)=>{ if(paused()){ lastTick=now; rafId=requestAnimationFrame(tick); return; }
+    if(!lastTick) lastTick=now; if(now-lastTick>=interval){ nextSlide(); lastTick=now; } rafId=requestAnimationFrame(tick); };
+
+  const setPaused=(v)=>{ userPaused=!!v; pause?.setAttribute('aria-pressed', userPaused?'true':'false'); if(!userPaused) tick(performance.now()); };
+
+  dots.forEach((d,i)=>d.setAttribute('tabindex', i===idx?'0':'-1'));
+  markActive(idx);
+  if(allowAuto){ rafId=requestAnimationFrame(tick); }
+  window.addEventListener('pagehide',()=>{ if(rafId) cancelAnimationFrame(rafId); },{once:true});
+})();
+</script>
+<script {{ nonce_attr() }}>
+"use strict";
+(() => {
+  const root = (() => { try { return document.currentScript.closest('.fcx-hero--cinematic'); } catch { return document.querySelector('.fcx-hero--cinematic'); } })();
+  if (!root || root.dataset.fcHeroInit === "1") return; root.dataset.fcHeroInit = "1";
+
+  const slides = Array.from(root.querySelectorAll('.fcx-slide'));
+  if (!slides.length) return;
+
+  const stage   = root.querySelector('.fcx-hero__slides--cinematic');
+  const dots    = Array.from(root.querySelectorAll('.fcx-hero__controls .dot'));
+  const prev    = root.querySelector('.fcx-hero__controls .prev');
+  const next    = root.querySelector('.fcx-hero__controls .next');
+  const pause   = root.querySelector('.fcx-hero__controls .pause');
+  const donate  = root.querySelector('[data-cta="donate"]');
+  const share   = root.querySelector('[data-share]');
+
+  const live = document.createElement('div'); live.setAttribute('aria-live','polite'); live.className='sr-only'; root.appendChild(live);
+  const announce=(m)=>{ live.textContent=m||''; };
+
+  const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const conn = navigator.connection || {};
+  const interval = Math.max(4500, parseInt(root.getAttribute('data-interval')||'6500',10));
+  const allowAuto = root.getAttribute('data-rotate')!=='false' && !reduceMotion && !(conn.saveData) && !String(conn.effectiveType||'').includes('2g') && slides.length>1;
+
+  let idx = Math.max(0, slides.findIndex(s=>s.classList.contains('is-active'))); idx = idx<0?0:idx;
+
+  /* ---------- Smart-Fit: switch to contain when the image is wider than the stage ---------- */
+  const getFitFor = (slide) => slide.dataset.fit || slide.querySelector('img')?.dataset.fit || stage?.dataset.fit || 'auto';
+  const applySmartFit = () => {
+    if (!stage) return;
+    const r = stage.getBoundingClientRect();
+    const stageAR = r.width / r.height;
+
+    slides.forEach(slide => {
+      const img = slide.querySelector('img'); if (!img) return;
+
+      const force = getFitFor(slide);
+      if (force === 'cover') { slide.classList.remove('use-contain'); return; }
+      if (force === 'contain'){ slide.classList.add('use-contain');  return; }
+
+      // auto: decide based on aspect ratios (avoid side-crop)
+      const ready = img.naturalWidth> 0 && img.naturalHeight> 0;
+      const decide = () => {
+        const imgAR = img.naturalWidth / img.naturalHeight;
+        const sideCropWouldHappen = imgAR> stageAR; // wider than stage
+        slide.classList.toggle('use-contain', sideCropWouldHappen);
+      };
+      ready ? decide() : img.addEventListener('load', decide, {once:true});
+    });
+  };
+
+  const overlayShell = root.querySelector('#fcx-overlay .overlay-shell') || root.querySelector('.overlay-shell');
+  const setOverlaySafeFrom = (sl) => {
+    if(!overlayShell||!sl) return;
+    overlayShell.style.setProperty('--safe-top', sl.getAttribute('data-safe-top')||'28vh');
+    overlayShell.style.setProperty('--safe-bottom', sl.getAttribute('data-safe-bottom')||'18vh');
+  };
+
+  const markActive = (i) => {
+    slides.forEach((s,j)=>{const on=j===i; s.classList.toggle('is-active',on); s.setAttribute('aria-hidden', on?'false':'true');});
+    dots.forEach((d,j)=>{const on=j===i; d.classList.toggle('is-active',on); d.setAttribute('aria-selected',on?'true':'false'); d.setAttribute('tabindex', on?'0':'-1');});
+    const alt = slides[i]?.querySelector('img')?.getAttribute('alt')||`Slide ${i+1}`;
+    announce(`Showing ${alt}`); setOverlaySafeFrom(slides[i]);
+    applySmartFit(); // recalc on slide change
+  };
+
+  const activate = (i) => { idx=((i%slides.length)+slides.length)%slides.length; markActive(idx); };
+  const nextSlide = () => activate(idx+1);
+  const prevSlide = () => activate(idx-1);
+
+  next?.addEventListener('click',()=>{ setPaused(true); nextSlide(); },{passive:true});
+  prev?.addEventListener('click',()=>{ setPaused(true); prevSlide(); },{passive:true});
+  dots.forEach((d)=>d.addEventListener('click',()=>{ setPaused(true); const n=+d.getAttribute('data-slide')||0; activate(n); d.focus?.({preventScroll:true}); },{passive:true}));
+
+  let userPaused=false, hoverPaused=false, hiddenPaused=false, viewPaused=false; let rafId=0, lastTick=0;
+  const paused=()=> userPaused||hoverPaused||hiddenPaused||viewPaused||!allowAuto;
+  root.addEventListener('mouseenter',()=>{ hoverPaused=true; },{passive:true});
+  root.addEventListener('mouseleave',()=>{ hoverPaused=false; },{passive:true});
+  document.addEventListener('visibilitychange',()=>{ hiddenPaused=(document.visibilityState!=='visible');});
+
+  const tick=(now)=>{ if(paused()){ lastTick=now; rafId=requestAnimationFrame(tick); return; }
+    if(!lastTick) lastTick=now; if(now-lastTick>=interval){ nextSlide(); lastTick=now; } rafId=requestAnimationFrame(tick); };
+  const setPaused=(v)=>{ userPaused=!!v; pause?.setAttribute('aria-pressed', userPaused?'true':'false'); if(!userPaused) tick(performance.now()); };
+
+  // init
+  dots.forEach((d,i)=>d.setAttribute('tabindex', i===idx?'0':'-1'));
+  markActive(idx);
+  applySmartFit();
+  window.addEventListener('resize', ()=>{ applySmartFit(); }, {passive:true});
+  if(allowAuto){ rafId=requestAnimationFrame(tick); }
+  window.addEventListener('pagehide',()=>{ if(rafId) cancelAnimationFrame(rafId); },{once:true});
+  
+  <script {{ nonce_attr() }}>
+(() => {
+  const root = document.querySelector('.fcx-hero--cinematic');
+  if (!root) return;
+  const stage  = root.querySelector('.fcx-hero__slides--cinematic');
+  const slides = [...root.querySelectorAll('.fcx-slide')];
+
+  const getFitFor = (slide) =>
+    slide.dataset.fit || slide.querySelector('img')?.dataset.fit || stage?.dataset.fit || 'auto';
+
+  const applySmartFit = () => {
+    if (!stage) return;
+    const r = stage.getBoundingClientRect();
+    const stageAR = r.width / r.height;
+
+    slides.forEach(slide => {
+      const img = slide.querySelector('img'); if (!img) return;
+
+      const forced = getFitFor(slide);
+      if (forced === 'cover') { slide.classList.remove('use-contain'); return; }
+      if (forced === 'contain'){ slide.classList.add('use-contain');  return; }
+
+      // auto: if image is wider than stage, prevent side-crop by using contain
+      const decide = () => {
+        const imgAR = img.naturalWidth / img.naturalHeight;
+        slide.classList.toggle('use-contain', imgAR> stageAR);
+      };
+      (img.naturalWidth && img.naturalHeight) ? decide() : img.addEventListener('load', decide, { once:true });
+    });
+  };
+
+  // run on init + on slide change + on resize
+  applySmartFit();
+  new ResizeObserver(applySmartFit).observe(stage);
+  root.addEventListener('click', (e) => {
+    if (e.target.closest('.fcx-hero__controls .next, .fcx-hero__controls .prev, .fcx-hero__controls .dot')) {
+      requestAnimationFrame(applySmartFit);
+    }
+  }, { passive:true });
+})();
+
+  // extras (unchanged): keyboard share/donate, etc.
+  const isTyping=(e)=>{const t=e.target; return t && (t.isContentEditable||/^(input|textarea|select)$/i.test(t.tagName));};
+  document.addEventListener('keydown',(e)=>{ if(isTyping(e)||e.metaKey||e.ctrlKey||e.altKey) return;
+    if((e.key||'').toLowerCase()==='d'){ donate?.focus?.({preventScroll:true}); donate?.click?.(); }
+    if(e.key==='ArrowRight'){ e.preventDefault(); setPaused(true); nextSlide(); }
+    if(e.key==='ArrowLeft'){  e.preventDefault(); setPaused(true); prevSlide(); }
+  },{passive:true});
+  const share = root.querySelector('[data-share]');
+  share?.addEventListener('click',async()=>{const payload={title:document.title,text:`Support {{ TEAM_NAME|e }} — every dollar moves a kid forward.`,url:location.href};
+    try{if(navigator.share){await navigator.share(payload);return}}catch{}
+    try{await navigator.clipboard?.writeText(payload.url); const t=share.textContent; share.classList.add('copied'); share.textContent='Copied!'; setTimeout(()=>{share.textContent=t||'Share'; share.classList.remove('copied');},1100);}catch{}},
+  {passive:true});
+})();
+</script>
+
+

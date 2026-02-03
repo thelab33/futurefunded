@@ -1,0 +1,279 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!doctype html>
+<html lang="en" class="fc-theme">
+<head>
+  <meta charset="utf-8" />
+  <title>Complete your gift · {{ team.team_name if team else "Your Program" }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+
+  <style { { nonce_attr() } } { { nonce_attr() } }>
+    :root {
+      --accent: #f97316;
+      --bg: #020617;
+      --surface: #020617;
+      --surface-soft: #0b1220;
+      --ink: #f9fafb;
+      --ink-soft: #94a3b8;
+      --ink-muted: #64748b;
+      --radius-lg: 20px;
+      --shadow-soft: 0 18px 40px rgba(0,0,0,0.8);
+    }
+    html {
+      font-family: system-ui,-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;
+      background: radial-gradient(900px 380px at -10% -20%, rgba(248,250,252,0.06), transparent 70%),
+                  radial-gradient(900px 380px at 110% -10%, rgba(56,189,248,0.16), transparent 70%),
+                  #020617;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .shell {
+      width: 100%;
+      max-width: 520px;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at 0 0,rgba(148,163,184,0.24),transparent 65%),
+                  var(--surface);
+      border: 1px solid rgba(30,64,175,0.8);
+      box-shadow: var(--shadow-soft);
+      padding: 18px 18px 20px;
+    }
+    .eyebrow {
+      font-size: 0.76rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0 0 4px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+    .highlight {
+      background-image: linear-gradient(120deg,#f97316,#facc15,#22c55e);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .sub {
+      margin: 8px 0 0;
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+    .summary-card {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(148,163,184,0.7);
+      display: grid;
+      grid-template-columns: minmax(0,1.4fr) minmax(0,1fr);
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    .summary-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--ink-muted);
+    }
+    .summary-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .summary-meta {
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+      margin-top: 4px;
+    }
+    .field-group {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.86rem;
+    }
+    .field-label {
+      font-weight: 600;
+      color: var(--ink-soft);
+    }
+    .field-value {
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.8);
+      background: rgba(15,23,42,0.96);
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      color: var(--ink);
+    }
+    .field-value.muted {
+      color: var(--ink-soft);
+    }
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .btn-primary,
+    .btn-secondary {
+      min-height: 44px;
+      border-radius: 999px;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg,#f97316,#facc15);
+      color: #111827;
+      box-shadow: 0 16px 40px rgba(248,181,35,0.5);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--ink-soft);
+      border: 1px solid rgba(148,163,184,0.8);
+    }
+    .fineprint {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--ink-muted);
+      line-height: 1.5;
+    }
+    .back-link {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+    .back-link a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+  </style>
+</head>
+<body
+
+<!-- FF: Accessibility Skip Link -->
+<a href="#main" class="ff-skiplink">Skip to main content</a>
+>
+  <main class="shell" aria-label="Complete your gift">
+    <p class="eyebrow">Secure checkout</p>
+    <h1>
+      Confirm your gift
+      {% if team %}
+        <span class="highlight">for {{ team.team_name }}</span>
+      {% endif %}
+    </h1>
+    <p class="sub">
+      We’ve prefilled your details from the campaign page. Review and continue —
+      card / wallet processing plugs in here next.
+    </p>
+
+    <section class="summary-card" aria-label="Gift summary">
+      <div>
+        <div class="summary-label">Gift amount</div>
+        <div class="summary-value">
+          {{ money(prefill_amount or 0) }}
+          {% if prefill_frequency == "monthly" %}
+            <span style="font-size:0.85rem;font-weight:400;">· monthly</span>
+          {% else %}
+            <span style="font-size:0.85rem;font-weight:400;">· one-time</span>
+          {% endif %}
+        </div>
+        {% if source %}
+        <div class="summary-meta">
+          From: {{ source|replace("_", " ") }}
+        </div>
+        {% endif %}
+      </div>
+      <div>
+        <div class="summary-label">For</div>
+        <div class="summary-meta">
+          {% if team %}
+            {{ team.team_name }}
+          {% else %}
+            Our program
+          {% endif %}
+        </div>
+        {% if org_slug %}
+        <div class="summary-meta">
+          Org: <code>{{ org_slug }}</code>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section aria-label="Your details">
+      <div class="field-group">
+        <div class="field-label">Name</div>
+        <div class="field-value">{{ prefill_name or "—" }}</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Email</div>
+        <div class="field-value">{{ prefill_email or "—" }}</div>
+      </div>
+    </section>
+
+    <section class="actions" aria-label="Payment options">
+      <!-- These are placeholders you’ll wire to Stripe/PayPal next -->
+      <button type="button" class="btn-primary">
+        Pay with card (Stripe)
+      </button>
+      <button type="button" class="btn-secondary">
+        Pay with PayPal
+      </button>
+    </section>
+
+    <p class="fineprint">
+      🔒 This page will host your live payment widgets (Stripe Elements / PayPal)
+      once keys are configured. For now, it confirms the end-to-end flow from the
+      campaign page without throwing server errors.
+    </p>
+
+    <p class="back-link">
+      Want to adjust your amount or details?
+      <a href="{{ request.referrer or url_for('main.home', _fallback='/' ) }}">
+        Go back to the campaign page.
+      </a>
+    </p>
+  </main>
+
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</body>
+</html>
+

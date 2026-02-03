@@ -1,0 +1,36 @@
+/* ff-premium.css — append-only premium styles */
+.ff-trust-strip{
+  font-size:0.9rem;
+  padding:8px 12px;
+  border-radius:6px;
+  display:inline-block;
+  margin-top:8px;
+  background:rgba(0,0,0,0.03);
+  color:#222;
+}
+.ff-verified-badge{
+  display:inline-block;
+  vertical-align:middle;
+  margin-left:8px;
+  padding:4px 8px;
+  background:linear-gradient(90deg,#f6d365,#fda085);
+  color:#fff;
+  border-radius:999px;
+  font-weight:600;
+  font-size:0.8rem;
+}
+.ff-activity-ticker{
+  margin-top:10px;
+  font-size:0.9rem;
+  opacity:0.95;
+}
+.ff-activity-item{padding:4px 0;}
+.ff-countdown{font-weight:700;}
+/* small utility for admin screenshot box */
+.ff-admin-screenshot{
+  border:1px solid rgba(0,0,0,0.06);
+  padding:12px;
+  border-radius:8px;
+  background:linear-gradient(180deg, #fff, #fafafa);
+  max-width:920px;
+}

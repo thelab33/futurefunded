@@ -1,0 +1,148 @@
+{# ==================== FundChamps • Admin Dashboard (Elite Edition) ==================== #}
+{% extends "admin/base.html" %}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+
+{% block title %}Dashboard – Sponsor Admin | {{ super() }}{% endblock %}
+
+{% block content %}
+<h2 class="mb-8 flex items-center gap-3 text-3xl font-extrabold">
+  <span aria-hidden="true">🏆</span>
+  Admin Dashboard
+</h2>
+
+{# ---------- Summary Cards ---------- #}
+<div class="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+  {% set tr = stats.total_raised or 0 %}
+  {% set sc = stats.sponsor_count or 0 %}
+  {% set ga = stats.goal_amount or 0 %}
+  {% set ps = stats.pending_sponsors or 0 %}
+
+  <div class="flex flex-col items-center rounded-xl bg-gradient-to-br from-gold via-yellow-100 to-white p-6 text-zinc-900 shadow-xl">
+    <div class="animate-pulse text-5xl font-black">${{ tr | commafy }}</div>
+    <div class="text-lg font-semibold">Total Raised</div>
+  </div>
+
+  <div class="flex flex-col items-center rounded-xl bg-gradient-to-br from-yellow-400 via-gold/70 to-white p-6 text-zinc-900 shadow-xl">
+    <div class="animate-sparkle text-5xl font-black">{{ sc | commafy }}</div>
+    <div class="text-lg font-semibold">Sponsors</div>
+  </div>
+
+  <div class="flex flex-col items-center rounded-xl bg-gradient-to-br from-zinc-900 via-yellow-200 to-gold p-6 text-zinc-900 shadow-xl">
+    <div class="animate-slide-up text-5xl font-black">${{ ga | commafy }}</div>
+    <div class="text-lg font-semibold">Goal</div>
+  </div>
+
+  <div class="flex flex-col items-center rounded-xl bg-gradient-to-br from-red-300 via-yellow-100 to-gold p-6 text-zinc-900 shadow-xl">
+    <div class="text-5xl font-black">{{ ps | commafy }}</div>
+    <div class="text-lg font-semibold">Pending Approval</div>
+  </div>
+</div>
+
+{# ---------- Progress Bar ---------- #}
+{% set pct = ((tr / (ga or 1)) * 100) | round(1) %}
+<div class="mb-10">
+  <div class="mb-1 flex items-center justify-between">
+    <span class="text-sm font-medium text-gold">Progress</span>
+    <span class="text-sm font-bold text-yellow-200">{{ pct }}%</span>
+  </div>
+  <div class="h-4 w-full overflow-hidden rounded-full bg-zinc-900 shadow-inner">
+    <div class="h-4 rounded-full bg-clip-text text-transparent" style="background: linear-gradient(90deg, hsl(var(--brand)), hsl(var(--brand) / .8))"
+         style="width: {{ pct }}%;">
+    </div>
+  </div>
+</div>
+
+{# ---------- Latest Sponsors ---------- #}
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 mb-10" >
+  <h3 class="mb-3 font-semibold">Latest Sponsors</h3>
+  <div class="overflow-x-auto">
+    <table class="min-w-full overflow-hidden rounded-xl bg-zinc-800/80 shadow" role="table">
+      <thead>
+        <tr class="bg-yellow-400/90 text-zinc-900">
+          <th class="p-3 text-left">Name</th>
+          <th class="text-left">Email</th>
+          <th class="text-left">Amount</th>
+          <th class="text-left">Status</th>
+          <th class="text-left">Date</th>
+          <th class="text-left">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sponsors %}
+        <tr class="border-b border-zinc-700">
+          <td class="p-2 font-bold">{{ s.name }}</td>
+          <td class="p-2">{{ s.email or "—" }}</td>
+          <td class="p-2 font-bold text-gold">${{ "%.2f"|format(s.amount) }}</td>
+          <td class="p-2">
+            <span class="rounded-full px-2 py-1
+              {% if s.status == 'approved' %}bg-green-200 text-green-900
+              {% elif s.status == 'pending' %}bg-yellow-200 text-yellow-900
+              {% else %}bg-red-200 text-red-900{% endif %}">
+              {{ s.status|capitalize }}
+            </span>
+          </td>
+          <td class="p-2 text-xs">{{ s.created_at.strftime("%Y-%m-%d") }}</td>
+          <td class="p-2">
+            {% if s.status != "approved" %}
+            <form action="{{ url_for('admin.approve_sponsor', sponsor_id=s.id) }}" method="POST" class="inline">
+              {{ form.hidden_tag() }}
+              <button type="submit" class="rounded bg-gold px-3 py-1 text-zinc-900">Approve</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="py-8 text-center text-zinc-400">No sponsors found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ---------- Latest Transactions ---------- #}
+<section>
+  <h3 class="mb-3 font-semibold">Latest Transactions</h3>
+  <div class="overflow-x-auto">
+    <table class="min-w-full overflow-hidden rounded-xl bg-zinc-800/80 shadow" role="table">
+      <thead>
+        <tr class="bg-yellow-200 text-zinc-900">
+          <th class="p-3 text-left">Sponsor</th>
+          <th class="text-left">Amount</th>
+          <th class="text-left">Status</th>
+          <th class="text-left">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr class="border-b border-zinc-700">
+          <td class="p-2">{{ t.sponsor.name }}</td>
+          <td class="p-2 font-bold text-gold">${{ "%.2f"|format(t.amount) }}</td>
+          <td class="p-2">{{ t.status }}</td>
+          <td class="p-2 text-xs">{{ t.created_at.strftime("%Y-%m-%d") }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="py-8 text-center text-zinc-400">No transactions yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ---------- Export Payouts Button ---------- #}
+<div class="mt-8 flex justify-end">
+  <a href="{{ url_for('admin.export_payouts') }}"
+     class="rounded-lg bg-yellow-400 px-6 py-2 font-bold text-zinc-900 shadow transition hover:bg-yellow-300">
+    ⬇ Export Approved Payouts (CSV)
+  </a>
+</div>
+
+{# ---------- Admin Pro Tip ---------- #}
+<div class="mt-10 text-center text-xs text-zinc-500">
+  ⭐️ Pro tip: Get real-time sponsor alerts in Slack —
+  ask your dev to enable <code>send_slack_new_sponsor()</code> in admin routes!
+</div>
+{% endblock %}

@@ -1,0 +1,401 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{# ===================== FundChamps Scoreboard Hero — Agency/Enterprise (Premium) ===================== #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}nonce="{{ NONCE }}"{%- endmacro %}
+
+{# --- Macro Helpers --- #}
+{% if roll_money is not defined %}
+  {% macro roll_money(v, sym='$') %}
+    {{- sym ~ '{:,.0f}'.format((v|string)|replace('$','')|replace(',','')|float) }}
+  {% endmacro %}
+{% endif %}
+
+{% if roll_pct is not defined %}
+  {% macro roll_pct(v) %}
+    {{- '{:.0f}'.format((v|string)|replace('%','')|float) }}
+  {% endmacro %}
+{% endif %}
+
+{# --- Data Inputs (Safe Defaults) --- #}
+{% set ID           = IDP|default('fc-nike-hero') %}
+{% set TEAM_NAME    = team.name|default(team.team_name)|default('Connect ATX Elite') %}
+{% set TITLE        = fundraiser_title or 'Fuel the Season.' %}
+{% set TITLE_2      = fundraiser_title_2 or 'Fund the Future.' %}
+{% set SUBTITLE     = meta_description or 'Direct support for gear, travel, and tutoring—every dollar moves a kid forward.' %}
+{% set GOAL         = (fundraising_goal or 50000)|int %}
+{% set RAISED       = (funds_raised or 0)|int %}
+{% set THEME_HEX    = theme_hex|default('#facc15') %}
+{% set HREF_DONATE  = HREF_DONATE|default('/donate') %}
+{% set HREF_IMPACT  = HREF_IMPACT|default('#impact-v2') %}
+{% set END_AT_ISO   = END_AT_ISO|default(end_at_iso)|default('') %}
+{% set HERO_IMG     = HERO_IMG|default(url_for('static', filename='images/connect-atx-team.jpg')) %}
+{% set WHITE_LABEL  = white_label|default(false) %}
+ {% set donors = donations | default([]) %}
+ 
+ {% set BRAND_ACCENT = THEME_HEX|default('#facc15') %}
+<!-- ===================== FundChamps Hero — Enterprise ✨ AGENCY POLISH V4 ===================== -->
+<section id="{{ ID|e }}"
+class="relative isolate overflow-hidden fc-hero-enterprise"
+style="--brand-accent: {{ BRAND_ACCENT }}; background:linear-gradient(115deg,var(--brand-accent) 0%,#181628 100%);"
+aria-label="Fundraiser hero and scoreboard"
+role="region"
+>
+<!-- Ghost Wordmark Background -->
+<div class="fc-hero-wordmark" aria-hidden="true">
+{{ TITLE_2|upper }}
+</div>
+
+
+<!-- Responsive Grid -->
+<div class="relative z-10 mx-auto w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-12 px-6 py-16 lg:py-28">
+
+
+<!-- ──────────────────────── LEFT COLUMN ──────────────────────── -->
+<div class="flex flex-col justify-center gap-8 max-w-xl">
+<span class="fc-chip team">{{ TEAM_NAME|e }}</span>
+
+
+<h1 class="fc-hero-title">
+{{ TITLE|e }} <span class="accent">{{ TITLE_2|e }}</span>
+</h1>
+
+
+<p class="fc-hero-sub">{{ SUBTITLE|e }}</p>
+
+
+<!-- KPIs -->
+<ul class="fc-hero-kpis" role="list" aria-label="Team statistics">
+<li><b>35+</b><span>Games&nbsp;Played</span></li>
+<li><b>5</b><span>Championships</span></li>
+<li><b>120+</b><span>Training&nbsp;Hours&nbsp;/&nbsp;Week</span></li>
+</ul>
+
+
+<!-- Primary CTAs -->
+<nav class="fc-hero-cta" aria-label="Primary fundraising actions">
+<a href="{{ HREF_IMPACT }}" class="btn ghost">🏀 Back Our&nbsp;Ballers</a>
+<a href="{{ HREF_DONATE }}" class="btn gold">⛹️ Fuel&nbsp;the&nbsp;Season</a>
+</nav>
+</div>
+
+
+<!-- ──────────────────────── RIGHT COLUMN ──────────────────────── -->
+<div class="flex flex-col gap-8 items-center lg:items-end mt-12 lg:mt-0">
+
+
+<!-- Hero Image -->
+<figure class="fc-hero-photo w-full max-w-xs aspect-[4/3]" >
+<img src="{{ HERO_IMG }}" alt="{{ TEAM_NAME|e }} team photo" loading="lazy" decoding="async" />
+</figure>
+
+
+<!-- Donation Rail -->
+<aside class="fc-hero-rail w-full max-w-xs text-center flex flex-col items-center gap-4" aria-live="polite">
+<h2>Season Goal</h2>
+<div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ GOAL }}" aria-valuenow="{{ RAISED }}">
+<div id="fund-bar" data-goal="{{ GOAL }}" data-raised="{{ RAISED }}" style="width:0"></div>
+</div>
+<p class="font-bold text-yellow-800 text-lg">
+<span id="amount-raised">{{ roll_money(RAISED) }}</span>
+<span class="opacity-70 font-normal">raised&nbsp;of</span>
+<span>{{ roll_money(GOAL) }}</span>
+</p>
+<div class="fc-donor-wall" id="donor-wall">
+{% for d in donors[:3] %}
+🎉 {{ d.name|e }} &nbsp;<strong>{{ roll_money(d.amount) }}</strong><br/>
+{% else %}
+<em>No donors yet — <strong>be the first!</strong></em>
+{% endfor %}
+</div>
+</aside>
+</div>
+</div>
+
+
+<!-- Decorative SVG Wave -->
+<svg class="absolute inset-x-0 bottom-0 h-24 w-full text-white z-10 -mt-3" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true">
+<path fill="currentColor" d="M0,224L48,197.3C96,171,192,117,288,117.3C384,117,480,171,576,186.7C672,203,768,181,864,176C960,171,1056,181,1152,176C1248,171,1344,149,1392,138.7L1440,128V320H0Z"/>
+</svg>
+</section>
+<a href="{{ HREF_DONATE }}" class="sticky-donate">Donate</a>
+
+<!-- ===================== FundChamps Hero — Enterprise ✨ CHEF’S-KISS CSS ===================== -->
+<style {{ nonce_attr() }}>
+/************************************
+  DESIGN TOKENS
+*************************************/
+:root {
+  --brand-accent: {{ THEME_HEX|default('#facc15') }};
+  --brand-accent-light: #ffe97a;
+  --surface-bg: #181628;
+  --surface-bg-dark: #16141e;
+  --text-main: #fff;
+  --radius-xl: 2rem;
+  --shadow-lg: 0 16px 48px rgba(0,0,0,.22);
+  --ease-smooth: cubic-bezier(.62,.13,.29,.97);
+}
+
+/************************************
+  LAYOUT CONTAINER
+*************************************/
+.fc-hero-enterprise {
+  background: linear-gradient(115deg,var(--surface-bg) 75%,var(--surface-bg-dark) 100%);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter','Poppins',system-ui,sans-serif;
+  color: var(--text-main);
+  isolation: isolate;
+}
+.fc-hero-enterprise::before {
+  content: "";
+  position: absolute;
+  left: 64%;
+  top: 8%;
+  width: 380px;
+  height: 320px;
+  z-index: 0;
+  opacity: .18;
+  filter: blur(54px) saturate(1.15);
+  pointer-events: none;
+  background: radial-gradient(circle,var(--brand-accent-light) 0%,var(--brand-accent) 50%,transparent 100%);
+  transition: opacity .3s;
+}
+@media (max-width:900px){
+  .fc-hero-enterprise::before{left:28%;top:0;width:270px;height:180px}
+}
+
+/************************************
+  GHOST WORDMARK
+*************************************/
+.fc-hero-wordmark{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(2.5rem,8vw,6rem);font-weight:1000;color:var(--brand-accent);
+  opacity:.045;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;
+  pointer-events:none;animation:fade-in 1.5s ease-out;z-index:1;
+}
+
+/************************************
+  HERO PHOTO
+*************************************/
+.fc-hero-photo img{
+  border-radius:1.5rem;box-shadow:0 14px 40px rgba(0,0,0,.28);object-fit:cover;width:100%;height:auto;
+  transition:transform .5s var(--ease-smooth),box-shadow .5s;
+  animation:floaty 4.5s ease-in-out infinite alternate;z-index:2;
+}
+.fc-hero-photo img:hover{transform:scale(1.03);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+@keyframes floaty{0%{transform:translateY(0) scale(1)}55%{transform:translateY(-10px) scale(1.025)}100%{transform:translateY(0) scale(1)}}
+@media (prefers-reduced-motion:reduce){.fc-hero-photo img{animation:none}}
+
+/************************************
+  CHIP BADGE
+*************************************/
+.fc-chip.team{
+  display:inline-block;padding:.35em 1.25em;border-radius:999px;font:900 .95rem 'Inter',sans-serif;
+  background:linear-gradient(90deg,var(--brand-accent),var(--brand-accent-light));color:#101010;letter-spacing:.04em;
+  box-shadow:0 2px 12px #facc1535;
+}
+
+/************************************
+  HEADLINE & SUBHEAD
+*************************************/
+.fc-hero-title{
+  font:1000 clamp(2.5rem,2rem+2vw,3.4rem) 'Poppins','Inter',sans-serif;line-height:1.1;
+  text-shadow:0 3px 12px rgba(0,0,0,.35);position:relative;isolation:isolate;
+}
+.fc-hero-title .accent{
+  background:linear-gradient(90deg,var(--brand-accent) 10%,#fffde6 90%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-fill-color:transparent;
+  font-style:italic;position:relative;z-index:2;overflow:hidden;
+}
+.fc-hero-title .accent::after{
+  content:"";position:absolute;left:-150%;top:0;width:250%;height:100%;
+  background:linear-gradient(120deg,transparent 30%,#fff7 50%,transparent 70%);
+  mix-blend-mode:lighten;opacity:.38;animation:shine-text 2.5s linear infinite;pointer-events:none;
+}
+@keyframes shine-text{0%{left:-150%}60%{left:120%}100%{left:120%}}
+
+.fc-hero-sub{font:500 1.15rem/1.6 'Inter',sans-serif;max-width:35ch;color:#e5e7eb;text-shadow:0 2px 8px rgba(0,0,0,.4)}
+
+/************************************
+  KPI LIST
+*************************************/
+.fc-hero-kpis{display:flex;gap:2.2rem;font-size:1rem;margin:1.2em 0 .6em;padding:0;list-style:none}
+.fc-hero-kpis b{display:block;font:900 1.5rem 'Poppins',sans-serif;color:var(--brand-accent)}
+.fc-hero-kpis span{font-size:.93rem;color:#d1d5db}
+
+/************************************
+  CTA BUTTONS
+*************************************/
+.fc-hero-cta{display:flex;gap:1.2rem;margin-top:1.2rem;flex-wrap:wrap}
+.fc-hero-cta .btn{position:relative;padding:.95em 2.3em;border-radius:999px;font:800 1rem 'Inter',sans-serif;text-transform:uppercase;letter-spacing:.02em;transition:all .22s var(--ease-smooth)}
+.fc-hero-cta .btn:focus-visible{outline:2px dashed var(--brand-accent);outline-offset:4px}
+.fc-hero-cta .btn.ghost{background:transparent;border:1.5px solid var(--brand-accent);color:var(--brand-accent)}
+.fc-hero-cta .btn.ghost:hover{background:var(--brand-accent);color:#18181b;box-shadow:0 0 16px #facc1540}
+.fc-hero-cta .btn.gold{background:linear-gradient(180deg,#fffde6,var(--brand-accent));border:1.5px solid #facc15b8;color:#111;box-shadow:0 0 18px #facc1530;overflow:hidden;animation:gold-pulse 2.5s infinite var(--ease-smooth)}
+.fc-hero-cta .btn.gold:hover{filter:drop-shadow(0 0 6px var(--brand-accent))}
+.fc-hero-cta .btn.gold::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 30% 50%,#fff9,transparent 70%);opacity:0;transform:scale(.7);transition:opacity .35s,transform .35s}
+.fc-hero-cta .btn.gold:hover::after{opacity:1;transform:scale(1)}
+@keyframes gold-pulse{0%,100%{box-shadow:0 0 0 0 #facc1500,0 0 14px 3px #facc1580}45%{box-shadow:0 0 0 18px #facc1510,0 0 32px 7px #facc1540}55%{box-shadow:0 0 0 8px #facc1530,0 0 20px 5px #facc1530}}
+
+/************************************
+  DONATION RAIL
+*************************************/
+.fc-hero-rail{background:rgba(20,20,25,.58);backdrop-filter:blur(14px);border-radius:1.4rem;padding:1.6rem;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2}
+.fc-hero-rail h2{font:700 .94rem 'Inter',sans-serif;text-transform:uppercase;letter-spacing:.05em;color:#f3f4f6}
+.progress-bar{margin-top:.6rem;height:.8rem;background:#2d2d38;border-radius:999px;overflow:hidden}
+.progress-bar div{height:100%;background:repeating-linear-gradient(45deg,var(--brand-accent),var(--brand-accent) 10px,var(--brand-accent-light) 10px,var(--brand-accent-light) 20px);background-size:40px 40px;animation:progress-stripes 1.5s linear infinite;transition:width 1.15s var(--ease-smooth)}
+@keyframes progress-stripes{0%{background-position:0 0}100%{background-position:40px 0}}
+
+/************************************
+  DONOR WALL
+*************************************/
+.fc-donor-wall{margin-top:1rem;max-height:90px;overflow-y:auto;font-size:.94rem;color:#f1f5f9;border-left:3px solid var(--brand-accent);padding-left:.8rem;line-height:1.45}
+.fc-donor-wall::-webkit-scrollbar{width:4px}
+.fc-donor-wall::-webkit-scrollbar-thumb{background:var(--brand-accent);border-radius:999px}
+
+/************************************
+  ACCESSIBILITY MOTIONS
+*************************************/
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+#hero-countdown.urgent{color:#f87171;font-weight:700;animation:pulse 1.2s infinite}
+
+@keyframes fade-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/************************************
+  RESPONSIVE TWEAKS
+*************************************/
+@media(max-width:900px){
+  .fc-hero-enterprise{border-radius:0}
+  .fc-hero-rail{padding:1rem}
+  .fc-hero-title{font-size:2.1rem}
+}
+
+/************************************
+  IMPACT GRID (SECOND FOLD)
+*************************************/
+.impact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem}
+
+/* Boutique noise —  subtle texture over hero BG  */
+@supports (mask-image: url("")) {
+  .fc-hero-enterprise::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: inherit;
+    mask-image: url('/noise.svg');
+    mask-size: 200%;
+    opacity: 0.25;                 /* keep tiny! */
+    pointer-events: none;
+  }
+}
+
+/* Variable font optical sizing — Inter has it */
+.fc-hero-title {
+  font-variation-settings: "wght" 1000, "opsz" 60;
+}
+.fc-hero-kpis b { font-variation-settings: "wght" 800, "opsz" 40; }
+
+/* Ghost button subtle */
+.btn.ghost { border-color: rgba(255,255,255,.35); color:#e5e7eb; }
+.btn.ghost:hover { border-color:var(--brand-accent); color:var(--brand-accent); }
+
+/* Gold button lift */
+.btn.gold:hover { transform: translateY(-4px) scale(1.02); }
+</style>
+
+<script {{ nonce_attr() }} type="module">
+/* ----------------------------------------------------
+   FundChamps Hero — Enterprise ⚡ Premium JS Bundle
+   ----------------------------------------------------
+   • Less CPU, more frame-time headroom
+   • Respects prefers-reduced-motion
+   • Fully token-driven (no magic numbers except fps)
+---------------------------------------------------- */
+
+/* ────────── Helpers ────────── */
+const $ = s => document.querySelector(s);
+const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ────────── Countdown Timer ────────── */
+const cd = $('#hero-countdown');
+if (cd?.dataset.countdown) {
+  cd.setAttribute('aria-live', 'polite');
+  const end = new Date(cd.dataset.countdown).getTime();
+
+  const tick = () => {
+    const diff = end - Date.now();
+    if (diff <= 0) return (cd.textContent = 'Campaign ended');
+
+    const mins  = Math.floor(diff / 6e4);
+    const hrs   = Math.floor(mins / 60);
+    const days  = Math.floor(hrs  / 24);
+
+    cd.textContent = `${days}d ${hrs % 24}h ${mins % 60}m left`;
+    cd.classList.toggle('urgent', days < 3);
+    setTimeout(tick, 60_000);          // once a minute = battery-friendly
+  };
+  tick();
+}
+
+/* ────────── Donor Wall Auto-Scroll ────────── */
+const wall = $('#donor-wall');
+if (wall && wall.scrollHeight > wall.clientHeight && !prefersReduced) {
+  let dir = 1;                         // 1 = down, −1 = up
+  const speed = 20;                    // px per second
+  let last = performance.now();
+
+  const step = now => {
+    const dt = (now - last) / 1e3;
+    last = now;
+    wall.scrollTop += dir * speed * dt;
+
+    if (wall.scrollTop >= wall.scrollHeight - wall.clientHeight) { dir = -1; pause(); return; }
+    if (wall.scrollTop <= 0)                                           { dir =  1; pause(); return; }
+    requestAnimationFrame(step);
+  };
+  const pause = () => setTimeout(() => requestAnimationFrame(step), 1200);
+
+  requestAnimationFrame(step);
+}
+
+/* ────────── Amount Counter + Progress Bar ────────── */
+const amt  = $('#amount-raised');
+const bar  = $('#fund-bar');
+if (amt && bar) {
+  const goal   = +bar.dataset.goal   || 1;
+  const raised = +bar.dataset.raised || 0;
+  const nf     = new Intl.NumberFormat();
+
+  let curr = 0;
+  const step = Math.ceil(raised / 40); // ±40 frames to finish
+
+  const animate = () => {
+    curr = Math.min(raised, curr + step);
+    amt.textContent = '$' + nf.format(curr);
+    bar.style.width = Math.round((curr / goal) * 100) + '%';
+    if (curr < raised) requestAnimationFrame(animate);
+  };
+  requestAnimationFrame(animate);
+}
+
+/* ────────── Confetti Helper (global) ────────── */
+window.burstConfetti = async () => {
+  const { default: confetti } =
+    await import('https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js');
+  confetti({ particleCount: 55, spread: 75, origin: { y: 0.66 } });
+};
+
+/* Bonus: fire confetti automatically when first dollar rolls in
+if (+bar.dataset.raised > 0) setTimeout(() => window.burstConfetti(), 1_400);
+*/
+</script>
+

@@ -1080,3 +1080,546 @@
 .ff-topbar__left {}
 .ff-topbar__right {}
 .ff-topbar__row {}
+
+/* ==========================================================================
+   Page layout polish — v1
+   ========================================================================== */
+
+.ff-main {
+  display: grid;
+  gap: clamp(32px, 6vw, 96px);
+}
+
+/* Constrain readable width */
+.ff-container {
+  max-width: 1120px;
+  padding-inline: clamp(16px, 4vw, 32px);
+}
+
+
+/* Hero emphasis */
+.ff-hero {
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.ff-hero__copy {
+  font-size: clamp(18px, 2.2vw, 22px);
+  opacity: 0.9;
+}
+
+.ff-hero__cta {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+
+/* Section islands */
+.ff-section {
+  padding-block: clamp(48px, 8vw, 96px);
+}
+
+.ff-section:not(:first-child) {
+  border-top: 1px solid color-mix(in oklab, var(--ff-border) 60%, transparent);
+}
+
+
+/* Card hierarchy */
+.ff-card {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.ff-card--lift {
+  box-shadow: 0 20px 40px rgba(0,0,0,.35);
+}
+
+.ff-card:hover {
+  transform: translateY(-2px);
+}
+
+
+/* Sponsor wall */
+.ff-sponsors__wall {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.ff-sponsorLogo {
+  opacity: .85;
+  filter: saturate(.9);
+}
+
+
+@media (max-width: 720px) {
+  .ff-hero__cta {
+    flex-direction: column;
+  }
+}
+
+
+/* ==========================================================================
+   FF TOP-OF-PAGE REFRACTOR PATCH (matches current HTML markup)
+   Scope: body + shell + announcement + boot + chrome/topbar/header/nav
+   No dependencies. No Tailwind.
+   ========================================================================== */
+
+@layer ff_base {
+  /* 1) Make sure the "scene" is applied to the actual body element */
+  body.ff-body{
+    position: relative;
+    min-height: 100%;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ff-text);
+    background:
+      radial-gradient(900px 520px at 14% -8%, rgba(255,106,61,.18) 0%, transparent 62%),
+      radial-gradient(980px 620px at 84% 2%, rgba(88,214,255,.14) 0%, transparent 64%),
+      radial-gradient(920px 560px at 72% 118%, rgba(255,106,61,.12) 0%, transparent 70%),
+      linear-gradient(180deg, var(--ff-bg) 0%, var(--ff-bg-elev) 100%);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* 2) Ensure overlays only happen once.
+        Your HTML currently has: <body class="ff-body"> <div class="ff-body">...
+        So we render overlays on body only, and disable them on the inner wrapper. */
+  body.ff-body::before{
+    content:"";
+    position: fixed;
+    inset: -20%;
+    pointer-events: none;
+    background:
+      radial-gradient(70% 60% at 50% 10%, rgba(255,255,255,.05) 0%, transparent 55%),
+      var(--ff-noise-img);
+    opacity: .075;
+    mix-blend-mode: overlay;
+    z-index: 0;
+  }
+  body.ff-body::after{
+    content:"";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(120% 100% at 50% 20%, transparent 0%, rgba(0,0,0,.38) 70%, rgba(0,0,0,.60) 100%);
+    opacity: .55;
+    z-index: 0;
+  }
+  html[data-theme="light"] body.ff-body::after{
+    background: radial-gradient(120% 100% at 50% 20%, transparent 0%, rgba(2,6,23,.08) 72%, rgba(2,6,23,.12) 100%);
+    opacity: .55;
+  }
+
+  /* Disable duplicated “scene overlays” on nested .ff-body wrapper */
+  body.ff-body .ff-body::before,
+  body.ff-body .ff-body::after{
+    content: none !important;
+  }
+
+  /* Make sure the app shell content sits above overlays */
+  body.ff-body > *{ position: relative; z-index: 1; }
+  body.ff-body .ff-body > *{ position: relative; z-index: 1; }
+
+  /* Type defaults inside the app shell */
+  body.ff-body :where(a){ color: var(--ff-link); }
+  body.ff-body :where(a:hover){ color: var(--ff-link-hover); }
+  body.ff-body :where(h1,h2,h3,h4,h5,h6,p,ul,ol,dl,blockquote,figure){ margin: 0; }
+  body.ff-body :where(ul,ol){ padding-left: 1.15em; }
+  body.ff-body :where(li){ line-height: 1.55; }
+}
+
+@layer ff_components {
+  /* ==========================================================================
+     Shell background node (your markup includes <div class="ff-shellBg">)
+     ========================================================================== */
+  .ff-shellBg{
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(900px 520px at 12% 0%, rgba(255,106,61,.10) 0%, transparent 60%),
+      radial-gradient(920px 620px at 88% 10%, rgba(88,214,255,.08) 0%, transparent 62%),
+      radial-gradient(900px 640px at 55% 110%, rgba(255,106,61,.08) 0%, transparent 70%);
+    opacity: .9;
+  }
+
+  /* ==========================================================================
+     Skiplinks (tight + accessible)
+     ========================================================================== */
+  .ff-skiplinks{
+    position: absolute;
+    top: 10px; left: 10px;
+    z-index: calc(var(--ff-z-chrome) + 10);
+    display: grid;
+    gap: 8px;
+  }
+  .ff-skiplinks a{
+    transform: translateY(-160%);
+    background: var(--ff-bg-elev);
+    color: var(--ff-text);
+    border: 1px solid var(--ff-border);
+    border-radius: var(--ff-r-12);
+    padding: 10px 12px;
+    box-shadow: var(--ff-shadow-sm);
+  }
+  .ff-skiplinks a:focus{ transform: translateY(0); }
+
+  /* ==========================================================================
+     Toast host (works with your existing hooks)
+     ========================================================================== */
+  .ff-toasts{
+    position: fixed;
+    right: 12px;
+    bottom: calc(var(--ff-tabs-h) + var(--ff-sticky-h) + env(safe-area-inset-bottom) + 12px);
+    z-index: var(--ff-z-toast);
+    display: grid;
+    gap: 10px;
+    max-width: min(360px, calc(100vw - 24px));
+    pointer-events: none;
+  }
+  .ff-toast{
+    pointer-events: none;
+    border: var(--ff-hairline);
+    background: rgba(10,15,26,.62);
+    backdrop-filter: blur(var(--ff-blur));
+    -webkit-backdrop-filter: blur(var(--ff-blur));
+    border-radius: var(--ff-r-16);
+    box-shadow: var(--ff-shadow-sm);
+    padding: 10px 12px;
+  }
+
+  /* ==========================================================================
+     Announcement bar (your markup uses ff-announce__content + __badge)
+     ========================================================================== */
+  .ff-announce{
+    position: relative;
+    border-bottom: 1px solid var(--ff-border);
+    background: rgba(10,15,26,.62);
+    backdrop-filter: blur(var(--ff-blur));
+    -webkit-backdrop-filter: blur(var(--ff-blur));
+    padding: 10px 0;
+  }
+  .ff-announce__row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+  }
+  .ff-announce__content{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .ff-announce__badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,106,61,.28);
+    background: rgba(255,106,61,.10);
+    color: var(--ff-text);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+  }
+  .ff-announce__text{
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--ff-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* ==========================================================================
+     Boot shimmer (your markup includes ff-boot + ff-boot__shimmer)
+     ========================================================================== */
+  .ff-boot{
+    position: relative;
+    padding: 10px 0;
+  }
+  .ff-boot__shimmer{
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+      rgba(255,255,255,.03) 0%,
+      rgba(255,255,255,.10) 35%,
+      rgba(255,255,255,.03) 70%);
+    background-size: 240% 100%;
+    animation: ffShimmer 1.2s linear infinite;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  @keyframes ffShimmer{
+    0%{ background-position: 120% 0; }
+    100%{ background-position: -120% 0; }
+  }
+
+  /* ==========================================================================
+     Chrome / topbar / header / nav
+     ========================================================================== */
+  .ff-shell{ min-height: 100%; position: relative; z-index: 1; }
+
+  .ff-chrome{
+    position: sticky;
+    top: 0;
+    z-index: var(--ff-z-chrome);
+    background: rgba(5,7,13,.72);
+    backdrop-filter: blur(var(--ff-blur));
+    -webkit-backdrop-filter: blur(var(--ff-blur));
+    border-bottom: 1px solid var(--ff-border);
+  }
+
+  .ff-topbar{ padding: 10px 0; }
+  .ff-topbar__row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+  }
+  .ff-topbar__left{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .ff-topbar__right{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .ff-strip{
+    display:inline-flex;
+    align-items:center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--ff-border);
+    background: var(--ff-surface-1);
+    box-shadow: 0 1px 0 rgba(255,255,255,.08) inset;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .ff-strip :where(.ff-help, .ff-num){ white-space: nowrap; }
+  .sep{ opacity: .55; padding: 0 2px; user-select: none; }
+
+  /* Desktop-only strip */
+  @media (max-width: 860px){
+    .ff-strip--desktop{ display:none; }
+    .ff-topbar__row{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      align-items:start;
+    }
+    .ff-topbar__left{
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .ff-topbar__left::-webkit-scrollbar{ display:none; }
+    .ff-topbar__right .ff-btn[data-ff-copy-link]{ display:none; }
+  }
+
+  .ff-header{ padding: 12px 0; }
+  .ff-header__row{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items:center;
+  }
+  @media (min-width: 980px){
+    .ff-header__row{ grid-template-columns: auto 1fr auto; gap: 16px; }
+  }
+
+  .ff-brand{
+    display:inline-flex;
+    align-items:center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .ff-brand__mark{
+    width: 46px;
+    height: 46px;
+    border-radius: var(--ff-r-16);
+    border: 1px solid var(--ff-border);
+    background: var(--ff-surface-1);
+    box-shadow: var(--ff-shadow-xs);
+    overflow:hidden;
+    flex: 0 0 auto;
+  }
+  .ff-brand__logo{ width:100%; height:100%; object-fit:cover; }
+  .ff-brand__meta{ display:grid; gap: 2px; min-width: 0; }
+  .ff-brand__title{
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--ff-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ff-brand__sub{
+    font-size: 13px;
+    color: var(--ff-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ff-nav{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ff-muted);
+  }
+  @media (min-width: 980px){ .ff-nav{ display:flex; } }
+
+  .ff-nav a{
+    padding: 10px 10px;
+    border-radius: var(--ff-r-12);
+    border: 1px solid transparent;
+    transition: background var(--ff-fast) var(--ff-ease),
+                border-color var(--ff-fast) var(--ff-ease),
+                color var(--ff-fast) var(--ff-ease),
+                transform var(--ff-fast) var(--ff-ease);
+  }
+  .ff-nav a:hover{
+    background: var(--ff-surface-1);
+    border-color: var(--ff-border);
+    color: var(--ff-text);
+    transform: translateY(-1px);
+  }
+
+  .ff-header__actions{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content:flex-start;
+  }
+  @media (min-width: 980px){ .ff-header__actions{ justify-content:flex-end; } }
+
+  /* Scroll progress */
+  .ff-scroll{
+    height: 2px;
+    background: rgba(255,255,255,.10);
+    border-radius: 999px;
+    overflow:hidden;
+  }
+  #scrollProgressBar{
+    display:block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--ff-accent), var(--ff-accent2));
+  }
+
+  /* ==========================================================================
+     Button + icon naming alignment (YOUR markup uses ff-btnsm/ff-btnprimary/etc)
+     ========================================================================== */
+
+  /* Base */
+  .ff-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    min-height: var(--ff-control-h);
+    padding: 0 14px;
+    font-weight:850;
+    letter-spacing:-0.01em;
+    line-height: 1;
+    user-select:none;
+    white-space: nowrap;
+
+    border:1px solid var(--ff-border);
+    background: var(--ff-surface-1);
+    color:var(--ff-text);
+    border-radius:var(--ff-r-16);
+    box-shadow:0 1px 0 rgba(255,255,255,.08) inset;
+    transition:transform var(--ff-fast) var(--ff-ease),
+               background var(--ff-fast) var(--ff-ease),
+               border-color var(--ff-fast) var(--ff-ease),
+               box-shadow var(--ff-fast) var(--ff-ease),
+               filter var(--ff-fast) var(--ff-ease);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .ff-btn:active{ transform: translateY(1px); }
+
+  /* Small: your HTML uses .ff-btnsm (no dashes) */
+  .ff-btnsm{
+    min-height: var(--ff-control-h-sm);
+    padding: 0 12px;
+    border-radius: var(--ff-r-12);
+    font-weight: 820;
+    font-size: 13px;
+  }
+
+  /* Primary/secondary: your HTML uses ff-btnprimary/ff-btnsecondary */
+  .ff-btnprimary{
+    background: linear-gradient(135deg, var(--ff-accent), var(--ff-accent2));
+    color: var(--ff-contrast-on-brand);
+    border-color: rgba(255,255,255,.18);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 18px 48px rgba(255,106,61,.18);
+  }
+  .ff-btnprimary:hover{
+    transform: translateY(-1px);
+    filter: saturate(1.06);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.22) inset,
+      0 22px 60px rgba(255,106,61,.22);
+  }
+
+  .ff-btnsecondary{
+    background: var(--ff-surface-1);
+    border-color: var(--ff-border-strong);
+    color: var(--ff-text);
+  }
+  .ff-btnsecondary:hover{
+    transform: translateY(-1px);
+    background: var(--ff-surface-2);
+  }
+
+  /* Icon button: your HTML uses .ff-icon */
+  .ff-icon{
+    display:inline-grid;
+    place-items:center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: var(--ff-r-16);
+    border: 1px solid var(--ff-border);
+    background: var(--ff-surface-1);
+    color: var(--ff-text);
+    box-shadow: 0 1px 0 rgba(255,255,255,.08) inset;
+    transition: transform var(--ff-fast) var(--ff-ease),
+                background var(--ff-fast) var(--ff-ease),
+                border-color var(--ff-fast) var(--ff-ease);
+  }
+  .ff-icon:hover{
+    transform: translateY(-1px);
+    background: var(--ff-surface-2);
+    border-color: var(--ff-border-strong);
+  }
+
+  /* Badge dot already referenced in your topbar */
+  .ff-badge__dot{ width:8px; height:8px; border-radius:999px; display:inline-block; }
+  .ff-badge__dot--verified{ background:var(--ff-success); box-shadow:0 0 0 3px rgba(70,227,154,.16); }
+}
+

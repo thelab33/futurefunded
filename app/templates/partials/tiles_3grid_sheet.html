@@ -1,0 +1,452 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{# ==============================================================
+   FundChamps • Expandable 3-Tile Hub (Enterprise v1.0)
+   - CSP-safe (nonce-aware)
+   - Scoped styles (no bleed) under .fcx-hub
+   - Accessible, reduced-motion friendly, responsive
+   - Deep-link support (?tile=tiers|impact|about)
+   - Prefetch + tiny in-memory cache
+================================================================ #}
+
+{% set _NONCE_ = (
+  NONCE if (NONCE is defined and NONCE)
+  else (csp_nonce() if (csp_nonce is defined and (csp_nonce is callable)) else (csp_nonce if (csp_nonce is defined) else ''))
+) %}
+{% macro fcx_nonce(n=_NONCE_) -%}{% if n %}nonce="{{ n }}"{% endif %}{%- endmacro %}
+
+<section id="fcx-hub" class="fcx-hub" aria-label="Highlights">
+  <!-- ── Tile: Tiers ── -->
+  <article class="fcx-tile" data-tile="tiers">
+    <div class="fcx-tile__head">
+      <span class="fcx-badge fcx-badge--hot" aria-label="Hot">HOT</span>
+      <span class="fcx-ico" aria-hidden="true">🏆</span>
+      <h3 class="fcx-ttl">Sponsor Tiers</h3>
+    </div>
+    <p class="fcx-copy">Back the team. Quick pick, instant impact.</p>
+    <button class="fcx-cta" type="button" aria-haspopup="dialog" aria-expanded="false">View tiers</button>
+  </article>
+
+  <!-- ── Tile: Impact ── -->
+  <article class="fcx-tile" data-tile="impact">
+    <div class="fcx-tile__head">
+      <span class="fcx-badge fcx-badge--live" aria-label="Live">Live</span>
+      <span class="fcx-ico" aria-hidden="true">📊</span>
+      <h3 class="fcx-ttl">Impact Live</h3>
+    </div>
+    <p class="fcx-copy">Real-time progress on travel, gear, tutoring &amp; more.</p>
+    <button class="fcx-cta" type="button" aria-haspopup="dialog" aria-expanded="false">See impact</button>
+  </article>
+
+  <!-- ── Tile: About ── -->
+  <article class="fcx-tile" data-tile="about">
+    <div class="fcx-tile__head">
+      <span class="fcx-ico" aria-hidden="true">📖</span>
+      <h3 class="fcx-ttl">About the Club</h3>
+    </div>
+    <p class="fcx-copy">Meet coaches, read our story, and join the journey.</p>
+    <button class="fcx-cta" type="button" aria-haspopup="dialog" aria-expanded="false">Read story</button>
+  </article>
+
+  <!-- Expansion shell (injected per tile) -->
+  <template id="fcx-expand-tpl">
+    <div class="fcx-expand" role="dialog" aria-modal="true" aria-labelledby="fcx-expand-title">
+      <header class="fcx-expand__bar">
+        <h4 id="fcx-expand-title" class="fcx-expand__title">Loading…</h4>
+        <div class="fcx-expand__actions">
+          <button class="fcx-btn fcx-btn--ghost" data-fcx-action="popout" type="button" aria-label="Open in page">↗</button>
+          <button class="fcx-btn fcx-btn--ghost" data-fcx-action="close"  type="button" aria-label="Close">✕</button>
+        </div>
+      </header>
+      <div class="fcx-expand__body" tabindex="-1" aria-busy="true" aria-live="polite"></div>
+      <footer class="fcx-expand__foot">
+        <button class="fcx-btn" data-fcx-action="primary" type="button">Continue</button>
+      
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+    </div>
+  </template>
+</section>
+
+<style {{ nonce_attr() }} {{ fcx_nonce() }}>
+/* ============================================================
+   Scoped Tokens (no bleed)
+============================================================ */
+.fcx-hub{
+  --fcx-brand: var(--brand, #facc15);
+  --fcx-bg-1:#0f141c; --fcx-bg-2:#0a0e15;
+  --fcx-ink:#e9eef9;  --fcx-ink-2:#cbd5e1;
+  --fcx-brd-1:#ffffff1a; --fcx-brd-2:#ffffff33;
+  --fcx-ring: color-mix(in srgb, var(--fcx-brand) 65%, transparent);
+  --fcx-rad: 16px;
+  color-scheme: dark light;
+}
+
+/* ============================================================
+   Grid
+============================================================ */
+.fcx-hub{
+  width:min(78rem,96vw);
+  margin:clamp(1rem,2.8vh,2rem) auto 0;
+  padding-inline:clamp(.75rem,2vw,1.25rem);
+  display:grid; gap:clamp(1rem,2vw,1.5rem);
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  contain:layout paint;
+}
+@media (max-width:980px){ .fcx-hub{ grid-template-columns:1fr; }}
+
+/* ============================================================
+   Tiles (closed state)
+============================================================ */
+.fcx-tile{
+  position:relative; display:grid; gap:.5rem;
+  min-block-size:10rem; padding:1.12rem; border-radius:var(--fcx-rad);
+  color:var(--fcx-ink);
+  background:
+    radial-gradient(140% 160% at 50% -80%, rgba(255,255,255,.05) 0%, transparent 60%),
+    linear-gradient(180deg,var(--fcx-bg-1),var(--fcx-bg-2));
+  border:1px solid var(--fcx-brd-1);
+  box-shadow:0 10px 26px rgba(0,0,0,.35);
+  transition:transform .25s, box-shadow .25s, border-color .25s;
+  isolation:isolate;
+}
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+  .fcx-tile:hover{ transform:translateY(-6px); border-color:var(--fcx-brd-2); box-shadow:0 24px 48px rgba(0,0,0,.45); }
+}
+.fcx-tile__head{ display:flex; align-items:center; gap:.65rem; }
+.fcx-ico{ font-size:1.3rem }
+.fcx-ttl{ margin:0; font:1000 1.12rem/1.1 "Poppins", ui-sans-serif; color:#fff }
+.fcx-copy{ margin:0; font:600 .95rem/1.35 "Inter", system-ui; color:var(--fcx-ink-2) }
+
+.fcx-badge{
+  font:800 .7rem/1 Inter,system-ui; color:#e5e7eb;
+  padding:.25rem .55rem; border-radius:999px;
+  background:#121621cc; border:1px solid var(--fcx-brd-2);
+}
+.fcx-badge--hot{ background:#24114a; color:#ffe600; border-color:#6f42c1 }
+.fcx-badge--live{
+  background:#17210e; color:#d7ff7a; border-color:#2b4d15;
+  box-shadow:0 0 0 0 rgba(215,255,122,.35); animation:fcx-pulse 1.8s ease-in-out infinite;
+}
+@keyframes fcx-pulse{ 0%,100%{box-shadow:0 0 0 0 rgba(215,255,122,.35)} 50%{box-shadow:0 0 0 12px rgba(215,255,122,0)} }
+
+.fcx-cta{
+  justify-self:start; margin-top:.35rem;
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.58rem .9rem; border-radius:999px; cursor:pointer;
+  font:900 .9rem/1 Inter,system-ui; color:#111;
+  border:1px solid var(--fcx-brand);
+  background:linear-gradient(180deg,#fffbe6,var(--fcx-brand));
+  box-shadow:0 2px 14px color-mix(in srgb,var(--fcx-brand) 35%, transparent);
+}
+.fcx-cta:focus-visible{ outline:0; box-shadow:0 0 0 3px var(--fcx-ring) }
+
+/* Dim siblings during expansion */
+.fcx-hub.is-expanding .fcx-tile:not(.is-open){ filter:blur(4px) brightness(.7); pointer-events:none }
+
+/* ============================================================
+   Expansion (full view)
+============================================================ */
+.fcx-tile.is-open{
+  position:fixed; inset:auto auto; z-index:1100;
+  /* Start from current layout rect → JS sets inline width/height/left/top for FLIP */
+  transition:transform .5s cubic-bezier(.2,.9,.25,1.15), box-shadow .4s, border-color .3s;
+  box-shadow:0 22px 80px rgba(0,0,0,.65);
+  border-color:var(--fcx-brand);
+}
+.fcx-tile.is-open .fcx-cta{ visibility:hidden }
+
+.fcx-expand{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  border-radius:inherit; overflow:hidden; background:linear-gradient(180deg,#0e1117,#0c1119);
+}
+.fcx-expand__bar{
+  display:flex; align-items:center; gap:.6rem;
+  padding:1rem 1.1rem; border-bottom:1px solid var(--fcx-brd-2);
+  background:#0e1117ee; backdrop-filter:saturate(120%) blur(6px);
+}
+.fcx-expand__title{ margin:0; font:1000 1.1rem/1.2 Poppins, ui-sans-serif; color:#fff; flex:1 }
+.fcx-expand__actions{ display:flex; gap:.4rem }
+.fcx-btn{
+  padding:.4rem .6rem; border-radius:8px; border:1px solid #ffffff2a; background:#11151acc; color:#e8ecf6;
+  font:800 .9rem/1 Inter; cursor:pointer;
+}
+.fcx-btn--ghost{ background:#0f1419cc }
+.fcx-expand__body{ flex:1; overflow:auto; padding:1rem 1rem 1.2rem; color:#d7dce6; outline:0 }
+.fcx-expand__foot{
+  padding:.9rem 1.1rem; border-top:1px solid var(--fcx-brd-2); background:#0e1117ee; display:flex; justify-content:flex-end;
+}
+.fcx-expand__body[aria-busy="true"]{ position:relative }
+.fcx-expand__body[aria-busy="true"]::after{
+  content:""; position:absolute; inset:0; border-radius:12px; opacity:.7;
+  background:linear-gradient(90deg,#0e1117 0%,#101723 40%,#161c27 50%,#101723 60%,#0e1117 100%);
+  animation:fcx-shimmer 1s linear infinite;
+}
+@keyframes fcx-shimmer{ from{background-position:-200% 0} to{background-position:200% 0} }
+
+@media (max-width:880px){
+  .fcx-tile.is-open{ border-radius:12px }
+}
+</style>
+
+<script {{ nonce_attr() }} {{ fcx_nonce() }}>
+// nonce-aware injector (auto-inserted by patch_insert_with_nonce.py)
+function insertWithNonce(target, html) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = String(html);
+
+  const nonce = (window.__CSP_NONCE || '').trim() || null;
+
+  // hoist external stylesheet links (dedupe by href)
+  tpl.content.querySelectorAll('link[rel="stylesheet"][href]').forEach(link => {
+    try {
+      const href = link.getAttribute('href');
+      if (!href) return;
+      if (!document.querySelector('link[rel="stylesheet"][href="'+href+'"]')) {
+        const l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = href;
+        if (nonce) l.setAttribute('nonce', nonce);
+        document.head.appendChild(l);
+      }
+    } catch (e) { console.warn('inject: hoist link failed', e); }
+    link.remove();
+  });
+
+  // stamp nonce on inline <style {{ nonce_attr() }}>
+  if (nonce) {
+    tpl.content.querySelectorAll('style').forEach(s => {
+      if (!s.getAttribute('nonce')) s.setAttribute('nonce', nonce);
+    });
+  }
+
+  // re-create scripts so they execute (preserve attributes)
+  tpl.content.querySelectorAll('script').forEach(old => {
+    try {
+      const s = document.createElement('script');
+      for (let i = 0; i < old.attributes.length; i++) {
+        const a = old.attributes[i];
+        s.setAttribute(a.name, a.value);
+      }
+      if (nonce && !s.getAttribute('nonce')) s.setAttribute('nonce', nonce);
+      s.text = old.text || old.textContent || '';
+      old.replaceWith(s);
+    } catch (e) {
+      console.warn('inject: script replace failed', e);
+    }
+  });
+
+  // replace children of target
+  target.replaceChildren(tpl.content);
+}
+
+/* ============================================================
+   fcxHub Controller (FLIP-ish expand, cache, prefetch, a11y)
+============================================================ */
+(() => {
+  const HUB  = document.getElementById('fcx-hub');
+  if (!HUB) return;
+
+  const TPL  = document.getElementById('fcx-expand-tpl');
+  const CACHE = new Map();                 // url -> DocumentFragment
+  let openTile = null;
+  let lastFocus = null;
+
+  // Endpoints (swap to url_for in templated env)
+  const END = {
+    tiers:  '/embed/tiers?mode=sheet',
+    impact: '/embed/impact?mode=sheet',
+    about:  '/embed/about?mode=sheet',
+  };
+
+  // Prefetch on hover/focus (once)
+  const prefetch = (url) => {
+    if (!url || CACHE.has(url)) return;
+    const l = document.createElement('link'); l.rel='prefetch'; l.href=url; document.head.appendChild(l);
+    fetch(url, { headers:{'X-Partial':'1'}, credentials:'same-origin' })
+      .then(r => r.ok ? r.text() : '')
+      .then(html => {
+        if (!html) return;
+        const t = document.createElement('template'); t.innerHTML = html;
+        CACHE.set(url, t.content.cloneNode(true));
+      }).catch(()=>{});
+  };
+  HUB.querySelectorAll('.fcx-tile').forEach(tile => {
+    const key = tile.dataset.tile;
+    const url = END[key]; if (!url) return;
+    tile.addEventListener('mouseenter', () => prefetch(url), { once:true });
+    tile.addEventListener('focusin',   () => prefetch(url), { once:true });
+    tile.querySelector('.fcx-cta')?.addEventListener('mouseenter', () => prefetch(url), { once:true });
+  });
+
+  // Utility: capture layout box (for FLIP) and set inline styles
+  const setBox = (el, box) => {
+    el.style.position = 'fixed';
+    el.style.left = box.left + 'px';
+    el.style.top = box.top + 'px';
+    el.style.width = box.width + 'px';
+    el.style.height = box.height + 'px';
+  };
+  const viewportBox = () => {
+    const m = matchMedia('(max-width:880px)').matches;
+    const pad = m ? 8 : 24;
+    return { left: pad, top: pad + (window.scrollY||0), width: innerWidth - pad*2, height: innerHeight - pad*2 };
+  };
+
+  // Open sequence
+  async function openTileView(tile){
+    if (openTile) return;
+    const key = tile.dataset.tile;
+    const url = END[key];
+    if (!url) return;
+
+    HUB.classList.add('is-expanding');
+    openTile = tile;
+    lastFocus = document.activeElement;
+
+    const start = tile.getBoundingClientRect();
+    tile.classList.add('is-open');
+    setBox(tile, start);
+
+    // Force layout, then animate to viewport box
+    tile.getBoundingClientRect();
+    const end = viewportBox();
+    setBox(tile, end);
+
+    // Inject expansion chrome and content
+    const shell = TPL.content.cloneNode(true);
+    const body  = shell.querySelector('.fcx-expand__body');
+    const title = shell.querySelector('.fcx-expand__title');
+    title.textContent = key === 'tiers' ? 'Sponsor Tiers' : key === 'impact' ? 'Impact Live' : 'About the Club';
+    body.setAttribute('aria-busy','true');
+    tile.appendChild(shell);
+    body.focus({ preventScroll: true });
+
+    // Load from cache or fetch
+    try{
+      let frag = CACHE.get(url);
+      if (!frag) {
+        const r = await fetch(url, { headers:{'X-Partial':'1'}, credentials:'same-origin', cache:'no-store' });
+        const html = r.ok ? await r.text() : '<p>Failed to load.</p>';
+        const t = document.createElement('template'); t.innerHTML = html;
+        frag = t.content.cloneNode(true);
+        CACHE.set(url, frag.cloneNode(true));
+      }
+      body.replaceChildren(frag.cloneNode(true));
+    }catch{
+      const html = ('<p>Failed to load content.</p>');
+insertWithNonce(body, html);
+    }finally{
+      body.removeAttribute('aria-busy');
+    }
+
+    // Focus trap
+    tile.addEventListener('keydown', trapFocus);
+    document.addEventListener('keydown', onKeydown);
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  // Close sequence
+  function closeTileView(pop = true){
+    if (!openTile) return;
+    const tile = openTile;
+    document.removeEventListener('keydown', onKeydown);
+    tile.removeEventListener('keydown', trapFocus);
+
+    // Animate back to original slot
+    const end = tile.getBoundingClientRect();
+    tile.style.transition = 'none'; // capture current
+    const gridSlot = tile; // same element; we'll measure target grid position
+    const target = gridSlot.getBoundingClientRect();
+    // Reset transition then move
+    requestAnimationFrame(() => {
+      tile.style.transition = 'transform .35s, box-shadow .3s, border-color .3s';
+      setBox(tile, target);
+      // after anim
+      setTimeout(() => {
+        tile.removeAttribute('style');
+        tile.classList.remove('is-open');
+        HUB.classList.remove('is-expanding');
+        tile.querySelector('.fcx-expand')?.remove();
+        document.documentElement.style.overflow = '';
+        try { lastFocus?.focus?.(); } catch {}
+        openTile = null;
+      }, 360);
+    });
+  }
+
+  // Key handling
+  function onKeydown(e){
+    if (e.key === 'Escape') { e.preventDefault(); closeTileView(); }
+  }
+  function trapFocus(e){
+    if (e.key !== 'Tab') return;
+    const wrap = openTile?.querySelector('.fcx-expand');
+    if (!wrap) return;
+    const f = [...wrap.querySelectorAll('a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+              .filter(el => el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length-1];
+    if (e.shiftKey && document.activeElement === first){ last.focus(); e.preventDefault(); }
+    else if (!e.shiftKey && document.activeElement === last){ first.focus(); e.preventDefault(); }
+  }
+
+  // Click wiring
+  HUB.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-fcx-action="close"]');
+    const popBtn   = e.target.closest('[data-fcx-action="popout"]');
+    const tileBtn  = e.target.closest('.fcx-cta');
+    if (closeBtn) { closeTileView(); return; }
+    if (popBtn && openTile){
+      const k = openTile.dataset.tile;
+      const href = k==='tiers'?'/tiers':k==='impact'?'/impact':'/about';
+      window.location.href = href;
+      return;
+    }
+    if (tileBtn){
+      const tile = e.target.closest('.fcx-tile'); if (tile) openTileView(tile);
+    }
+  });
+
+  // Deep link (?tile=tiers|impact|about)
+  (function deepLink(){
+    try{
+      const sp = new URL(location.href).searchParams;
+      const want = sp.get('tile');
+      if (!want) return;
+      const tile = HUB.querySelector(`.fcx-tile[data-tile="${want}"]`);
+      if (tile) setTimeout(()=>openTileView(tile), 0);
+    }catch{}
+  })();
+})();
+</script>
+

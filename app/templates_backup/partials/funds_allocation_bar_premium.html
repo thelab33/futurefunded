@@ -1,0 +1,366 @@
+{# =============================================================================
+   FundChamps • Funds Allocation Bar — SV Prestige Elite
+   - Listens:  'fc:funds:update' / 'fc:meter:update'  -> { raised, goal }
+   - Emits:    'fc:alloc:highlight' -> { key, label, amount, percent }
+   - Optional polling (Save-Data aware): stats_url / allocations_url (JSON)
+   - APIs (global + instance):
+       window.fcAlloc.{setTotals,setAllocations,setFromRatios,rerender}
+       window.fcAllocById[id].{setTotals,setAllocations,setFromRatios,rerender}
+   - Hardened parsing, deterministic palette per key, a11y upgrades, CSP-safe
+   ============================================================================= #}
+
+{% include "partials/ui_bootstrap.html" ignore missing with context %}
+
+{% if show_allocation_bar is not defined or show_allocation_bar %}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set _alloc_id = alloc_id|default('funds-allocation') %}
+
+{# Robust numeric parsing (#,$,commas) #}
+{% set _r = (funds_raised|string)|replace('$','')|replace(',','')|float if funds_raised is defined else 0.0 %}
+{% set _g = (fundraising_goal|string)|replace('$','')|replace(',','')|float if fundraising_goal is defined else 10000.0 %}
+{% set raised = _r %}
+{% set goal   = (_g if _g>0 else 1.0) %}
+
+{# Data inputs #}
+{% set stats_url   = stats_url|default(None) %}
+{% set alloc_url   = allocations_url|default(None) %}
+{% set brand_color = team.theme_color if team and team.theme_color else '#facc15' %}
+
+{# Safe defaults if no server allocations provided #}
+{% set default_alloc = allocations if allocations is defined and allocations else [
+  {"key":"gym","label":"Gym Rental","ratio":0.40},
+  {"key":"travel","label":"Travel","ratio":0.35},
+  {"key":"uniforms","label":"Uniforms","ratio":0.15},
+  {"key":"academics","label":"Academic Support","ratio":0.10}
+] %}
+
+<section
+  id="{{ _alloc_id }}"
+  class="relative bg-zinc-950/92 border-y border-zinc-800/60"
+  style="--fc-brand: {{ brand_color }}; --gap: 6px;"
+  data-stats-url="{{ stats_url if stats_url else '' }}"
+  data-alloc-url="{{ alloc_url if alloc_url else '' }}"
+  data-default='{{ default_alloc|tojson }}'
+  data-initial='{{ {"raised": raised, "goal": goal}|tojson }}'
+  data-compact="{{ 'true' if compact else 'false' if compact is defined else 'false' }}"
+  role="region" aria-labelledby="{{ _alloc_id }}-title" aria-live="polite">
+
+  <style nonce="{{ NONCE }}">
+    /* ===== Scoped to #{{ _alloc_id }} ===== */
+    #{{ _alloc_id }} .wrap{max-width:72rem;margin:0 auto;padding:.75rem 1rem;display:grid;gap:.5rem}
+    #{{ _alloc_id }} .top{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem}
+    #{{ _alloc_id }} .title{font-weight:900;color:var(--fc-brand);letter-spacing:-.01em}
+    #{{ _alloc_id }} .nums{margin-left:auto;display:flex;gap:.5rem;align-items:baseline;font-variant-numeric:tabular-nums}
+    #{{ _alloc_id }} .nums .pct{font-weight:800;color:#fde68a}
+    #{{ _alloc_id }} .bar{position:relative;height:.9rem;border-radius:9999px;background:rgba(255,255,255,.06);overflow:hidden;
+      border:1px solid color-mix(in srgb, var(--fc-brand) 20%, transparent)}
+    #{{ _alloc_id }}[data-compact="true"] .bar{ height:.65rem }
+    #{{ _alloc_id }} .seg{height:100%;width:0;display:block;float:left;transition:width .7s cubic-bezier(.22,1,.36,1);outline:none}
+    #{{ _alloc_id }} .seg + .seg{box-shadow:inset var(--gap) 0 0 0 rgba(0,0,0,.45)}
+    #{{ _alloc_id }} .seg:focus-visible{outline:2px solid color-mix(in srgb, var(--fc-brand) 55%, transparent);outline-offset:2px;border-radius:12px}
+    #{{ _alloc_id }} .legend{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.35rem}
+    #{{ _alloc_id }} .pill{display:inline-flex;align-items:center;gap:.55rem;padding:.28rem .65rem;border-radius:9999px;
+      border:1px solid rgba(250,204,21,.22);background:rgba(250,204,21,.08);font-size:.8rem;font-weight:700;cursor:pointer}
+    #{{ _alloc_id }} .pill:focus-visible{outline:2px solid color-mix(in srgb, var(--fc-brand) 55%, transparent);outline-offset:2px}
+    #{{ _alloc_id }} .sw{width:.75rem;height:.75rem;border-radius:9999px;border:1px solid rgba(0,0,0,.35)}
+    #{{ _alloc_id }} .pill[aria-current="true"]{box-shadow:0 0 0 2px color-mix(in srgb, var(--fc-brand) 55%, transparent) inset}
+    #{{ _alloc_id }} .meta{display:flex;gap:.75rem;align-items:center;color:#e5e7eb80;font-size:.75rem}
+    #{{ _alloc_id }} .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    #{{ _alloc_id }} .skeleton{position:absolute;inset:0;background:linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.08), rgba(255,255,255,.04));
+      background-size:200% 100%;animation:sk 1.2s linear infinite}
+    @keyframes sk{to{background-position:-200% 0}}
+    @media (max-width:640px){ #{{ _alloc_id }} .nums{width:100%;order:2;margin-left:0} }
+    @media (prefers-reduced-motion: reduce){ #{{ _alloc_id }} .seg{transition:none!important} #{{ _alloc_id }} .skeleton{animation:none!important}}
+    @media (prefers-color-scheme: light){
+      #{{ _alloc_id }}{background:rgba(255,255,255,.92)}
+      #{{ _alloc_id }} .bar{background:rgba(0,0,0,.06)}
+      #{{ _alloc_id }} .nums .pct{color:#b45309}
+    }
+  </style>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="title" id="{{ _alloc_id }}-title">Funds allocation</div>
+      <div class="nums" role="progressbar"
+           aria-valuemin="0" aria-valuemax="{{ goal|int }}" aria-valuenow="{{ raised|int }}"
+           aria-valuetext="${{ '{:,.0f}'.format(raised) }} of ${{ '{:,.0f}'.format(goal) }}">
+        <span id="{{ _alloc_id }}-raised">${{ '{:,.0f}'.format(raised) }}</span>
+        <span class="opacity-60">/</span>
+        <span id="{{ _alloc_id }}-goal" class="opacity-80">${{ '{:,.0f}'.format(goal) }}</span>
+        <span class="pct"><span id="{{ _alloc_id }}-pct">{{ (goal and (raised/goal*100) or 0)|round(1) }}</span>%</span>
+      </div>
+    </div>
+
+    <div class="bar" title="How raised funds are planned to be used" aria-describedby="{{ _alloc_id }}-help" data-bar>
+      <div class="skeleton" aria-hidden="true"></div>
+    </div>
+    <div class="legend" aria-label="Allocation breakdown" role="list" data-legend></div>
+
+    <div class="meta" id="{{ _alloc_id }}-help">
+      <span>Auto-updates from your totals.</span>
+      <span>Click a legend item to highlight (←/→ to move).</span>
+      <span class="hidden sm:inline">“Unallocated” shows remaining funds not yet planned.</span>
+    </div>
+
+    <p id="{{ _alloc_id }}-sr" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  </div>
+</section>
+
+<script nonce="{{ NONCE }}">
+(() => {
+  const id = {{ _alloc_id|tojson }};
+  const root = document.getElementById(id); if (!root || root.__init) return;
+
+  // Lazy boot for perf
+  const boot = () => { if (root.__init) return; root.__init = true; init(); };
+  if ('IntersectionObserver' in window){
+    const io = new IntersectionObserver((ents)=>{ if (ents.some(e=>e.isIntersecting)){ io.disconnect(); boot(); } }, { rootMargin: '120px' });
+    io.observe(root);
+  } else { boot(); }
+
+  function init(){
+    const bar     = root.querySelector('[data-bar]');
+    const legend  = root.querySelector('[data-legend]');
+    const raisedEl= document.getElementById(id + "-raised");
+    const goalEl  = document.getElementById(id + "-goal");
+    const pctEl   = document.getElementById(id + "-pct");
+    const pb      = root.querySelector('[role="progressbar"]');
+    const sr      = document.getElementById(id + "-sr");
+
+    let defaults = []; try { defaults = JSON.parse(root.dataset.default || "[]"); } catch {}
+    let initial  = {}; try { initial  = JSON.parse(root.dataset.initial || "{}"); } catch {}
+
+    const state = {
+      raised: Math.max(0, Number(initial.raised || 0)),
+      goal:   Math.max(1, Number(initial.goal || 1)),
+      allocations: []
+    };
+    let highlightedKey = null;
+
+    // Formatters
+    const nf   = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+    const fmt$ = n => "$" + nf.format(Math.round(Number(n)||0));
+
+    // Colors (deterministic per key)
+    const brand = getComputedStyle(root).getPropertyValue("--fc-brand").trim() || "#facc15";
+    const paletteBase = [
+      `linear-gradient(90deg, ${brand}, #fde68a)`,
+      `linear-gradient(90deg, color-mix(in srgb, ${brand} 70%, #fff), ${brand})`,
+      `linear-gradient(90deg, #f59e0b, ${brand})`,
+      `linear-gradient(90deg, color-mix(in srgb, ${brand} 55%, #fff), #f59e0b)`,
+      `linear-gradient(90deg, #fbbf24, color-mix(in srgb, ${brand} 50%, #fff))`
+    ];
+    const hash = (s)=>{ s=String(s||""); let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; };
+    const colorFor = (key, i) => paletteBase[(hash(key)+i)%paletteBase.length];
+
+    const clamp01 = n => Math.max(0, Math.min(1, Number(n)||0));
+    const say = (t)=>{ try{ sr.textContent=t; }catch{} }
+
+    function updateTotals(){
+      const { raised, goal } = state;
+      const pct = Math.max(0, Math.min(100, goal ? (raised/goal)*100 : 0));
+      raisedEl.textContent = fmt$(raised);
+      goalEl.textContent   = fmt$(goal);
+      pctEl.textContent    = (Math.round(pct*10)/10).toString().replace(/\.0$/,'');
+      if (pb){
+        pb.setAttribute("aria-valuenow", String(Math.round(raised)));
+        pb.setAttribute("aria-valuemax", String(Math.round(goal)));
+        pb.setAttribute("aria-valuetext", `${fmt$(raised)} of ${fmt$(goal)}`);
+      }
+    }
+
+    function normalizeAllocations(baseRaised){
+      const list = (state.allocations.length ? state.allocations : defaults).map((x,i)=>{
+        const key   = x.key ?? `k${i}`;
+        const label = x.label ?? String(key);
+        if (typeof x.amount === "number" && isFinite(x.amount)){
+          return { key, label, amount: Math.max(0, Number(x.amount)||0) };
+        } else {
+          const r = clamp01(x.ratio);
+          return { key, label, amount: Math.max(0, r*baseRaised) };
+        }
+      });
+      const sum = list.reduce((a,b)=>a+b.amount,0);
+      // If allocations exceed raised, scale them to fit
+      if (sum > baseRaised && sum > 0){
+        const k = baseRaised / sum;
+        for (const it of list) it.amount *= k;
+      }
+      const sum2 = list.reduce((a,b)=>a+b.amount,0);
+      if (baseRaised > sum2 + 0.5){
+        list.push({ key:"unallocated", label:"Unallocated", amount: baseRaised - sum2, _ghost:true });
+      }
+      return list;
+    }
+
+    function renderBar(list, total){
+      bar.innerHTML = "";
+      list.forEach((item,i)=>{
+        const seg   = document.createElement("span");
+        const pct   = total ? Math.max(0, item.amount/total*100) : 0;
+        const segId = `${id}-seg-${CSS.escape(item.key)}`;
+        seg.className = "seg";
+        seg.id        = segId;
+        seg.tabIndex  = 0;
+        seg.dataset.key = item.key;
+        seg.style.width     = pct + "%";
+        seg.style.background= colorFor(item.key, i);
+        seg.title = `${item.label}: ${fmt$(item.amount)} (${Math.round(pct)}%)`;
+        if (item._ghost) seg.style.filter = "grayscale(.25) saturate(.9)";
+        seg.addEventListener('click', ()=> toggleHighlight(item.key, item.label, item.amount, pct));
+        seg.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleHighlight(item.key, item.label, item.amount, pct); } });
+        bar.appendChild(seg);
+      });
+      const sk = bar.querySelector('.skeleton'); if (sk) sk.remove();
+      applyHighlight();
+    }
+
+    function renderLegend(list, total){
+      legend.innerHTML = "";
+      list.forEach((item,i)=>{
+        const pill = document.createElement("button");
+        const pct  = total ? Math.round(item.amount/total*100) : 0;
+        const segId= `${id}-seg-${CSS.escape(item.key)}`;
+
+        pill.type="button"; pill.className="pill"; pill.setAttribute("role","listitem");
+        pill.setAttribute("data-k", item.key);
+        pill.setAttribute("aria-controls", segId);
+        pill.setAttribute("aria-pressed", String(item.key === highlightedKey));
+        if (item.key === highlightedKey) pill.setAttribute("aria-current","true");
+        pill.innerHTML = `<span class="sw" style="background:${colorFor(item.key, i)}"></span>
+                          <span>${item.label}: ${fmt$(item.amount)} (${pct}%)</span>`;
+
+        pill.addEventListener("click", ()=> toggleHighlight(item.key, item.label, item.amount, pct));
+        pill.addEventListener("keydown", (e)=>{
+          if (e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHighlight(item.key, item.label, item.amount, pct); }
+          if (e.key==='ArrowRight' || e.key==='ArrowLeft'){
+            e.preventDefault();
+            const pills = Array.from(legend.querySelectorAll('.pill'));
+            const idx   = pills.indexOf(pill);
+            const next  = pills[(idx + (e.key==='ArrowRight'?1:-1) + pills.length) % pills.length];
+            next?.focus();
+          }
+        });
+
+        legend.appendChild(pill);
+      });
+    }
+
+    function applyHighlight(){
+      const segs = bar.querySelectorAll(".seg");
+      if (!highlightedKey){ segs.forEach(s=> s.style.opacity=""); legend.querySelectorAll(".pill").forEach(p=>{p.removeAttribute('aria-current');p.setAttribute('aria-pressed','false');}); return; }
+      segs.forEach(s=> s.style.opacity = (s.dataset.key===highlightedKey) ? "1" : ".35");
+      legend.querySelectorAll(".pill").forEach(p=>{
+        const on = p.getAttribute('data-k')===highlightedKey;
+        p.setAttribute("aria-pressed", String(on));
+        if (on) p.setAttribute("aria-current","true"); else p.removeAttribute("aria-current");
+      });
+    }
+
+    function toggleHighlight(key, label, amount, pct){
+      if (highlightedKey === key) highlightedKey = null;
+      else highlightedKey = key;
+      applyHighlight();
+      const percent = Math.max(0, Math.min(100, Math.round(Number(pct||0))));
+      say(highlightedKey ? `${label} highlighted: ${fmt$(amount)} (${percent}%)` : `Highlight cleared`);
+      try{
+        dispatchEvent(new CustomEvent('fc:alloc:highlight', { detail:{ key, label, amount, percent }}));
+      }catch{}
+    }
+
+    function render(){
+      updateTotals();
+      const list  = normalizeAllocations(state.raised);
+      const total = list.reduce((a,b)=>a+b.amount,0) || state.raised;
+      renderBar(list, total);
+      renderLegend(list, total);
+    }
+
+    // ---------- Public APIs ----------
+    const api = {
+      setTotals({raised, goal}={}){
+        if (typeof raised==="number") state.raised=Math.max(0,raised);
+        if (typeof goal==="number")   state.goal  =Math.max(1,goal);
+        render();
+      },
+      setAllocations(list){ state.allocations = Array.isArray(list) ? list.slice() : []; render(); },
+      setFromRatios(ratios){
+        state.allocations = Array.isArray(ratios) ? ratios.map(r=>({key:r.key,label:r.label,ratio:clamp01(r.ratio)})) : [];
+        render();
+      },
+      rerender: render
+    };
+
+    // Global + instance maps (back-compat)
+    window.fcAlloc = Object.assign({}, window.fcAlloc, api);
+    window.fcAllocById = window.fcAllocById || {};
+    window.fcAllocById[id] = api;
+
+    // ---------- Event bridges ----------
+    addEventListener("fc:meter:update", (ev)=>{
+      const d = ev.detail || {};
+      if (typeof d.raised==="number") state.raised = Math.max(0,d.raised);
+      if (typeof d.goal  ==="number") state.goal   = Math.max(1,d.goal);
+      render();
+    }, {passive:true});
+
+    addEventListener("fc:funds:update", (ev)=>{
+      const d = ev.detail || {};
+      const newRaised = (typeof d.raised==='number') ? d.raised : state.raised;
+      const newGoal   = (typeof d.goal  ==='number') ? d.goal   : state.goal;
+      if (newRaised!==state.raised || newGoal!==state.goal){
+        state.raised = Math.max(0,newRaised);
+        state.goal   = Math.max(1,newGoal);
+        render();
+      }
+    }, {passive:true});
+
+    addEventListener("fc:alloc:update", (ev)=>{
+      const list = (ev.detail && ev.detail.allocations) || ev.detail || [];
+      if (Array.isArray(list)) { state.allocations = list.slice(); render(); }
+    }, {passive:true});
+
+    // ---------- First render ----------
+    render();
+
+    // ---------- Optional polling (Save-Data aware) ----------
+    (async function poll(){
+      const statsUrl = (root.dataset.statsUrl || "").trim();
+      const allocUrl = (root.dataset.allocUrl || "").trim();
+      try{
+        if (document.hidden) return;
+
+        if (statsUrl){
+          const r = await fetch(statsUrl, { headers:{Accept:"application/json"}, cache:'no-store', credentials:'same-origin' });
+          if (r.ok){
+            const j = await r.json();
+            const rRaised = (typeof j.raised==='number') ? j.raised : (typeof j.funds_raised==='number' ? j.funds_raised : undefined);
+            const rGoal   = (typeof j.goal  ==='number') ? j.goal   : (typeof j.fundraising_goal==='number' ? j.fundraising_goal : undefined);
+            if (typeof rRaised==="number") state.raised=Math.max(0,rRaised);
+            if (typeof rGoal  ==="number") state.goal  =Math.max(1,rGoal);
+          }
+        }
+
+        if (allocUrl){
+          const r2 = await fetch(allocUrl, { headers:{Accept:"application/json"}, cache:'no-store', credentials:'same-origin' });
+          if (r2.ok){
+            const j2 = await r2.json();
+            const list = Array.isArray(j2) ? j2 : (j2.allocations || []);
+            state.allocations = list.map(x=>({
+              key: x.key, label: x.label,
+              amount: (typeof x.amount === "number") ? Math.max(0,x.amount) : undefined,
+              ratio:  (typeof x.ratio  === "number") ? Math.max(0,Math.min(1,x.ratio)) : undefined
+            }));
+          }
+        }
+
+        render();
+      }catch{}
+      const slow = !!(navigator.connection && (navigator.connection.saveData || (navigator.connection.effectiveType||'').includes('2g')));
+      setTimeout(poll, slow ? 30000 : 15000);
+    })();
+  }
+})();
+</script>
+{% endif %}
+

@@ -1,0 +1,582 @@
+/* =========================================================
+   FutureFunded Fundraiser — Pro CSS Pack (DROP-IN)
+   Scope: only affects the fundraiser page wrapper:
+   .ff-shell[data-ff-page="fundraiser"]
+   Load AFTER app.css.
+   ========================================================= */
+
+/* ---------------------------------
+   0) Page-scoped tokens / defaults
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"]{
+  /* brand */
+  --ff-accent: #f97316;
+  --ff-accent-2: #fb7185;
+
+  /* dark surfaces */
+  --ff-bg: #060a14;
+  --ff-surface: rgb(255,255,255,.045);
+  --ff-surface-2: rgb(255,255,255,.065);
+  --ff-border: rgb(255,255,255,.12);
+  --ff-text: rgb(255,255,255,.92);
+  --ff-text-2: rgb(255,255,255,.72);
+  --ff-text-3: rgb(255,255,255,.54);
+
+  /* radii */
+  --ff-r-sm: 12px;
+  --ff-r-md: 16px;
+  --ff-r-lg: 20px;
+  --ff-r-xl: 26px;
+
+  /* shadows */
+  --ff-shadow-1: 0 10px 30px rgb(0,0,0,.45);
+  --ff-shadow-2: 0 18px 70px rgb(0,0,0,.55);
+
+  /* motion */
+  --ff-ease: cubic-bezier(.2,.8,.2,1);
+  --ff-fast: 140ms;
+  --ff-med: 220ms;
+
+  /* focus */
+  --ff-ring: 0 0 0 4px rgb(249,115,22,.22);
+
+  /* spacing helpers (works alongside your --s-* scale) */
+  --ff-gap: clamp(12px, 2vw, 18px);
+  --ff-pad: clamp(14px, 2vw, 18px);
+}
+
+/* Respect user font choice; ensure consistent smoothing */
+.ff-shell[data-ff-page="fundraiser"],
+.ff-shell[data-ff-page="fundraiser"] *{
+  box-sizing: border-box;
+}
+.ff-shell[data-ff-page="fundraiser"]{
+  color: var(--ff-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizelegibility;
+}
+
+/* Better anchor + focus defaults (keeps your CSP-safe focus) */
+.ff-shell[data-ff-page="fundraiser"] :where(a){
+  text-decoration: none;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(a:hover){
+  text-decoration: underline;
+  text-decoration-color: rgb(249,115,22,.55);
+  text-underline-offset: 3px;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(button:focus-visible, a:focus-visible, input:focus, select:focus, textarea:focus){
+  outline: none;
+  box-shadow: var(--ff-ring);
+}
+
+/* ---------------------------------
+   1) Background wash + section rhythm
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"]{
+  background:
+    radial-gradient(900px 520px at 18% 12%, rgb(249,115,22,.22), transparent 58%),
+    radial-gradient(860px 520px at 74% 30%, rgb(59,130,246,.16), transparent 62%),
+    radial-gradient(820px 520px at 36% 82%, rgb(168,85,247,.14), transparent 62%),
+    linear-gradient(180deg, rgb(255,255,255,.03), transparent 16%, transparent 84%, rgb(255,255,255,.02)),
+    var(--ff-bg);
+}
+
+/* Make section spacing feel “flagship” */
+.ff-shell[data-ff-page="fundraiser"] .section{
+  padding: clamp(18px, 3.2vw, 34px) 0;
+}
+.ff-shell[data-ff-page="fundraiser"] .section-top{
+  display: grid;
+  gap: var(--ff-gap);
+}
+
+@media (width >= 980px){
+  .ff-shell[data-ff-page="fundraiser"] .section-top{
+    grid-template-columns: 1.2fr .8fr;
+    align-items: start;
+  }
+}
+
+/* ---------------------------------
+   2) Cards / minis / notice = glass premium
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(.card){
+  border-radius: var(--ff-r-xl);
+  border: 1px solid var(--ff-border);
+  background: linear-gradient(180deg, rgb(255,255,255,.065), rgb(255,255,255,.035));
+  box-shadow: var(--ff-shadow-1);
+}
+
+@supports (backdrop-filter: blur(10px)){
+  .ff-shell[data-ff-page="fundraiser"] :where(.card){
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Preserve your .lift semantics but make it smoother */
+.ff-shell[data-ff-page="fundraiser"] :where(.card.lift){
+  transition: transform var(--ff-med) var(--ff-ease),
+              box-shadow var(--ff-med) var(--ff-ease),
+              border-color var(--ff-med) var(--ff-ease),
+              background var(--ff-med) var(--ff-ease);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.card.lift:hover){
+  transform: translateY(-2px);
+  border-color: rgb(249,115,22,.22);
+  box-shadow: var(--ff-shadow-2);
+  background: linear-gradient(180deg, rgb(255,255,255,.075), rgb(255,255,255,.04));
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.mini, .notice){
+  border-radius: var(--ff-r-lg);
+  border: 1px solid rgb(255,255,255,.10);
+  background: rgb(255,255,255,.035);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.mini--soft){
+  background: rgb(255,255,255,.03);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.mini--callout){
+  border-color: rgb(249,115,22,.22);
+  background: linear-gradient(180deg, rgb(249,115,22,.10), rgb(255,255,255,.03));
+}
+
+/* Card padding consistency (works with your .pad) */
+.ff-shell[data-ff-page="fundraiser"] :where(.card.pad){
+  padding: var(--ff-pad);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.mini){
+  padding: 14px;
+}
+
+/* Dividers look more premium */
+.ff-shell[data-ff-page="fundraiser"] :where(.divider){
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(255,255,255,.14), transparent);
+  border: 0;
+  opacity: 1;
+}
+
+/* ---------------------------------
+   3) Typography upgrades (hero + headings)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(.kicker){
+  color: var(--ff-text-3);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: .78rem;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.help){
+  color: var(--ff-text-2);
+  line-height: 1.5;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.measure){
+  color: var(--ff-text-2);
+  line-height: 1.55;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.section-title){
+  color: var(--ff-text);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.hero-title){
+  line-height: 1.05;
+  font-weight: 900;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.accent){
+  color: var(--ff-accent);
+}
+
+/* Make “big number” pop in progress */
+.ff-shell[data-ff-page="fundraiser"] :where(.big-raise){
+  font-weight: 900;
+  letter-spacing: -.03em;
+  text-shadow: 0 12px 40px rgb(0,0,0,.35);
+}
+
+/* ---------------------------------
+   4) Topbar + Header polish (sticky + blur)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] .topbar--slim{
+  border-bottom: 1px solid rgb(255,255,255,.10);
+  background: rgb(5,8,16,.65);
+}
+
+@supports (backdrop-filter: blur(10px)){
+  .ff-shell[data-ff-page="fundraiser"] .topbar--slim{
+    backdrop-filter: blur(10px);
+  }
+}
+.ff-shell[data-ff-page="fundraiser"] .site-header{
+  border-bottom: 1px solid rgb(255,255,255,.10);
+  background: rgb(5,8,16,.55);
+}
+
+@supports (backdrop-filter: blur(12px)){
+  .ff-shell[data-ff-page="fundraiser"] .site-header{
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Nav links feel more “SaaS” */
+.ff-shell[data-ff-page="fundraiser"] .nav-links a{
+  color: var(--ff-text-2);
+  padding: 8px 10px;
+  border-radius: 999px;
+  transition: background var(--ff-med) var(--ff-ease), color var(--ff-med) var(--ff-ease);
+}
+.ff-shell[data-ff-page="fundraiser"] .nav-links a:hover{
+  background: rgb(255,255,255,.06);
+  color: var(--ff-text);
+  text-decoration: none;
+}
+
+/* ---------------------------------
+   5) Buttons / icon buttons / pills / chips
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(.btn){
+  border-radius: 999px;
+  border: 1px solid rgb(255,255,255,.14);
+  transition: transform var(--ff-fast) var(--ff-ease),
+              background var(--ff-med) var(--ff-ease),
+              border-color var(--ff-med) var(--ff-ease),
+              box-shadow var(--ff-med) var(--ff-ease);
+  text-decoration: none;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.btn:active){
+  transform: translateY(1px);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.btn-primary){
+  border-color: rgb(249,115,22,.38);
+  background: linear-gradient(180deg, rgb(249,115,22,.98), rgb(249,115,22,.78));
+  color: #0b0f1a;
+  font-weight: 800;
+  box-shadow: 0 16px 44px rgb(249,115,22,.20);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.btn-primary:hover){
+  border-color: rgb(249,115,22,.52);
+  background: linear-gradient(180deg, rgb(249,115,22,1), rgb(249,115,22,.86));
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.btn-secondary){
+  background: rgb(255,255,255,.06);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.btn-ghost){
+  background: transparent;
+}
+
+/* Icon buttons look less “default” */
+.ff-shell[data-ff-page="fundraiser"] :where(.icon-btn){
+  border-radius: 999px;
+  border: 1px solid rgb(255,255,255,.12);
+  background: rgb(255,255,255,.04);
+  transition: background var(--ff-med) var(--ff-ease), border-color var(--ff-med) var(--ff-ease), transform var(--ff-fast) var(--ff-ease);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.icon-btn:hover){
+  background: rgb(255,255,255,.06);
+  border-color: rgb(255,255,255,.18);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.icon-btn:active){
+  transform: translateY(1px);
+}
+
+/* Pills: more consistent contrast */
+.ff-shell[data-ff-page="fundraiser"] :where(.pill){
+  border-radius: 999px;
+  border: 1px solid rgb(255,255,255,.14);
+  background: rgb(255,255,255,.04);
+  color: var(--ff-text-2);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.pill-accent){
+  border-color: rgb(249,115,22,.26);
+  background: rgb(249,115,22,.12);
+  color: rgb(255,255,255,.88);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.pill-live){
+  border-color: rgb(34,197,94,.22);
+  background: rgb(34,197,94,.10);
+}
+
+/* Chips: “quick amount” buttons should feel tappable */
+.ff-shell[data-ff-page="fundraiser"] :where(.chip){
+  border-radius: 999px;
+  border: 1px solid rgb(255,255,255,.14);
+  background: rgb(255,255,255,.04);
+  color: var(--ff-text-2);
+  transition: transform var(--ff-fast) var(--ff-ease),
+              background var(--ff-med) var(--ff-ease),
+              border-color var(--ff-med) var(--ff-ease),
+              box-shadow var(--ff-med) var(--ff-ease);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.chip:hover){
+  background: rgb(255,255,255,.06);
+  border-color: rgb(255,255,255,.20);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.chip[aria-pressed="true"]){
+  background: rgb(249,115,22,.14);
+  border-color: rgb(249,115,22,.34);
+  color: rgb(255,255,255,.92);
+  box-shadow: 0 14px 34px rgb(249,115,22,.12);
+}
+
+/* Segmented controls: clearer selected state */
+.ff-shell[data-ff-page="fundraiser"] :where(.segmented){
+  padding: 4px;
+  border-radius: 999px;
+  background: rgb(255,255,255,.04);
+  border: 1px solid rgb(255,255,255,.10);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.segmented > button){
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--ff-text-2);
+  transition: background var(--ff-med) var(--ff-ease), color var(--ff-med) var(--ff-ease);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.segmented > button[aria-pressed="true"]){
+  background: rgb(255,255,255,.08);
+  color: var(--ff-text);
+  box-shadow: 0 10px 20px rgb(0,0,0,.22);
+}
+
+/* ---------------------------------
+   6) Hero layout (sticky right console)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] .hero{
+  padding-top: clamp(18px, 3vw, 28px);
+  position: relative;
+}
+.ff-shell[data-ff-page="fundraiser"] .hero-grid{
+  gap: var(--ff-gap);
+}
+
+@media (width >= 980px){
+  .ff-shell[data-ff-page="fundraiser"] .hero-right .hero-console{
+    position: sticky;
+    top: calc(var(--topbar-h, 0px) + var(--header-h, 0px) + 16px);
+  }
+}
+
+/* Proof strip feels like “trust bar” */
+.ff-shell[data-ff-page="fundraiser"] .ff-proof-strip{
+  margin-top: clamp(14px, 2vw, 20px);
+}
+.ff-shell[data-ff-page="fundraiser"] .mini-title{
+  color: var(--ff-text);
+  font-weight: 800;
+  letter-spacing: -.015em;
+}
+
+/* ---------------------------------
+   7) Progress meter (overall)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(.meter){
+  height: 12px;
+  border-radius: 999px;
+  background: rgb(255,255,255,.06);
+  border: 1px solid rgb(255,255,255,.10);
+  overflow: hidden;
+  position: relative;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.meter > span){
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(249,115,22,1), rgb(251,113,133,.92));
+  box-shadow: 0 10px 22px rgb(249,115,22,.18);
+}
+.ff-shell[data-ff-page="fundraiser"] .meter .milestones i{
+  background: rgb(255,255,255,.18);
+}
+
+/* ---------------------------------
+   8) Forms (inputs, selects, textarea, check)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(input, select, textarea){
+  border-radius: 14px;
+  border: 1px solid rgb(255,255,255,.12);
+  background: rgb(255,255,255,.04);
+  color: var(--ff-text);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(input::placeholder, textarea::placeholder){
+  color: rgb(255,255,255,.38);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(input:focus, select:focus, textarea:focus){
+  border-color: rgb(249,115,22,.35);
+  box-shadow: var(--ff-ring);
+  background: rgb(255,255,255,.05);
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.input-row){
+  border-radius: 16px;
+  border: 1px solid rgb(255,255,255,.12);
+  background: rgb(255,255,255,.035);
+  overflow: hidden;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.input-prefix){
+  color: rgb(255,255,255,.60);
+}
+
+/* check rows read cleaner */
+.ff-shell[data-ff-page="fundraiser"] :where(.check){
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgb(255,255,255,.10);
+  background: rgb(255,255,255,.03);
+}
+
+/* ---------------------------------
+   9) Grid helpers (your grid-2/grid-3)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(.grid){
+  gap: var(--ff-gap);
+}
+
+@media (width >= 980px){
+  .ff-shell[data-ff-page="fundraiser"] :where(.grid.grid-2){
+    grid-template-columns: 1.15fr .85fr;
+    align-items: start;
+  }
+}
+
+@media (width >= 720px){
+  .ff-shell[data-ff-page="fundraiser"] :where(.grid.grid-3){
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ---------------------------------
+   10) Lists (leaderboards / gifts / sponsor wall)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(.stack > *){
+  border-radius: 16px;
+}
+
+/* Make leaderboard items look “ranked” */
+.ff-shell[data-ff-page="fundraiser"] #sponsorLeaderboard > *{
+  border: 1px solid rgb(255,255,255,.10);
+  background: rgb(255,255,255,.03);
+}
+
+/* Sponsor wall tiles */
+.ff-shell[data-ff-page="fundraiser"] #sponsorWall > *{
+  border-radius: 18px;
+  border: 1px solid rgb(255,255,255,.10);
+  background: rgb(255,255,255,.03);
+}
+
+/* ---------------------------------
+   11) Disclosure / FAQ details
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] :where(details.disclosure, details.faq){
+  border-radius: 18px;
+  border: 1px solid rgb(255,255,255,.10);
+  background: rgb(255,255,255,.03);
+  padding: 10px 12px;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(.disclosure__summary, details.faq > summary){
+  cursor: pointer;
+  list-style: none;
+}
+.ff-shell[data-ff-page="fundraiser"] :where(details[open]){
+  border-color: rgb(249,115,22,.16);
+}
+
+/* ---------------------------------
+   12) Drawer + Modal polish
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] .drawer-panel,
+.ff-shell[data-ff-page="fundraiser"] .modal-panel{
+  border-radius: var(--ff-r-xl);
+  border: 1px solid rgb(255,255,255,.14);
+  background: linear-gradient(180deg, rgb(255,255,255,.08), rgb(255,255,255,.04));
+  box-shadow: var(--ff-shadow-2);
+}
+
+@supports (backdrop-filter: blur(12px)){
+  .ff-shell[data-ff-page="fundraiser"] .drawer-panel,
+  .ff-shell[data-ff-page="fundraiser"] .modal-panel{
+    backdrop-filter: blur(12px);
+  }
+}
+.ff-shell[data-ff-page="fundraiser"] .modal-backdrop,
+.ff-shell[data-ff-page="fundraiser"] .drawer-backdrop{
+  background: rgb(0,0,0,.55);
+}
+
+/* ---------------------------------
+   13) Sticky donate bar + mobile tabs
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] .sticky-donate{
+  border-top: 1px solid rgb(255,255,255,.10);
+  background: rgb(5,8,16,.70);
+}
+
+@supports (backdrop-filter: blur(12px)){
+  .ff-shell[data-ff-page="fundraiser"] .sticky-donate{
+    backdrop-filter: blur(12px);
+  }
+}
+.ff-shell[data-ff-page="fundraiser"] .sticky-donate__inner{
+  border-radius: 18px;
+  border: 1px solid rgb(255,255,255,.10);
+  background: rgb(255,255,255,.03);
+}
+.ff-shell[data-ff-page="fundraiser"] .ff-mobile-tabs{
+  border-top: 1px solid rgb(255,255,255,.10);
+  background: rgb(5,8,16,.78);
+}
+
+@supports (backdrop-filter: blur(12px)){
+  .ff-shell[data-ff-page="fundraiser"] .ff-mobile-tabs{
+    backdrop-filter: blur(12px);
+  }
+}
+.ff-shell[data-ff-page="fundraiser"] .ff-mobile-tab{
+  color: var(--ff-text-2);
+  border-radius: 999px;
+  padding: 10px 12px;
+}
+.ff-shell[data-ff-page="fundraiser"] .ff-mobile-tab:hover{
+  background: rgb(255,255,255,.06);
+  color: var(--ff-text);
+  text-decoration: none;
+}
+
+/* Back to top */
+.ff-shell[data-ff-page="fundraiser"] .back-to-top{
+  border-radius: 999px;
+  border: 1px solid rgb(255,255,255,.12);
+  background: rgb(255,255,255,.05);
+}
+.ff-shell[data-ff-page="fundraiser"] .back-to-top:hover{
+  background: rgb(255,255,255,.07);
+}
+
+/* ---------------------------------
+   14) Skeleton shimmer (premium loading)
+---------------------------------- */
+.ff-shell[data-ff-page="fundraiser"] .skeleton{
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgb(255,255,255,.04);
+  border: 1px solid rgb(255,255,255,.08);
+}
+.ff-shell[data-ff-page="fundraiser"] .skeleton::after{
+  content:"";
+  position:absolute; inset:-40% -60%;
+  background: linear-gradient(90deg, transparent, rgb(255,255,255,.10), transparent);
+  transform: translateX(-40%);
+  animation: ffShimmer 1.2s linear infinite;
+}
+
+@keyframes ffShimmer{
+  to{ transform: translateX(40%); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ff-shell[data-ff-page="fundraiser"] .skeleton::after{ animation: none; }
+  .ff-shell[data-ff-page="fundraiser"] :where(.card.lift, .btn, .chip, .icon-btn){ transition: none !important; }
+}
+

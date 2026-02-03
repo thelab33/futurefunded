@@ -1,0 +1,21 @@
+{
+  "name": "Connect ATX Elite — Fundraiser",
+  "short_name": "ATX Elite",
+  "start_url": "{{ SHARE_URL or '/' }}",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "{{ brand_color or '#f97316' }}",
+  "icons": [
+    {
+      "src": "/static/imgages/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

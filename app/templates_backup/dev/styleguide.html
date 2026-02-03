@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set page_description = "Developer styleguide — components & tokens preview." %}
+{% block head_title %}Styleguide — {{ super() }}{% endblock %}
+
+{% block hero %}
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 relative fc-band fc-band--tint" >
+  <div class="hero-aura"></div>
+  <div class="container mx-auto px-4">
+    <p class="eyebrow">Developer</p>
+    <h1 class="display mb-2">Styleguide</h1>
+    <p class="lede max-w-2xl">Buttons, cards, forms, and brand tokens preview. Use this page during UI polish only.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 container mx-auto px-4 fc-band grid gap-8" >
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="card p-5">
+      <h2 class="text-xl font-extrabold mb-3">Buttons</h2>
+      <div class="flex flex-wrap gap-3">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <a href="#" class="btn btn-primary">Link Button</a>
+      </div>
+    </div>
+    <div class="card p-5">
+      <h2 class="text-xl font-extrabold mb-3">Badges & Chips</h2>
+      <div class="flex flex-wrap gap-2">
+        <span class="badge">Badge</span>
+        <span class="chip">Chip</span>
+        <span class="badge">Trusted</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-5">
+    <h2 class="text-xl font-extrabold mb-3">Form (floating labels)</h2>
+    <form class="max-w-md">
+      <div class="input-group">
+        <input id="sg-email" type="email" placeholder=" " required />
+        <label for="sg-email">Email</label>
+        <small class="input-helper">We never share your email.</small>
+      </div>
+      <div class="input-group">
+        <textarea id="sg-msg" placeholder=" " rows="3"></textarea>
+        <label for="sg-msg">Message</label>
+      </div>
+      <button class="btn btn-primary">Submit</button>
+    </form>
+  </div>
+
+  <div class="card p-5">
+    <h2 class="text-xl font-extrabold mb-3">Tokens</h2>
+    <pre class="text-sm opacity-80"><code>:root { --fc-brand: var(--fc-brand); }</code></pre>
+  </div>
+</section>
+{% endblock %}

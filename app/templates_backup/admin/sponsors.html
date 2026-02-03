@@ -1,0 +1,136 @@
+{# =============================================================================
+   FundChamps • Sponsors Management (Elite Edition + Filters)
+   - Admin-only sponsors table with approval & delete actions
+   - Quick search (name/email/status) with JS filter fallback
+   - CSP-safe, responsive, premium admin UX
+   ============================================================================= #}
+
+{% extends "admin/base.html" %}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+
+{% block title %}Sponsors Management | {{ super() }}{% endblock %}
+
+{% block content %}
+  <h1 class="mb-6 text-3xl font-extrabold text-yellow-400">
+    Sponsors Management
+  </h1>
+
+  {# ---- Search + Filters ---- #}
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <form action="{{ url_for('admin.sponsors') }}" method="GET" class="flex flex-wrap gap-3">
+      <input type="text" name="q" value="{{ request.args.get('q','') }}"
+             placeholder="Search name or email..."
+             class="rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400" />
+
+      <select name="status"
+              class="rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400">
+        <option value="">All statuses</option>
+        <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>Approved</option>
+        <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+
+      <button type="submit"
+              class="rounded bg-yellow-400 px-4 py-2 text-sm font-semibold text-zinc-900 shadow hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        Filter
+      </button>
+    </form>
+
+    {# Optional: Client-side instant search (CSP-safe w/nonce) #}
+    <script nonce="{{ NONCE }}">
+      document.addEventListener("DOMContentLoaded", function(){
+        const searchInput = document.querySelector('input[name="q"]');
+        const statusSelect = document.querySelector('select[name="status"]');
+        const rows = document.querySelectorAll("tbody tr[data-sponsor]");
+
+        function filterRows() {
+          const term = searchInput.value.toLowerCase();
+          const status = statusSelect.value;
+          rows.forEach(row => {
+            const name = row.dataset.name.toLowerCase();
+            const email = row.dataset.email.toLowerCase();
+            const rowStatus = row.dataset.status.toLowerCase();
+            const matchText = (!term || name.includes(term) || email.includes(term));
+            const matchStatus = (!status || rowStatus === status);
+            row.style.display = (matchText && matchStatus) ? "" : "none";
+          });
+        }
+
+        if (searchInput && statusSelect) {
+          searchInput.addEventListener("input", filterRows);
+          statusSelect.addEventListener("change", filterRows);
+        }
+      });
+    </script>
+  </div>
+
+  {# ---- Sponsors Table ---- #}
+  <div class="overflow-x-auto rounded-xl bg-zinc-800/80 shadow-lg ring-1 ring-zinc-700/50">
+    <table class="min-w-full table-auto rounded-xl bg-white/5 text-sm" role="table">
+      <thead>
+        <tr class="bg-yellow-200/90 text-zinc-900">
+          <th scope="col" class="px-4 py-3 text-left font-semibold">Name</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold">Email</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold">Amount</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold">Status</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold">Created</th>
+          <th scope="col" class="px-4 py-3 text-left font-semibold">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sponsors %}
+        <tr data-sponsor
+            data-name="{{ s.name|lower }}"
+            data-email="{{ (s.email or '')|lower }}"
+            data-status="{{ s.status|lower }}"
+            class="border-b border-zinc-700 hover:bg-zinc-700/40 transition-colors">
+          <td class="px-4 py-2 font-bold text-zinc-100">{{ s.name }}</td>
+          <td class="px-4 py-2 text-zinc-300">{{ s.email or "—" }}</td>
+          <td class="px-4 py-2 font-bold text-amber-400">${{ "%.2f"|format(s.amount) }}</td>
+          <td class="px-4 py-2">
+            <span class="rounded-full px-3 py-1 text-xs font-medium tracking-wide
+              {% if s.status == 'approved' %}bg-green-200 text-green-900
+              {% elif s.status == 'pending' %}bg-yellow-100 text-yellow-900
+              {% else %}bg-red-200 text-red-900{% endif %}">
+              {{ s.status|capitalize }}
+            </span>
+          </td>
+          <td class="px-4 py-2 text-sm text-zinc-400">{{ s.created_at.strftime("%Y-%m-%d") }}</td>
+          <td class="flex gap-2 px-4 py-2">
+            {% if s.status != 'approved' %}
+            <form action="{{ url_for('admin.approve_sponsor', sponsor_id=s.id) }}" method="POST" class="inline">
+              {{ form.hidden_tag() }}
+              <button type="submit"
+                      class="rounded bg-green-500 px-3 py-1 text-white text-sm shadow transition hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
+                Approve
+              </button>
+            </form>
+            {% endif %}
+            <form action="{{ url_for('admin.delete_sponsor', sponsor_id=s.id) }}" method="POST"
+                  onsubmit="return confirm('Are you sure you want to delete this sponsor?');">
+              {{ form.hidden_tag() }}
+              <button type="submit"
+                      class="rounded bg-red-500 px-3 py-1 text-white text-sm shadow transition hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400">
+                Delete
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="py-8 text-center text-zinc-400">
+            No sponsors found yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-6">
+    <a href="{{ url_for('admin.dashboard') }}"
+       class="inline-block text-yellow-400 font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-yellow-400 rounded px-2 py-1">
+      ← Back to Dashboard
+    </a>
+  </div>
+{% endblock %}

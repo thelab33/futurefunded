@@ -1,0 +1,161 @@
+<!-- Starforge: duplicate id(s) detected:  | {{ strip_id }} ×2 -->
+<h2 class="sr-only">Meter Strip</h2>
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block" data-ui="${name//_/ -}" >
+{# =============================================================================
+   app/templates/partials/meter_strip.html
+   FundChamps • Mini Meter Strip (Prestige)
+   - Idempotent + CSP-safe (uses NONCE or your script_open macro)
+   - Real-time: listens to 'fc:funds:update'
+   - Exposes window.updateMeterStrip(id, raised, goal)
+   ============================================================================= #}
+
+{% include "partials/ui_bootstrap.html" ignore missing with context %}
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set strip_id = strip_id|default('fc-meter-strip') %}
+{% set theme_hex = (team.theme_color if team and team.theme_color is defined else '#facc15') %}
+{% set raised = (funds_raised|default(0))|float %}
+{% set goal   = (fundraising_goal|default(10000))|float %}
+{% set pct_raw = (100.0 * (raised / goal)) if goal else 0 %}
+{% set pct     = (0 if pct_raw < 0 else (100 if pct_raw > 100 else pct_raw)) | round(1) %}
+
+<div id="{{ strip_id }}"
+     class="w-full rounded-xl overflow-hidden ring-1 ring-white/10 bg-black/30 backdrop-blur-sm"
+     style="--brand: {{ theme_hex }};"
+     data-initial='{{ {"raised": raised, "goal": goal}|tojson }}'
+     role="region" aria-label="Mini fundraiser meter">
+
+  <style nonce="{{ NONCE }}">
+    /* Scoped styles */
+    #{{ strip_id }} .track{
+      position:relative; height:.55rem; background:rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    #{{ strip_id }} .fill{
+      height:100%; width:{{ pct }}%;
+      background: linear-gradient(90deg,
+                  color-mix(in srgb, var(--brand) 92%, transparent),
+                  #ffffff 22%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.25),
+                  0 2px 10px color-mix(in srgb, var(--brand) 35%, transparent);
+      transition: width .6s cubic-bezier(.22,1,.36,1);
+    }
+    #{{ strip_id }} .row{
+      display:flex; justify-content:space-between; gap:.75rem;
+      color:#e5e7eb; font-size:.72rem; padding:.35rem .55rem;
+    }
+    #{{ strip_id }} .row strong{ font-weight:800; }
+    #{{ strip_id }} .nums{ font-variant-numeric: tabular-nums; }
+    @media (prefers-color-scheme: light){
+      #{{ strip_id }}{ background: rgba(0,0,0,.06); }
+      #{{ strip_id }} .track{ background: rgba(0,0,0,.08); }
+    }
+    @media (prefers-reduced-motion: reduce){
+      #{{ strip_id }} .fill{ transition:none !important; }
+    }
+  </style>
+
+  <div class="track" role="progressbar"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ ('%.1f' % pct) }}">
+    <div id="{{ strip_id }}-fill" class="fill"></div>
+  </div>
+
+  <div class="row">
+    <span class="nums">
+      <strong id="{{ strip_id }}-raised">${{ ('%0.0f' % raised) }}</strong> raised
+    </span>
+    <span class="nums">
+      <span id="{{ strip_id }}-pct">{{ ('%.1f' % pct) }}</span>% • Goal
+      <strong id="{{ strip_id }}-goal">${{ ('%0.0f' % goal) }}</strong>
+    </span>
+  </div>
+
+  {% if script_open is defined %}{{ script_open() }}{% else %}<script nonce="{{ NONCE }}">{% endif %}
+  (() => {
+    const id   = "{{ strip_id }}";
+    const root = document.getElementById(id);
+    if (!root || root.__init) return; root.__init = true;
+
+    const fill = document.getElementById(id + '-fill');
+    const rEl  = document.getElementById(id + '-raised');
+    const gEl  = document.getElementById(id + '-goal');
+    const pEl  = document.getElementById(id + '-pct');
+
+    const prefersReduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+
+    const state = (()=>{ try { return JSON.parse(root.dataset.initial||'{}'); } catch { return {}; } })();
+    state.raised = Math.max(0, Number(state.raised||0));
+    state.goal   = Math.max(0, Number(state.goal||0));
+
+    const clamp = (n,min,max)=>Math.min(Math.max(n,min),max);
+    const fmt = v => new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(+v||0);
+
+    function setVals(raised, goal){
+      const pct = goal ? clamp((raised/goal)*100,0,100) : 0;
+      if (fill) fill.style.width = pct.toFixed(1) + '%';
+      if (pEl)  pEl.textContent  = pct.toFixed(1).replace(/\.0$/,'');
+      if (rEl)  rEl.textContent  = fmt(raised);
+      if (gEl)  gEl.textContent  = fmt(goal);
+      const bar = root.querySelector('[role="progressbar"]');
+      if (bar) bar.setAttribute('aria-valuenow', pct.toFixed(1));
+    }
+
+    // Public API for manual syncs
+    window.updateMeterStrip = function(targetId, raised, goal){
+      if (targetId && targetId !== id) return;
+      const R = (typeof raised === 'number') ? raised : state.raised;
+      const G = (typeof goal   === 'number') ? goal   : state.goal;
+      state.raised = Math.max(0, +R||0);
+      state.goal   = Math.max(1, +G||1);
+      setVals(state.raised, state.goal);
+    };
+
+    // Listen for global updates (from hero, checkout, etc.)
+    addEventListener('fc:funds:update', (e)=>{
+      const d = e.detail || {};
+      const R = (typeof d.raised === 'number') ? d.raised : state.raised;
+      const G = (typeof d.goal   === 'number') ? d.goal   : state.goal;
+      if (R !== state.raised || G !== state.goal) {
+        state.raised = Math.max(0, +R||0);
+        state.goal   = Math.max(1, +G||1);
+        setVals(state.raised, state.goal);
+      }
+    }, { passive:true });
+
+    // Init
+    setVals(state.raised, state.goal);
+
+    // Optional gentle number tween (skipped if reduced motion)
+    if (!prefersReduce) {
+      const tweenMoney = (el, to, ms=500) => {
+        if (!el) return;
+        const from = parseFloat((el.textContent||'0').replace(/[^0-9.-]/g,''))||0;
+        const t0 = performance.now();
+        const step = (t)=>{
+          const k = Math.min(1, (t - t0)/ms), e = 1 - Math.pow(1-k, 3);
+          el.textContent = fmt(from + (to - from)*e);
+          if (k < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      };
+
+      // Re-wrap setVals to animate amounts
+      const _setVals = setVals;
+      setVals = function(raised, goal){
+        const pct = goal ? clamp((raised/goal)*100,0,100) : 0;
+        if (fill) fill.style.width = pct.toFixed(1) + '%';
+        if (pEl)  pEl.textContent  = pct.toFixed(1).replace(/\.0$/,'');
+        if (rEl)  tweenMoney(rEl, raised);
+        if (gEl)  gEl.textContent = fmt(goal);
+        const bar = root.querySelector('[role="progressbar"]');
+        if (bar) bar.setAttribute('aria-valuenow', pct.toFixed(1));
+      };
+      // Re-apply once to use tweened version
+      setVals(state.raised, state.goal);
+    }
+  })();
+  {% if script_close is defined %}{{ script_close() }}{% else %}</script>{% endif %}
+</div>
+
+</section>
+

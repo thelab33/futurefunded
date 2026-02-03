@@ -1,0 +1,17 @@
+{# Replaces the div with id="kpi-fragment-<cid>" #}
+<div
+  id="kpi-fragment-{{ cid }}"
+  class="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/80"
+  aria-live="polite"
+  data-kpi-campaign-id="{{ cid }}"
+  hx-get="{{ url_for('api.kpi_fragment', campaign_id=cid) }}"
+  hx-trigger="revealed, every 10s"
+  hx-swap="outerHTML"
+>
+  <span id="kpi-raised"><strong>{{ raised_label }}</strong> raised</span>
+  <span aria-hidden="true">•</span>
+  <span id="kpi-donors">{{ donors_label }} donors</span>
+  <span aria-hidden="true">•</span>
+  <span id="kpi-progress">{{ pct }}% to goal</span>
+</div>
+

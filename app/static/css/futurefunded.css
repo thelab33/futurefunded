@@ -1,0 +1,1038 @@
+/* ===================================================================
+   FUTUREFUNDED UI v2.0
+   Design tokens • Layout • Hero • Teams • Impact • Donate • Sponsors
+   Pure CSS (no Tailwind, no preprocessors)
+=================================================================== */
+
+/* -------------------------------------------------------------
+   1. DESIGN TOKENS — GLOBAL
+-------------------------------------------------------------- */
+:root {
+  /* Brand Colors */
+  --ff-brand-amber: #ff8a3c;
+  --ff-brand-pink: #ff477e;
+  --ff-brand-violet: #7f53ff;
+
+  /* Signature Gradient */
+  --ff-gradient-brand: linear-gradient(
+    90deg,
+    var(--ff-brand-amber),
+    var(--ff-brand-pink),
+    var(--ff-brand-violet)
+  );
+
+  /* Neutral Palette (Dark Theme baseline) */
+  --ff-black: #06070a;
+  --ff-surface-0: #0b0d10;
+  --ff-surface-1: #101318;
+  --ff-surface-2: #171b22;
+  --ff-surface-3: #20252f;
+  --ff-text-0: #fff;
+  --ff-text-1: #e5e7eb;
+  --ff-text-2: #9ca3af;
+  --ff-text-3: #6b7280;
+
+  /* Borders */
+  --ff-border-soft: rgb(255, 255, 255, 0.06);
+  --ff-border-strong: rgb(255, 255, 255, 0.12);
+
+  /* Radii */
+  --ff-radius-sm: 0.5rem;
+  --ff-radius-md: 1rem;
+  --ff-radius-lg: 1.5rem;
+  --ff-radius-xl: 2rem;
+  --ff-radius-xxl: 3rem;
+  --ff-radius-pill: 999px;
+
+  /* Shadows */
+  --ff-shadow-soft: 0 14px 32px rgb(0, 0, 0, 0.45);
+  --ff-shadow-strong: 0 22px 60px rgb(0, 0, 0, 0.7);
+
+  /* Motion */
+  --ff-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ff-ease-soft: cubic-bezier(0.22, 0.9, 0.3, 1);
+  --ff-duration-fast: 140ms;
+  --ff-duration-base: 220ms;
+  --ff-duration-medium: 260ms;
+  --ff-duration-slow: 420ms;
+
+  /* Typography Scale */
+  --ff-font-xs: 0.75rem;
+  --ff-font-sm: 0.875rem;
+  --ff-font-base: 1rem;
+  --ff-font-lg: 1.125rem;
+  --ff-font-xl: 1.375rem;
+  --ff-font-2xl: 1.75rem;
+  --ff-font-3xl: 2.25rem;
+  --ff-font-4xl: 3rem;
+
+  /* Vertical Rhythm */
+  --ff-space-xs: 0.3rem;
+  --ff-space-sm: 0.75rem;
+  --ff-space-md: 1.25rem;
+  --ff-space-lg: 2rem;
+  --ff-space-xl: 3.5rem;
+  --ff-space-xxl: 5rem;
+
+  /* Section padding */
+  --ff-section-py: 6rem;
+}
+
+/* Light theme override */
+[data-theme="light"] {
+  --ff-black: #fff;
+  --ff-surface-0: #f9fafb;
+  --ff-surface-1: #fff;
+  --ff-surface-2: #f3f4f6;
+  --ff-surface-3: #e5e7eb;
+  --ff-text-0: #0f172a;
+  --ff-text-1: #111827;
+  --ff-text-2: #4b5563;
+  --ff-text-3: #6b7280;
+  --ff-border-soft: rgb(0, 0, 0, 0.05);
+  --ff-border-strong: rgb(0, 0, 0, 0.1);
+  --ff-shadow-soft: 0 12px 28px rgb(15, 23, 42, 0.18);
+  --ff-shadow-strong: 0 22px 56px rgb(15, 23, 42, 0.28);
+}
+
+/* -------------------------------------------------------------
+   2. GLOBAL BASE STYLES
+-------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(circle at top, #020617 0, #020617 35%, #020617 65%, #020617 100%);
+  background-color: var(--ff-black);
+  color: var(--ff-text-1);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, Inter, sans-serif;
+  text-rendering: optimizelegibility;
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  min-height: 100vh;
+}
+img,
+video {
+  max-width: 100%;
+  display: block;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+}
+
+/* Text utilities mapping your old Tailwind-esque helpers */
+.text-ff-text-0 { color: var(--ff-text-0); }
+.text-ff-text-1 { color: var(--ff-text-1); }
+.text-ff-text-2 { color: var(--ff-text-2); }
+.text-ff-text-3 { color: var(--ff-text-3); }
+
+/* Simple spacing utilities (minimal; you can expand later) */
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mt-8 { margin-top: 2rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mb-8 { margin-bottom: 2rem; }
+.mb-10 { margin-bottom: 2.5rem; }
+.mb-12 { margin-bottom: 3rem; }
+
+/* -------------------------------------------------------------
+   3. LAYOUT & TYPOGRAPHY SYSTEM
+-------------------------------------------------------------- */
+.ff-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgb(15, 23, 42, 0.8), #020617 65%);
+  color: var(--ff-text-1);
+}
+.ff-container {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.ff-section {
+  position: relative;
+  padding-top: var(--ff-section-py);
+  padding-bottom: var(--ff-section-py);
+}
+
+/* Section label pills (Impact, Teams, Sponsors, etc.) */
+.ff-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ff-text-2);
+  border-radius: var(--ff-radius-pill);
+  border: 1px solid rgb(255, 255, 255, 0.12);
+  background: radial-gradient(circle at top left,
+    rgb(255, 255, 255, 0.1),
+    rgb(15, 23, 42, 0.95));
+}
+
+/* Headings rhythm */
+.ff-section h2 {
+  margin: 0;
+  font-size: var(--ff-font-3xl);
+  line-height: 1.1;
+  color: var(--ff-text-0);
+}
+
+/* Generic paragraph style */
+.ff-body {
+  font-size: var(--ff-font-sm);
+  line-height: 1.6;
+  color: var(--ff-text-2);
+}
+
+/* Surface layers & cards */
+.ff-layer {
+  background: rgb(15, 23, 42, 0.85);
+  border-radius: var(--ff-radius-lg);
+  border: 1px solid var(--ff-border-soft);
+  backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+}
+.ff-card {
+  background: var(--ff-surface-1);
+  border-radius: var(--ff-radius-lg);
+  border: 1px solid var(--ff-border-soft);
+  box-shadow: var(--ff-shadow-soft);
+  padding: var(--ff-space-lg);
+  transition:
+    transform var(--ff-duration-medium) var(--ff-ease-out),
+    box-shadow var(--ff-duration-medium) var(--ff-ease-out),
+    border-color var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ff-shadow-strong);
+  border-color: var(--ff-border-strong);
+}
+
+/* Glow helper for highlighted cards */
+.ff-glow {
+  box-shadow:
+    0 0 40px rgb(255, 104, 120, 0.3),
+    0 18px 45px rgb(0, 0, 0, 0.7);
+}
+
+/* -------------------------------------------------------------
+   4. HERO 2.0 — CINEMATIC LAYER
+-------------------------------------------------------------- */
+.ff-hero {
+  position: relative;
+  min-height: 80vh;
+  padding-top: calc(var(--ff-section-py) + 1.5rem);
+  padding-bottom: calc(var(--ff-section-py) + 2rem);
+  overflow: hidden;
+}
+.ff-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.ff-hero-bg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.7;
+  transform-origin: center;
+}
+.ff-hero-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top, rgb(255, 184, 120, 0.35), transparent 55%),
+    linear-gradient(to bottom, rgb(0, 0, 0, 0.75), #020617 65%);
+}
+
+/* Hero content */
+.ff-hero .ff-container {
+  position: relative;
+  z-index: 10;
+}
+.ff-hero-title {
+  font-size: clamp(2.5rem, 4vw, 3.8rem);
+  line-height: 1.05;
+  margin: 0;
+  color: var(--ff-text-0);
+}
+.ff-hero-subtitle {
+  margin-top: 1.5rem;
+  max-width: 34rem;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--ff-text-2);
+}
+
+/* Hero stat row */
+.ff-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.75rem;
+  margin-top: 2.5rem;
+  font-size: 0.86rem;
+  color: var(--ff-text-2);
+}
+.ff-hero-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.ff-hero-stat-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgb(34, 197, 94, 0.3);
+}
+
+/* Hero stat cards grid */
+.ff-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+/* -------------------------------------------------------------
+   5. MOTION SYSTEM — REVEALS & PARALLAX
+-------------------------------------------------------------- */
+
+/* Fade-up blocks */
+[data-animate="fade-up"] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--ff-duration-medium) var(--ff-ease-out),
+    transform var(--ff-duration-medium) var(--ff-ease-out);
+}
+[data-animate="fade-up"].is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger container using .ff-stagger (not .stagger) */
+.ff-stagger > * {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.ff-stagger.is-visible > * {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--ff-duration-medium) var(--ff-ease-out),
+    transform var(--ff-duration-medium) var(--ff-ease-out);
+}
+.ff-stagger.is-visible > *:nth-child(1) { transition-delay: 60ms; }
+.ff-stagger.is-visible > *:nth-child(2) { transition-delay: 120ms; }
+.ff-stagger.is-visible > *:nth-child(3) { transition-delay: 180ms; }
+.ff-stagger.is-visible > *:nth-child(4) { transition-delay: 240ms; }
+.ff-stagger.is-visible > *:nth-child(5) { transition-delay: 300ms; }
+.ff-stagger.is-visible > *:nth-child(6) { transition-delay: 360ms; }
+
+/* Parallax wrapper used on hero video */
+.ff-parallax {
+  will-change: transform;
+  transform: translateY(0);
+  transition: transform var(--ff-duration-slow) var(--ff-ease-soft);
+}
+
+/* Reduced motion safety net */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  [data-animate],
+  .ff-stagger > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .ff-parallax {
+    transform: none !important;
+  }
+}
+
+/* -------------------------------------------------------------
+   6. BUTTON & TAG SYSTEM
+-------------------------------------------------------------- */
+.ff-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.8rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--ff-radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  color: var(--ff-text-1);
+  transition:
+    background var(--ff-duration-medium) var(--ff-ease-out),
+    transform var(--ff-duration-medium) var(--ff-ease-out),
+    box-shadow var(--ff-duration-medium) var(--ff-ease-out),
+    color var(--ff-duration-medium) var(--ff-ease-out),
+    opacity var(--ff-duration-medium) var(--ff-ease-out);
+}
+
+/* Hover / active physics */
+.ff-btn:hover {
+  transform: translateY(-2px);
+}
+.ff-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Focus ring */
+.ff-btn:focus-visible,
+:where(a, button, input, textarea, select).ff-focus:focus-visible {
+  outline: 2px solid var(--ff-brand-pink);
+  outline-offset: 3px;
+}
+
+/* Primary */
+.ff-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.8rem 1.6rem;
+  font-size: 0.96rem;
+  font-weight: 600;
+  border-radius: var(--ff-radius-pill);
+  border: none;
+  background: var(--ff-gradient-brand);
+  color: #000;
+  box-shadow:
+    0 10px 32px rgb(255, 84, 120, 0.4),
+    0 0 16px rgb(255, 84, 120, 0.5);
+  cursor: pointer;
+  transition:
+    opacity var(--ff-duration-medium) var(--ff-ease-out),
+    transform var(--ff-duration-medium) var(--ff-ease-out),
+    box-shadow var(--ff-duration-medium) var(--ff-ease-out);
+}
+.ff-btn-primary:hover {
+  opacity: 0.94;
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 36px rgb(255, 84, 120, 0.55),
+    0 0 22px rgb(255, 84, 120, 0.6);
+}
+.ff-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Secondary (glass) */
+.ff-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.8rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--ff-radius-pill);
+  border: 1px solid rgb(255, 255, 255, 0.16);
+  background: radial-gradient(circle at top left,
+      rgb(255, 255, 255, 0.16),
+      rgb(15, 23, 42, 0.94));
+  color: var(--ff-text-1);
+  backdrop-filter: blur(12px) saturate(150%);
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgb(0, 0, 0, 0.5);
+  transition:
+    background var(--ff-duration-medium) var(--ff-ease-out),
+    transform var(--ff-duration-medium) var(--ff-ease-out),
+    box-shadow var(--ff-duration-medium) var(--ff-ease-out),
+    color var(--ff-duration-medium) var(--ff-ease-out),
+    opacity var(--ff-duration-medium) var(--ff-ease-out);
+}
+.ff-btn-secondary:hover {
+  background: radial-gradient(circle at top left,
+      rgb(255, 255, 255, 0.2),
+      rgb(15, 23, 42, 0.98));
+  transform: translateY(-2px);
+  box-shadow: 0 12px 34px rgb(0, 0, 0, 0.7);
+}
+
+/* Ghost (header links) */
+.ff-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.82rem;
+  border-radius: var(--ff-radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--ff-text-2);
+  cursor: pointer;
+  transition:
+    color var(--ff-duration-fast) var(--ff-ease-out),
+    text-shadow var(--ff-duration-fast) var(--ff-ease-out),
+    opacity var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-btn-ghost:hover {
+  color: var(--ff-text-0);
+  opacity: 1;
+  text-shadow: 0 0 12px rgb(127, 83, 255, 0.7);
+}
+
+/* Subtle buttons (filters, small CTAs) */
+.ff-btn-subtle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  border-radius: var(--ff-radius-pill);
+  border: 1px solid rgb(255, 255, 255, 0.08);
+  background: rgb(255, 255, 255, 0.03);
+  color: var(--ff-text-2);
+  cursor: pointer;
+  transition:
+    background var(--ff-duration-fast) var(--ff-ease-out),
+    color var(--ff-duration-fast) var(--ff-ease-out),
+    transform var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-btn-subtle:hover {
+  background: rgb(255, 255, 255, 0.08);
+  color: var(--ff-text-0);
+  transform: translateY(-1px);
+}
+
+/* Sizes */
+.ff-btn-sm {
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+}
+.ff-btn-lg {
+  padding: 1rem 1.9rem;
+  font-size: 1.08rem;
+}
+
+/* Chips / tags */
+.ff-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--ff-radius-pill);
+  background: rgb(255, 255, 255, 0.08);
+  color: var(--ff-text-1);
+  border: 1px solid rgb(255, 255, 255, 0.12);
+}
+.ff-chip-soft {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.72rem;
+  border-radius: var(--ff-radius-pill);
+  background: rgb(255, 255, 255, 0.06);
+  border: 1px solid rgb(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+}
+
+/* Tag-style labels */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--ff-radius-pill);
+  font-size: 0.75rem;
+  background: rgb(255, 255, 255, 0.05);
+  color: var(--ff-text-2);
+}
+.tag.accent {
+  background: var(--ff-brand-amber);
+  color: #000;
+  font-weight: 600;
+}
+.tag-label {
+  font-size: 0.75rem;
+  color: var(--ff-text-3);
+  margin-right: 0.25rem;
+}
+
+/* Hover helpers */
+.ff-hover-float {
+  transition:
+    transform 0.3s var(--ff-ease-out),
+    box-shadow 0.3s var(--ff-ease-out);
+}
+.ff-hover-float:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 38px rgb(0, 0, 0, 0.5);
+}
+.ff-hover-glow:hover {
+  box-shadow: 0 0 24px rgb(255, 71, 126, 0.6);
+}
+.ff-hover-brighten:hover {
+  filter: brightness(1.12);
+}
+
+/* -------------------------------------------------------------
+   7. FORM ELEMENTS
+-------------------------------------------------------------- */
+.ff-input-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ff-text-2);
+}
+.ff-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+  border-radius: var(--ff-radius-lg);
+  border: 1px solid rgb(255, 255, 255, 0.12);
+  background: rgb(15, 23, 42, 0.9);
+  color: var(--ff-text-0);
+  outline: none;
+  transition:
+    border-color var(--ff-duration-fast) var(--ff-ease-out),
+    box-shadow var(--ff-duration-fast) var(--ff-ease-out),
+    background var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-input::placeholder {
+  color: var(--ff-text-3);
+}
+.ff-input:focus-visible {
+  border-color: var(--ff-brand-pink);
+  box-shadow: 0 0 0 1px rgb(255, 71, 126, 0.7);
+}
+
+/* Textarea variant */
+.ff-textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.9rem;
+  border-radius: var(--ff-radius-lg);
+  border: 1px solid rgb(255, 255, 255, 0.12);
+  background: rgb(15, 23, 42, 0.9);
+  color: var(--ff-text-0);
+  resize: vertical;
+  outline: none;
+  transition:
+    border-color var(--ff-duration-fast) var(--ff-ease-out),
+    box-shadow var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-textarea::placeholder {
+  color: var(--ff-text-3);
+}
+.ff-textarea:focus-visible {
+  border-color: var(--ff-brand-pink);
+  box-shadow: 0 0 0 1px rgb(255, 71, 126, 0.7);
+}
+
+/* -------------------------------------------------------------
+   8. TEAMS 2.0 — CARDS & SLIDESHOW
+-------------------------------------------------------------- */
+.ff-section-teams {
+  background: radial-gradient(circle at top,
+    rgb(15, 23, 42, 0.85),
+    #020617 65%);
+}
+.ff-teams-header {
+  max-width: 40rem;
+}
+
+/* Team cards */
+.ff-team-card {
+  position: relative;
+  border-radius: var(--ff-radius-lg);
+  padding: 1px;
+  background: radial-gradient(circle at top left,
+      rgb(255, 255, 255, 0.3),
+      rgb(15, 23, 42, 0.7));
+  border: 1px solid rgb(255, 255, 255, 0.12);
+  box-shadow: 0 18px 40px rgb(0, 0, 0, 0.7);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform var(--ff-duration-slow) var(--ff-ease-soft),
+    box-shadow var(--ff-duration-slow) var(--ff-ease-soft),
+    opacity var(--ff-duration-fast) var(--ff-ease-out);
+  will-change: transform, box-shadow, opacity;
+}
+.ff-team-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 0 40px rgb(255, 138, 60, 0.45),
+    0 22px 60px rgb(0, 0, 0, 0.85);
+}
+
+/* Inner surface */
+.ff-team-inner {
+  padding: 1.2rem 1.2rem 1.25rem;
+  border-radius: calc(var(--ff-radius-lg) - 1px);
+  background:
+    radial-gradient(circle at 0 0, rgb(255, 255, 255, 0.1), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgb(15, 23, 42, 0.9), #020617 70%);
+  border: 1px solid rgb(255, 255, 255, 0.06);
+}
+
+/* Header text */
+.ff-team-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+.team-title {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ff-text-0);
+}
+.team-desc {
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--ff-text-2);
+}
+
+/* Media block */
+.ff-team-media {
+  position: relative;
+  margin-top: 0.9rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, rgb(255, 255, 255, 0.16), transparent 60%),
+    radial-gradient(circle at 100% 100%, rgb(15, 23, 42, 0.95), #020617);
+}
+.ff-team-slideshow {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+.ff-team-slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 480ms var(--ff-ease-out),
+    transform 480ms var(--ff-ease-out);
+}
+.ff-team-slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Media nav controls */
+.ff-team-media-nav {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem;
+  pointer-events: none;
+}
+.ff-team-media-btn {
+  pointer-events: auto;
+  height: 1.9rem;
+  width: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255, 255, 255, 0.18);
+  background: radial-gradient(circle at 30% 0,
+      rgb(255, 255, 255, 0.16),
+      rgb(15, 15, 15, 0.84));
+  font-size: 0.9rem;
+  display: grid;
+  place-items: center;
+  color: #e5e7eb;
+  box-shadow: 0 10px 30px rgb(0, 0, 0, 0.7);
+  cursor: pointer;
+  transition:
+    transform var(--ff-duration-fast) var(--ff-ease-out),
+    box-shadow var(--ff-duration-fast) var(--ff-ease-out),
+    background var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-team-media-btn:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 14px 36px rgb(0, 0, 0, 0.9);
+}
+.ff-team-media-btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 8px 18px rgb(0, 0, 0, 0.8);
+}
+
+/* Progress */
+.ff-team-tags {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.ff-team-progress {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ff-team-progress .progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--ff-text-3);
+}
+.progress-bar {
+  width: 100%;
+  height: 0.35rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgb(255, 255, 255, 0.08);
+}
+.progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ff-gradient-brand);
+  transition: width 550ms var(--ff-ease-out);
+}
+.ff-team-btn {
+  margin-top: 0.4rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--ff-radius-pill);
+  border: none;
+  background: var(--ff-gradient-brand);
+  color: #000;
+  cursor: pointer;
+  transition:
+    transform var(--ff-duration-fast) var(--ff-ease-out),
+    box-shadow var(--ff-duration-fast) var(--ff-ease-out),
+    opacity var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-team-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.96;
+  box-shadow: 0 10px 32px rgb(0, 0, 0, 0.6);
+}
+
+/* -------------------------------------------------------------
+   9. IMPACT GRID
+-------------------------------------------------------------- */
+.ff-section-impact {
+  background: radial-gradient(circle at 50% 10%,
+    rgb(255, 140, 90, 0.25),
+    rgb(20, 20, 35, 0.9) 60%);
+}
+.ff-impact-card {
+  position: relative;
+  border-radius: var(--ff-radius-lg);
+  padding: 1.3rem 1.35rem;
+  background: radial-gradient(circle at top left,
+      rgb(255, 255, 255, 0.08),
+      rgb(15, 23, 42, 0.98));
+  border: 1px solid rgb(255, 255, 255, 0.12);
+  box-shadow: 0 18px 40px rgb(0, 0, 0, 0.7);
+  font-size: 0.86rem;
+  color: var(--ff-text-2);
+  transition:
+    transform var(--ff-duration-medium) var(--ff-ease-out),
+    box-shadow var(--ff-duration-medium) var(--ff-ease-out),
+    border-color var(--ff-duration-medium) var(--ff-ease-out);
+}
+.ff-impact-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px rgb(0, 0, 0, 0.85);
+  border-color: var(--ff-brand-amber);
+}
+.ff-impact-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  background: radial-gradient(circle at 30% 0,
+      rgb(255, 255, 255, 0.85),
+      rgb(255, 138, 60, 0.9));
+  color: #111827;
+}
+
+/* -------------------------------------------------------------
+   10. DONATE ENGINE
+-------------------------------------------------------------- */
+.ff-section-donate {
+  background: radial-gradient(circle at 50% 0%,
+    rgb(255, 140, 90, 0.35),
+    rgb(8, 8, 12, 0.98) 70%);
+}
+.ff-donate-card {
+  position: relative;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2.1rem 2.2rem 2rem;
+  border-radius: var(--ff-radius-xl);
+  background: radial-gradient(circle at top left,
+      rgb(255, 255, 255, 0.16),
+      rgb(15, 23, 42, 0.96));
+  border: 1px solid rgb(255, 255, 255, 0.18);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow:
+    0 20px 60px rgb(0, 0, 0, 0.8),
+    0 0 36px rgb(255, 71, 126, 0.18);
+}
+.ff-progress-fill {
+  background: var(--ff-gradient-brand);
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  transition: width 650ms var(--ff-ease-out);
+}
+
+/* Amount buttons */
+.ff-amount-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--ff-radius-pill);
+  border: 1px solid rgb(255, 255, 255, 0.14);
+  background: rgb(255, 255, 255, 0.04);
+  color: var(--ff-text-1);
+  cursor: pointer;
+  transition:
+    background var(--ff-duration-fast) var(--ff-ease-out),
+    transform var(--ff-duration-fast) var(--ff-ease-out),
+    box-shadow var(--ff-duration-fast) var(--ff-ease-out),
+    color var(--ff-duration-fast) var(--ff-ease-out),
+    border-color var(--ff-duration-fast) var(--ff-ease-out);
+}
+.ff-amount-btn:hover {
+  background: rgb(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgb(0, 0, 0, 0.55);
+}
+.ff-amount-btn.active {
+  background: var(--ff-gradient-brand);
+  color: #000;
+  border-color: transparent;
+  box-shadow:
+    0 12px 32px rgb(255, 71, 126, 0.55),
+    0 0 24px rgb(255, 71, 126, 0.7);
+}
+
+/* Raffle teaser block */
+#raffle-teaser {
+  border-radius: var(--ff-radius-lg);
+}
+
+/* -------------------------------------------------------------
+   11. SPONSORS WALL
+-------------------------------------------------------------- */
+#sponsors {
+  background: radial-gradient(circle at 30% 0%,
+    rgb(255, 110, 80, 0.3),
+    rgb(10, 10, 15, 0.95) 65%);
+}
+#sponsors .ff-card {
+  padding: 1.8rem 1.9rem;
+}
+#sponsor-table tr td {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.9rem;
+  background: rgb(15, 23, 42, 0.92);
+  border: 1px solid rgb(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+  color: var(--ff-text-1);
+}
+#sponsor-table tr td:first-child {
+  border-top-right-radius: 0.7rem;
+  border-bottom-right-radius: 0.7rem;
+}
+#sponsor-table tr td:last-child {
+  text-align: right;
+}
+
+/* -------------------------------------------------------------
+   12. FAQ GRID
+-------------------------------------------------------------- */
+#faq {
+  background: radial-gradient(circle at 50% 0,
+    rgb(255, 140, 90, 0.15),
+    #020617 70%);
+}
+
+/* -------------------------------------------------------------
+   13. FOOTER
+-------------------------------------------------------------- */
+.ff-footer {
+  border-top: 1px solid rgb(255, 255, 255, 0.08);
+  padding-top: 3rem;
+  padding-bottom: 2.5rem;
+  background: radial-gradient(circle at top,
+    rgb(15, 23, 42, 0.95),
+    #020617 70%);
+}
+.ff-footer p {
+  margin: 0;
+}
+
+/* Simple layout helpers for footer if no utility framework */
+.ff-footer-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (width >= 768px) {
+  .ff-footer-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: flex-start;
+  }
+}
+

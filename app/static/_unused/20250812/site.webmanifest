@@ -1,0 +1,6 @@
+{
+  "name": "Connect ATX Elite",
+  "short_name": "ATXElite",
+  "start_url": "/",
+  "icons": [{ "src": "/static/favicon.png", "type": "image/png" }]
+}

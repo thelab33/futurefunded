@@ -1,0 +1,64 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<section id="tiers" class="section">
+  <div class="sf-container">
+    <h2 class="sf-h2 mb-1">Sponsorship Tiers</h2>
+    <p class="text-zinc-300 mb-4 sf-reading">
+      Pick a tier, get VIP recognition and instant receipts.
+    </p>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% set tiers = [ {'name':'Gold','price':1000,'perks':['Logo on
+      jerseys','Social features','Priority shoutouts'],'popular':True},
+      {'name':'Platinum','price':2500,'perks':['Large logo placement','Court
+      banner','All Gold perks'],'popular':False},
+      {'name':'Silver','price':500,'perks':['Website badge','Social
+      mention'],'popular':False}, {'name':'Bronze','price':250,'perks':['Wall
+      badge','Thank-you shoutout'],'popular':False},
+      {'name':'Custom','price':0,'perks':['Tailored benefits'],'popular':False}
+      ] %} {% for t in tiers %}
+      <article class="sf-card sf-grad sf-lift relative">
+        {% if t.popular %}
+        <div class="vip-ribbon" aria-hidden="true">Most Popular</div>
+        {% endif %}
+        <div class="sf-card-inner space-y-3">
+          <h3 class="text-lg font-black tracking-tight">{{ t.name }}</h3>
+          <div class="text-2xl font-black">
+            <span class="text-zinc-300">$</span>{{ t.price if t.price else '—'
+            }}
+            <span class="text-sm text-zinc-400 font-medium"
+              >{{ 'one-time' if t.price else 'name your gift' }}</span
+            >
+          </div>
+          <ul class="text-sm text-zinc-300 space-y-1">
+            {% for p in t.perks %}
+            <li>• {{ p }}</li>
+            {% endfor %}
+          </ul>
+          <div class="pt-2 flex gap-2">
+            <a
+              href="{{ url_for('main.donate') }}?tier={{ t.name|lower }}"
+              class="sf-btn sf-btn-primary w-full"
+              >Become a {{ t.name }} Sponsor</a
+            >
+            <button
+              class="sf-btn sf-btn-ghost"
+              data-analytics="cta:tiers:share"
+              data-share='{"title":"Support {{ team.team_name if team else "our team" }}","url":"{{ request.base_url if request is defined else "/" }}"}'
+            >
+              Share
+            </button>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>

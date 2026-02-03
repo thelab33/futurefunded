@@ -1,0 +1,231 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block" data-ui="sponsor-ticker" >
+{# =========================== ELITE SPONSOR TICKER BAR (Self-contained) =========================== #}
+
+{# Fallback data (array of {name, url?, logo?}) #}
+{% set sponsors_list = sponsors if sponsors is defined and sponsors else [
+  {"name": "Gold’s Gym", "url": "#"},
+  {"name": "Eastside Dental", "url": "#"},
+  {"name": "TechBridge Austin", "url": "#"},
+  {"name": "Coach Carter Foundation", "url": "#"}
+] %}
+
+{# Safe route detection (prefer a helper 'safe_url_for' if you have it) #}
+{% set sponsors_url = (
+  safe_url_for('api.sponsors_ticker') if (safe_url_for is defined) else
+  '/api/sponsors'
+) %}
+{% set socket_ns = socket_ns if socket_ns is defined else '/sponsors' %}
+
+<div
+  id="sponsor-ticker"
+  class="relative w-full overflow-hidden border-y border-yellow-400/20 bg-black/80 text-yellow-200"
+  aria-live="polite" aria-atomic="true" role="status"
+  data-source="{{ sponsors_url }}"
+  data-socket-ns="{{ socket_ns }}"
+  data-speed=""  {# optional seconds override; blank = auto-compute #}
+>
+  <style nonce="{{ NONCE }}">
+    /* Scope variables to this component */
+    #sponsor-ticker { --ppx: 80;  /* px/sec baseline */ --speed: 18s; }
+
+    #sponsor-ticker .head { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; }
+    #sponsor-ticker .label { white-space:nowrap; font-weight:600; }
+    #sponsor-ticker .viewport { position:relative; flex:1; overflow:hidden; }
+    #sponsor-ticker .fade-l, #sponsor-ticker .fade-r {
+      position:absolute; top:0; bottom:0; width:2rem; pointer-events:none;
+      background:linear-gradient(to right, rgba(0,0,0,.8), transparent);
+    }
+    #sponsor-ticker .fade-r { right:0; transform:scaleX(-1); }
+    #sponsor-ticker .track {
+      width:200%;
+      will-change:transform;
+      animation: fc-ticker-scroll var(--speed) linear infinite;
+    }
+    #sponsor-ticker.paused .track { animation-play-state: paused; }
+
+    #sponsor-ticker .inner { display:inline-flex; align-items:center; gap:1rem; padding-right:2rem; white-space:nowrap; }
+    #sponsor-ticker .dot { opacity:.6; }
+    #sponsor-ticker .item { white-space:nowrap; display:inline-flex; align-items:center; gap:.4rem; }
+    #sponsor-ticker .logo { height:1.25rem; width:1.25rem; border-radius:.25rem; object-fit:cover; border:1px solid rgba(250,204,21,.25); background:#fff; }
+    #sponsor-ticker .item:hover { color:#fde68a; text-decoration:underline; text-underline-offset:2px; }
+
+    @keyframes fc-ticker-scroll { from{ transform:translateX(0) } to{ transform:translateX(-50%) } }
+
+    @media (max-width: 768px){
+      #sponsor-ticker .head { gap:.5rem; padding:.5rem .5rem; }
+      #sponsor-ticker .fade-l, #sponsor-ticker .fade-r { width:1.25rem; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      #sponsor-ticker .track { animation:none; transform:none; }
+    }
+  </style>
+
+  <div class="head mx-auto">
+    <span aria-hidden="true" class="text-xl">🌟</span>
+    <span class="label">Thanks to our amazing sponsors:</span>
+
+    <div class="viewport">
+      <div class="fade-l"></div>
+      <div class="fade-r"></div>
+
+      <!-- Track: duplicate content for seamless loop -->
+      <div class="track">
+        <div class="inner" data-clone="0">
+          {% for s in sponsors_list %}
+            <a href="{{ s.url or '#' }}" class="item" target="_blank" rel="noopener">
+              {% if s.logo %}<img loading="lazy" decoding="async" src="{{ s.logo }}" alt="" class="logo">{% endif %}
+              <span>{{ s.name }}</span>
+            </a>
+            {% if not loop.last %}<span class="dot">•</span>{% endif %}
+          {% endfor %}
+        </div>
+        <div class="inner" data-clone="1" aria-hidden="true">
+          {% for s in sponsors_list %}
+            <a href="{{ s.url or '#' }}" class="item" target="_blank" rel="noopener">
+              {% if s.logo %}<img loading="lazy" decoding="async" src="{{ s.logo }}" alt="" class="logo">{% endif %}
+              <span>{{ s.name }}</span>
+            </a>
+            {% if not loop.last %}<span class="dot">•</span>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls (subtle, a11y-friendly) -->
+    <button type="button" class="ml-2 text-xs px-2 py-1 rounded hover:bg-yellow-300/10"
+            aria-pressed="false" data-ticker-toggle>Pause</button>
+  </div>
+</div>
+
+<script nonce="{{ NONCE }}">
+(() => {
+  const root = document.getElementById('sponsor-ticker');
+  if (!root || root.__init) return; root.__init = true;
+
+  const qs = (sel, ctx=root) => ctx.querySelector(sel);
+  const track     = qs('.track');
+  const toggleBtn = qs('[data-ticker-toggle]');
+  const source    = root.dataset.source || '/api/sponsors';
+  const socketNs  = root.dataset.socketNs || '/sponsors';
+  const speedAttr = parseFloat(root.dataset.speed || '');
+
+  /* ---------- speed control ---------- */
+  function setSpeedFromWidth() {
+    // If user provided data-speed (seconds), honor it
+    if (isFinite(speedAttr) && speedAttr > 0) {
+      root.style.setProperty('--speed', `${speedAttr}s`);
+      return;
+    }
+    // Otherwise compute from content width & px/sec baseline
+    const inner = qs('.inner[data-clone="0"]');
+    if (!inner) return;
+    const contentWidth = inner.getBoundingClientRect().width || 600;
+    const ppx = +getComputedStyle(root).getPropertyValue('--ppx') || 80;
+    const dur = Math.max(12, Math.min(40, contentWidth / ppx)); // clamp 12–40s
+    root.style.setProperty('--speed', dur + 's');
+  }
+
+  /* ---------- controls ---------- */
+  function pause(){ root.classList.add('paused'); if (toggleBtn){ toggleBtn.textContent='Play'; toggleBtn.setAttribute('aria-pressed','true'); } }
+  function play(){ root.classList.remove('paused'); if (toggleBtn){ toggleBtn.textContent='Pause'; toggleBtn.setAttribute('aria-pressed','false'); } }
+  toggleBtn?.addEventListener('click', ()=> root.classList.contains('paused') ? play() : pause());
+  toggleBtn?.addEventListener('keydown', (e)=>{ if (e.key===' '||e.key==='Enter'){ e.preventDefault(); root.classList.contains('paused') ? play() : pause(); }});
+  root.addEventListener('mouseenter', pause);
+  root.addEventListener('mouseleave', play);
+
+  // Pause when off-screen (perf + a11y)
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((ents)=> ents.forEach(e=> e.isIntersecting ? play() : pause()), { threshold:.01 });
+    io.observe(root);
+  }
+
+  /* ---------- initial items from DOM ---------- */
+  let items = Array.from(qs('.inner[data-clone="0"]').querySelectorAll('.item')).map(a => ({
+    name: a.textContent.trim(),
+    url : a.getAttribute('href') || '#',
+    logo: (a.querySelector('img')||{}).src || null
+  }));
+
+  /* ---------- render ---------- */
+  function render(list){
+    list = (list||[]).filter(Boolean).slice(0, 64);
+    if (!list.length) list = [{ name:'Your Brand Here', url:'#', logo:null }];
+    const html = list.map((s, i) => {
+      const logo = s.logo ? `<img loading="lazy" decoding="async" src="${s.logo}" alt="" class="logo">` : '';
+      const dot  = i < list.length - 1 ? `<span class="dot">•</span>` : '';
+      const url  = s.url || '#';
+      return `<a href="${url}" class="item" target="_blank" rel="noopener">${logo}<span>${s.name}</span></a>${dot}`;
+    }).join('');
+    root.querySelectorAll('.inner').forEach((el, idx)=> {
+      el.innerHTML = html;
+      if (idx === 1) el.setAttribute('aria-hidden','true');
+    });
+    // restart animation cleanly
+    track.style.animation = 'none'; void track.offsetWidth; track.style.animation = '';
+    setSpeedFromWidth();
+  }
+
+  /* ---------- public API ---------- */
+  window.restartSponsorTicker = function(){
+    track.style.animation='none'; void track.offsetWidth; track.style.animation='';
+  };
+  window.fcAddSponsor = function(name, url='#', vip=false, logo=null){
+    if (!name) return;
+    const key = String(name).trim().toLowerCase();
+    const ix  = items.findIndex(s => (s.name||'').trim().toLowerCase() === key);
+    if (ix >= 0) items.splice(ix, 1);       // move existing to front
+    items.unshift({ name, url, logo });
+    render(items);
+    if (vip && typeof window.launchConfetti === 'function') {
+      window.launchConfetti({ particleCount: 180, spread: 80 });
+    }
+  };
+
+  /* ---------- live hooks ---------- */
+  // From hero / donations (support both event names)
+  window.addEventListener('fc:vip:hit', (ev)=>{
+    const t = ev.detail?.threshold;
+    window.fcAddSponsor(t ? `VIP ${t}` : 'VIP Sponsor', '#', true, null);
+  });
+  window.addEventListener('fc:funds:update', (ev)=>{
+    const n = ev.detail?.sponsorName;
+    if (n) window.fcAddSponsor(String(n), '#', false, null);
+  });
+  // Optional custom event
+  window.addEventListener('fc:vip', (ev)=>{
+    const d = ev.detail || {};
+    window.fcAddSponsor(d.name || 'VIP Sponsor', d.url || '#', true, d.logo || null);
+  });
+
+  // Socket.IO (optional)
+  if (typeof window.io === 'function') {
+    try {
+      const sock = window.io(socketNs, { transports:['websocket','polling'] });
+      sock.on('sponsor', (payload)=> {
+        if (!payload || !payload.name) return;
+        window.fcAddSponsor(payload.name, payload.url || '#', !!payload.vip, payload.logo || null);
+      });
+    } catch(e){ /* non-fatal */ }
+  }
+
+  // Poll fallback (accepts [{name,url,logo}] OR {items:[...]})
+  (async function poll(){
+    try {
+      const res = await fetch(source, { headers: { 'Accept':'application/json' }, cache:'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+        if (list.length) { items = list; render(items); }
+      }
+    } catch(e){ /* ignore */ }
+    setTimeout(poll, 120000); // every 2 min
+  })();
+
+  // Setup
+  setSpeedFromWidth();
+  window.addEventListener('resize', setSpeedFromWidth, { passive:true });
+})();
+</script>
+</section>
+

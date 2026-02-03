@@ -1,0 +1,22 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!doctype html>
+
+{% macro badge(label, color="gold") -%}
+<span
+  class="badge bg-{{ color }} text-zinc-900 px-3 py-1 rounded-full font-bold">{{ label }}</span>
+{%- endmacro %}

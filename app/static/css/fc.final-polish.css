@@ -1,0 +1,30 @@
+/* FundChamps Final Polish (tenant-toggle aware via .fcux-on on <html>) */
+html.fcux-on body{ font-size: clamp(.96rem, .9rem + .2vw, 1.05rem); }
+html.fcux-on .fcx-sub,
+html.fcux-on .kpis,
+html.fcux-on .tiers .urgency,
+html.fcux-on .fcx-scan-hint{ color: color-mix(in srgb, #fff 72%, transparent); }
+
+/* Consistent, high-visibility focus rings on dark UIs */
+html.fcux-on :where(a,button,[role="button"],.chip,.fcx-btn,.btn):focus-visible{
+  outline:3px solid color-mix(in srgb, var(--fc-brand, #facc15) 80%, #fff 10%);
+  outline-offset:2px; border-radius:.6rem;
+}
+
+/* Touch-friendly targets */
+html.fcux-on :where(.fcx-btn,.chip,.fcx-chip-btn,.btn){ min-height:44px }
+
+/* Friendly glass shadow; composite-only for perf */
+html.fcux-on .tiers .card{
+  box-shadow:0 12px 28px rgb(0,0,0,.35);
+  backdrop-filter:saturate(120%) blur(6px);
+}
+
+/* Subtle baseline so progress never looks “dead” */
+html.fcux-on .fcx-ladder .fcx-bar{ min-width:6% }
+
+/* Smoother hero scrim */
+html.fcux-on .fcx-hero__overlay::before{
+  background:linear-gradient(180deg,#0008 0,#0005 40%,#0000 70%);
+}
+

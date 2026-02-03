@@ -1,0 +1,813 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!-- fc-header Enterprise-grade One‑Nav (v7.0) — Production Ready -->
+{% from 'partials/_core_helpers.html' import nonce_attr %}
+{% macro money(n) -%}{{ '$' ~ ('{:,}'.format((n|int) if n is not none else 0)) }}{%- endmacro %}
+
+{# ---------- Context & Inputs ---------- #}
+{% set NONCE        = NONCE if (NONCE) else (csp_nonce() if (csp_nonce is defined) else '') %}
+{% set org          = org        | default({}) %}
+{% set teamObj      = team       | default(None) %}
+{% set hdr_id       = header_id  | default('fcx-header') %}
+
+{# Brand & Platform #}
+{% set platform_name = org.platform_name | default(platform_name | default('FundChamps')) %}
+{% set platform_url  = org.platform_url  | default(platform_url  | default('/')) %}
+{% set platform_logo = url_for('static', filename='images/fundchamps-logo.svg') %}
+
+{# Team + Accent #}
+{% set team_name  = org.team_name  | default(teamObj.team_name | default('Connect ATX Elite')) %}
+{% set accent     = org.accent     | default(teamObj.theme_color | default('#facc15')) %}
+{% set team_logo  = org.team_logo  | default('images/logo.webp') %}
+{% if team_logo is string and team_logo.lower().startswith('http') %}
+  {% set team_logo_url = team_logo %}
+{% else %}
+  {% set team_logo_url = url_for('static', filename=team_logo.lstrip('/')) if url_for is defined else ('/static/' ~ team_logo.lstrip('/')) %}
+{% endif %}
+
+{# Links #}
+{% set href_donate    = org.cta_link     | default(HREF_DONATE  | default('/donate')) %}
+{% set href_sponsor   = org.sponsor_link | default(HREF_SPONSOR | default('/sponsor')) %}
+{% set href_signup    = org.signup_link  | default(HREF_SIGNUP  | default('/signup')) %}
+{% set href_dashboard = org.dashboard    | default('/dashboard') %}
+
+{# Progress (SSR seed) #}
+{% set raised = (org.raised | default(funds_raised | default(0))) | int %}
+{% set goal   = (org.goal   | default(fundraising_goal | default(10000))) | int %}
+
+{# Optional progress API for auto-sync #}
+{% set api_progress = org.progress_api | default('/api/progress') %}
+
+{# Feature flags (all on by default) #}
+{% set features = {
+  'share':    org.feature_share    | default(True),
+  'theme':    org.feature_theme    | default(True),
+  'drawer':   org.feature_drawer   | default(True),
+  'hotkeys':  org.feature_hotkeys  | default(True),
+  'search':   org.feature_search   | default(True),
+  'install':  org.feature_install  | default(True)
+} %}
+{% set features_json = features | tojson %}
+
+<!-- Subtle animated gradient bar for top-of-page light pop -->
+<div class="top-gradient-bar"></div>
+
+<header id="{{ hdr_id }}"
+  class="fcx-header"
+  data-theme="{{ org.theme|default('dark') }}"
+  data-accent="{{ accent }}"
+  data-features='{{ features_json|safe }}'
+  data-progress='{"raised":{{ raised }},"goal":{{ goal }}}'
+  data-api="{{ api_progress }}"
+  style="--accent: {{ accent }};">
+
+<!-- Launch + Partner Bar -->
+<div class="fc-enterprise-bar">
+  <div class="fc-enterprise-bar__left">
+    <span class="bar-logo"><img src="/static/images/rocket.svg" alt="" height="18" /></span>
+    <span class="bar-brand">FundChamps</span>
+    <span class="bar-pill">PLATFORM LAUNCH</span>
+    <span class="bar-sep">|</span>
+    <span class="bar-desc">First Fundraiser Demo</span>
+    <a href="#refer" class="bar-link">Refer a sponsor</a>
+  </div>
+  <div class="fc-enterprise-bar__right">
+    <img src="/static/images/nike-logo.svg" alt="Nike" class="bar-partner" height="16"/>
+    <img src="/static/images/stripe-logo.svg" alt="Stripe" class="bar-partner" height="16"/>
+    <span class="bar-donor"><span aria-hidden="true" class="bar-heart">💛</span> <span id="latestDonorName" class="bar-donor-name">Sarah M. gave $150</span></span>
+  </div>
+</div>
+
+<!-- Referral Bar -->
+<div class="fc-enterprise-referral">
+  <div class="referral-msg">
+    <span class="referral-emoji">🎉</span>
+    <span class="referral-main"><b>Get $100 Bonus!</b></span>
+    <span class="referral-desc">Invite a team or nonprofit—raise $500+, <strong>you both get $100</strong> for next season!</span>
+  </div>
+  <div class="referral-ctas">
+    <a href="/refer" class="referral-btn primary">Refer a Team</a>
+    <a href="/pro" class="referral-btn upsell">Unlock PRO Tools</a>
+  </div>
+</div>
+  </div>
+</header>
+
+  <nav class="dock" aria-label="Primary Navigation">
+    <div class="dock-row">
+
+      <!-- Left: Brand + Team -->
+      <div class="left">
+        <a class="crest group" href="{{ platform_url }}" 
+           aria-label="{{ platform_name }} — Home"
+           title="FundChamps — Youth Team Fundraising, Reimagined">
+          <img src="{{ url_for('static', filename='images/fundchamps-fc.svg') }}" 
+               alt="FundChamps logo" 
+               class="crest-logo" height="36" width="36" />
+          <div class="crest-meta">
+            <span class="crest-title">{{ platform_name }}</span>
+            <span class="crest-sub">Back youth. Build future.</span>
+          </div>
+          <!-- Tooltip (on hover/focus) -->
+          <span class="crest-tooltip">Why FundChamps? Back youth. Build future.</span>
+        </a>
+        {% if team_name %}
+        <button class="team-chip" type="button" aria-label="{{ team_name }}" title="{{ team_name }}">
+          <img class="team-logo" src="{{ team_logo_url }}" height="28" alt="" loading="lazy" decoding="async"/>
+          <span class="team-name">{{ team_name }}</span>
+          <span class="live-dot" aria-hidden="true"></span>
+        </button>
+        {% endif %}
+      </div>
+
+      <!-- Center: Live Progress -->
+      <div class="center">
+        <div class="progress"
+             role="progressbar"
+             aria-valuemin="0"
+             aria-valuemax="{{ goal|default(1) }}"
+             aria-valuenow="{{ raised|default(0) }}"
+             aria-label="{{ money(raised) }} of {{ money(goal) }} raised"
+             tabindex="0">
+          <div class="prog-stats">
+            <strong class="raised" data-num="{{ raised }}">{{ money(raised) }}</strong>
+            <small class="goal" data-num="{{ goal }}">/ {{ money(goal) }}</small>
+          </div>
+          <div class="meter"><div class="fill"></div></div>
+        </div>
+        <p class="tagline">Fuel the Season. <span class="accent">Fund the Future.</span></p>
+      </div>
+
+      <!-- Right: CTAs -->
+      <div class="right">
+        {% if features.search %}
+        <button class="btn icon" data-search-toggle aria-label="Search" title="Search /">🔍</button>
+        {% endif %}
+
+        {% if features.share %}
+        <button class="btn icon" data-share aria-label="Share fundraiser" title="Share">
+          <span class="share-animate">🔗</span>
+        </button>
+        {% endif %}
+
+        <a class="btn primary" href="{{ href_donate }}" data-cta="donate">Donate</a>
+        <a class="btn ghost hide-sm" href="{{ href_sponsor }}" data-cta="nav-sponsor">Sponsor</a>
+
+        {% if features.theme %}
+        <button class="btn icon" data-theme-toggle aria-pressed="false" aria-label="Toggle theme">🌓</button>
+        {% endif %}
+
+        {% if features.install %}
+        <button class="btn icon" data-install hidden aria-label="Install app" title="Install app">⬇️</button>
+        {% endif %}
+
+        {% if features.drawer %}
+        <button class="btn icon" data-menu aria-controls="main-drawer" aria-expanded="false" aria-label="Open main menu">☰</button>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  {% if features.drawer %}
+  <!-- Mobile Drawer -->
+  <div class="drawer" id="main-drawer" hidden>
+    <div class="drawer__scrim" data-close></div>
+    <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Main Navigation">
+      <header class="drawer__head">
+        <div class="brand">
+          <img src="{{ platform_logo }}" alt="" width="26" height="26" loading="lazy"/>
+          <strong>{{ platform_name }}</strong>
+        </div>
+        <button class="btn icon" data-close aria-label="Close menu">×</button>
+      </header>
+      <nav class="drawer__nav">
+        <a href="{{ platform_url }}">Home</a>
+        <a href="#tiers" data-anchor="tiers">Tiers</a>
+        <a href="#sponsors">Sponsors</a>
+        <a href="#faq">FAQ</a>
+        <a href="{{ href_sponsor }}">Become a Sponsor</a>
+        <a href="{{ href_donate }}" class="primary" data-cta="drawer-donate">Donate</a>
+      </nav>
+      <footer class="drawer__foot">
+        <a href="{{ href_dashboard }}">Dashboard</a>
+        <a href="{{ href_signup }}">Sign up</a>
+      
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+    </aside>
+  </div>
+  {% endif %}
+
+  <!-- Global Search Modal -->
+  {% if features.search %}
+  <dialog id="search-dialog" class="search-dialog" aria-modal="true" aria-label="Site search" inert>
+    <form method="dialog" class="search-form">
+      <input type="search" placeholder="Search…" aria-label="Search" class="search-input" id="global-search" />
+      <button class="btn lite" value="close">Close</button>
+    </form>
+  </dialog>
+  {% endif %}
+
+  <div class="sr" data-live aria-live="polite" aria-atomic="true"></div>
+</header>
+
+<!-- Watermark: add only on desktop, not inside header (optional, for hero/main panel) -->
+<img src="{{ url_for('static', filename='images/fundchamps-fc.svg') }}"
+     alt=""
+     class="fundchamps-watermark"
+     aria-hidden="true"
+     draggable="false"
+     style="display: none;" />
+
+<style {{ nonce_attr() }}>
+/* -- Launch Gradient Bar -- */
+.top-gradient-bar {
+  height: 4px; width: 100vw;
+  position: fixed; top: 0; left: 0; z-index: 200;
+  background: linear-gradient(90deg,#facc15 18%,#fbbf24 43%,#f472b6 70%,#818cf8 90%);
+  animation: bar-waves 2.6s linear infinite;
+  background-size: 320% 100%;
+  opacity: 0.82; pointer-events: none;
+}
+@keyframes bar-waves { 0%{background-position:0 0;} 100%{background-position:100% 0;} }
+
+/* -- FundChamps SaaS Header Styles (flex, premium) -- */
+:root {
+  --fc-header-h: 64px;
+  --sponsor-leaderboard-h: 56px;
+  --gap: 1.5rem;
+}
+.fcx-header {
+  --accent: {{ accent }};
+  --bg: color-mix(in srgb, #0b1220 92%, transparent);
+  --fg: #f9fafb; --muted: #9ca3af; --glass: rgba(255,255,255,0.06);
+  --ring: color-mix(in srgb, var(--accent) 50%, #22d3ee);
+  --radius: 12px; --gutter: clamp(0.5rem, 2vw, 1rem);
+  position: sticky; inset-block-start: 0; z-index: 70;
+  background: var(--bg); backdrop-filter: blur(14px) saturate(130%);
+  border-block-end: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  transition: background .3s, translate .3s, box-shadow .3s;
+}
+@media (prefers-color-scheme: light) {
+  [data-theme="light"].fcx-header { --bg: color-mix(in srgb, #fff 80%, transparent); --fg:#0f172a; --muted:#475569; --glass: rgba(15,23,42,.06); }
+}
+.fcx-header.compact { translate: 0 -8px; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+.fcx-header.hide    { translate: 0 -100%; }
+.dock-row { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:clamp(.75rem,1.5vw,1.25rem); max-inline-size:1280px; margin-inline:auto; padding:.6rem var(--gutter); }
+@media (max-width: 860px){ .dock-row{ padding-block:.4rem; } }
+.left{ display:flex; align-items:center; gap:12px; min-inline-size:0; }
+.crest{ position:relative; display:flex; align-items:center; gap:10px; color:inherit; text-decoration:none; }
+.crest-logo{ inline-size:42px; block-size:42px; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); object-fit:contain; transition:box-shadow .25s, filter .25s; }
+.crest-logo:hover, .crest-logo:focus { box-shadow: 0 0 0 6px #fbbf2499, 0 4px 18px #fde04744; filter: brightness(1.15) drop-shadow(0 0 8px #facc1570);}
+.crest-meta{ display:flex; flex-direction:column; }
+.crest-title{ font-weight:900; font-size:1rem; color:var(--fg); letter-spacing: -.01em; }
+.crest-sub{ font-size:.75rem; color:var(--muted); line-height:1; }
+.crest-tooltip {
+  display:none; position:absolute; left:54px; top:6px;
+  background:#18181aeb; color:#facc15; font-size:.92em; font-weight:700;
+  padding:0.5em 1em; border-radius:.8em; box-shadow:0 2px 10px #0b0c1288;
+  pointer-events:none; z-index:90; white-space:nowrap;
+}
+.crest:focus .crest-tooltip,
+.crest:hover .crest-tooltip { display:block; }
+.team-chip{ display:flex; align-items:center; gap:6px; padding:.3rem .6rem; background:var(--glass); border-radius:999px; border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(6px); }
+.team-logo{ inline-size:28px; block-size:28px; border-radius:50%; object-fit:cover; background:#fff; }
+.team-name{ font-weight:800; font-size:.88rem; color:var(--fg); max-inline-size:9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.live-dot{ inline-size:.55em; block-size:.55em; border-radius:50%; background:linear-gradient(90deg,#22d3ee,var(--accent)); animation:pulse 1.8s ease-out infinite; margin-inline-start:.35em; }
+@keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(56,189,248,.4);} 70%{ box-shadow:0 0 0 6px rgba(56,189,248,0);} 100%{ box-shadow:0 0 0 0 rgba(56,189,248,0);} }
+.center{ text-align:center; display:flex; flex-direction:column; gap:4px; min-inline-size:0; }
+.progress{ background:var(--glass); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:.45rem .75rem; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.prog-stats{ font-weight:800; font-size:.9rem; color:var(--fg); }
+.prog-stats .goal{ color:var(--muted); margin-inline-start:.25rem; }
+.meter{ block-size:8px; background: color-mix(in srgb, var(--fg) 10%, transparent); border-radius:999px; overflow:hidden; }
+.fill{ block-size:100%; inline-size:0%; background:linear-gradient(90deg,var(--accent),var(--ring)); box-shadow:0 0 8px color-mix(in srgb, var(--accent) 50%, transparent); transition:inline-size .45s cubic-bezier(.3,.7,.3,1); }
+.tagline{ margin:0; font-size:.95rem; font-weight:900; color:var(--fg); letter-spacing:-.01em; }
+.tagline .accent{ color:var(--accent); text-shadow:0 0 6px color-mix(in srgb, var(--accent) 40%, transparent); }
+@media (max-width:860px){ .tagline{ display:none; } }
+.right{ display:flex; align-items:center; gap:10px; justify-self:end; }
+.btn{ display:inline-flex; align-items:center; justify-content:center; min-block-size:38px; padding:0 14px; border-radius:var(--radius); font-weight:800; font-size:.9rem; border:1px solid rgba(255,255,255,.08); background:var(--glass); color:var(--fg); cursor:pointer; transition:transform .15s, box-shadow .15s; text-decoration:none; }
+.btn:hover{ transform:translateY(-1.5px); }
+.btn:focus-visible{ outline:3px solid color-mix(in oklab, var(--accent), transparent 40%); outline-offset:3px; }
+.btn.icon{ inline-size:38px; padding:0; font-size:1.2rem; }
+.btn.primary{ background:linear-gradient(90deg,#fde047,#fbbf24); color:#111; border:none; box-shadow:0 3px 14px rgba(250,204,21,.25); }
+.btn.primary:hover{ background:linear-gradient(90deg,#fbbf24,#fde047); }
+.btn.ghost{ background:transparent; color:var(--accent); border-color:var(--accent); }
+.hide-sm{ display:inline-flex; } @media (max-width:720px){ .hide-sm{ display:none; } }
+.drawer[hidden]{ display:none; }
+.drawer{ position:fixed; inset:0; z-index:80; }
+.drawer__scrim{ position:absolute; inset:0; background:rgba(2,6,23,.55); backdrop-filter:blur(2px); }
+.drawer__panel{ position:absolute; inset-block:0; inset-inline-start:0; inline-size:min(86vw,360px); background:color-mix(in srgb, #0b1220 94%, transparent); color:#f8fafc; border-inline-end:1px solid rgba(255,255,255,.12); box-shadow:0 20px 60px rgba(0,0,0,.45); translate:-100% 0; transition:translate .25s ease; display:flex; flex-direction:column; }
+.drawer[data-open="true"] .drawer__panel{ translate:0 0; }
+.drawer__head{ display:flex; align-items:center; justify-content:space-between; padding:.9rem; border-block-end:1px solid rgba(255,255,255,.08); }
+.drawer__head .brand{ display:flex; align-items:center; gap:.5rem; font-weight:900; }
+.drawer__nav{ display:grid; gap:.5rem; padding:1rem; }
+.drawer__nav a{ padding:.7rem .75rem; border-radius:.65rem; color:inherit; text-decoration:none; font-weight:800; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+.drawer__nav a:hover{ background:rgba(255,255,255,.08); }
+.drawer__nav a.primary{ background:linear-gradient(90deg,#fde047,#fbbf24); color:#111; border:none; }
+.drawer__foot{ margin-top:auto; padding:.9rem; display:flex; gap:.5rem; }
+.drawer__foot a{ color: color-mix(in srgb, var(--accent) 60%, #fff); text-decoration:none; font-weight:800; }
+[data-live].toast{ position:fixed; inset-inline-end:1rem; inset-block-end:1rem; background:rgba(15,23,42,.92); color:#f8fafc; padding:.6rem 1rem; border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,.25); animation:fadeout 1.5s ease forwards; }
+@keyframes fadeout{ 0%{opacity:1;transform:translateY(0);} 80%{opacity:1;} 100%{opacity:0;transform:translateY(6px);} }
+@media (prefers-reduced-motion: reduce){ .fill{ transition:none!important } .live-dot{ animation:none!important } }
+/* Watermark */
+.fundchamps-watermark {
+  position: absolute; opacity: 0.09; right: 5vw; bottom: 2vw; z-index:0;
+  width: 160px; height: 160px;
+}
+</style>
+<style {{ nonce_attr() }}>
+/***** Extra tokens & search modal *****/
+.search-dialog{ padding:0; border:none; border-radius:1rem; background:rgba(15,23,42,.98); color:#f8fafc; box-shadow:0 20px 70px rgba(0,0,0,.6); max-inline-size:22rem; }
+.search-form{ display:flex; gap:.6rem; padding:1rem 1.2rem; }
+.search-input{ flex:1; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); color:inherit; border-radius:.5rem; padding:.55rem .7rem; font-size:1rem; }
+.search-input:focus-visible{ outline:3px solid color-mix(in srgb,var(--accent)60%,#fff); }
+.offline-badge{ display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .6rem; background:#ef444433; color:#fda4af; border:1px solid #f87171aa; border-radius:999px; font-size:.8rem; font-weight:800; margin-inline-start:.4rem; }
+.top-gradient-bar {
+  height: 6px;
+  width: 100vw;
+  background: linear-gradient(90deg, #facc15 8%, #fb7185 65%, #67e8f9 120%);
+  opacity: 0.5;
+  position: absolute;
+  top: 0; left: 0; z-index: 60;
+  animation: gradient-move 4.2s linear infinite;
+}
+@keyframes gradient-move {
+  0%   { background-position-x: 0; }
+  100% { background-position-x: 200px; }
+}
+/* Enterprise Launch + Referral Bar (Short, Clean, Non-dominant) */
+.fc-enterprise-bar {
+  background: linear-gradient(90deg, #f9fafb 45%, #fdf6e3 95%);
+  color: #202124;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.15;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.33em 1.35em 0.33em 1.2em;
+  border-bottom: 1px solid #fde68a33;
+  box-shadow: 0 1px 7px 0 #d4af378a;
+  position: sticky; top: 0; left: 0; z-index: 40;
+  min-height: 36px;  /* 👈 Less height */
+}
+
+.fc-enterprise-bar__left, .fc-enterprise-bar__right {
+  display: flex; align-items: center; gap: 1.05em;
+  min-width: 0;
+}
+
+.bar-logo img {
+  display: inline-block;
+  vertical-align: middle;
+  height: 18px; width: 18px;
+  margin-right: 0.20em;
+}
+.bar-brand {
+  font-size: 1.05em;
+  font-weight: 900;
+  color: #eab308;
+  letter-spacing: -0.01em;
+}
+.bar-pill {
+  background: #fde047;
+  color: #18181a;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 0.93em;
+  padding: 0.13em 0.85em;
+  margin-left: 0.7em;
+  margin-right: 0.4em;
+  box-shadow: 0 1px 3px #fff7;
+}
+.bar-sep { color: #eab308; font-size: 0.98em; }
+.bar-desc { color: #202124; font-weight: 700; }
+.bar-link {
+  color: #eab308;
+  text-decoration: underline;
+  font-weight: 700;
+  font-size: 0.97em;
+  margin-left: 1.1em;
+  transition: color 0.16s;
+}
+.bar-link:hover { color: #a16207; }
+
+.bar-partner {
+  opacity: 0.8;
+  filter: grayscale(100%);
+  height: 16px; width: auto;
+  transition: filter .18s, opacity .18s;
+  margin-left: 0.5em;
+}
+.bar-partner:hover { opacity: 1; filter: grayscale(0%); }
+.bar-donor {
+  color: #111827;
+  font-weight: 900;
+  font-size: 0.96em;
+  margin-left: 0.7em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bar-heart {
+  font-size: 1.08em;
+  vertical-align: -0.09em;
+  margin-right: 0.2em;
+  animation: heartPulse 1.2s infinite;
+}
+@keyframes heartPulse { 0%,100%{transform:scale(1);} 40%{transform:scale(1.13);} 65%{transform:scale(.98);} }
+.bar-donor-name { color: #eab308; }
+
+/* Referral/Upsell Bar — subtle, shorter, more "bar" than banner */
+.fc-enterprise-referral {
+  background: linear-gradient(90deg, #181c29 75%, #fde04720 120%);
+  color: #fafaf9;
+  border-bottom: 2px solid #facc15;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.98rem;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0.36em 1.5em 0.36em 1.1em;
+  gap: 1.3em;
+  box-shadow: 0 2px 10px #fde04708;
+  z-index: 32;
+}
+.referral-msg {
+  display: flex; align-items: center; gap: 0.8em;
+  flex: 1 1 auto; min-width: 0;
+}
+.referral-emoji {
+  font-size: 1.23em;
+  margin-right: .18em;
+  opacity: 0.9;
+}
+.referral-main {
+  color: #fde047;
+  font-weight: 900;
+  margin-right: .45em;
+  font-size: 1.02em;
+}
+.referral-desc {
+  color: #e5e7eb;
+  font-size: 0.98em;
+  letter-spacing: -.01em;
+  font-weight: 500;
+  margin-left: .55em;
+  max-width: 19em;
+}
+.referral-ctas {
+  display: flex; gap: 0.88em;
+}
+.referral-btn {
+  border-radius: 999px;
+  background: none;
+  color: #fde047;
+  border: 1.5px solid #fde047;
+  font-weight: 900;
+  padding: .35em 1.13em;
+  font-size: 0.98em;
+  letter-spacing: -0.01em;
+  box-shadow: none;
+  text-decoration: none;
+  transition: all .14s;
+}
+.referral-btn.primary {
+  background: linear-gradient(90deg,#fde047,#fbbf24 70%);
+  color: #1c1917;
+  border: none;
+  box-shadow: 0 2px 9px #facc1526;
+}
+.referral-btn.upsell {
+  background: none;
+  color: #67e8f9;
+  border-color: #67e8f9;
+}
+.referral-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 2px 12px #facc1522;
+}
+
+@media (max-width: 900px) {
+  .fc-enterprise-bar, .fc-enterprise-referral {
+    font-size: 0.94rem;
+    padding: 0.32em 0.7em 0.32em 0.7em;
+    min-height: 30px;
+    gap: 0.7em;
+  }
+  .referral-ctas { gap: .55em; }
+}
+
+@media (max-width: 600px) {
+  .fc-enterprise-bar, .fc-enterprise-referral {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25em;
+    font-size: 0.92rem;
+    padding: 0.27em 0.37em 0.27em 0.37em;
+  }
+  .referral-ctas { width: 100%; justify-content: flex-start; }
+  .bar-logo img { height: 15px; }
+  .bar-partner { height: 13px; }
+}
+.fc-enterprise-bar,
+.fc-enterprise-referral {
+  /* Even shorter */
+  min-height: 30px;
+  padding: 0.22em 1.2em 0.22em 1.1em;
+  gap: 1em;
+  font-size: 0.93rem;
+  font-weight: 600;
+}
+.fc-enterprise-bar {
+  margin-bottom: 0.1rem; /* space between topbar and nav */
+  background: linear-gradient(90deg, #f9fafb 48%, #fdf6e3 95%);
+  border-bottom: 1.5px solid #fde68a55;
+  box-shadow: 0 1px 5px #d4af3711;
+}
+.fc-enterprise-bar__right {
+  gap: 0.55em;
+}
+.bar-brand { font-size: 1.02em; }
+.bar-pill { padding: 0.12em 0.77em; font-size: 0.92em; }
+.bar-desc { color: #323338; font-size: 0.93em; font-weight: 600; }
+.bar-link { margin-left: 1.1em; font-size: 0.93em; }
+.bar-partner { height: 15px; }
+.bar-donor { font-size: 0.93em; color: #111827; }
+
+.fc-enterprise-referral {
+  margin-bottom: 0.25rem;
+  background: linear-gradient(90deg, #181c29 70%, #fde04714 130%);
+  border-bottom: 2px solid #facc15;
+  font-size: 0.93rem;
+  gap: 1.1em;
+  min-height: 32px;
+}
+.referral-main { font-size: 1em; }
+.referral-desc { color: #ececec; font-size: 0.92em; }
+.referral-btn {
+  font-size: 0.93em;
+  padding: .29em 1.1em;
+  margin-left: 0.2em;
+}
+.referral-btn.primary {
+  box-shadow: 0 1.5px 8px #facc1512;
+}
+.referral-btn.upsell {
+  color: #67e8f9;
+  border-color: #67e8f9;
+}
+.referral-btn:hover {
+  filter: brightness(1.09);
+  box-shadow: 0 3px 14px #facc1512;
+}
+
+@media (max-width: 900px) {
+  .fc-enterprise-bar, .fc-enterprise-referral { font-size: 0.91rem; }
+  .bar-partner { height: 13px; }
+}
+
+@media (max-width: 650px) {
+  .fc-enterprise-bar, .fc-enterprise-referral {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.13em 0.45em;
+    gap: 0.18em;
+  }
+}
+
+</style>
+
+<script {{ nonce_attr() }} type="module">
+(() => {
+  // === FUNDCHAMPS HEADER — One-Nav v7.0 SaaS Power Script ===
+  const root = document.getElementById('{{ hdr_id }}');
+  if (!root || root.__wired) return; root.__wired = true;
+  const $ = (s, el = root) => el.querySelector(s);
+
+  // -- 1. Offline Badge (Live Network Status) --
+  const crest = $('.crest-meta');
+  if (crest) {
+    const badge = document.createElement('span');
+    badge.className = 'offline-badge';
+    badge.textContent = 'Offline';
+    badge.hidden = navigator.onLine;
+    crest.appendChild(badge);
+    const updateOnline = () => (badge.hidden = navigator.onLine);
+    addEventListener('online', updateOnline);
+    addEventListener('offline', updateOnline);
+  }
+
+  // -- 2. Global Search Modal ("/" hotkey) --
+  const searchBtn = $('[data-search-toggle]');
+  const searchDlg = document.getElementById('search-dialog');
+  if (searchBtn && searchDlg) {
+    const input = searchDlg.querySelector('.search-input');
+    const open = () => { searchDlg.showModal(); input.focus(); };
+    const close = () => searchDlg.close();
+    searchBtn.addEventListener('click', open);
+    addEventListener('keydown', e => {
+      if (e.key === '/' && !e.target.closest('input,textarea,[contenteditable]')) { e.preventDefault(); open(); }
+      if (e.key === 'Escape' && searchDlg.open) close();
+    });
+  }
+
+  // -- 3. PWA Install Prompt --
+  const installBtn = $('[data-install]');
+  let deferredPrompt = null;
+  if (installBtn) {
+    addEventListener('beforeinstallprompt', e => {
+      e.preventDefault(); deferredPrompt = e; installBtn.hidden = false;
+    });
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const res = await deferredPrompt.userChoice;
+      if (res.outcome === 'accepted') installBtn.hidden = true;
+      deferredPrompt = null;
+    });
+  }
+
+  // -- 4. Share/Clipboard + Toast --
+  (function share() {
+    const btn = $('[data-share]');
+    const live = $('[data-live]');
+    if (!btn || !live) return;
+    const toast = msg => { live.textContent = msg; live.classList.add('toast'); setTimeout(() => live.classList.remove('toast'), 1500); };
+    btn.addEventListener('click', async () => {
+      const url = location.href;
+      try {
+        if (navigator.share) { await navigator.share({ title: document.title, url }); toast('Thanks for sharing!'); return; }
+      } catch {}
+      try { await navigator.clipboard.writeText(url); toast('Link copied!'); } catch { prompt('Copy link:', url); }
+    });
+  })();
+
+  // -- 5. Theme Toggle (Dark/Light + Storage) --
+  (function theme() {
+    const btn = $('[data-theme-toggle]');
+    if (!btn) return;
+    const prefers = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const saved = localStorage.getItem('fcTheme') || root.dataset.theme || prefers;
+    const apply = mode => {
+      document.documentElement.dataset.theme = mode;
+      root.dataset.theme = mode;
+      btn.setAttribute('aria-pressed', String(mode === 'dark'));
+      document.body.classList.toggle('theme-dark', mode === 'dark');
+    };
+    apply(saved);
+    btn.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      apply(next); localStorage.setItem('fcTheme', next);
+    });
+  })();
+
+  // -- 6. Drawer (Mobile Nav + Focus Trap) --
+  (function drawer() {
+    const btn = $('[data-menu]');
+    const drw = document.getElementById('main-drawer');
+    if (!btn || !drw) return;
+    const scrim = drw.querySelector('[data-close]');
+    const closeBtn = drw.querySelector('.btn.icon[data-close]');
+    const panel = drw.querySelector('.drawer__panel');
+    const fxs = () => Array.from(panel.querySelectorAll('a,button,[tabindex]:not([tabindex="-1"])'));
+    const trap = e => {
+      const f = fxs(); if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.key === 'Tab') {
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    const open = () => {
+      drw.hidden = false; drw.dataset.open = 'true'; document.body.style.overflow = 'hidden';
+      btn.setAttribute('aria-expanded', 'true'); setTimeout(() => fxs()[0]?.focus(), 120);
+      panel.addEventListener('keydown', trap);
+    };
+    const close = () => {
+      drw.dataset.open = 'false'; document.body.style.overflow = '';
+      btn.setAttribute('aria-expanded', 'false'); panel.removeEventListener('keydown', trap);
+      setTimeout(() => { drw.hidden = true; }, 250);
+    };
+    btn.addEventListener('click', () => (drw.hidden ? open() : close()));
+    scrim?.addEventListener('click', close);
+    closeBtn?.addEventListener('click', close);
+    addEventListener('keydown', e => { if (e.key === 'Escape' && drw.dataset.open === 'true') close(); });
+  })();
+
+  // -- 7. Hotkeys (SaaS Power Shortcuts) --
+  (function hotkeys() {
+    const flags = (() => { try { return JSON.parse(root.dataset.features || '{}'); } catch { return {}; } })();
+    if (!flags.hotkeys) return;
+    addEventListener('keydown', e => {
+      const a = document.activeElement;
+      if (/INPUT|TEXTAREA|SELECT/.test(a?.tagName || '') || a?.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === 'd') $('[data-cta="donate"]')?.click();
+      if (k === 's') $('[data-share]')?.click();
+      if (k === '/') { const search = document.querySelector('[data-global-search]'); if (search) { e.preventDefault(); search.focus(); } }
+    });
+  })();
+
+  // -- 8. Progress UI + Live Polling (API-Ready) --
+  (function progress() {
+    const wrap = $('.progress');
+    if (!wrap) return;
+    const fill = $('.fill', wrap);
+    const rLab = $('.raised', wrap);
+    const gLab = $('.goal', wrap);
+    const seed = (() => { try { return JSON.parse(root.dataset.progress || '{}'); } catch { return { raised: 0, goal: 1 }; } })();
+    let goal = seed.goal || 1;
+
+    const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(n || 0));
+    const setUI = (raised, g = goal) => {
+      goal = g || 1;
+      const pct = Math.max(0, Math.min(100, Math.round((Number(raised || 0) / goal) * 100)));
+      fill.style.inlineSize = pct + '%';
+      rLab.textContent = fmt(raised);
+      gLab.textContent = ' / ' + fmt(goal);
+      wrap.setAttribute('aria-valuenow', String(raised));
+      wrap.setAttribute('aria-valuemax', String(goal));
+      try { fill.animate([{ filter: 'brightness(1.5)' }, { filter: 'brightness(1)' }], { duration: 500 }); } catch {}
+    };
+    setUI(seed.raised, seed.goal);
+
+    // Listen for both event names
+    addEventListener('fcx:progress', (e) => { const d = e.detail || {}; if (d.raised != null) setUI(d.raised, d.goal ?? goal); });
+    addEventListener('fc:progress:refresh', (e) => { const d = e.detail || {}; if (d.raised != null) setUI(d.raised, d.goal ?? goal); });
+
+    // Polling w/ jitter & backoff
+    const api = root.dataset.api; if (!api) return;
+    let delay = 60000;
+    const poll = async () => {
+      try {
+        const r = await fetch(api, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
+        if (!r.ok) throw 0;
+        const j = await r.json();
+        setUI(j?.raised ?? seed.raised, j?.goal ?? goal);
+        delay = 60000 + Math.random() * 10000;
+      } catch { delay = Math.min(90000, delay * 1.35); }
+      finally { setTimeout(poll, delay); }
+    };
+    poll();
+  })();
+
+  // -- 9. Smart Sticky Header (compact + autohide on scroll down) --
+  (function sticky() {
+    let lastY = 0;
+    const onScroll = () => {
+      const y = scrollY, down = y> lastY;
+      root.classList.toggle('compact', y> 48);
+      root.classList.toggle('hide', down && y> 160);
+      lastY = y;
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+  })();
+
+  // -- 10. Logo Fallbacks (FC, Team) --
+  function logoFallback(img, text, size = 42) {
+    img.addEventListener('error', () => {
+      const span = document.createElement('span');
+      span.style.cssText = `display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:10px;background:linear-gradient(135deg,#111,#1f2937);color:#e5e7eb;font-weight:900;font-size:${Math.max(12, Math.round(size*0.38))}px;`;
+      span.textContent = (text || 'F').trim().slice(0, 2).toUpperCase();
+      img.replaceWith(span);
+    }, { once: true });
+  }
+  const crestImg = root.querySelector('.crest-logo');
+  if (crestImg) logoFallback(crestImg, '{{ platform_name }}');
+  const teamImg = root.querySelector('.team-logo');
+  if (teamImg) logoFallback(teamImg, '{{ team_name }}', 28);
+
+  // -- 11. Export header height (for scroll anchors, etc) --
+  const setHead = () => {
+    const h = root.offsetHeight || 64;
+    document.documentElement.style.setProperty('--fc-header-h', h + 'px');
+    document.documentElement.style.setProperty('--head-h', h + 'px');
+  };
+  setHead();
+  addEventListener('resize', () => requestAnimationFrame(setHead), { passive: true });
+
+  // -- 12. Dispatch init event for legacy/other scripts --
+  setTimeout(() => dispatchEvent(new CustomEvent('fcx:header:init', { detail: { id: '{{ hdr_id }}' } })), 50);
+
+})();
+</script>
+

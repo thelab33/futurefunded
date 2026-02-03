@@ -1,0 +1,58 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<section id="impact" class="section bg-[color:var(--fc-ash)]">
+  <div class="sf-container">
+    <h2 class="sf-h2 mb-1">
+      Unlock What Matters — <span class="text-gold">Real Impact Buckets</span>
+    </h2>
+    <p class="text-zinc-300 mb-4 sf-reading">
+      Aim your gift at the exact need. We keep meters live and send receipts
+      instantly.
+    </p>
+
+    {% set buckets = [ {'k':'gym','name':'Gym Access
+    (rentals)','need':1200,'raised':525}, {'k':'travel','name':'Tournament
+    Travel','need':1800,'raised':640}, {'k':'gear','name':'Team
+    Gear','need':900,'raised':310} ] %}
+    <div class="grid md:grid-cols-3 gap-4">
+      {% for b in buckets %} {% set p = (b.raised / b.need * 100) | round(1) %}
+      <article class="sf-card sf-lift">
+        <div class="sf-card-inner space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-extrabold">{{ b.name }}</h3>
+            <span class="sf-chip sf-mono">${{ b.need }}</span>
+          </div>
+          <div class="sf-meter">
+            <b class="sf-bar" style="--p: {{ p/100 }}"></b><i></i>
+          </div>
+          <div class="text-sm text-zinc-300 flex items-center justify-between">
+            <span>Raised <strong class="sf-mono">${{ b.raised }}</strong></span>
+            <span><strong class="sf-mono">{{ p }}%</strong></span>
+          </div>
+          <div class="flex gap-2 pt-1">
+            <a
+              href="{{ url_for('main.donate') }}?bucket={{ b.k }}"
+              class="sf-btn sf-btn-primary w-full"
+              >Donate $50</a
+            >
+            <button
+              class="sf-btn sf-btn-ghost"
+              data-open-donate-modal
+              data-bucket="{{ b.k }}"
+            >
+              Choose amount
+            </button>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>

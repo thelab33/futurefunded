@@ -1,0 +1,37 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<section class="neo-hero relative isolate overflow-hidden rounded-t-[2rem] bg-gradient-to-tr from-[#141f63] via-cyan-500 to-amber-300 text-white shadow-2xl min-h-[340px] flex flex-col justify-end" style="--brand:{{ BRAND_HEX }}">
+  <div class="absolute inset-0 bg-[radial-gradient(80%_120%_at_70%_40%,#fff4_0%,transparent_85%)] blur-3xl opacity-60 pointer-events-none"></div>
+  <div class="mx-auto w-full max-w-7xl px-5 py-10 pb-28 flex flex-col gap-5">
+    <span class="inline-block rounded-full bg-white/95 px-4 py-1 text-sm font-black text-black shadow-lg ring-1 ring-black/10">
+      {{ TEAM.team_name or "Connect ATX Elite" }}
+    </span>
+    <h1 class="font-black leading-tight tracking-tight text-[clamp(2.1rem,2vw+2rem,3.1rem)] drop-shadow-lg">
+      {{ TITLE }} <span class="italic text-brand drop-shadow-xl">{{ TITLE_2 }}</span>
+    </h1>
+    <p class="max-w-prose font-semibold text-zinc-100/90 drop-shadow">{{ SUBTITLE }}</p>
+    <div class="mt-2 flex flex-wrap gap-3">
+      <a href="#impact" class="btn-ghost">Experience It</a>
+      <a href="{{ HREF_DONATE }}" class="btn-gold">Donate Now</a>
+    </div>
+  </div>
+
+  <figure class="absolute right-10 bottom-0 translate-y-1/2 hidden lg:block">
+    <img src="{{ HERO_IMG }}" alt="Team highlight photo"
+         class="w-[430px] h-[310px] object-contain drop-shadow-2xl rounded-xl">
+  </figure>
+
+  <svg class="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full" viewBox="0 0 1440 320" preserveAspectRatio="none" aria-hidden="true">
+    <path fill="#fff" d="M0,224L48,197.3C96,171,192,117,288,117.3C384,117,480,171,
+             576,186.7C672,203,768,181,864,176C960,171,1056,181,
+             1152,176C1248,171,1344,149,1392,138.7L1440,128V320H0Z"/>
+  </svg>
+</section>
+

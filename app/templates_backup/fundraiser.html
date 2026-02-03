@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{# ---------------- Flags from query ---------------- #}
+{% set _q = request.args if request is defined else {} %}
+{% set _OFF = ['0','false','off','no','disable'] %}
+{% set SHOW_TIERS  = (show_tiers  if show_tiers  is defined else (_q.get('tiers','1')  |lower not in _OFF)) %}
+{% set SHOW_IMPACT = (show_impact if show_impact is defined else (_q.get('impact','1') |lower not in _OFF)) %}
+{% set SHOW_ABOUT  = (show_about  if show_about  is defined else (_q.get('about','1')  |lower not in _OFF)) %}
+
+{# ---------------- Nonce helper passthrough ---------------- #}
+{% if NONCE is not defined %}{% set NONCE = csp_nonce() if csp_nonce is defined else '' %}{% endif %}
+{% if nonce_attr is not defined %}
+  {% macro nonce_attr() -%}nonce="{{ NONCE }}"{%- endmacro %}
+{% endif %}
+
+{% block h1 %}{% endblock %}
+{% block title %}{{ fundraiser_title or 'Fuel the Season — Fund the Future' }}{% endblock %}
+
+{% block extra_head %}
+  {{ super() }}
+
+  {# Page meta #}
+  {% set _desc = meta_description
+                 if meta_description is defined and meta_description
+                 else (catch_phrase if catch_phrase is defined and catch_phrase
+                       else 'Direct support for gear, travel, and tutoring—every dollar moves a kid forward.') %}
+  <meta name="description" content="{{ _desc }}">
+
+  {# LCP image preload #}
+  {% if hero_image_url is defined and hero_image_url %}
+    <link rel="preload" as="image" href="{{ hero_image_url }}" fetchpriority="high">
+  {% endif %}
+
+  {# Page polish (externalized) #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='ux/page-fundraiser.css') if url_for is defined else '/static/ux/page-fundraiser.css' }}">
+
+  {# Optional Starforge polish (safe if missing) #}
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='starforge/brand-spine.css') if url_for is defined else '/static/starforge/brand-spine.css' }}"
+        referrerpolicy="no-referrer">
+  <link rel="modulepreload"
+        href="{{ url_for('static', filename='starforge/enable-brand-spine.js') if url_for is defined else '/static/starforge/enable-brand-spine.js' }}">
+{% endblock %}
+
+{# Optional header block (only renders if base defines it) #}
+{% block header_legacy %}{% include "partials/_header_sv_elite.html.jinja" ignore missing with context %}{% endblock %}
+
+{% block content %}
+
+  {# ===== 0) SPONSOR LEADERBOARD (sticky, below header) ===== #}
+  <div id="sponsor-leaderboard" class="seam-header" role="region" aria-label="Sponsor leaderboard">
+    {% include "partials/sponsor_leaderboard.html" ignore missing with context %}
+  </div>
+
+  {# ===== 1) HERO (LCP zone) ===== #}
+  <section id="fundraiser-hero" class="seam-after-hero" aria-label="Hero" data-p2p-propagate="1" data-where="hero">
+    {% include "partials/hero_and_fundraiser.html" ignore missing with context %}
+    {% set _brand_name = (team.team_name if team and team.team_name else 'Connect ATX Elite') %}
+  </section>
+
+  {# ===== 2) SPONSORSHIP TIERS ===== #}
+  {% if SHOW_TIERS %}
+  <section id="tiers" class="section" aria-labelledby="tiers-title" role="region" data-p2p-propagate="1" data-where="tiers" data-lazy>
+    <div class="container" id="tiers-partial">
+      <h2 class="sr-only" id="tiers-title">Sponsorship tiers</h2>
+      <div id="tiers-grid">
+        {% include "partials/tiers.html" ignore missing with context %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {# ===== 3) IMPACT BUCKETS ===== #}
+  {% if SHOW_IMPACT %}
+  <section id="impact" class="section section--tight" aria-labelledby="impact-title" role="region" data-p2p-propagate="1" data-where="impact" data-lazy>
+    <div class="container">
+      <h2 class="sr-only" id="impact-title">Impact buckets</h2>
+      {% include "partials/impact_lockers_premium.html" ignore missing with context %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ===== 4) ABOUT / STORY ===== #}
+  {% if SHOW_ABOUT %}
+  <section id="about" class="section section--tight" aria-label="About our program" role="region" data-p2p-propagate="1" data-where="about" data-lazy>
+    <div class="container">
+      {% include "partials/about_section.html" ignore missing with context %}
+    </div>
+  </section>
+  {% endif %}
+
+{% endblock %}
+
+{% block body_scripts %}
+  {{ super() }}
+
+  {# Tiny nonce’d boot blob (server → JS, CSP-safe) #}
+  <script {{ nonce_attr() }}>
+    window.__FC_INIT__ = {
+      raised: {{ (funds_raised or 0)|round(0) }},
+      goal:   {{ (fundraising_goal or 0)|round(0) }}
+    };
+  </script>
+
+  {# Page JS (externalized) #}
+  <script {{ nonce_attr() }}type="module" src="{{ url_for('static', filename='ux/page-fundraiser.js') if url_for is defined else '/static/ux/page-fundraiser.js' }}"></script>
+
+  {# Optional Starforge boot (module, safe if missing) #}
+  <script {{ nonce_attr() }} type="module">
+    try { import("{{ url_for('static', filename='starforge/enable-brand-spine.js') if url_for is defined else '/static/starforge/enable-brand-spine.js' }}").catch(()=>{}); } catch (_){}
+  </script>
+{% endblock %}
