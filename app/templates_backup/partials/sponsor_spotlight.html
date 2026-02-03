@@ -1,0 +1,780 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+
+{% include "partials/ui_bootstrap.html" ignore missing with context %}  {% set NONCE = NONCE if NONCE is defined
+else (csp_nonce() if csp_nonce is defined else '') %} {% set sponsors_hub_id =
+sponsors_hub_id|default('sponsors-hub') %} {% set show_spotlight =
+show_spotlight|default(true) %} {% set show_inline_wall =
+show_inline_wall|default(true) %} {% set show_floating =
+show_floating|default(true) %} {% set spotlight_slots =
+spotlight_slots|default(4) %} {% set inline_rows_goal =
+inline_rows_goal|default(12) %}   {% set team_name =
+team.team_name if team and team.team_name else 'Connect ATX Elite' %} {% set
+brand_color = (team.theme_color if team and team.theme_color else '#facc15') %}
+{% set _logo_fallback = 'images/logo.webp' %} {% set default_logo =
+(url_for('static', filename=_logo_fallback) if url_for is defined else
+'/static/' ~ _logo_fallback) %}  {% set _src = (sponsors_sorted if
+sponsors_sorted is defined and sponsors_sorted else (sponsors if sponsors is
+defined else [])) %} {% set sponsors_sorted = _src if _src else [] %} {% set
+sponsors_total = sponsors_total if sponsors_total is defined else
+(sponsors_sorted | sum(attribute='amount')) %} {% set sponsors_count =
+sponsors_count if sponsors_count is defined else (sponsors_sorted | length) %}
+{% set recent_donations = recent_donations if recent_donations is defined else
+[] %}  {% if sponsors_sorted|length == 0 %} {% set
+sponsors_sorted = [
+{"name":"ESPN","logo":"https://upload.wikimedia.org/wikipedia/commons/2/2f/ESPN_wordmark.svg","url":"https://espn.com","amount":5000,"tier":"Platinum"},
+{"name":"H-E-B","logo":"https://upload.wikimedia.org/wikipedia/commons/2/2f/HEB_logo.svg","url":"https://heb.com","amount":2500,"tier":"Gold"},
+{"name":"NIKE","logo":"https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg","url":"https://nike.com","amount":1500,"tier":"Silver"}
+] %} {% endif %}  {% set tiers = ['Platinum','Gold','Silver','Bronze','Community'] %} {% set
+sorted_desc = sponsors_sorted | sort(attribute='amount', reverse=True) %} {% set
+spotlight_list = sorted_desc[:spotlight_slots] %} {% set top_names =
+spotlight_list | map(attribute='name') | list %} {% set wall_list = [] %} {% for
+_s in sorted_desc %} {% if _s.name not in top_names %} {% set wall_list =
+wall_list + [_s] %} {% endif %} {% endfor %}
+
+<section
+  class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block"
+  data-ui="{{ (name|default('sponsors_hub'))|replace('_','-') }}"
+>
+  <section
+    class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6"
+    id="{{ sponsors_hub_id }}"
+    class="mx-auto w-full max-w-6xl px-4 md:px-6"
+    data-brand-color="{{ brand_color }}"
+    data-initial-sponsors="{{ sponsors_sorted|tojson }}"
+    data-initial-donations="{{ recent_donations|tojson }}"
+    style="--fc-brand: {{ brand_color }};"
+  >
+    <style {{ nonce_attr() }}nonce="{{ NONCE }}">
+      /* ============ Scoped to #{{ sponsors_hub_id }} ============ */
+      #{{ sponsors_hub_id }} .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+      #{{ sponsors_hub_id }} .badge{border:1px solid color-mix(in srgb, var(--fc-brand) 35%, transparent);
+        background:color-mix(in srgb, var(--fc-brand) 12%, transparent);border-radius:9999px;padding:.1rem .5rem}
+      #{{ sponsors_hub_id }} .card{background:rgba(15,15,15,.72);border:1px solid color-mix(in srgb, var(--fc-brand) 18%, transparent);
+        border-radius:1rem;box-shadow:0 10px 36px rgba(250,204,21,.12);transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease}
+      #{{ sponsors_hub_id }} .card:hover{transform:translateY(-2px);box-shadow:0 16px 46px rgba(250,204,21,.18);border-color:color-mix(in srgb, var(--fc-brand) 30%, transparent)}
+      #{{ sponsors_hub_id }} .logo{height:36px;width:auto;background:#fff;padding:.35rem .6rem;border-radius:.5rem;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+      #{{ sponsors_hub_id }} .chip{border:1px solid color-mix(in srgb, var(--fc-brand) 35%, transparent);
+        background:color-mix(in srgb, var(--fc-brand) 12%, transparent);padding:.35rem .7rem;border-radius:9999px;font-weight:700;transition:transform .15s ease}
+      #{{ sponsors_hub_id }} .chip[aria-pressed="true"]{background:color-mix(in srgb, var(--fc-brand) 60%, #fff); color:#111}
+      #{{ sponsors_hub_id }} .chip .count{font-weight:800;font-size:.7rem;opacity:.85;margin-left:.35rem}
+      #{{ sponsors_hub_id }} .empty{border:1px dashed color-mix(in srgb, var(--fc-brand) 35%, transparent);
+        background:color-mix(in srgb, var(--fc-brand) 8%, transparent);border-radius:1rem}
+      /* Floating drawer */
+      #{{ sponsors_hub_id }} .sw{position:fixed;bottom:2rem;right:2rem;z-index: 50;max-width:28rem;width:100%;
+        max-height:85vh;border-radius:1.5rem;background:linear-gradient(135deg,#0f0f0fF2,#0f0f0fE6 55%,#713f1266);
+        box-shadow:0 6px 40px rgba(251,191,36,.12);backdrop-filter:blur(10px);border:2px solid color-mix(in srgb, var(--fc-brand) 60%, transparent);
+        opacity:0;pointer-events:none;transform:translateY(2rem) scale(.95);transition:all .3s ease-out}
+      #{{ sponsors_hub_id }} .sw.is-open{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+      #{{ sponsors_hub_id }} .toggle{position:fixed;bottom:2rem;right:2rem;z-index: 50;display:flex;align-items:center;gap:.5rem;
+        background:linear-gradient(45deg,var(--fc-brand),color-mix(in srgb, var(--fc-brand) 60%, #fff));
+        color:#111;padding:.75rem 1.1rem;border-radius:9999px;font-weight:900;box-shadow:0 10px 30px rgba(250,204,21,.25);
+        border:2px solid color-mix(in srgb, var(--fc-brand) 70%, transparent);transition:transform .15s ease, box-shadow .15s ease}
+      #{{ sponsors_hub_id }} .toggle:hover{transform:scale(1.05);box-shadow:0 12px 40px rgba(250,204,21,.35)}
+      #{{ sponsors_hub_id }} .ticker-rail{overflow:hidden}
+      #{{ sponsors_hub_id }} .ticker-track{display:inline-flex;gap:1.25rem;padding-right:1.25rem;white-space:nowrap;animation:hub-scroll 24s linear infinite}
+      @keyframes hub-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+      @media (prefers-reduced-motion:reduce) {% if
+    show_spotlight %}
+    <aside id="{{ sponsors_hub_id }}-spotlight" class="mb-8">
+      <header class="mb-4 text-center">
+        <h3 class="text-2xl font-extrabold tracking-tight text-yellow-300">
+          🏆 Sponsor Spotlight
+        </h3>
+        <p class="mt-1 text-xs font-medium text-yellow-200">
+          <span id="{{ sponsors_hub_id }}-count">{{ sponsors_count }}</span>
+          Champions &nbsp;|&nbsp; $
+          <span id="{{ sponsors_hub_id }}-total"
+            >{{ '{:,.0f}'.format((sponsors_total or 0)|float) }}</span
+          >
+          raised
+        </p>
+      </header>
+
+      <div
+        class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+        role="list"
+        aria-label="Top Sponsors"
+        data-spotlight
+      >
+        {% for s in spotlight_list %} {% set tier = s.tier|default('default') %}
+        {% set raw = s.logo if s.logo else _logo_fallback %} {% set logo_src =
+        raw if '://' in raw else (url_for('static', filename=raw) if url_for is
+        defined else '/' ~ raw.lstrip('/')) %}
+        <article
+          class="card flex min-h-[200px] flex-col items-center gap-2 px-6 py-5 {% if tier == 'Platinum' %}bg-yellow-300 text-yellow-900 ring-2 ring-yellow-400 {% elif tier == 'Gold' %}bg-yellow-200 text-yellow-800 ring-1 ring-yellow-300 {% elif tier == 'Silver' %}bg-yellow-100 text-yellow-700 ring-1 ring-yellow-200 {% elif tier == 'Bronze' %}bg-orange-200 text-orange-900 ring-1 ring-orange-300 {% else %}bg-indigo-900 text-yellow-300 ring-1 ring-indigo-600{% endif %}"
+          role="listitem"
+          data-name="{{ s.name|e }}"
+          data-tier="{{ tier|e }}"
+        >
+          {% if s.url %}<a
+            href="{{ s.url }}"
+            target="_blank"
+            rel="noopener sponsored"
+            tabindex="-1"
+            aria-label="Visit {{ s.name }}"
+            >{% endif %}
+            <img
+              src="{{ logo_src }}"
+              alt="{{ s.name }} logo"
+              width="96"
+              height="96"
+              class="h-16 w-16 rounded-xl border border-yellow-400/40 bg-white/90 object-contain shadow-inner sm:h-20 sm:w-20"
+              loading="lazy"
+              decoding="async"
+            />
+            {% if s.url %}</a
+          >{% endif %}
+          <h4 class="mt-2 line-clamp-2 text-center text-lg font-bold">
+            {{ s.name }}
+          </h4>
+          <span class="text-base font-extrabold text-yellow-800"
+            >$ {{ '{:,.0f}'.format((s.amount or 0)|float) }}</span
+          >
+          {% if s.tier %}<span class="badge">{{ s.tier }}</span>{% endif %}
+        </article>
+        {% endfor %}  {% set used =
+        spotlight_list|length %} {% for _ in range(spotlight_slots - used) %}
+        <div
+          role="listitem"
+          class="flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-yellow-400/40 bg-black/60 px-6 py-5 shadow-xl"
+          data-empty
+          tabindex="0"
+          aria-label="Available sponsorship spot"
+        >
+          <span class="text-3xl" aria-hidden="true">✨</span>
+          <span class="text-center text-sm font-semibold text-yellow-300"
+            >This spot is waiting for you!</span
+          >
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="mt-2 rounded-full bg-yellow-400 px-4 py-2 text-sm font-bold text-black shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              data-open-sponsor
+            >
+              🌟 Become a Sponsor
+            </button>
+            <button
+              type="button"
+              class="mt-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-yellow-200 ring-1 ring-yellow-400/40"
+              data-open-donation
+            >
+              💳 Quick Donate
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div
+        class="mt-6 flex items-center gap-4 overflow-x-auto rounded-2xl bg-black/50 py-3 shadow-inner ring-1 ring-yellow-400/10"
+        aria-label="Sponsor logos"
+        data-ribbon
+      >
+        {% for s in sponsors_sorted[:12] %} {% set raw = s.logo if s.logo else
+        _logo_fallback %} {% set src = raw if '://' in raw else
+        (url_for('static', filename=raw) if url_for is defined else '/' ~
+        raw.lstrip('/')) %}
+        <img
+          src="{{ src }}"
+          alt="{{ s.name or 'Sponsor logo' }}"
+          title="{{ s.name or 'Sponsor' }}"
+          class="mx-2 h-8 w-auto rounded shadow"
+          loading="lazy"
+          decoding="async"
+        />
+        {% endfor %}
+        <span class="ml-2 whitespace-nowrap text-sm font-bold text-yellow-400"
+          >+ Your Brand Here</span
+        >
+      </div>
+    </aside>
+    {% endif %}  {%
+    if show_inline_wall %}
+    <section
+      class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6"
+      aria-labelledby="{{ sponsors_hub_id }}-wall-heading"
+    >
+      <h2
+        id="{{ sponsors_hub_id }}-wall-heading"
+        class="mb-3 text-center text-xl font-black text-yellow-300"
+      >
+        Our Sponsors
+      </h2>
+
+      <div
+        class="mb-4 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center"
+      >
+        <label class="sr-only" for="{{ sponsors_hub_id }}-search"
+          >Search sponsors</label
+        >
+        <input
+          id="{{ sponsors_hub_id }}-search"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          placeholder="Search sponsors…"
+          class="w-full rounded-xl border border-yellow-400/30 bg-black/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300/60 sm:w-80"
+        />
+
+        <nav
+          class="flex flex-wrap items-center gap-2"
+          role="toolbar"
+          aria-label="Filter sponsors by tier"
+          data-chips
+        >
+          <button
+            type="button"
+            class="chip"
+            data-tier="all"
+            aria-pressed="true"
+          >
+            All <span class="count">0</span>
+          </button>
+          {% for t in tiers %}<button
+            type="button"
+            class="chip"
+            data-tier="{{ t|lower }}"
+            aria-pressed="false"
+          >
+            {{ t }} <span class="count">0</span></button
+          >{% endfor %}
+        </nav>
+      </div>
+
+      <ul
+        class="grid grid-cols-1 gap-4 md:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        role="list"
+        aria-live="polite"
+        aria-atomic="true"
+        data-grid
+      >
+        {% for s in wall_list %} {% set tier = s.tier|default('Community') %} {%
+        set raw = s.logo if s.logo else _logo_fallback %} {% set src = raw if
+        '://' in raw else (url_for('static', filename=raw) if url_for is defined
+        else '/' ~ raw.lstrip('/')) %}
+        <li
+          class="card flex flex-col gap-3 p-4"
+          data-tier="{{ tier|lower }}"
+          data-name="{{ (s.name or '')|lower }}"
+          data-amount="{{ s.amount or 0 }}"
+        >
+          <div class="flex items-center gap-3">
+            <img
+              class="logo"
+              src="{{ src }}"
+              alt="{{ s.name }} logo"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="min-w-0">
+              <div
+                class="truncate leading-tight font-extrabold text-yellow-200"
+              >
+                {{ s.name }}
+              </div>
+              <div
+                class="inline-flex items-center gap-2 text-[11px] text-yellow-100/80"
+              >
+                <span class="badge">{{ tier }}</span>{% if s.amount %}<span
+                  >$ {{ '{:,.0f}'.format(s.amount) }}</span
+                >{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="mt-auto flex items-center gap-2">
+            {% if s.url %}<a
+              href="{{ s.url }}"
+              rel="noopener sponsored"
+              target="_blank"
+              class="inline-flex items-center justify-center rounded-lg bg-yellow-300 px-3 py-1.5 text-sm font-black text-black"
+              >Visit</a
+            >{% endif %}
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-lg border border-yellow-400/60 bg-yellow-300/10 px-3 py-1.5 text-sm font-bold text-yellow-200"
+              data-open-donate-modal
+              data-amount="{{ (s.amount and (s.amount/10)|int) or 100 }}"
+            >
+              Match
+            </button>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <div
+        class="empty hidden mt-4 p-6 text-center text-sm text-yellow-100/80"
+        data-empty
+      >
+        No sponsors match your filters. Try “All” or clear search.
+      </div>
+    </section>
+    {% endif %}  {% if show_floating %}
+    <section
+      class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 sw"
+      id="{{ sponsors_hub_id }}-sw"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="{{ sponsors_hub_id }}-sw-title"
+      aria-describedby="{{ sponsors_hub_id }}-sw-desc"
+      aria-hidden="true"
+      tabindex="-1"
+    >
+      <header
+        class="flex items-center justify-between rounded-t-3xl border-b border-yellow-400/30 px-6 py-4"
+        style="
+          background: linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--fc-brand) 18%, #000),
+            transparent
+          );
+        "
+      >
+        <h2
+          id="{{ sponsors_hub_id }}-sw-title"
+          class="flex items-center gap-2 text-xl font-extrabold tracking-tight"
+        >
+          <span class="text-2xl" aria-hidden="true">🙌</span
+          ><span class="text-yellow-300">Meet Our Champions</span>
+        </h2>
+        <button
+          type="button"
+          class="ml-2 rounded-full p-1 text-yellow-300 transition hover:bg-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          data-close
+          aria-label="Close sponsor wall"
+        >
+          <span aria-hidden="true" class="text-2xl font-bold">&times;</span>
+        </button>
+      </header>
+
+      <div
+        class="bg-yellow-900/40 px-6 py-1 text-sm font-semibold text-yellow-200 min-h-[1.7em]"
+      >
+        <div class="ticker-rail" aria-live="polite">
+          {% if recent_donations %}
+          <div class="ticker-track">
+            <div class="inline-flex gap-6 pr-6">
+              {% for d in recent_donations %}
+              <span class="inline-block"
+                >💸 <strong>{{ d.sponsor_name or d.name }}</strong> just donated
+                ${{ '{:,.0f}'.format((d.amount or 0)|float) }}</span
+              >
+              {% endfor %}
+            </div>
+            <div class="inline-flex gap-6 pr-6" aria-hidden="true">
+              {% for d in recent_donations %}
+              <span class="inline-block"
+                >💸 <strong>{{ d.sponsor_name or d.name }}</strong> just donated
+                ${{ '{:,.0f}'.format((d.amount or 0)|float) }}</span
+              >
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <span class="opacity-80">Be the first to donate today 💛</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div
+        id="{{ sponsors_hub_id }}-sw-desc"
+        class="flex items-center gap-3 px-6 pt-4 pb-2 text-base text-yellow-200/85"
+      >
+        <span
+          ><span class="font-bold text-yellow-300" data-count
+            >{{ sponsors_count }} supporters</span
+          >
+          —
+          <span class="font-bold text-yellow-400"
+            >$
+            <span data-total
+              >{{ '{:,.0f}'.format((sponsors_total or 0)|float) }}</span
+            >
+            raised</span
+          ></span
+        >
+        <span class="text-lg" aria-hidden="true">🚀</span>
+        <span class="hidden md:inline"
+          >Directly funds local youth programs!</span
+        >
+      </div>
+
+      <div
+        class="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto px-6 pb-5"
+        role="list"
+        aria-label="Sponsor List"
+        data-sw-grid
+      >
+        {% for s in sorted_desc %} {% set tier = s.tier|default('default') %} {%
+        set raw = s.logo if s.logo else _logo_fallback %} {% set src = raw if
+        '://' in raw else (url_for('static', filename=raw) if url_for is defined
+        else '/' ~ raw.lstrip('/')) %}
+        <article
+          class="card flex flex-col items-center gap-2 rounded-2xl border px-4 py-3 {% if tier == 'Platinum' %}bg-yellow-300 text-yellow-900 ring-1 ring-yellow-400 {% elif tier == 'Gold' %}bg-yellow-200 text-yellow-800 ring ring-yellow-300 {% elif tier == 'Silver' %}bg-yellow-100 text-yellow-700 ring ring-yellow-200 {% elif tier == 'Bronze' %}bg-orange-200 text-orange-900 ring ring-orange-300 {% else %}bg-indigo-900 text-yellow-300 ring ring-indigo-600{% endif %}"
+          role="listitem"
+          data-sw-card
+        >
+          {% if s.url %}<a
+            href="{{ s.url }}"
+            target="_blank"
+            rel="noopener sponsored"
+            tabindex="-1"
+            aria-label="Visit {{ s.name }}"
+            >{% endif %}
+            <img
+              src="{{ src }}"
+              alt="{{ s.name }} logo"
+              width="72"
+              height="72"
+              class="h-12 w-12 rounded-lg border border-yellow-400/40 bg-white/90 object-contain shadow-inner"
+              loading="lazy"
+              decoding="async"
+            />
+            {% if s.url %}</a
+          >{% endif %}
+          <div class="text-center">
+            <div class="text-sm font-bold leading-tight">{{ s.name }}</div>
+            <div class="text-xs text-yellow-800">
+              $ {{ '{:,.0f}'.format((s.amount or 0)|float) }}
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      <footer
+        class="rounded-b-3xl border-t border-yellow-400/10 bg-gradient-to-t from-yellow-900/10 to-zinc-900/80 px-6 pb-5 pt-2"
+      >
+        <button
+          type="button"
+          class="mt-1 w-full rounded-2xl bg-yellow-400/90 py-2 text-lg font-extrabold text-black shadow-inner ring-2 ring-yellow-300/30 transition hover:bg-yellow-300"
+          data-open-sponsor
+        >
+          Become a Sponsor →
+        </button>
+        <div class="mt-2 text-xs text-yellow-200/70">
+          Brand your business, inspire kids, make an impact.
+        </div>
+      </footer>
+    </section>
+
+    <button
+      id="{{ sponsors_hub_id }}-toggle"
+      aria-expanded="false"
+      aria-controls="{{ sponsors_hub_id }}-sw"
+      aria-label="Open Sponsor Wall"
+      class="toggle"
+    >
+      🙌 <span>Sponsors</span>
+      <span
+        id="{{ sponsors_hub_id }}-nudge"
+        class="ml-2 hidden h-2 w-2 rounded-full bg-red-500"
+      ></span>
+    </button>
+    {% endif %}
+  </section>
+
+  <script {{ nonce_attr() }} {{ nonce_attr() }}nonce="{{ NONCE }}">
+    (() => {
+      const id = {{ sponsors_hub_id|tojson }};
+      const root = document.getElementById(id); if (!root || root.__boot) return; root.__boot = true;
+
+      // Lazy boot when visible
+      const boot = () => { if (root.__init) return; root.__init = true; init(); };
+      if ('IntersectionObserver' in window){
+        const io = new IntersectionObserver(ents => { if (ents.some(e=>e.isIntersecting)){ io.disconnect(); boot(); } }, { rootMargin:'120px' });
+        io.observe(root);
+      } else { boot(); }
+
+      function init(){
+        // ---------- Elements ----------
+        const spotlight = root.querySelector('[data-spotlight]');
+        const ribbon = root.querySelector('[data-ribbon]');
+        const wallGrid = root.querySelector('[data-grid]');
+        const wallEmpty = root.querySelector('[data-empty]');
+        const chipsWrap = root.querySelector('[data-chips]');
+        const search = document.getElementById(id + '-search');
+        const countEls = root.querySelectorAll('#'+id+'-count, [data-count]');
+        const totalEls = root.querySelectorAll('#'+id+'-total, [data-total]');
+
+        // Drawer & focus
+        const sw = document.getElementById(id + '-sw');
+        const swGrid = root.querySelector('[data-sw-grid]');
+        const toggle = document.getElementById(id + '-toggle');
+        const nudge = document.getElementById(id + '-nudge');
+        const closeBtn = sw?.querySelector('[data-close]');
+        let lastFocus = null;
+
+        // ---------- State ----------
+        let allSponsors = [];
+        try { allSponsors = JSON.parse(root.dataset.initialSponsors || '[]') || []; } catch(_) {}
+        const donations = (()=>{ try { return JSON.parse(root.dataset.initialDonations || '[]') || []; } catch(_) { return []; }})();
+        const reduceMotion = matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        const saveData = !!(navigator.connection && navigator.connection.saveData);
+
+        // ---------- Helpers ----------
+        const money = (n)=> (Math.round(Number(n)||0)).toLocaleString();
+        const esc = (t)=> String(t||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+        const DEFAULT_LOGO = {{ default_logo|tojson }};
+        function logoSrc(raw){ if (!raw) return DEFAULT_LOGO; return /^https?:\/\//i.test(raw) ? raw : (raw.startsWith('/') ? raw : ('/' + raw)); }
+
+        // Deduplicate by normalized name (case-insensitive)
+        function upsertSponsor(s){
+          const name = (s?.name||'').trim(); if (!name) return;
+          const key = name.toLowerCase();
+          const idx = allSponsors.findIndex(x => (x.name||'').toLowerCase() === key);
+          const merged = { ...allSponsors[idx] , ...s };
+          if (idx >= 0) allSponsors[idx] = merged; else allSponsors.unshift(merged);
+          render();
+        }
+        function addMany(list){ (Array.isArray(list)?list:[]).forEach(upsertSponsor); }
+
+        function updateTotals(){
+          const total = allSponsors.reduce((a,b)=> a + (+b.amount||0), 0);
+          const count = allSponsors.length;
+          countEls.forEach(el => el.textContent = String(count));
+          totalEls.forEach(el => el.textContent = money(total));
+        }
+
+        // Replace broken logos with default (CSP-safe; no inline onerror)
+        root.addEventListener('error', (e)=>{
+          const img = e.target; if (!(img instanceof HTMLImageElement)) return;
+          if (!img.dataset.fail){ img.dataset.fail = '1'; img.src = DEFAULT_LOGO; }
+        }, true);
+
+        // ---------- Rendering ----------
+        function renderSpotlight(){
+          if (!spotlight) return;
+          const slots = {{ spotlight_slots }};
+          const sorted = allSponsors.slice().sort((a,b)=>(+b.amount||0)-(+a.amount||0));
+          const top = sorted.slice(0, slots);
+
+          spotlight.innerHTML = '';
+          top.forEach(s=>{
+            const tier = String(s.tier||'default').toLowerCase();
+            const cls = tier==='platinum' ? 'bg-yellow-300 text-yellow-900 ring-2 ring-yellow-400'
+                      : tier==='gold'     ? 'bg-yellow-200 text-yellow-800 ring-1 ring-yellow-300'
+                      : tier==='silver'   ? 'bg-yellow-100 text-yellow-700 ring-1 ring-yellow-200'
+                      : tier==='bronze'   ? 'bg-orange-200 text-orange-900 ring-1 ring-orange-300'
+                      : 'bg-indigo-900 text-yellow-300 ring-1 ring-indigo-600';
+            const a1 = s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener sponsored" tabindex="-1" aria-label="Visit ${esc(s.name)}">` : '';
+            const a2 = s.url ? `</a>` : '';
+            spotlight.insertAdjacentHTML('beforeend', `
+              <article class="card flex min-h-[200px] flex-col items-center gap-2 px-6 py-5 ${cls}" role="listitem" data-name="${esc(s.name||'')}" data-tier="${esc(s.tier||'')}">
+                ${a1}<img src="${logoSrc(s.logo)}" alt="${esc(s.name||'Sponsor')} logo" width="96" height="96" class="h-16 w-16 rounded-xl border border-yellow-400/40 bg-white/90 object-contain shadow-inner sm:h-20 sm:w-20" loading="lazy" decoding="async" />${a2}
+                <h4 class="mt-2 line-clamp-2 text-center text-lg font-bold">${esc(s.name||'Sponsor')}</h4>
+                <span class="text-base font-extrabold text-yellow-800">$ ${money(s.amount)}</span>
+                ${s.tier ? `<span class="badge">${esc(s.tier)}</span>` : ''}
+              </article>
+            `);
+          });
+
+          // Fill CTAs
+          for (let i=top.length; i<slots; i++){
+            spotlight.insertAdjacentHTML('beforeend', `
+              <div role="listitem" class="flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-yellow-400/40 bg-black/60 px-6 py-5 shadow-xl" data-empty tabindex="0" aria-label="Available sponsorship spot">
+                <span class="text-3xl" aria-hidden="true">✨</span>
+                <span class="text-center text-sm font-semibold text-yellow-300">This spot is waiting for you!</span>
+                <div class="flex gap-2">
+                  <button type="button" class="mt-2 rounded-full bg-yellow-400 px-4 py-2 text-sm font-bold text-black shadow" data-open-sponsor>🌟 Become a Sponsor</button>
+                  <button type="button" class="mt-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-yellow-200 ring-1 ring-yellow-400/40" data-open-donation>💳 Quick Donate</button>
+                </div>
+              </div>
+            `);
+          }
+
+          // Ribbon (first 12, de-duped)
+          if (ribbon){
+            const seen = new Set();
+            ribbon.innerHTML = '';
+            allSponsors.slice(0, 16).forEach(s=>{
+              const key = (s.logo||'') + '|' + (s.name||'');
+              if (seen.has(key)) return; seen.add(key);
+              ribbon.insertAdjacentHTML('beforeend', `<img src="${logoSrc(s.logo)}" alt="${esc(s.name||'Sponsor')} logo" title="${esc(s.name||'Sponsor')}" class="mx-2 h-8 w-auto rounded shadow" loading="lazy" decoding="async" />`);
+            });
+            ribbon.insertAdjacentHTML('beforeend', `<span class="ml-2 whitespace-nowrap text-sm font-bold text-yellow-400">+ Your Brand Here</span>`);
+          }
+        }
+
+        function renderWall(){
+          if (!wallGrid) return;
+          const topNames = new Set(allSponsors.slice(0, {{ spotlight_slots }}).map(s => (s.name||'').toLowerCase()));
+          const list = allSponsors.filter(s => !topNames.has((s.name||'').toLowerCase()));
+
+          // Filters
+          const tier = (wallGrid.dataset.filterTier || 'all');
+          const q = (wallGrid.dataset.filterQuery || '').toLowerCase();
+          const filtered = list.filter(s => (tier==='all' || String(s.tier||'').toLowerCase()===tier) && (!q || String(s.name||'').toLowerCase().includes(q)));
+
+          wallGrid.innerHTML = filtered.map(s=>{
+            const t = String(s.tier||'Community'); const tl = t.toLowerCase();
+            return `
+              <li class="card flex flex-col gap-3 p-4" data-tier="${tl}" data-name="${esc(s.name||'').toLowerCase()}" data-amount="${s.amount||0}">
+                <div class="flex items-center gap-3">
+                  <img class="logo" src="${logoSrc(s.logo)}" alt="${esc(s.name||'Sponsor')} logo" loading="lazy" decoding="async" />
+                  <div class="min-w-0">
+                    <div class="truncate leading-tight font-extrabold text-yellow-200">${esc(s.name||'Sponsor')}</div>
+                    <div class="inline-flex items-center gap-2 text-[11px] text-yellow-100/80">
+                      <span class="badge">${esc(t)}</span>${s.amount?`<span>$ ${money(s.amount)}</span>`:''}
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-auto flex items-center gap-2">
+                  ${s.url?`<a href="${esc(s.url)}" rel="noopener sponsored" target="_blank" class="inline-flex items-center justify-center rounded-lg bg-yellow-300 px-3 py-1.5 text-sm font-black text-black">Visit</a>`:''}
+                  <button type="button" class="inline-flex items-center justify-center rounded-lg border border-yellow-400/60 bg-yellow-300/10 px-3 py-1.5 text-sm font-bold text-yellow-200" data-open-donate-modal data-amount="${(s.amount && Math.max(10, Math.round(s.amount/10))) || 100}">Match</button>
+                </div>
+              </li>`;
+          }).join('');
+
+          wallEmpty?.classList.toggle('hidden', filtered.length > 0);
+
+          // Update chip counts
+          const counts = { all: filtered.length };
+          filtered.forEach(s => { const tl = String(s.tier||'community').toLowerCase(); counts[tl] = (counts[tl]||0)+1; });
+          chipsWrap?.querySelectorAll('.chip').forEach(btn => {
+            const t = btn.dataset.tier;
+            btn.querySelector('.count').textContent = String(counts[t] || 0);
+          });
+        }
+
+        function renderSW(){
+          if (!swGrid) return;
+          const html = allSponsors.map(s=>{
+            const tier = String(s.tier||'default').toLowerCase();
+            const base = tier==='platinum' ? 'bg-yellow-300 text-yellow-900 ring-1 ring-yellow-400'
+                      : tier==='gold'     ? 'bg-yellow-200 text-yellow-800 ring ring-yellow-300'
+                      : tier==='silver'   ? 'bg-yellow-100 text-yellow-700 ring ring-yellow-200'
+                      : tier==='bronze'   ? 'bg-orange-200 text-orange-900 ring ring-orange-300'
+                      : 'bg-indigo-900 text-yellow-300 ring ring-indigo-600';
+            return `
+              <article class="card flex flex-col items-center gap-2 rounded-2xl border ${base} px-4 py-3" role="listitem" data-sw-card>
+                ${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener sponsored" tabindex="-1" aria-label="Visit ${esc(s.name||'Sponsor')}">` : ``}
+                <img src="${logoSrc(s.logo)}" alt="${esc(s.name||'Sponsor')} logo" width="72" height="72" class="h-12 w-12 rounded-lg border border-yellow-400/40 bg-white/90 object-contain shadow-inner" loading="lazy" decoding="async" />
+                ${s.url ? `</a>` : ``}
+                <div class="text-center">
+                  <div class="text-sm font-bold leading-tight">${esc(s.name||'Sponsor')}</div>
+                  <div class="text-xs text-yellow-800">$ ${money(s.amount)}</div>
+                </div>
+              </article>`;
+          }).join('');
+          swGrid.innerHTML = html;
+        }
+
+        function render(){ updateTotals(); renderSpotlight(); renderWall(); renderSW(); }
+
+        // ---------- Filters ----------
+        chipsWrap?.addEventListener('click', (e)=>{
+          const btn = e.target.closest('.chip'); if (!btn) return;
+          chipsWrap.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed','false'));
+          btn.setAttribute('aria-pressed','true');
+          wallGrid.dataset.filterTier = btn.dataset.tier || 'all';
+          renderWall();
+        });
+
+        // Debounced search
+        let to=null;
+        search?.addEventListener('input', (e)=>{
+          clearTimeout(to); to=setTimeout(()=>{ wallGrid.dataset.filterQuery = (e.target.value || ''); renderWall(); }, 90);
+        });
+
+        // ---------- CTA & Donate ----------
+        root.addEventListener('click', (e)=>{
+          const openSponsor = e.target.closest('[data-open-sponsor]');
+          if (openSponsor){
+            e.preventDefault();
+            if (typeof window.openDonationModal === 'function') window.openDonationModal({ source: 'sponsors_hub' });
+            else window.dispatchEvent(new CustomEvent('fc:donate:open'));
+          }
+          const donate = e.target.closest('[data-open-donate-modal],[data-open-donation]');
+          if (donate){
+            e.preventDefault();
+            const amt = parseInt(donate.getAttribute('data-amount') || '0', 10) || undefined;
+            if (typeof window.openDonationModal === 'function') window.openDonationModal({ amount: amt });
+            else window.dispatchEvent(new CustomEvent('fc:donate:open', { detail:{ amount: amt }}));
+            if (!reduceMotion && typeof window.confetti === 'function') { try{ window.confetti({ particleCount: 60, spread: 55, origin: { y: 0.7 } }); }catch{} }
+          }
+        });
+
+        // ---------- Drawer: open/close + focus trap + Esc ----------
+        function trapFocus(e){
+          if (!sw?.classList.contains('is-open')) return;
+          const focusables = sw.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])');
+          if (!focusables.length) return;
+          const first = focusables[0], last = focusables[focusables.length - 1];
+          if (e.key === 'Tab'){
+            if (e.shiftKey && document.activeElement === first){ last.focus(); e.preventDefault(); }
+            else if (!e.shiftKey && document.activeElement === last){ first.focus(); e.preventDefault(); }
+          }
+          if (e.key === 'Escape'){ closeSW(); }
+        }
+        function openSW(){
+          if (!sw) return;
+          lastFocus = document.activeElement;
+          sw.classList.add('is-open'); sw.setAttribute('aria-hidden','false');
+          toggle?.setAttribute('aria-expanded','true');
+          document.body.style.overflow='hidden';
+          nudge?.classList.add('hidden');
+          sw.focus(); document.addEventListener('keydown', trapFocus);
+        }
+        function closeSW(){
+          if (!sw) return;
+          sw.classList.remove('is-open'); sw.setAttribute('aria-hidden','true');
+          toggle?.setAttribute('aria-expanded','false');
+          document.body.style.overflow='';
+          document.removeEventListener('keydown', trapFocus);
+          (lastFocus || toggle)?.focus();
+        }
+        toggle?.addEventListener('click', ()=> (sw?.classList.contains('is-open') ? closeSW() : openSW()));
+        closeBtn?.addEventListener('click', closeSW);
+        document.addEventListener('click', (e)=>{ if (!sw || !sw.classList.contains('is-open')) return; if (!sw.contains(e.target) && !toggle.contains(e.target)) closeSW(); });
+        setTimeout(()=>{ if (toggle && sw && !sw.classList.contains('is-open')) nudge?.classList.remove('hidden'); }, 180000);
+
+        // ---------- Live: custom events + sockets ----------
+        window.addEventListener('fc:vip', (ev)=> upsertSponsor(ev.detail || {}));
+
+        if (typeof window.io === 'function'){
+          try{
+            const ss = window.io('/sponsors', { transports:['websocket','polling'] });
+            ss.on('sponsor', (s)=> upsertSponsor(s));
+
+            const ds = window.io('/donations', { transports:['websocket','polling'] });
+            const rails = root.querySelectorAll('.ticker-rail .inline-flex');
+
+            const pushDonation = (d)=>{
+              const msg = `💸 ${(d?.sponsor_name||d?.name||'Someone')} just donated $${money(d?.amount)}`;
+              rails.forEach(rail => {
+                const span = document.createElement('span');
+                span.className = 'inline-block';
+                span.textContent = msg;
+                rail.prepend(span);
+                // Trim rail if too long
+                while (rail.childElementCount > 24) rail.lastElementChild?.remove();
+              });
+            };
+            ds.on('donation', (d)=>{ if (!saveData) pushDonation(d||{}); });
+          }catch(_){}
+        }
+
+        // ---------- Public API ----------
+        window.fcSponsorsHub = {
+          add: upsertSponsor,
+          addMany,
+          render,
+          open: () => openSW(),
+          close: () => closeSW(),
+          toggle: () => (sw?.classList.contains('is-open') ? closeSW() : openSW())
+        };
+
+        // First paint
+        render();
+      }
+    })();
+  </script>
+</section>

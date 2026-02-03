@@ -1,0 +1,17 @@
+<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Vibrant FundChamps gradient (yellow to teal) -->
+    <linearGradient id="fc-grad" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#facc15"/>
+      <stop offset="0.5" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square bg -->
+  <rect x="2" y="2" width="40" height="40" rx="12" fill="url(#fc-grad)" />
+  <!-- F letter -->
+  <text x="10" y="29" font-family="'Inter', 'Montserrat', 'Arial', sans-serif" font-weight="900" font-size="20" fill="#fff" letter-spacing="2">F</text>
+  <!-- C letter -->
+  <text x="22" y="29" font-family="'Inter', 'Montserrat', 'Arial', sans-serif" font-weight="900" font-size="20" fill="#fff" letter-spacing="2">C</text>
+</svg>
+

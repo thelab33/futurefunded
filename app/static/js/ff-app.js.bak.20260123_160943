@@ -1,0 +1,1070 @@
+/* FutureFunded • Flagship v15 — ff-app.js (DROP-IN)
+   - Owns: theme, drawer, modals, share/copy/QR, progress+countdown, teams selection+attribution,
+           donate summary, Stripe Payment Element lifecycle (robust + idempotent).
+   - Reads: #ffConfig JSON + <meta name="ff-*"> contract in <head>
+   - Requires: a single Stripe mount inside #donate: <div id="paymentElement" data-ff-stripe-element></div>
+*/
+
+(() => {
+  "use strict";
+
+  // -----------------------------
+  // Utilities
+  // -----------------------------
+  const qs = (sel, root = document) => root.querySelector(sel);
+  const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const on = (el, evt, fn, opts) => el && el.addEventListener(evt, fn, opts);
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+  const meta = (name) => {
+    const el = qs(`meta[name="${CSS.escape(name)}"]`);
+    return el ? (el.getAttribute("content") || "").trim() : "";
+  };
+
+  const safeJsonParse = (s, fallback = null) => {
+    try { return JSON.parse(s); } catch { return fallback; }
+  };
+
+  const debounce = (fn, ms = 250) => {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  };
+
+  const isEmail = (v) => /\S+@\S+\.\S+/.test(String(v || "").trim());
+
+  const parseMoneyToCents = (raw) => {
+    const s = String(raw ?? "").replace(/[^\d.]/g, "");
+    if (!s) return 0;
+    const n = Number(s);
+    if (!Number.isFinite(n)) return 0;
+    return Math.round(n * 100);
+  };
+
+  const formatMoney = (cents, currency = "USD", locale = "en-US") => {
+    const n = Number(cents || 0) / 100;
+    try {
+      return new Intl.NumberFormat(locale, { style: "currency", currency }).format(n);
+    } catch {
+      return `$${n.toFixed(2)}`;
+    }
+  };
+
+  const setText = (el, txt) => { if (el) el.textContent = txt ?? ""; };
+  const setHidden = (el, hidden) => { if (el) el.hidden = !!hidden; };
+
+  const toast = (() => {
+    const host = () => qs("[data-ff-toasts]");
+    return (msg, kind = "info", ms = 3000) => {
+      const h = host();
+      if (!h) return;
+      const t = document.createElement("div");
+      t.className = `ff-toast ff-toast--${kind}`;
+      t.setAttribute("role", "status");
+      t.setAttribute("aria-live", "polite");
+      t.textContent = msg;
+      h.appendChild(t);
+      setTimeout(() => t.remove(), ms);
+    };
+  })();
+
+  // -----------------------------
+  // Config + State
+  // -----------------------------
+  const Config = {
+    data: {
+      org: {},
+      fundraiser: {},
+      teams: [],
+      flagship: { defaults: { currency: "USD", locale: "en-US" } }
+    },
+    load() {
+      const raw = qs("#ffConfig")?.textContent || "";
+      const parsed = safeJsonParse(raw, null);
+      if (parsed && typeof parsed === "object") this.data = parsed;
+
+      // Normalize a few common fields
+      this.data.flagship = this.data.flagship || {};
+      this.data.flagship.defaults = this.data.flagship.defaults || { currency: "USD", locale: "en-US" };
+      this.data.org = this.data.org || {};
+      this.data.fundraiser = this.data.fundraiser || {};
+      this.data.teams = Array.isArray(this.data.teams) ? this.data.teams : [];
+    }
+  };
+
+  const State = {
+    selectedTeam: null, // {id, name}
+    prefill: { amountCents: 0, sku: "", purpose: "" },
+    donate: {
+      amountCents: 0,
+      email: "",
+      name: "",
+      message: "",
+      anonymous: false,
+      coverFees: false,
+      recognition: "public" // or "anonymous"
+    }
+  };
+
+  // -----------------------------
+  // DOM (only the IDs you use)
+  // -----------------------------
+  const DOM = {
+    // Brand / header
+    orgName: () => qs("#orgName"),
+    orgMeta: () => qs("#orgMeta"),
+    footerOrgName: () => qs("#footerOrgName"),
+    footerOrgMeta: () => qs("#footerOrgMeta"),
+    seasonPill: () => qs("#seasonPill"),
+    sportPill: () => qs("#sportPill"),
+    heroAccentLine: () => qs("#heroAccentLine"),
+    heroOrgLine: () => qs("#heroOrgLine"),
+
+    // Progress
+    topbarRaised: () => qs("#topbarRaised"),
+    topbarGoal: () => qs("#topbarGoal"),
+    raisedBig: () => qs("#raisedBig"),
+    goalPill: () => qs("#goalPill"),
+    stickyRaised: () => qs("#stickyRaised"),
+    stickyGoal: () => qs("#stickyGoal"),
+    raisedRow: () => qs("#raisedRow"),
+    goalRow: () => qs("#goalRow"),
+    remainingText: () => qs("#remainingText"),
+    deadlineText: () => qs("#deadlineText"),
+    pctText: () => qs("#pctText"),
+    overallBar: () => qs("#overallBar"),
+
+    // Countdown
+    heroCountdown: () => qs("#heroCountdown"),
+    topbarCountdown: () => qs("#topbarCountdown"),
+    topbarDeadline: () => qs("#topbarDeadline"),
+
+    // Teams
+    teamsGrid: () => qs("#teamsGrid"),
+    teamsStatus: () => qs("#teamsStatus"),
+
+    // Donate form
+    donationForm: () => qs("#donationForm"),
+    amount: () => qs("#amount"),
+    email: () => qs("#email"),
+    fullName: () => qs("#fullName"),
+    message: () => qs("#message"),
+    anonymous: () => qs("#anonymous"),
+    coverFees: () => qs("#coverFees"),
+
+    attribBox: () => qs("#attribBox"),
+    summaryTeamRow: () => qs("#summaryTeamRow"),
+    summaryTeam: () => qs("#summaryTeam"),
+
+    receiptEmail: () => qs("#receiptEmail"),
+    summaryAmount: () => qs("#summaryAmount"),
+    summaryFees: () => qs("#summaryFees"),
+    summaryTotal: () => qs("#summaryTotal"),
+
+    payBtn: () => qs("#payBtn"),
+    payError: () => qs("#payError"),
+    payErrorText: () => qs("#payErrorText"),
+    paySuccess: () => qs("#paySuccess"),
+    paySuccessText: () => qs("#paySuccessText"),
+
+    checkoutStatusText: () => qs("#checkoutStatusText"),
+    checkoutMethodPill: () => qs("#checkoutMethodPill"),
+    checkoutMethodText: () => qs("#checkoutMethodText"),
+
+    stripeMountEl: () => {
+      // Prefer the donate section mount explicitly.
+      // Use DOM element (NOT selector string) to avoid duplicate id problems.
+      return qs('#donate [data-ff-stripe-element]') || qs("#donate #paymentElement");
+    },
+
+    // Share / modals
+    shareLink: () => qs("#shareLink"),
+    proofCaption: () => qs("#proofCaption"),
+    proofDonorName: () => qs("#proofDonorName"),
+    proofAmount: () => qs("#proofAmount"),
+
+    shareModal: () => qs("#ffShareModal"),
+    proofModal: () => qs("#ffProofModal"),
+    policyModal: () => qs("#ffPolicyModal"),
+
+    // QR images
+    qrImgs: () => qsa("[data-ff-qr]"),
+
+    // UI
+    scrollProgressBar: () => qs("#scrollProgressBar"),
+    backToTop: () => qs("[data-ff-backtotop]"),
+    mobileDrawer: () => qs("#mobileDrawer")
+  };
+
+  // -----------------------------
+  // Theme
+  // -----------------------------
+  const Theme = {
+    key: "ff_theme",
+    init() {
+      const saved = localStorage.getItem(this.key);
+      if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
+
+      on(document, "click", (e) => {
+        const btn = e.target.closest("[data-ff-theme-toggle]");
+        if (!btn) return;
+        const cur = document.documentElement.getAttribute("data-theme") || "dark";
+        const next = cur === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        btn.setAttribute("aria-pressed", String(next === "dark"));
+        localStorage.setItem(this.key, next);
+      }, true);
+    }
+  };
+
+  // -----------------------------
+  // Drawer
+  // -----------------------------
+  const Drawer = {
+    open() {
+      const d = DOM.mobileDrawer();
+      if (!d) return;
+      d.hidden = false;
+      d.setAttribute("aria-hidden", "false");
+      const openBtn = qs("[data-ff-drawer-open]");
+      if (openBtn) openBtn.setAttribute("aria-expanded", "true");
+      const panel = qs("[data-ff-drawer-panel]", d);
+      panel && panel.focus?.();
+      document.body.style.overflow = "hidden";
+    },
+    close() {
+      const d = DOM.mobileDrawer();
+      if (!d) return;
+      d.hidden = true;
+      d.setAttribute("aria-hidden", "true");
+      const openBtn = qs("[data-ff-drawer-open]");
+      if (openBtn) openBtn.setAttribute("aria-expanded", "false");
+      document.body.style.overflow = "";
+    },
+    init() {
+      on(document, "click", (e) => {
+        if (e.target.closest("[data-ff-drawer-open]")) { e.preventDefault(); this.open(); }
+        if (e.target.closest("[data-ff-drawer-close]")) { e.preventDefault(); this.close(); }
+      }, true);
+      on(document, "keydown", (e) => {
+        if (e.key === "Escape") this.close();
+      });
+    }
+  };
+
+  // -----------------------------
+  // Modals (share/proof/policy)
+  // -----------------------------
+  const Modals = {
+    open(el) {
+      if (!el) return;
+      el.hidden = false;
+      el.setAttribute("aria-hidden", "false");
+      const panel = qs("[data-ff-modal-panel]", el);
+      panel && panel.focus?.();
+      document.body.style.overflow = "hidden";
+    },
+    close(el) {
+      if (!el) return;
+      el.hidden = true;
+      el.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    },
+    init() {
+      on(document, "click", (e) => {
+        const openShare = e.target.closest("[data-ff-share-open]");
+        const openProof = e.target.closest("[data-ff-proof-open]");
+        const openPolicy = e.target.closest("[data-ff-policy-open]");
+        if (openShare) { e.preventDefault(); Share.refreshUI(); this.open(DOM.shareModal()); }
+        if (openProof) { e.preventDefault(); Share.refreshUI(); this.open(DOM.proofModal()); }
+        if (openPolicy) { e.preventDefault(); this.open(DOM.policyModal()); }
+
+        const closeBtn = e.target.closest("[data-ff-modal-close]");
+        if (closeBtn) {
+          const m = closeBtn.closest(".ff-modal");
+          e.preventDefault();
+          this.close(m);
+        }
+      }, true);
+
+      on(document, "keydown", (e) => {
+        if (e.key !== "Escape") return;
+        [DOM.shareModal(), DOM.proofModal(), DOM.policyModal()].forEach((m) => {
+          if (m && !m.hidden) this.close(m);
+        });
+        Drawer.close();
+      });
+    }
+  };
+
+  // -----------------------------
+  // Share / Copy / QR
+  // -----------------------------
+  const Share = {
+    baseUrl() {
+      // Prefer explicit canonical meta; fallback to current URL without hash.
+      const canon = meta("ff-canonical") || meta("ff-stripe-return-url");
+      const u = canon || window.location.href;
+      const url = new URL(u, window.location.origin);
+      url.hash = "";
+      return url;
+    },
+    shareUrl() {
+      const url = this.baseUrl();
+
+      // Attribution param (optional)
+      if (State.selectedTeam?.id) url.searchParams.set("src", `team:${State.selectedTeam.id}`);
+
+      return url.toString();
+    },
+    refreshUI() {
+      const url = this.shareUrl();
+      const input = DOM.shareLink();
+      if (input) input.value = url;
+
+      // QR images
+      const qrEndpoint = meta("ff-qr-endpoint");
+      if (qrEndpoint) {
+        const qrSrc = `${qrEndpoint}?size=220x220&data=${encodeURIComponent(url)}`;
+        DOM.qrImgs().forEach((img) => { img.src = qrSrc; });
+      }
+
+      // Proof kit fields
+      setText(DOM.proofDonorName(), State.donate.name || (State.donate.anonymous ? "Anonymous" : "Your name"));
+      setText(DOM.proofAmount(), formatMoney(State.donate.amountCents || 7500, Config.data.flagship.defaults.currency, Config.data.flagship.defaults.locale));
+
+      // Caption (if present)
+      const cap = DOM.proofCaption();
+      if (cap) {
+        const org = Config.data.org?.name || "our program";
+        cap.value = `Supporting ${org} this season.\n\nSecure checkout + instant receipt:\n${url}\n\n#FutureFunded #Community`;
+      }
+    },
+    async copyLink() {
+      const url = this.shareUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+        toast("Link copied", "success");
+      } catch {
+        // Fallback
+        const t = document.createElement("textarea");
+        t.value = url;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand("copy");
+        t.remove();
+        toast("Link copied", "success");
+      }
+    },
+    init() {
+      on(document, "click", (e) => {
+        if (e.target.closest("[data-ff-copy-link]")) { e.preventDefault(); this.copyLink(); }
+        if (e.target.closest("[data-ff-native-share]")) {
+          e.preventDefault();
+          const url = this.shareUrl();
+          if (navigator.share) navigator.share({ title: document.title, url }).catch(() => {});
+          else this.copyLink();
+        }
+        if (e.target.closest("[data-ff-sms-share]")) {
+          e.preventDefault();
+          const url = this.shareUrl();
+          window.location.href = `sms:&body=${encodeURIComponent(url)}`;
+        }
+        if (e.target.closest("[data-ff-email-share]")) {
+          e.preventDefault();
+          const url = this.shareUrl();
+          const subj = encodeURIComponent(document.title || "Fundraiser");
+          const body = encodeURIComponent(`Here’s the link:\n\n${url}`);
+          window.location.href = `mailto:?subject=${subj}&body=${body}`;
+        }
+      }, true);
+    }
+  };
+
+  // -----------------------------
+  // Brand + Progress + Countdown
+  // -----------------------------
+  const Brand = {
+    apply() {
+      const { org } = Config.data;
+      setText(DOM.orgName(), org?.name || "Organization");
+      setText(DOM.footerOrgName(), org?.name || "Organization");
+      setText(DOM.orgMeta(), org?.meta || "");
+      setText(DOM.footerOrgMeta(), org?.meta || "");
+
+      setText(DOM.seasonPill(), org?.seasonPill || "Season Fund");
+      setText(DOM.sportPill(), org?.sportPill || "Program");
+      setText(DOM.heroAccentLine(), org?.heroAccentLine || "");
+      setText(DOM.heroOrgLine(), `${org?.name || "Organization"} • Fundraiser`);
+
+      Share.refreshUI();
+    }
+  };
+
+  const Progress = {
+    totals() {
+      const teams = Config.data.teams || [];
+      const raised = teams.reduce((sum, t) => sum + Math.max(0, Math.round((t.raised || 0) * 100)), 0); // config numbers appear as dollars
+      const goalDollars = Number(Config.data.fundraiser?.goalAmount || 0);
+      const goal = Math.round(goalDollars * 100);
+      return { raised, goal };
+    },
+    render() {
+      const { currency, locale } = Config.data.flagship.defaults;
+
+      const { raised, goal } = this.totals();
+      const pct = goal > 0 ? clamp(Math.round((raised / goal) * 100), 0, 999) : 0;
+      const remaining = Math.max(0, goal - raised);
+
+      setText(DOM.topbarRaised(), formatMoney(raised, currency, locale));
+      setText(DOM.topbarGoal(), formatMoney(goal, currency, locale));
+      setText(DOM.raisedBig(), formatMoney(raised, currency, locale));
+      setText(DOM.goalPill(), formatMoney(goal, currency, locale));
+
+      setText(DOM.stickyRaised(), formatMoney(raised, currency, locale));
+      setText(DOM.stickyGoal(), formatMoney(goal, currency, locale));
+
+      setText(DOM.raisedRow(), formatMoney(raised, currency, locale));
+      setText(DOM.goalRow(), formatMoney(goal, currency, locale));
+      setText(DOM.pctText(), String(pct));
+      setText(DOM.remainingText(), formatMoney(remaining, currency, locale));
+
+      const bar = DOM.overallBar();
+      if (bar) bar.style.width = `${clamp(pct, 0, 100)}%`;
+    }
+  };
+
+  const Countdown = {
+    timer: null,
+    format(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    },
+    init() {
+      const iso = Config.data.fundraiser?.deadlineISO;
+      if (!iso) return;
+
+      const deadline = new Date(iso);
+      const tick = () => {
+        const now = new Date();
+        const ms = deadline.getTime() - now.getTime();
+        setText(DOM.heroCountdown(), this.format(ms));
+        setText(DOM.topbarCountdown(), this.format(ms));
+        setText(DOM.topbarDeadline(), deadline.toLocaleDateString(Config.data.flagship.defaults.locale));
+        setText(DOM.deadlineText(), deadline.toLocaleDateString(Config.data.flagship.defaults.locale));
+      };
+
+      tick();
+      clearInterval(this.timer);
+      this.timer = setInterval(tick, 60 * 1000);
+    }
+  };
+
+  // -----------------------------
+  // Teams (render + selection + attribution)
+  // -----------------------------
+  const Teams = {
+    current: { q: "", sort: "featured" },
+    sorters: {
+      featured: (a, b) => (b.featured === true) - (a.featured === true),
+      goal: (a, b) => {
+        const ap = a.goal ? (a.raised / a.goal) : 0;
+        const bp = b.goal ? (b.raised / b.goal) : 0;
+        return bp - ap;
+      },
+      recent: (a, b) => (b.raised || 0) - (a.raised || 0)
+    },
+    render() {
+      const grid = DOM.teamsGrid();
+      if (!grid) return;
+
+      const teams = (Config.data.teams || []).map((t) => ({
+        ...t,
+        goal: Number(t.goal || 0),
+        raised: Number(t.raised || 0)
+      }));
+
+      const q = this.current.q.trim().toLowerCase();
+      let list = q ? teams.filter((t) => `${t.name} ${t.meta}`.toLowerCase().includes(q)) : teams.slice();
+
+      const sorter = this.sorters[this.current.sort] || this.sorters.featured;
+      list.sort(sorter);
+
+      grid.innerHTML = "";
+      list.forEach((t) => {
+        const card = document.createElement("article");
+        card.className = "ff-teamcard ff-card ff-card--lift ff-card--premium ff-pad";
+        card.setAttribute("role", "listitem");
+
+        const pct = t.goal > 0 ? clamp(Math.round((t.raised / t.goal) * 100), 0, 999) : 0;
+
+        card.innerHTML = `
+          <div class="ff-row ff-row--between ff-wrap ff-ais">
+            <div class="ff-minw-0">
+              <div class="ff-kicker">${t.featured ? "Featured" : "Team"}</div>
+              <div class="ff-card__title">${t.name || "Team"}</div>
+              <p class="ff-help ff-muted">${t.meta || ""}</p>
+            </div>
+            <button class="ff-btn ff-btn--primary ff-btn--sm" type="button"
+              data-ff-select-team="${String(t.id || "")}">
+              Select
+            </button>
+          </div>
+          <div class="ff-meter ff-mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+            aria-valuenow="${clamp(pct, 0, 100)}" aria-valuetext="${pct}% funded">
+            <span style="display:block;width:${clamp(pct, 0, 100)}%"></span>
+          </div>
+          <div class="ff-row ff-row--between ff-wrap ff-mt-2">
+            <span class="ff-help">Raised: <strong class="ff-num">${formatMoney(Math.round(t.raised * 100), Config.data.flagship.defaults.currency, Config.data.flagship.defaults.locale)}</strong></span>
+            <span class="ff-help">Goal: <strong class="ff-num">${formatMoney(Math.round(t.goal * 100), Config.data.flagship.defaults.currency, Config.data.flagship.defaults.locale)}</strong></span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      setText(DOM.teamsStatus(), `${list.length} teams shown`);
+    },
+    select(teamId) {
+      const t = (Config.data.teams || []).find((x) => String(x.id) === String(teamId));
+      if (!t) return;
+
+      State.selectedTeam = { id: String(t.id), name: String(t.name || "Team") };
+
+      // Selected pill
+      const pill = qs("[data-ff-team-selected]");
+      const nameEl = qs("[data-ff-team-selected-name]");
+      if (pill) pill.hidden = false;
+      setText(nameEl, State.selectedTeam.name);
+
+      // Attribution box in donate
+      const attrib = DOM.attribBox();
+      if (attrib) attrib.hidden = false;
+
+      // Summary
+      setHidden(DOM.summaryTeamRow(), false);
+      setText(DOM.summaryTeam(), State.selectedTeam.name);
+
+      Share.refreshUI();
+      Donate.renderSummary();
+      toast(`Selected: ${State.selectedTeam.name}`, "success", 2500);
+    },
+    clear() {
+      State.selectedTeam = null;
+
+      const pill = qs("[data-ff-team-selected]");
+      if (pill) pill.hidden = true;
+
+      const attrib = DOM.attribBox();
+      if (attrib) attrib.hidden = true;
+
+      setHidden(DOM.summaryTeamRow(), true);
+
+      Share.refreshUI();
+      Donate.renderSummary();
+      toast("Team selection cleared", "info", 2000);
+    },
+    init() {
+      // Search
+      const search = qs("[data-ff-team-search]");
+      on(search, "input", debounce((e) => {
+        this.current.q = e.target.value || "";
+        this.render();
+      }, 150));
+
+      // Sort chips
+      on(document, "click", (e) => {
+        const btn = e.target.closest("[data-ff-team-sort] [data-ff-sort]");
+        if (!btn) return;
+        e.preventDefault();
+        const sort = btn.getAttribute("data-ff-sort") || "featured";
+        this.current.sort = sort;
+        qsa("[data-ff-team-sort] [data-ff-sort]").forEach((b) => {
+          const active = (b.getAttribute("data-ff-sort") || "") === sort;
+          b.classList.toggle("is-selected", active);
+          b.setAttribute("aria-pressed", String(active));
+        });
+        this.render();
+      }, true);
+
+      // Select team button (rendered)
+      on(document, "click", (e) => {
+        const btn = e.target.closest("[data-ff-select-team]");
+        if (!btn) return;
+        e.preventDefault();
+        const id = btn.getAttribute("data-ff-select-team");
+        this.select(id);
+        // Optional: scroll to donate
+        qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, true);
+
+      // Clear attribution (multiple buttons in markup)
+      on(document, "click", (e) => {
+        if (!e.target.closest("[data-ff-attrib-clear]")) return;
+        e.preventDefault();
+        this.clear();
+      }, true);
+
+      this.render();
+    }
+  };
+
+  // -----------------------------
+  // Donate summary + prefill hooks
+  // -----------------------------
+  const Donate = {
+    estimateFeeCents(donationCents) {
+      // UI estimate only; backend can compute exact if you support it.
+      // Typical US card: 2.9% + 30¢
+      const pct = 0.029;
+      const fixed = 30;
+      return Math.max(0, Math.round(donationCents * pct) + fixed);
+    },
+    getCurrency() { return Config.data.flagship.defaults.currency || "USD"; },
+    getLocale() { return Config.data.flagship.defaults.locale || "en-US"; },
+    readForm() {
+      State.donate.amountCents = parseMoneyToCents(DOM.amount()?.value);
+      State.donate.email = String(DOM.email()?.value || "").trim();
+      State.donate.name = String(DOM.fullName()?.value || "").trim();
+      State.donate.message = String(DOM.message()?.value || "").trim();
+      State.donate.anonymous = !!DOM.anonymous()?.checked;
+      State.donate.coverFees = !!DOM.coverFees()?.checked;
+
+      // Recognition buttons (optional)
+      const recAnon = State.donate.anonymous;
+      State.donate.recognition = recAnon ? "anonymous" : "public";
+    },
+    setAmountFromDollars(dollars) {
+      const v = Number(dollars);
+      if (!Number.isFinite(v) || v <= 0) return;
+      const input = DOM.amount();
+      if (input) input.value = String(v);
+      this.readForm();
+      this.renderSummary();
+      StripeCheckout.queuePrepare();
+    },
+    renderSummary() {
+      this.readForm();
+
+      const donationCents = State.donate.amountCents;
+      const feeCents = State.donate.coverFees ? this.estimateFeeCents(donationCents) : 0;
+      const totalCents = donationCents + feeCents;
+
+      setText(DOM.receiptEmail(), State.donate.email || "your email");
+      setText(DOM.summaryAmount(), formatMoney(donationCents, this.getCurrency(), this.getLocale()));
+      setText(DOM.summaryFees(), State.donate.coverFees ? formatMoney(feeCents, this.getCurrency(), this.getLocale()) : "—");
+      setText(DOM.summaryTotal(), donationCents ? formatMoney(totalCents, this.getCurrency(), this.getLocale()) : "—");
+
+      // Team summary already handled in Teams.select/clear
+    },
+    init() {
+      // Amount + email change => update summary and prepare Stripe
+      on(DOM.amount(), "input", debounce(() => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare();
+      }, 250));
+
+      on(DOM.email(), "input", debounce(() => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare();
+      }, 250));
+
+      on(DOM.coverFees(), "change", () => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare(true); // amount changes when cover fees changes
+      });
+
+      on(DOM.anonymous(), "change", () => {
+        this.renderSummary();
+        Share.refreshUI();
+      });
+
+      // Quick amount chips
+      on(document, "click", (e) => {
+        const btn = e.target.closest("[data-ff-quick-amount]");
+        if (!btn) return;
+        e.preventDefault();
+        const dollars = btn.getAttribute("data-ff-quick-amount");
+        this.setAmountFromDollars(dollars);
+        qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, true);
+
+      // Prefill buttons (impact ladder, sponsor CTAs, etc.)
+      on(document, "click", (e) => {
+        const btn = e.target.closest("[data-ff-prefill],[data-ff-sponsor-cta]");
+        if (!btn) return;
+
+        const amt = btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill") || btn.getAttribute("data-ff-sponsor-cta");
+        const dollars = btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill");
+        const final = btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount");
+
+        // Robust: sponsor chips store amount on data-ff-prefill-amount.
+        const amount = btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount") || btn.getAttribute("data-ff-prefill-amount");
+
+        const n = Number(amount || dollars || amt);
+        if (!Number.isFinite(n) || n <= 0) return;
+
+        e.preventDefault();
+        this.setAmountFromDollars(n);
+        qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, true);
+
+      // Submit handled by StripeCheckout
+      on(DOM.donationForm(), "submit", (e) => StripeCheckout.handleSubmit(e));
+
+      this.renderSummary();
+    }
+  };
+
+  // -----------------------------
+  // Stripe Payment Element (robust lifecycle)
+  // -----------------------------
+  const StripeCheckout = {
+    stripe: null,
+    elements: null,
+    paymentElement: null,
+    mounted: false,
+    clientSecret: "",
+    lastKey: "", // guards against redundant re-init
+    preparing: false,
+    prepareQueued: false,
+    prepareDebounced: null,
+
+    endpoints: {
+      intent: () => meta("ff-stripe-intent-endpoint") || "/payments/stripe/intent",
+      config: () => meta("ff-payments-config-endpoint") || "/payments/config",
+      returnUrl: () => meta("ff-stripe-return-url") || (meta("ff-canonical") || window.location.href)
+    },
+
+    setStatus(txt) { setText(DOM.checkoutStatusText(), txt || "Ready"); },
+
+    showError(msg) {
+      const box = DOM.payError();
+      const txt = DOM.payErrorText();
+      if (txt) txt.textContent = msg || "Payment error.";
+      if (box) {
+        box.hidden = !msg;
+        if (msg) box.focus?.();
+      }
+      // Hide success
+      setHidden(DOM.paySuccess(), true);
+    },
+
+    showSuccess(msg) {
+      const box = DOM.paySuccess();
+      const txt = DOM.paySuccessText();
+      if (txt) txt.textContent = msg || "Thank you! Your receipt has been emailed.";
+      if (box) {
+        box.hidden = false;
+        box.focus?.();
+      }
+      setHidden(DOM.payError(), true);
+    },
+
+    async loadStripeJs() {
+      if (window.Stripe) return;
+      const src = meta("ff-stripe-js") || "https://js.stripe.com/v3/";
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    },
+
+    async fetchPublishableKey() {
+      // 1) prefer meta
+      const pkMeta = meta("ff-stripe-pk");
+      if (pkMeta) return pkMeta;
+
+      // 2) fallback to /payments/config
+      const r = await fetch(this.endpoints.config(), { credentials: "same-origin" });
+      const j = await r.json();
+      if (j && j.ok && j.stripe_publishable_key) return j.stripe_publishable_key;
+
+      throw new Error("Stripe publishable key missing. Set meta ff-stripe-pk or implement /payments/config.");
+    },
+
+    buildIntentPayload() {
+      Donate.readForm();
+      const donationCents = State.donate.amountCents;
+      const feeCents = State.donate.coverFees ? Donate.estimateFeeCents(donationCents) : 0;
+      const chargeCents = donationCents + feeCents;
+
+      const currency = (Config.data.flagship.defaults.currency || "USD").toLowerCase();
+
+      const donor = {
+        email: State.donate.email || "",
+        name: State.donate.name || ""
+      };
+
+      const payload = {
+        amount_cents: chargeCents,
+        currency,
+        donor,
+        cover_fees: !!State.donate.coverFees,
+        donation_amount_cents: donationCents,
+        cover_fee_cents: feeCents,
+        attribution: State.selectedTeam ? { team_id: State.selectedTeam.id, team_name: State.selectedTeam.name } : null,
+        metadata: {
+          ff_team_id: State.selectedTeam?.id || "",
+          ff_team_name: State.selectedTeam?.name || "",
+          ff_campaign: meta("ff-canonical") || "",
+          ff_build: document.documentElement.getAttribute("data-ff-build") || "",
+          ff_version: document.documentElement.getAttribute("data-ff-build") || ""
+        }
+      };
+
+      // Strip nulls for cleaner backend handling
+      if (!payload.attribution) delete payload.attribution;
+
+      return payload;
+    },
+
+    getMountEl() {
+      const el = DOM.stripeMountEl();
+      return el || null;
+    },
+
+    teardown() {
+      // Stripe Elements doesn't provide a universal destroy, but we can unmount by clearing the host.
+      const host = this.getMountEl();
+      if (host) host.innerHTML = "";
+      this.elements = null;
+      this.paymentElement = null;
+      this.clientSecret = "";
+      this.mounted = false;
+      this.lastKey = "";
+    },
+
+    async createIntent() {
+      const payload = this.buildIntentPayload();
+
+      if (!payload.amount_cents || payload.amount_cents < 100) {
+        throw new Error("Enter a valid amount (minimum $1.00).");
+      }
+      if (!isEmail(payload.donor.email)) {
+        throw new Error("Enter a valid email for the receipt.");
+      }
+
+      const csrf = meta("csrf-token");
+      const headers = { "Content-Type": "application/json" };
+      if (csrf) headers["X-CSRFToken"] = csrf;
+
+      const r = await fetch(this.endpoints.intent(), {
+        method: "POST",
+        credentials: "same-origin",
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      const j = await r.json();
+      if (!j || !j.ok) throw new Error(j?.error?.message || "PaymentIntent creation failed.");
+
+      // Accept multiple response shapes
+      const cs = j.client_secret || j.clientSecret;
+      if (!cs) throw new Error("Server did not return client_secret.");
+
+      // Some implementations also return publishable_key; accept it.
+      const pk = j.publishable_key || j.publishableKey || "";
+      return { clientSecret: cs, publishableKey: pk };
+    },
+
+    async mountIfNeeded(force = false) {
+      const host = this.getMountEl();
+      if (!host) throw new Error("Stripe mount element missing in Donate section.");
+
+      const payload = this.buildIntentPayload();
+      const key = `${payload.amount_cents}|${payload.donor.email}|${payload.cover_fees ? 1 : 0}|${State.selectedTeam?.id || ""}`;
+
+      if (!force && this.mounted && this.lastKey === key) return;
+
+      this.setStatus("Loading…");
+      this.showError("");
+
+      // Rebuild intent + mount cleanly
+      this.teardown();
+
+      await this.loadStripeJs();
+
+      // Determine pk
+      let pk = meta("ff-stripe-pk");
+      if (!pk) pk = await this.fetchPublishableKey();
+
+      // Create intent
+      const { clientSecret, publishableKey } = await this.createIntent();
+      this.clientSecret = clientSecret;
+      if (publishableKey) pk = publishableKey;
+
+      this.stripe = window.Stripe(pk);
+
+      // Create elements and mount using DOM element (not selector) to avoid duplicate ID issues.
+      this.elements = this.stripe.elements({ clientSecret: this.clientSecret });
+      this.paymentElement = this.elements.create("payment");
+      host.innerHTML = "";
+      this.paymentElement.mount(host);
+
+      this.mounted = true;
+      this.lastKey = key;
+      this.setStatus("Ready");
+    },
+
+    queuePrepare(force = false) {
+      if (!this.prepareDebounced) {
+        this.prepareDebounced = debounce(async (forceInner) => {
+          try {
+            await this.prepare(forceInner);
+          } catch (err) {
+            // Soft-fail during typing; only show if user already tried submitting.
+            // Keep status readable.
+            this.setStatus("Ready");
+          }
+        }, 350);
+      }
+      this.prepareDebounced(force);
+    },
+
+    async prepare(force = false) {
+      if (this.preparing) return;
+      this.preparing = true;
+      try {
+        // Only prepare when amount+email look valid; avoid noisy errors while typing.
+        Donate.readForm();
+        if (State.donate.amountCents < 100) return;
+        if (!isEmail(State.donate.email)) return;
+        await this.mountIfNeeded(force);
+      } finally {
+        this.preparing = false;
+      }
+    },
+
+    async confirmPayment() {
+      if (!this.stripe || !this.elements) throw new Error("Stripe is not initialized.");
+
+      this.setStatus("Processing…");
+
+      const { error, paymentIntent } = await this.stripe.confirmPayment({
+        elements: this.elements,
+        redirect: "if_required",
+        confirmParams: {
+          return_url: this.endpoints.returnUrl()
+        }
+      });
+
+      if (error) throw new Error(error.message || "Payment confirmation failed.");
+
+      // If no redirect required, confirmPayment returns a paymentIntent for many methods
+      if (paymentIntent?.status) {
+        setHidden(DOM.checkoutMethodPill(), false);
+        setText(DOM.checkoutMethodText(), paymentIntent.payment_method_types?.[0] || "Stripe");
+      }
+
+      this.setStatus("Complete");
+      this.showSuccess("Payment successful. Your receipt has been emailed.");
+    },
+
+    async handleSubmit(e) {
+      e.preventDefault();
+
+      try {
+        this.showError("");
+        setHidden(DOM.paySuccess(), true);
+
+        // Ensure the element is mounted for the current amount/email/team
+        await this.mountIfNeeded(false);
+
+        // Confirm
+        await this.confirmPayment();
+
+      } catch (err) {
+        this.setStatus("Ready");
+        this.showError(err?.message || "Payment failed. Please try again.");
+      }
+    },
+
+    init() {
+      // Prepare on focus into donate section (gives one-click final submit UX)
+      const form = DOM.donationForm();
+      if (form) {
+        on(form, "focusin", () => this.queuePrepare(false), true);
+      }
+
+      // Prepare when user arrives at donate anchor
+      on(window, "hashchange", () => {
+        if (window.location.hash === "#donate") this.queuePrepare(false);
+      });
+
+      this.setStatus("Ready");
+    }
+  };
+
+  // -----------------------------
+  // Scroll / Back to Top / Progress bar
+  // -----------------------------
+  const ScrollUX = {
+    init() {
+      const bar = DOM.scrollProgressBar();
+      const back = DOM.backToTop();
+
+      const tick = () => {
+        const doc = document.documentElement;
+        const scrollTop = doc.scrollTop || document.body.scrollTop || 0;
+        const max = Math.max(1, doc.scrollHeight - doc.clientHeight);
+        const pct = clamp(Math.round((scrollTop / max) * 100), 0, 100);
+
+        if (bar) bar.style.width = `${pct}%`;
+        if (back) {
+          const show = scrollTop > 800;
+          back.setAttribute("aria-hidden", String(!show));
+          back.classList.toggle("is-visible", show);
+        }
+      };
+
+      on(window, "scroll", debounce(tick, 50), { passive: true });
+      tick();
+    }
+  };
+
+  // -----------------------------
+  // App Init
+  // -----------------------------
+  const App = {
+    init() {
+      Config.load();
+      Theme.init();
+      Drawer.init();
+      Modals.init();
+      Share.init();
+
+      Brand.apply();
+      Progress.render();
+      Countdown.init();
+      Teams.init();
+      Donate.init();
+      StripeCheckout.init();
+      ScrollUX.init();
+
+      // Keep share UI correct after initial render
+      Share.refreshUI();
+
+      // Safety warning for duplicate IDs (helps debug)
+      const dupPay = qsa("#payBtn").length;
+      const dupPE = qsa("#paymentElement").length;
+      if (dupPay > 1 || dupPE > 1) {
+        console.warn("[FutureFunded] Duplicate IDs detected:", { payBtn: dupPay, paymentElement: dupPE });
+        console.warn("[FutureFunded] Remove extra #payBtn / #paymentElement and any inline Stripe test script.");
+      }
+    }
+  };
+
+  on(document, "DOMContentLoaded", () => App.init());
+})();
+

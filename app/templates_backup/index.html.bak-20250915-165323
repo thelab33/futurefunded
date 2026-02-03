@@ -1,0 +1,200 @@
+{# =============================================================================
+   index.html — NAS (Nike/Apple/Spotify) Modular Layout + Tri/Hologram wiring
+   - Full-bleed hero (Tri wrapper w/ IDP + FCID)
+   - Left content track + sticky CTA/ticker rail
+   - Uses existing partials (tiers, impact, about, rail, tickers)
+   - CSP-safe (NONCE macro passthrough)
+   ========================================================================== #}
+{% extends "base.html" %}
+
+{# ---------- Feature flags (query-string overridable) ---------- #}
+{% set _q = request.args if request is defined else {} %}
+{% set _OFF = ['0','false','off','no','disable'] %}
+{% set SHOW_TIERS  = (show_tiers  if show_tiers  is defined else (_q.get('tiers','1')  |lower not in _OFF)) %}
+{% set SHOW_IMPACT = (show_impact if show_impact is defined else (_q.get('impact','1') |lower not in _OFF)) %}
+{% set SHOW_ABOUT  = (show_about  if show_about  is defined else (_q.get('about','1')  |lower not in _OFF)) %}
+
+{# ---------- Nonce passthrough (for inline CSS/JS) ---------- #}
+{% if NONCE is not defined %}{% set NONCE = csp_nonce() if csp_nonce is defined else '' %}{% endif %}
+{% if nonce_attr is not defined %}
+  {% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+{% endif %}
+
+{# ---------- IDs expected by Tri/Hologram CSS/JS ---------- #}
+{% set IDP  = IDP  |default('tri-hero') %}
+{% set FCID = FCID |default('fc-holo') %}
+
+{# Title comes from base OG logic; keep page H1 empty to avoid duplicates #}
+{% block title %}{{ fundraiser_title or 'Fuel the Season — Fund the Future' }}{% endblock %}
+{% block h1 %}{% endblock %}
+
+{% block extra_head %}
+  {{ super() }}
+  <meta name="description" content="{{ meta_description if meta_description is defined and meta_description else 'Direct support for gear, travel, and tutoring—every dollar moves a kid forward.' }}">
+
+  {# ===== NAS helpers + modular section guards ===== #}
+  <style {{ nonce_attr() }}>
+    :root{ --section-pad: clamp(1rem, 2.2vw, 1.6rem); --container-w: min(1280px, 96vw) }
+    .nas-container{ max-width: var(--container-w); margin-inline:auto; padding-inline: clamp(14px,2.2vw,22px) }
+    .nas-grid{ display:grid; gap:clamp(14px,1.8vw,22px) }
+    @media (min-width:1024px){ .nas-grid{ grid-template-columns: 1fr 320px } }
+
+    .nas-section{ position:relative; z-index:0; padding-block: var(--section-pad); scroll-margin-top: var(--fc-header-h,72px) }
+    .nas-section + .nas-section{ padding-top: clamp(.6rem, 1.2vw, 1rem) }
+    .nas-section > .nas-container{ isolation:isolate; contain: layout paint style }
+
+    /* Hero band (Tri wrapper ensures min height so next band never overlaps) */
+    #{{ IDP }}{ --hero-min: clamp(460px, 58vh, 860px) }
+    #{{ IDP }} .hero-shell{ min-height: var(--hero-min) }
+
+    /* Optional hero overlay (Apple-like) */
+    #fc-hero .hero-media{ height: clamp(44vh, 60vh, 68vh); object-fit:cover; width:100% }
+    #fc-hero .hero-fade{ position:absolute; inset:0;
+      background:linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,.35) 40%, transparent 75%) }
+
+    /* Cards */
+    .nas-card{ background:var(--fc-surface,#0b0f15); border-radius:18px; border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 18px 58px rgba(0,0,0,.38) }
+    @media (hover:hover){ .nas-card{ transition:transform .3s ease, box-shadow .3s ease }
+      .nas-card:hover{ transform:translateY(-2px); box-shadow:0 28px 80px rgba(0,0,0,.5) } }
+
+    .nas-eyebrow{ text-transform:uppercase; letter-spacing:.14em; font-weight:800; color:#a1a1aa }
+    .nas-display{ font-weight:1000; letter-spacing:-.02em }
+
+    /* Tiers grid override (1/2/3 across) without touching the partial’s markup */
+    #tiers .grid{ display:grid !important; gap:.7rem !important; grid-template-columns:1fr !important; align-items:stretch }
+    @media (min-width:700px){ #tiers .grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important } }
+    @media (min-width:1024px){ #tiers .grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important } }
+    #tiers .flip-card{ aspect-ratio: 1 / 1.05; min-height:0 }
+    #tiers .flip-card-inner{ min-height:0 }
+    #tiers .tier-perks{ display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.55rem }
+    #tiers .tier-perks li{ display:inline-flex;align-items:center;gap:.3rem;padding:.24rem .44rem;border-radius:.55rem;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-weight:800;font-size:.78rem;color:#e5e7eb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+    #tiers .tier-perks li svg{ display:none }
+    #tiers .ribbon{ top:10px; right:10px; transform:none; font-size:10px; padding:.18rem .44rem; border-radius:.45rem }
+
+    /* Sticky rail */
+    .nas-rail{ position:sticky; top:var(--sticky-offset, 80px) }
+
+    /* band seam (subtle divider under hero) */
+    .band-seam::after{ content:""; position:absolute; inset:auto 0 -1px 0; height:1px;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent); pointer-events:none }
+
+    @media (prefers-reduced-motion:reduce){ .nas-card{ transition:none } }
+  </style>
+{% endblock %}
+
+{% block content %}
+
+  {# ================= 1) HERO (Tri wrapper; your hero partial renders inside) ================= #}
+  <section id="fc-hero" class="relative band-seam" aria-label="Hero">
+    <picture class="block">
+      <img class="hero-media"
+           src="{{ hero_image_url or asset('images/hero/hero-1920.avif') }}"
+           alt="{{ team.team_name if team and team.team_name else 'Hero' }}"
+           fetchpriority="high">
+    </picture>
+    <div class="hero-fade" aria-hidden="true"></div>
+
+    <div class="absolute inset-x-0 bottom-0">
+      <div class="nas-container pb-6 lg:pb-10">
+        {# Tri/Hologram root (IDs your CSS/JS expect). Your hero partial can fill this. #}
+        <div id="{{ IDP }}"
+             class="hero-shell"
+             data-deadline="{{ hero_deadline|default('') }}"
+             data-proof="{{ hero_proof_api|default('') }}">
+          {% include "partials/hero_and_fundraiser.html" ignore missing with context %}
+          <div id="{{ FCID }}" class="fc-holo-tilt" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ================= 2) Tracks: left content + right sticky rail ================= #}
+  <div class="nas-container nas-section">
+    <div class="nas-grid">
+      <!-- CONTENT TRACK -->
+      <div id="content-track" class="space-y-8 lg:space-y-12">
+
+        {% if SHOW_TIERS %}
+        <section id="tiers" class="nas-section" role="region" aria-labelledby="tiers-title">
+          <header class="mb-4 lg:mb-6 flex items-end justify-between">
+            <div>
+              <div class="nas-eyebrow">Sponsorships</div>
+              <h2 id="tiers-title" class="nas-display text-3xl sm:text-4xl">Tiers</h2>
+            </div>
+            <p class="text-sm text-zinc-400">Limited spots • fast checkout</p>
+          </header>
+          <div class="nas-card p-4 lg:p-6">
+            {% include "partials/tiers.html" ignore missing with context %}
+          </div>
+        </section>
+        {% endif %}
+
+        {% if SHOW_IMPACT %}
+        <section id="impact" class="nas-section" role="region" aria-labelledby="impact-title">
+          <div class="nas-card p-6 lg:p-8">
+            <header class="mb-5">
+              <div class="nas-eyebrow">Impact</div>
+              <h2 id="impact-title" class="nas-display text-3xl">Your gift at work</h2>
+            </header>
+            {% include "partials/impact_lockers_premium.html" ignore missing with context %}
+          </div>
+        </section>
+        {% endif %}
+
+        {% if SHOW_ABOUT %}
+        <section id="about" class="nas-section" role="region" aria-labelledby="about-title">
+          <div class="nas-card p-6 lg:p-8">
+            <header class="mb-4">
+              <div class="nas-eyebrow">About</div>
+              <h2 id="about-title" class="nas-display text-3xl">About our program</h2>
+            </header>
+            {% include "partials/about_section.html" ignore missing with context %}
+          </div>
+        </section>
+        {% endif %}
+
+      </div>
+
+      <!-- STICKY RAIL (optional partials; will not overlap sections) -->
+      <aside class="nas-rail space-y-4 lg:space-y-6" aria-label="Donate & sponsors">
+        {% include "partials/_donation_rail.html"        ignore missing with context %}
+        {% include "partials/sponsor_ticker.html"        ignore missing with context %}
+        {% include "partials/sponsor_leaderboard.html"   ignore missing with context %}
+      </aside>
+    </div>
+  </div>
+{% endblock %}
+
+{% block body_scripts %}
+  {{ super() }}
+  <script {{ nonce_attr() }}>
+    (function(){
+      "use strict";
+      // section reveal (motion-safe)
+      try{
+        const reduce = matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!reduce){
+          const io=new IntersectionObserver((es)=>es.forEach(x=>x.isIntersecting&&x.target.classList.add('is-visible')),
+                                            { rootMargin:"-10% 0px -5% 0px" });
+          document.querySelectorAll('.nas-section').forEach(s=>io.observe(s));
+          addEventListener('pagehide',()=>io.disconnect(),{once:true});
+        }
+      }catch{}
+
+      // hash helpers (#impact / #about)
+      try{
+        const sync = () => {
+          const h = (location.hash||"").toLowerCase();
+          if(h==='#impact'){ document.getElementById('impact')?.scrollIntoView({behavior:'smooth', block:'start'}); }
+          if(h==='#about'){  document.getElementById('about') ?.scrollIntoView({behavior:'smooth', block:'start'}); }
+        };
+        sync(); addEventListener('hashchange', sync, { passive:true });
+      }catch{}
+    })();
+  </script>
+
+  {# If you’re using the Tri/Hologram CSS/JS bundle, include it after this block #}
+{% endblock %}
+

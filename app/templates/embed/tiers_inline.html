@@ -1,0 +1,119 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{# =====================================================
+   FundChamps — Sponsor Tiers Inline (Tile Mode)
+   lightweight, expandable panel partial
+===================================================== #}
+{% set _NONCE_ = (
+    NONCE if NONCE is defined and NONCE
+    else (csp_nonce() if csp_nonce is defined and (csp_nonce is callable)
+          else (csp_nonce if csp_nonce is defined else ''))
+) %}
+{% macro fc_nonce_attr(n=_NONCE_) -%}{% if n %}nonce="{{ n }}"{% endif %}{%- endmacro %}
+
+<section class="fc-tiers-inline" aria-labelledby="tiers-inline-heading">
+  <h2 id="tiers-inline-heading" class="inline-heading">Sponsorship Tiers</h2>
+  <p class="inline-sub">Support our season — choose your level below.</p>
+
+  <div class="tiers-grid">
+    {% for tier in tiers %}
+      <article class="tier-card {% if tier.popular %}tier-popular{% endif %}">
+        <header>
+          <span class="tier-emoji">{{ tier.emoji }}</span>
+          <h3>{{ tier.title }}</h3>
+          <p class="tier-amt">
+            {% if tier.amount|string|lower == 'custom' %}
+              Custom Package
+            {% else %}
+              ${{ tier.amount }}
+            {% endif %}
+          </p>
+        </header>
+        <ul>
+          {% for b in tier.benefits %}
+            <li>✓ {{ b }}</li>
+          {% endfor %}
+        </ul>
+        <button class="tier-cta" data-tier="{{ tier.title }}">Sponsor</button>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<style {{ nonce_attr() }}>
+.fc-tiers-inline {
+  --brand: #facc15;
+  display: grid;
+  gap: 1.25rem;
+  padding: 1rem;
+  color: #e5e7eb;
+}
+.inline-heading {
+  font: 900 1.4rem/1.2 "Poppins", sans-serif;
+  color: var(--brand);
+  margin: 0;
+}
+.inline-sub {
+  font: 500 .95rem/1.4 "Inter", sans-serif;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.tier-card {
+  background: linear-gradient(180deg, #10141d, #0b0e15);
+  border: 1px solid #ffffff22;
+  border-radius: 14px;
+  padding: 1rem;
+  transition: all .3s ease;
+}
+.tier-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--brand);
+  box-shadow: 0 0 18px rgba(250,204,21,.2);
+}
+.tier-card header { margin-bottom: .5rem; }
+.tier-emoji { font-size: 1.5rem; }
+.tier-amt { color: #facc15; font-weight: 700; margin: .25rem 0 .5rem; }
+.tier-cta {
+  background: linear-gradient(180deg,#fffbe6,#facc15);
+  border: none;
+  border-radius: 999px;
+  padding: .5rem .8rem;
+  font-weight: 800;
+  color: #111;
+  width: 100%;
+  margin-top: .75rem;
+  cursor: pointer;
+}
+.tier-cta:hover { transform: translateY(-1px); }
+</style>
+

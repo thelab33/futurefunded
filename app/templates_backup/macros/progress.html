@@ -1,0 +1,95 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# ============================================================================
+   macros/progress.html — FundChamps Prestige Progress Meter
+   - CSP-safe, a11y-first
+   - Emits fc:funds:update event on init/update
+   ============================================================================ #}
+
+{% macro progress_meter(raised, goal, size="md") -%}
+  {# ── Safe float conversion and clamping ── #}
+  {%- set _goal   = (goal|float if goal else 0.0) -%}
+  {%- set _raised = (raised|float if raised else 0.0) -%}
+  {%- set _pct    = (0.0 if _goal == 0.0 else (_raised / _goal * 100.0)) -%}
+  {%- set _pct    = (0.0 if _pct < 0.0 else (100.0 if _pct > 100.0 else _pct)) -%}
+  {%- set pct_f   = '%.1f' % _pct -%}
+  {%- set raised_display = '{:,}'.format(_raised|int) -%}
+
+  {%- set sizes = {
+    "sm": "max-w-[7.5rem] h-2 text-[10px] py-0.5",
+    "md": "max-w-xs h-3 text-[11px] py-1",
+    "lg": "max-w-sm h-4 text-xs py-2"
+  } -%}
+
+  <div
+    x-data="{
+      pct: {{ '%.2f' % _pct }},
+      raised: {{ '%.2f' % _raised }},
+      goal: {{ '%.2f' % _goal }},
+      confettiFired: false,
+      init() {
+        if (this.$refs.bar) {
+          this.$refs.bar.style.width = this.pct + '%';
+        }
+
+        // Emit global sync event
+        window.dispatchEvent(new CustomEvent('fc:funds:update', {
+          detail: { raised: this.raised, goal: this.goal, pct: this.pct }
+        }));
+
+        // Fire confetti at 100% only once
+        if (this.pct >= 100 && !this.confettiFired) {
+          this.confettiFired = true;
+          import('https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/+esm')
+            .then(m => m.default({ particleCount: 150, spread: 65, origin: { y: 0.8 } }))
+            .catch(() => {});
+        }
+      }
+    }"
+    x-init="init()"
+    role="progressbar"
+    aria-label="Fundraising progress"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="{{ pct_f }}"
+    aria-valuetext="{{ pct_f }} percent"
+    class="relative w-full {{ sizes.get(size, sizes['md']) }} select-none"
+  >
+    <!-- Progress rail -->
+    <div
+      class="w-full overflow-hidden rounded-full bg-zinc-800/70 shadow-inner"
+      style="height: inherit"
+    >
+      <div
+        x-ref="bar"
+        class="h-full w-0 rounded-full bg-clip-text text-transparent" style="background: linear-gradient(90deg, hsl(var(--brand)), hsl(var(--brand) / .8))"
+        style="min-width: 6px"
+      ></div>
+    </div>
+
+    <!-- Label -->
+    <div
+      class="pointer-events-none absolute inset-0 flex items-center justify-center font-bold leading-none"
+      style="font-size: inherit"
+    >
+      <span class="text-yellow-300 drop-shadow">
+        ${{ raised_display }} • {{ pct_f }}%
+      </span>
+    </div>
+  </div>
+{%- endmacro %}
+<script nonce="{{ NONCE }}">
+window.addEventListener('fc:funds:update', e => {
+  const { raised, goal, pct } = e.detail;
+  // Example: update header mini meter
+  const hdrRaised = document.getElementById('hdr-raised');
+  const hdrGoal   = document.getElementById('hdr-goal');
+  const hdrPct    = document.getElementById('hdr-pct');
+  const hdrBar    = document.getElementById('hdr-meter');
+
+  if (hdrRaised) hdrRaised.textContent = `$${Math.round(raised).toLocaleString()}`;
+  if (hdrGoal)   hdrGoal.textContent   = `$${Math.round(goal).toLocaleString()}`;
+  if (hdrPct)    hdrPct.textContent    = `${pct.toFixed(1)}%`;
+  if (hdrBar)    hdrBar.style.width    = pct + '%';
+});
+</script>
+

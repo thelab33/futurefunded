@@ -1,0 +1,404 @@
+/* ==========================================================================
+   FundChamps Elite UI — Team Black/Red/White/Gold (SV Premium)
+   Tailwind-friendly (base/components/utilities layers)
+   - Strong tokens, dark-mode vars, reduced-motion safe
+   - Elite forms (floating labels), buttons, chips/badges/cards
+   - Toasts & modal primitives, custom scrollbars, focus-visible
+   ========================================================================== */
+
+/* ==== Tailwind Core (keep) ==== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ----------------------------------------
+   1) Design Tokens & Root Variables
+----------------------------------------- */
+@layer base {
+  :root {
+    /* ----- TEAM COLORS ----- */
+    --team-black: #0d0d0d;
+    --team-black-900: #0f0f0f;
+    --team-black-light: #181818;
+    --team-red: #d32f2f;
+    --team-red-600: #dc2626;
+    --team-red-dark: #a31515;
+    --team-white: #fff;
+    --team-gold: #d4af37;
+    --team-gold-light: #ffe29a;
+    --team-glass: rgb(211 47 47 / 14%);
+    --team-gray: #ececec;
+    --team-gray-dark: #191919;
+
+    /* Derived blends (fallback first, then color-mix override) */
+    --brand-soft: rgb(212 175 55 / 16%);
+    --brand-soft-2: rgb(212 175 55 / 28%);
+    --brand-ink: rgb(0 0 0 / 66%);
+
+    /* ----- TYPO/SPACE/RADIUS/EASING ----- */
+    --radius: 0.875rem;
+    --radius-lg: 1.25rem;
+    --shadow-vip: 0 0 16px 2px var(--team-gold-light), 0 2px 16px #0003;
+    --btn-glow: 0 2px 16px #d4af3780, 0 1.5px 8px #fff4;
+    --badge-glow: 0 0 8px var(--team-gold), 0 0 12px var(--team-red);
+    --easing: cubic-bezier(.4,0,.2,1);
+
+    /* ----- FORM + INPUT SYSTEM ----- */
+    --input-bg: #161618;
+    --input-bg-dark: #131314;
+    --input-border: #333;
+    --input-border-dark: #222;
+    --input-text: var(--team-red);
+    --input-text-dark: #fffacd;
+    --input-error: #d32f2f;
+    --input-success: #16a34a;
+    --input-helper: rgb(211 47 47 / 67%);
+    --input-helper-error: rgb(211 47 47 / 88%);
+    --focus-ring: var(--team-red);
+    --focus-ring-gold: var(--team-gold);
+    --focus-ring-light: #ffe29a;
+
+    /* ----- BUTTONS ----- */
+    --btn-primary-bg: var(--team-red);
+    --btn-primary-text: var(--team-white);
+    --btn-primary-hover-bg: var(--team-gold);
+    --btn-primary-hover-text: var(--team-black);
+    --btn-outline-bg: transparent;
+    --btn-outline-border: var(--team-red);
+    --btn-outline-text: var(--team-red);
+    --btn-outline-hover-bg: var(--team-red);
+    --btn-outline-hover-text: var(--team-white);
+
+    /* ----- ACCESSIBILITY ----- */
+    --focus-visible-ring: 3px solid var(--team-gold-light);
+    --focus-visible-ring-dark: 3px solid var(--team-red-dark);
+    --a11y-text-shadow: 0 2px 8px #000a;
+
+    /* ----- CONFETTI ----- */
+    --confetti-red: #d32f2f;
+    --confetti-gold: #d4af37;
+    --confetti-white: #fff;
+  }
+
+  /* modern blend overrides */
+  :root {
+    --brand-soft: color-mix(in oklab, var(--team-gold) 18%, transparent);
+    --brand-soft-2: color-mix(in oklab, var(--team-gold) 28%, transparent);
+  }
+
+  /* Dark mode overrides (class strategy) */
+  .dark, [data-theme="dark"] {
+    color-scheme: dark;
+
+    --input-bg: var(--input-bg-dark);
+    --input-border: var(--input-border-dark);
+    --input-text: var(--team-gold-light);
+    --team-gold: var(--team-gold-light);
+    --btn-primary-bg: var(--team-red-dark);
+    --btn-primary-text: var(--team-white);
+    --focus-ring: var(--team-gold);
+    --focus-visible-ring: 3px solid var(--team-gold);
+  }
+
+  /* Base body & focus-visible */
+  html { scroll-behavior: smooth; }
+  body { background: var(--team-black-900); color: #fafafa; }
+
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: var(--focus-visible-ring);
+    outline-offset: 3px;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+  }
+
+  /* Scrollbars (WebKit + Firefox) */
+  :root {
+    scrollbar-color: var(--team-red) var(--team-black-light);
+    scrollbar-width: thin;
+  }
+  *::-webkit-scrollbar       { height: 10px; width: 10px; }
+  *::-webkit-scrollbar-track { background: var(--team-black-light); }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--team-red), var(--team-gold)); border: 2px solid var(--team-black-light);
+    border-radius: 9999px;
+  }
+}
+
+/* ----------------------------------------
+   2) Components (forms, buttons, cards, badges)
+----------------------------------------- */
+@layer components {
+  /* ---------- Glass & Card primitives ---------- */
+  .glass {
+    background: var(--team-glass);
+    background: linear-gradient(180deg, rgb(20 20 20 / 70%), rgb(20 20 20 / 86%)), linear-gradient(125deg, var(--brand-soft), rgb(255 255 255 / 3%));
+
+    @apply backdrop-blur-xl border rounded-2xl border-zinc-700/40 shadow-[0_18px_60px_rgba(212,175,55,0.16),inset_0_0_40px_rgba(212,175,55,0.07)];
+  }
+
+  .card {
+    @apply rounded-2xl border border-zinc-700/40 bg-zinc-900/70 shadow-xl;
+
+    transition: transform .18s var(--easing), box-shadow .18s var(--easing), border-color .18s var(--easing);
+  }
+  .card:hover { border-color: color-mix(in oklab, var(--team-gold) 30%, transparent); box-shadow: 0 16px 46px rgb(212 175 55 / 18%); transform: translateY(-2px); }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-bold transition;
+
+    transition-duration: .15s;
+    transition-property: transform, box-shadow, background, color, border-color;
+  }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary {
+    background: var(--btn-primary-bg);
+    box-shadow: var(--btn-glow);
+    color: var(--btn-primary-text);
+  }
+
+  .btn-primary:hover {
+    background: var(--btn-primary-hover-bg);
+    color: var(--btn-primary-hover-text);
+  }
+
+  .btn-outline {
+    background: var(--btn-outline-bg);
+    border: 2px solid var(--btn-outline-border);
+    color: var(--btn-outline-text);
+  }
+
+  .btn-outline:hover {
+    background: var(--btn-outline-hover-bg);
+    color: var(--btn-outline-hover-text);
+  }
+
+  .btn-ghost { @apply bg-transparent text-yellow-200 hover:bg-yellow-400/10; }
+  .btn-danger { @apply bg-red-600 text-white hover:bg-red-500; }
+
+  /* Loading */
+  .btn-loading { opacity: .8; pointer-events: none; position: relative; }
+
+  .btn-loading::after { animation: spin 1s linear infinite;
+    border: 2.6px solid var(--team-white); border-radius: 9999px; border-top-color: transparent;
+    content: ""; height: 1.1em; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); width: 1.1em;
+  }
+
+  /* ---------- Chips & Badges ---------- */
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold;
+
+    background: color-mix(in oklab, var(--team-gold) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--team-gold) 40%, transparent);
+  }
+
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold;
+
+    background: color-mix(in oklab, var(--team-gold) 22%, transparent);
+    border: 1px solid color-mix(in oklab, var(--team-gold) 50%, transparent);
+    box-shadow: var(--badge-glow);
+  }
+
+  /* ---------- Toast & Modal primitives ---------- */
+  .toast {
+    @apply fixed z-[1050] bottom-6 right-6 rounded-xl px-4 py-3 text-sm font-semibold shadow-2xl;
+
+    background: linear-gradient(180deg, rgb(20 20 20 / 90%), rgb(20 20 20 / 84%));
+    border: 1px solid var(--brand-soft-2);
+  }
+  .modal-backdrop { @apply fixed inset-0 bg-black/70 backdrop-blur-sm; }
+
+  .modal {
+    @apply fixed inset-x-0 top-[10vh] mx-auto w-[92vw] max-w-lg rounded-2xl p-5;
+
+    background: linear-gradient(180deg, rgb(15 15 15 / 92%), rgb(15 15 15 / 86%));
+    border: 1px solid var(--brand-soft-2);
+  }
+
+  /* ----------------------------------------
+     Elite Forms (floating labels, helpers)
+  ----------------------------------------- */
+  .input-group { @apply relative mb-8; }
+
+  input:disabled, textarea:disabled, select:disabled {
+    @apply cursor-not-allowed bg-zinc-800 opacity-60;
+  }
+
+  .input-group input,
+  .input-group textarea,
+  .input-group select {
+    background-color: var(--input-bg);
+    border: 2px solid var(--input-border);
+    color: var(--input-text);
+    font-size: 1rem; line-height: 1.4;
+    padding-top: 1.45rem;
+
+    @apply w-full rounded-xl p-3 font-medium shadow-inner transition-colors duration-200 ease-in-out;
+  }
+  .input-group textarea { @apply min-h-[44px] max-h-[300px] resize-none overflow-y-hidden; }
+
+  /* Focus */
+  .input-group input:focus,
+  .input-group textarea:focus,
+  .input-group select:focus {
+    background-color: #1a1617;
+    border-color: var(--focus-ring);
+    box-shadow: 0 0 0 3px rgb(220 38 38 / 18%);
+    outline: none;
+    transition: border-color .3s ease;
+  }
+
+  /* Focus-visible (breathing) */
+  .input-group input:focus-visible,
+  .input-group textarea:focus-visible,
+  .input-group select:focus-visible {
+    animation: red-breathe 1.6s infinite alternate;
+    box-shadow:
+      0 0 0 3px #dc262620,
+      0 0 15px 2px #dc262650,
+      0 0 30px 8px #d4af3720;
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  /* Floating label */
+  .input-group label {
+    background: transparent; color: var(--input-text);
+    font-size: 1rem; font-weight: 600; left: 1rem; letter-spacing: .01em; padding: 0 .3em;
+    pointer-events: none;
+    position: absolute; top: 1.25rem;
+    transition: all .21s cubic-bezier(.4,0,.2,1), color .16s, background .28s; user-select: none; z-index: 10;
+  }
+
+  .input-group input:focus + label,
+  .input-group input:not(:placeholder-shown) + label,
+  .input-group textarea:focus + label,
+  .input-group textarea:not(:placeholder-shown) + label,
+  .input-group select:focus + label,
+  .input-group select:not([value=""]) + label {
+    background: var(--input-bg);
+    border-radius: .55rem;
+    box-shadow: 0 2px 12px #dc262640;
+    color: var(--focus-ring);
+    font-size: .76rem; font-weight: 700; letter-spacing: .06em;
+    opacity: .97; padding: 0 .5em; top: .28rem;
+  }
+
+  /* Prefix/Suffix slots (optional) */
+  .input-prefix, .input-suffix {
+    @apply absolute top-1/2 -translate-y-1/2 text-sm text-zinc-300;
+  }
+  .input-prefix { left: .9rem; }
+  .input-suffix { right: .9rem; }
+
+  /* Placeholder */
+  input::placeholder, textarea::placeholder {
+    color: #ffdada; font-weight: 600; letter-spacing: .04em; opacity: .89;
+  }
+
+  /* Inline progress bar (optional) */
+  .input-progress-bar {
+    background: linear-gradient(90deg, #dc2626 40%, #d4af37 100%);
+    border-radius: 0 0 1rem 1rem;
+    bottom: 0; height: 3px; left: 0;
+    pointer-events: none; position: absolute; right: 0; transition: width .24s cubic-bezier(.4,0,.2,1); z-index: 12;
+  }
+
+  /* Validity states */
+  .input-group input:invalid,
+  .input-group textarea:invalid,
+  .input-group select:invalid {
+    background-color: var(--team-black);
+    border-color: var(--input-error);
+    box-shadow: 0 0 0 3px rgb(220 38 38 / 30%);
+  }
+
+  .input-group input[data-valid="true"],
+  .input-group textarea[data-valid="true"],
+  .input-group select[data-valid="true"] {
+    border-color: var(--input-success);
+    box-shadow: 0 0 0 3px rgb(22 163 74 / 50%);
+  }
+
+  .input-group input[data-valid="true"]:focus,
+  .input-group textarea[data-valid="true"]:focus { animation: pulse-success .7s; }
+
+  /* Helper text */
+  .input-helper { color: var(--input-helper); display: block; font-size: .83rem; margin-left: .12rem; margin-top: .28rem; user-select: none; }
+  .input-helper.error { color: var(--input-helper-error); font-weight: 700; }
+
+  /* Clear button (x) */
+  .input-clear {
+    @apply pointer-events-none absolute right-3 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded border-0 bg-transparent text-current opacity-0 transition-opacity duration-200;
+
+    font-size: 1.125rem; transition: opacity .2s, box-shadow .23s;
+  }
+
+  .input-group input[type="text"]:focus ~ .input-clear,
+  .input-group input[type="text"]:hover ~ .input-clear,
+  .input-group input[type="email"]:focus ~ .input-clear,
+  .input-group input[type="email"]:hover ~ .input-clear,
+  .input-group input[type="search"]:focus ~ .input-clear,
+  .input-group input[type="search"]:hover ~ .input-clear {
+    background: #fff6f6; box-shadow: 0 0 9px 2px var(--team-red);
+    color: var(--team-red); opacity: 1 !important; pointer-events: auto;
+  }
+
+  /* File input button */
+  input[type="file"]::file-selector-button {
+    @apply mr-3 rounded-lg border border-red-600 bg-red-600 px-3 py-1 text-sm font-semibold text-white hover:bg-red-500 transition;
+  }
+
+  /* Stacks & skeleton */
+  .input-stack { @apply flex flex-col gap-2 sm:gap-3; }
+  .skeleton-input { @apply mb-5 h-10 min-h-[44px] w-full animate-pulse rounded-xl bg-zinc-700; }
+
+  /* Autofill (WebKit) */
+  input:-webkit-autofill,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    box-shadow: 0 0 0 1000px var(--input-bg) inset !important;
+    -webkit-text-fill-color: var(--input-text) !important;
+  }
+}
+
+/* ----------------------------------------
+   3) Animations & Utilities
+----------------------------------------- */
+@layer utilities {
+  @keyframes red-breathe {
+    0%   { box-shadow: 0 0 0 3px #dc262620, 0 0 10px #dc262640; }
+    100% { box-shadow: 0 0 0 5px #d4af3780, 0 0 28px 12px #d4af3730; }
+  }
+
+  @keyframes pulse-success {
+    0%   { box-shadow: 0 0 0 3px #16a34a44; }
+    50%  { box-shadow: 0 0 12px 6px #16a34a66; }
+    100% { box-shadow: 0 0 0 3px #16a34a44; }
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .animate-red-breathe { animation: red-breathe 1.6s infinite alternate; }
+  .animate-pulse-success { animation: pulse-success .7s both; }
+
+  /* VIP helpers */
+  .shadow-vip { box-shadow: var(--shadow-vip); }
+  .border-vip { border: 1.5px solid var(--team-gold-light); }
+  .bg-glassy { background: var(--team-glass); }
+
+  /* Focus rings via CSS var (works with Tailwind arbitrary values too) */
+  .focus-ring { outline: var(--focus-visible-ring); outline-offset: 3px; }
+  .focus-ring-gold { outline: 3px solid var(--focus-ring-gold); outline-offset: 3px; }
+
+  /* Text shadow for legibility on imagery */
+  .text-a11y { text-shadow: var(--a11y-text-shadow); }
+
+  /* Utility for clamp containers */
+  .container-elite { margin-inline: auto; max-width: min(84rem, 92vw); padding: clamp(.75rem, 2vw, 2rem); }
+}
+

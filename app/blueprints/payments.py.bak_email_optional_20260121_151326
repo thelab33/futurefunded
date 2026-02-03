@@ -1,0 +1,1245 @@
+#!/usr/bin/env python3
+"""
+Payments + Stripe + PayPal integration for FutureFunded (drop-in, contract-tight)
+
+Blueprint: payments (recommended mount: /payments)
+
+Endpoints (with /payments prefix):
+  GET  /payments/health
+  GET  /payments/config
+
+  POST /payments/stripe/intent
+  POST /payments/stripe/webhook
+
+  POST /payments/paypal/order
+  POST /payments/paypal/capture
+
+Contract guarantees (matches index.html + ff-app.js expectations):
+- Name optional; email required
+- Canonical amount: amount_cents (integer, cents)
+- Legacy (deprecated): amount / amount_ui (dollars) only if
+    PAYMENTS_ALLOW_LEGACY_AMOUNT=1 AND PAYMENTS_REQUIRE_AMOUNT_CENTS=0
+- Accepts payload keys:
+    amount_cents
+    currency
+    donor: { name, email } OR metadata/donor_email
+    coverFees / cover_fees
+    roundUp / round_up
+    anonymous
+    message / note
+    org_id / org_slug
+    campaign_id / campaignId
+    team_id
+- Stripe intent response includes:
+    ok, donation_id, id, status, client_secret, publishable_key, mode
+    + back-compat: clientSecret, publishableKey
+- PayPal order response includes:
+    ok, donation_id, order_id, status
+- PayPal capture response includes:
+    ok, donation_id, order_id, status
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import secrets
+import threading
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from typing import Any, Dict, Optional, Set, Tuple, cast
+
+import requests
+import stripe
+from flask import Blueprint, current_app, jsonify, request
+
+from app.extensions import db
+from app.models import Donation, Org
+from app.models.stripe_event import StripeEvent
+
+bp = Blueprint("payments", __name__)
+
+# CSRF exempt (API-style JSON)
+try:
+    from app.extensions import csrf  # type: ignore
+
+    if csrf:
+        csrf.exempt(bp)  # type: ignore[attr-defined]
+except Exception:
+    pass
+
+
+# =============================================================================
+# Config helpers
+# =============================================================================
+def _cfg_str(key: str, default: str = "") -> str:
+    v = current_app.config.get(key)
+    if isinstance(v, str) and v.strip():
+        return v.strip()
+    return (os.getenv(key, default) or "").strip()
+
+
+def _cfg_bool(key: str, default: bool = False) -> bool:
+    v = current_app.config.get(key)
+    if isinstance(v, bool):
+        return v
+    raw = ""
+    if isinstance(v, str) and v.strip():
+        raw = v.strip()
+    else:
+        raw = (os.getenv(key, "") or "").strip()
+    if raw == "":
+        return default
+    return raw.lower() in {"1", "true", "yes", "on"}
+
+
+def _cfg_int(key: str, default: int) -> int:
+    v = current_app.config.get(key)
+    if isinstance(v, int):
+        return v
+    raw = (os.getenv(key, "") or "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except Exception:
+        return default
+
+
+def _norm_env(raw: str) -> str:
+    r = (raw or "").strip().lower()
+    if r in {"prod", "production"}:
+        return "production"
+    if r in {"dev", "development", "local", "staging", "stage", "test", "testing"}:
+        return "development"
+    return "unknown"
+
+
+def _parse_csv_set(raw: str) -> Set[str]:
+    s = (raw or "").strip()
+    if not s:
+        return set()
+    return {p.strip().lower() for p in s.split(",") if p.strip()}
+
+
+def _safe_money_str_from_cents(cents: int) -> str:
+    d = (Decimal(int(cents)) / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return format(d, "f")
+
+
+# =============================================================================
+# Settings
+# =============================================================================
+@dataclass(frozen=True)
+class Settings:
+    env: str
+    platform: str
+    currency: str
+    allowed_currencies: Set[str]
+
+    min_amount_cents: int
+    max_amount_cents: int
+
+    # fee model used for "cover fees" gross-up
+    fee_pct: Decimal
+    fee_flat: Decimal
+    fees_enabled: bool
+
+    require_bearer: bool
+
+    # Amount contract flags
+    payments_require_amount_cents: bool
+    payments_allow_legacy_amount: bool
+
+    # Stripe
+    stripe_sk: str
+    stripe_pk: str
+    stripe_whsec: str
+    stripe_max_network_retries: int
+    stripe_force_card: bool
+    stripe_enforce_env_match: bool
+
+    # PayPal
+    paypal_client_id: str
+    paypal_client_secret: str
+    paypal_intent: str  # capture|authorize
+    paypal_mode: str  # sandbox|live
+    paypal_timeout_s: int
+
+    @property
+    def stripe_mode(self) -> str:
+        k = (self.stripe_sk or self.stripe_pk or "").strip()
+        if k.startswith(("sk_live_", "pk_live_")):
+            return "live"
+        if k.startswith(("sk_test_", "pk_test_")):
+            return "test"
+        return "unknown"
+
+    @property
+    def paypal_enabled(self) -> bool:
+        return bool(self.paypal_client_id and self.paypal_client_secret)
+
+    @property
+    def paypal_base(self) -> str:
+        return "https://api-m.paypal.com" if self.paypal_mode == "live" else "https://api-m.sandbox.paypal.com"
+
+    @classmethod
+    def load(cls) -> "Settings":
+        env = _norm_env(_cfg_str("ENV") or os.getenv("FLASK_ENV") or os.getenv("APP_ENV") or "development")
+        platform = (_cfg_str("PLATFORM_NAME") or _cfg_str("BRAND_NAME") or "FutureFunded").strip()
+
+        currency = (_cfg_str("DEFAULT_CURRENCY") or _cfg_str("CURRENCY") or "usd").lower().strip()
+        if not (len(currency) == 3 and currency.isalpha()):
+            currency = "usd"
+
+        # Allowed currencies: default to just DEFAULT_CURRENCY unless explicitly expanded.
+        allowed = _parse_csv_set(_cfg_str("ALLOWED_CURRENCIES") or _cfg_str("PAYMENTS_ALLOWED_CURRENCIES") or "")
+        if not allowed:
+            allowed = {currency}
+        allowed = {c for c in allowed if len(c) == 3 and c.isalpha()}
+        if not allowed:
+            allowed = {"usd"}
+
+        stripe_sk = (
+            _cfg_str("STRIPE_SECRET_KEY")
+            or _cfg_str("STRIPE_API_KEY")
+            or _cfg_str("FF_STRIPE_SECRET_KEY")
+            or _cfg_str("FF_STRIPE_API_KEY")
+        )
+        stripe_pk = (
+            _cfg_str("STRIPE_PUBLISHABLE_KEY")
+            or _cfg_str("STRIPE_PUBLIC_KEY")
+            or _cfg_str("FF_STRIPE_PUBLISHABLE_KEY")
+            or _cfg_str("FF_STRIPE_PUBLIC_KEY")
+        )
+        stripe_whsec = _cfg_str("STRIPE_WEBHOOK_SECRET") or _cfg_str("FF_STRIPE_WEBHOOK_SECRET")
+
+        # Fees
+        fee_pct = Decimal(str(current_app.config.get("FF_FEES_PCT", "0.029")))
+        fee_flat = Decimal(str(current_app.config.get("FF_FEES_FLAT", "0.30")))
+        fees_enabled = _cfg_bool("FF_FEES_ENABLED", True)
+
+        # PayPal
+        paypal_client_id = _cfg_str("PAYPAL_CLIENT_ID") or _cfg_str("FF_PAYPAL_CLIENT_ID")
+        paypal_client_secret = _cfg_str("PAYPAL_CLIENT_SECRET") or _cfg_str("FF_PAYPAL_CLIENT_SECRET")
+        paypal_intent_raw = (_cfg_str("PAYPAL_INTENT", "capture") or "capture").lower().strip()
+        paypal_mode_raw = (_cfg_str("PAYPAL_MODE", "sandbox") or "sandbox").lower().strip()
+        paypal_timeout_s = _cfg_int("PAYPAL_TIMEOUT_S", 20)
+
+        stripe_force_card = _cfg_bool("FF_STRIPE_FORCE_CARD", False)
+        stripe_enforce_env_match = _cfg_bool("FF_STRIPE_ENFORCE_ENV_MATCH", False)
+
+        # Amount contract
+        payments_require_amount_cents = _cfg_bool("PAYMENTS_REQUIRE_AMOUNT_CENTS", default=True)
+        payments_allow_legacy_amount = _cfg_bool("PAYMENTS_ALLOW_LEGACY_AMOUNT", default=False)
+
+        return cls(
+            env=env,
+            platform=platform,
+            currency=currency,
+            allowed_currencies=allowed,
+            min_amount_cents=_cfg_int("MIN_DONATION_CENTS", 50),
+            max_amount_cents=_cfg_int("MAX_DONATION_CENTS", 50_000 * 100),
+            fee_pct=fee_pct,
+            fee_flat=fee_flat,
+            fees_enabled=fees_enabled,
+            require_bearer=_cfg_bool("PAYMENTS_REQUIRE_BEARER", default=False),
+            payments_require_amount_cents=payments_require_amount_cents,
+            payments_allow_legacy_amount=payments_allow_legacy_amount,
+            stripe_sk=stripe_sk,
+            stripe_pk=stripe_pk,
+            stripe_whsec=stripe_whsec,
+            stripe_max_network_retries=_cfg_int("STRIPE_MAX_NETWORK_RETRIES", 2),
+            stripe_force_card=stripe_force_card,
+            stripe_enforce_env_match=stripe_enforce_env_match,
+            paypal_client_id=paypal_client_id,
+            paypal_client_secret=paypal_client_secret,
+            paypal_intent="authorize" if paypal_intent_raw == "authorize" else "capture",
+            paypal_mode="live" if paypal_mode_raw == "live" else "sandbox",
+            paypal_timeout_s=paypal_timeout_s,
+        )
+
+    def assert_stripe_keys_present(self) -> None:
+        if not (self.stripe_sk.startswith("sk_") and self.stripe_pk.startswith("pk_")):
+            raise RuntimeError("Stripe keys missing or malformed (expected sk_ / pk_)")
+
+    def warn_or_enforce_env_matches_key_mode(self) -> None:
+        mode = self.stripe_mode
+        if self.env == "unknown":
+            current_app.logger.warning("payments: ENV unknown; cannot enforce Stripe key mode safely | stripe_mode=%s", mode)
+            return
+
+        if self.stripe_enforce_env_match:
+            if self.env == "production" and mode != "live":
+                raise RuntimeError("TEST Stripe key used in production")
+            if self.env != "production" and mode == "live":
+                raise RuntimeError("LIVE Stripe key used outside production")
+            return
+
+        # warn-only mode
+        if self.env == "production" and mode != "live":
+            current_app.logger.warning("payments: Stripe key/env mismatch (not enforced) | env=%s mode=%s", self.env, mode)
+        if self.env != "production" and mode == "live":
+            current_app.logger.warning("payments: LIVE Stripe key outside production (not enforced) | env=%s", self.env)
+
+    def init_stripe(self) -> None:
+        stripe.api_key = self.stripe_sk
+        stripe.max_network_retries = self.stripe_max_network_retries
+        try:
+            stripe.set_app_info(self.platform, version=_cfg_str("APP_VERSION", "dev"))
+        except Exception:
+            pass
+
+    def normalize_currency(self, raw: Any) -> str:
+        c = str(raw or "").lower().strip()
+        if c and (len(c) == 3 and c.isalpha()) and (c in self.allowed_currencies):
+            return c
+        return self.currency
+
+
+# =============================================================================
+# Response helpers
+# =============================================================================
+def _json_ok(payload: Dict[str, Any], status: int = 200):
+    payload.setdefault("ok", True)
+    return jsonify(payload), status
+
+
+def _json_error(message: str, status: int, extra: Optional[Dict[str, Any]] = None):
+    body: Dict[str, Any] = {"ok": False, "error": {"message": message}}
+    if extra:
+        body["error"].update(extra)
+    return jsonify(body), status
+
+
+# =============================================================================
+# Request helpers
+# =============================================================================
+def _request_payload() -> Dict[str, Any]:
+    data = request.get_json(silent=True)
+    if isinstance(data, dict) and data:
+        return cast(Dict[str, Any], data)
+    if request.form:
+        return cast(Dict[str, Any], request.form.to_dict(flat=True))
+    return {}
+
+
+def _is_email(s: str) -> bool:
+    s = (s or "").strip()
+    return ("@" in s) and ("." in s.split("@")[-1])
+
+
+def _request_id() -> str:
+    return (request.headers.get("X-Request-Id") or request.headers.get("X-Request-ID") or "").strip()[:120]
+
+
+# =============================================================================
+# Optional Bearer auth
+# =============================================================================
+def _api_tokens() -> Set[str]:
+    tokens: Set[str] = set()
+
+    raw = _cfg_str("API_TOKENS", "")
+    if raw:
+        tokens |= {t.strip() for t in raw.split(",") if t.strip()}
+
+    single = _cfg_str("PAYMENTS_BEARER", "")
+    if single:
+        tokens.add(single.strip())
+
+    cfg_list = current_app.config.get("API_TOKENS")
+    if isinstance(cfg_list, (list, tuple, set)):
+        for t in cfg_list:
+            s = str(t).strip()
+            if s:
+                tokens.add(s)
+
+    return tokens
+
+
+def _bearer_token() -> Optional[str]:
+    h = (request.headers.get("Authorization") or "").strip()
+    if h.lower().startswith("bearer "):
+        return (h.split(" ", 1)[1].strip() or None)
+    return None
+
+
+def _guard_bearer(settings: Settings) -> Tuple[Optional[str], bool]:
+    if not settings.require_bearer:
+        return (None, True)
+    tok = _bearer_token()
+    if not tok:
+        return (None, False)
+    allowed = _api_tokens()
+    ok = any(secrets.compare_digest(tok, a) for a in allowed)
+    return (tok, ok)
+
+
+# =============================================================================
+# Amount parsing + fee logic
+# =============================================================================
+def _parse_amount_cents(settings: Settings, data: Dict[str, Any]) -> Tuple[int, bool]:
+    """
+    Returns (amount_cents, used_legacy_amount_fields)
+    """
+    if "amount_cents" in data and data["amount_cents"] is not None:
+        try:
+            cents = int(str(data["amount_cents"]).strip())
+            return (cents if cents > 0 else 0, False)
+        except Exception:
+            return (0, False)
+
+    if settings.payments_require_amount_cents:
+        return (0, False)
+
+    if not settings.payments_allow_legacy_amount:
+        return (0, False)
+
+    raw = data.get("amount") or data.get("amount_ui")
+    if raw is None:
+        return (0, False)
+
+    try:
+        if isinstance(raw, str):
+            s = raw.strip().replace("$", "").replace(",", "")
+            if not s:
+                return (0, True)
+            d = Decimal(s)
+        else:
+            d = Decimal(str(raw))
+
+        if d <= 0:
+            return (0, True)
+
+        cents = int((d * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+        current_app.logger.warning(
+            "payments: DEPRECATED amount field used; send amount_cents instead | raw=%s cents=%s rid=%s",
+            raw,
+            cents,
+            _request_id(),
+        )
+        return (cents, True)
+
+    except (InvalidOperation, ValueError):
+        return (0, True)
+    except Exception:
+        return (0, True)
+
+
+def _clamp_amount_cents(settings: Settings, cents: int) -> int:
+    cents = int(cents or 0)
+    if cents < 0:
+        return 0
+    if cents > settings.max_amount_cents:
+        return settings.max_amount_cents
+    return cents
+
+
+def _require_valid_amount(settings: Settings, data: Dict[str, Any]):
+    """
+    Returns (amount_cents, error_response_or_None)
+    """
+    cents, used_legacy = _parse_amount_cents(settings, data)
+    cents = _clamp_amount_cents(settings, cents)
+
+    if cents <= 0:
+        if settings.payments_require_amount_cents:
+            return (None, _json_error("amount_cents required", 400))
+        if not settings.payments_allow_legacy_amount:
+            return (None, _json_error("amount_cents required (legacy amount disabled)", 400))
+        return (None, _json_error("amount required", 400))
+
+    if cents < settings.min_amount_cents:
+        return (None, _json_error(f"Amount too small (min {settings.min_amount_cents} cents)", 400))
+
+    if used_legacy and settings.env != "production":
+        current_app.logger.warning("payments: legacy amount accepted (non-prod) | cents=%s rid=%s", cents, _request_id())
+
+    return (cents, None)
+
+
+def _round_up_add_cents(base_cents: int, step_dollars: int = 5) -> int:
+    if base_cents <= 0:
+        return 0
+    step_cents = max(100, step_dollars * 100)
+    next_cents = ((base_cents + step_cents - 1) // step_cents) * step_cents
+    return max(0, next_cents - base_cents)
+
+
+def _gross_up_cover_fees(settings: Settings, base_cents: int) -> Tuple[int, int]:
+    if base_cents <= 0 or not settings.fees_enabled:
+        return (base_cents, 0)
+
+    pct = settings.fee_pct
+    flat = settings.fee_flat
+
+    base = (Decimal(base_cents) / Decimal("100"))
+    try:
+        total = (base + flat) / (Decimal("1") - pct)
+    except Exception:
+        return (base_cents, 0)
+
+    total = total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    fee = max(Decimal("0"), total - base).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    total_cents = int((total * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    fee_cents = int((fee * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    return (total_cents, fee_cents)
+
+
+# =============================================================================
+# Payload parsing
+# =============================================================================
+@dataclass
+class DonorMeta:
+    donor_name: str
+    donor_email: str
+    note: str
+    source: str
+    org_slug: str
+    anonymous: bool
+
+    @classmethod
+    def from_payload(cls, data: Dict[str, Any]) -> "DonorMeta":
+        md = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+        donor = data.get("donor") if isinstance(data.get("donor"), dict) else {}
+
+        def get(key: str, fallback: str = "") -> str:
+            return str((md or {}).get(key) or (donor or {}).get(key) or data.get(key) or fallback)
+
+        name = get("donor_name", get("name", ""))[:160].strip()
+        email = get("donor_email", get("email", ""))[:160].lower().strip()
+        note = (get("note", "") or get("message", "") or get("comment", ""))[:500].strip()
+        org_slug = get("org_slug", "")[:80].strip()
+        source = (get("source", "web")[:60].strip() or "web")
+
+        anonymous = bool(data.get("anonymous") or data.get("is_anonymous") or False)
+
+        if not name and not anonymous:
+            name = "Anonymous"
+
+        return cls(donor_name=name, donor_email=email, note=note, source=source, org_slug=org_slug, anonymous=anonymous)
+
+
+def _resolve_org(meta: DonorMeta, data: Dict[str, Any]) -> Optional[Org]:
+    org_id = data.get("org_id")
+    if org_id:
+        try:
+            return db.session.get(Org, int(org_id))
+        except Exception:
+            return None
+
+    slug = (data.get("org_slug") or meta.org_slug or "").strip()
+    if slug:
+        try:
+            return db.session.query(Org).filter(Org.slug == slug).first()
+        except Exception:
+            return None
+
+    return None
+
+
+def _create_donation_row(
+    *,
+    meta: DonorMeta,
+    amount_cents: int,
+    currency: str,
+    org: Optional[Org],
+    logo_path: Optional[str],
+    provider: str,
+) -> int:
+    """
+    Insert a Donation row and return its id.
+
+    Drop-in behavior:
+    - If no transaction is active: use `with session.begin():` to commit insert.
+    - If a transaction is already active: use add()+flush() without starting a new txn.
+    """
+    session = db.session
+
+    name_val = (meta.donor_name or "").strip() or "Anonymous"
+    email_val = (meta.donor_email or "").strip() or ""
+
+    donation = Donation(
+        name=name_val[:160],
+        email=email_val[:160],
+        logo_path=(logo_path or None),
+        amount_cents=int(amount_cents or 0),
+        currency=(currency or "usd").lower()[:3],
+        provider=(provider or "stripe")[:20],
+        provider_status="pending_intent" if provider == "stripe" else "pending_order",
+        note=(meta.note or None),
+        source=(meta.source or "web")[:60],
+        org_id=(org.id if org else None),
+    )
+
+    def _in_txn() -> bool:
+        try:
+            return bool(getattr(session, "in_transaction", lambda: False)())
+        except Exception:
+            tr = getattr(session, "transaction", None)
+            return bool(tr is not None and getattr(tr, "is_active", False))
+
+    try:
+        if _in_txn():
+            session.add(donation)
+            session.flush()
+        else:
+            with session.begin():
+                session.add(donation)
+                session.flush()
+
+        if not getattr(donation, "id", None):
+            raise RuntimeError("Donation id missing after insert")
+        return int(donation.id)
+
+    except Exception:
+        current_app.logger.exception("payments: _create_donation_row failed rid=%s", _request_id())
+        raise
+
+
+# =============================================================================
+# PayPal token cache (thread-safe per-process)
+# =============================================================================
+_PAYPAL_TOKEN: Dict[str, Any] = {"access_token": None, "exp": 0}
+_PAYPAL_LOCK = threading.Lock()
+_PAYPAL_HTTP = requests.Session()
+
+
+def _paypal_access_token(s: Settings) -> str:
+    now = int(time.time())
+    with _PAYPAL_LOCK:
+        if _PAYPAL_TOKEN.get("access_token") and int(_PAYPAL_TOKEN.get("exp") or 0) > now + 30:
+            return str(_PAYPAL_TOKEN["access_token"])
+
+        auth = base64.b64encode(f"{s.paypal_client_id}:{s.paypal_client_secret}".encode("utf-8")).decode("utf-8")
+        url = f"{s.paypal_base}/v1/oauth2/token"
+        headers = {"Authorization": f"Basic {auth}", "Content-Type": "application/x-www-form-urlencoded"}
+        data = {"grant_type": "client_credentials"}
+
+        r = _PAYPAL_HTTP.post(url, headers=headers, data=data, timeout=s.paypal_timeout_s)
+        if r.status_code >= 400:
+            current_app.logger.error("paypal token error: %s %s", r.status_code, r.text[:1200])
+            raise RuntimeError(f"PayPal token error ({r.status_code})")
+
+        j = r.json()
+        tok = str(j.get("access_token") or "")
+        exp = int(j.get("expires_in") or 0)
+        if not tok or exp <= 0:
+            raise RuntimeError("PayPal token missing/invalid")
+
+        _PAYPAL_TOKEN["access_token"] = tok
+        _PAYPAL_TOKEN["exp"] = int(time.time()) + exp
+        return tok
+
+
+# =============================================================================
+# Health + config
+# =============================================================================
+@bp.get("/health")
+def payments_health():
+    s = Settings.load()
+    bearer_required = s.require_bearer
+    token_count = len(_api_tokens()) if bearer_required else 0
+
+    return _json_ok(
+        {
+            "platform": s.platform,
+            "env": s.env,
+            "stripe_mode": s.stripe_mode,
+            "stripe_secret_loaded": bool(s.stripe_sk and s.stripe_sk.startswith("sk_")),
+            "stripe_publishable_loaded": bool(s.stripe_pk and s.stripe_pk.startswith("pk_")),
+            "webhook_secret_loaded": bool(s.stripe_whsec),
+            "bearer_required": bearer_required,
+            "bearer_tokens_configured": token_count if bearer_required else 0,
+            "min_amount_cents": s.min_amount_cents,
+            "max_amount_cents": s.max_amount_cents,
+            "fees_enabled": bool(s.fees_enabled),
+            "paypal_enabled": bool(s.paypal_enabled),
+            "paypal_mode": s.paypal_mode,
+            "stripe_force_card": bool(s.stripe_force_card),
+            "stripe_enforce_env_match": bool(s.stripe_enforce_env_match),
+            "payments_require_amount_cents": bool(s.payments_require_amount_cents),
+            "payments_allow_legacy_amount": bool(s.payments_allow_legacy_amount),
+            "allowed_currencies": sorted(list(s.allowed_currencies)),
+        }
+    )
+
+
+@bp.get("/config")
+def payments_config():
+    s = Settings.load()
+    return _json_ok(
+        {
+            "platform": s.platform,
+            "stripe_publishable_key": s.stripe_pk,
+            "currency": s.currency,
+            "allowed_currencies": sorted(list(s.allowed_currencies)),
+            "mode": s.stripe_mode,
+            "paypal_enabled": bool(s.paypal_enabled),
+            "paypal_mode": s.paypal_mode,
+            "paypal_intent": s.paypal_intent,
+            # safe to expose; useful for frontends that dynamically load PayPal JS
+            "paypal_client_id": (s.paypal_client_id or None),
+            "payments_require_amount_cents": bool(s.payments_require_amount_cents),
+            "min_amount_cents": s.min_amount_cents,
+            "max_amount_cents": s.max_amount_cents,
+        }
+    )
+
+
+# =============================================================================
+# Stripe helpers
+# =============================================================================
+def _stripe_intent_create_with_fallback(
+    *,
+    donation_id: int,
+    currency: str,
+    mode: str,
+    params: Dict[str, Any],
+    idempotency_key: Optional[str],
+) -> stripe.PaymentIntent:
+    """
+    Primary: automatic_payment_methods enabled
+    Fallback: payment_method_types=["card"] when Stripe account has no compatible PMs enabled
+    """
+    try:
+        if idempotency_key:
+            return stripe.PaymentIntent.create(**params, idempotency_key=idempotency_key)
+        return stripe.PaymentIntent.create(**params)
+
+    except stripe.error.InvalidRequestError as e:
+        param = getattr(e, "param", None)
+        msg = getattr(e, "user_message", None) or str(e)
+
+        if param == "payment_method_types" or "No valid payment method types" in msg:
+            current_app.logger.warning(
+                "payments: Stripe PM fallback | donation_id=%s currency=%s mode=%s rid=%s",
+                donation_id,
+                currency,
+                mode,
+                _request_id(),
+            )
+            fallback = dict(params)
+            fallback.pop("automatic_payment_methods", None)
+            fallback["payment_method_types"] = ["card"]
+
+            if idempotency_key:
+                return stripe.PaymentIntent.create(**fallback, idempotency_key=idempotency_key)
+            return stripe.PaymentIntent.create(**fallback)
+
+        raise
+
+
+# =============================================================================
+# Stripe: Create PaymentIntent
+# =============================================================================
+@bp.post("/stripe/intent")
+def stripe_intent():
+    s = Settings.load()
+
+    tok, ok = _guard_bearer(s)
+    if not ok:
+        current_app.logger.warning(
+            "payments: bearer rejected | required=%s token_present=%s tokens=%s rid=%s",
+            s.require_bearer,
+            bool(tok),
+            len(_api_tokens()),
+            _request_id(),
+        )
+        return _json_error("Missing or invalid bearer", 401)
+
+    try:
+        s.assert_stripe_keys_present()
+        s.warn_or_enforce_env_matches_key_mode()
+    except Exception as e:
+        current_app.logger.error("payments: Stripe misconfigured | %s rid=%s", str(e), _request_id())
+        return _json_error(f"Server misconfigured: {str(e)}", 500)
+
+    data = _request_payload()
+    meta = DonorMeta.from_payload(data)
+
+    if not meta.donor_email:
+        return _json_error("email required", 400)
+    if not _is_email(meta.donor_email):
+        return _json_error("valid email required", 400)
+
+    base_cents, err = _require_valid_amount(s, data)
+    if err:
+        return err
+
+    currency = s.normalize_currency(data.get("currency") or s.currency)
+
+    cover_fees = bool(data.get("cover_fees") or data.get("coverFees") or False)
+    round_up = bool(data.get("round_up") or data.get("roundUp") or False)
+
+    round_add = _round_up_add_cents(int(base_cents), step_dollars=5) if round_up else 0
+    base_plus_round = int(base_cents) + round_add
+
+    charge_cents = base_plus_round
+    fee_cents = 0
+    if cover_fees:
+        charge_cents, fee_cents = _gross_up_cover_fees(s, base_plus_round)
+
+    if charge_cents > s.max_amount_cents:
+        charge_cents = s.max_amount_cents
+
+    org = _resolve_org(meta, data)
+    logo_path = (str(data.get("logo_path") or data.get("logo") or "").strip()[:255]) or None
+    description = str(data.get("description") or f"Donation via {s.platform}").strip()[:250]
+
+    try:
+        donation_id = _create_donation_row(
+            meta=meta,
+            amount_cents=charge_cents,
+            currency=currency,
+            org=org,
+            logo_path=logo_path,
+            provider="stripe",
+        )
+    except Exception:
+        return _json_error("Failed to initialize donation", 500)
+
+    s.init_stripe()
+
+    idem = (
+        (request.headers.get("Idempotency-Key") or "").strip()
+        or (request.headers.get("X-Idempotency-Key") or "").strip()
+        or str(data.get("idem_key") or "").strip()
+        or str(data.get("idemKey") or "").strip()
+        or None
+    )
+
+    params: Dict[str, Any] = {
+        "amount": int(charge_cents),
+        "currency": currency,
+        "description": description,
+        "receipt_email": meta.donor_email,
+        "metadata": {
+            "donation_id": str(donation_id),
+            "org_id": str(org.id) if org else "",
+            "campaign_id": str(data.get("campaign_id") or data.get("campaignId") or ""),
+            "donor_email": meta.donor_email,
+            "donor_name": meta.donor_name or "",
+            "anonymous": "1" if meta.anonymous else "0",
+            "source": meta.source,
+            "base_amount_cents": str(int(base_cents)),
+            "round_up_add_cents": str(round_add),
+            "fee_cents": str(fee_cents),
+            "cover_fees": "1" if cover_fees else "0",
+            "round_up": "1" if round_up else "0",
+            "team_id": str(data.get("team_id") or ""),
+            "tier_id": str(data.get("tier_id") or ""),
+        },
+    }
+
+    if s.stripe_force_card:
+        params["payment_method_types"] = ["card"]
+    else:
+        params["automatic_payment_methods"] = {"enabled": True}
+
+    try:
+        pi = _stripe_intent_create_with_fallback(
+            donation_id=donation_id,
+            currency=currency,
+            mode=s.stripe_mode,
+            params=params,
+            idempotency_key=idem,
+        )
+
+        try:
+            with db.session.begin():
+                donation = db.session.get(Donation, donation_id)
+                if donation:
+                    donation.provider_intent_id = str(getattr(pi, "id", "") or "")[:255]
+                    donation.provider_status = str(getattr(pi, "status", "") or "created")[:60]
+        except Exception:
+            current_app.logger.exception("payments: failed updating Donation row with Stripe intent id/status rid=%s", _request_id())
+
+        return jsonify(
+            {
+                "ok": True,
+                "donation_id": donation_id,
+                "id": pi.id,
+                "status": pi.status,
+                "client_secret": pi.client_secret,
+                "publishable_key": s.stripe_pk,
+                "mode": s.stripe_mode,
+                "clientSecret": pi.client_secret,  # back-compat
+                "publishableKey": s.stripe_pk,  # back-compat
+                "amount_cents": int(charge_cents),
+                "fee_cents": int(fee_cents),
+                "round_up_add_cents": int(round_add),
+            }
+        )
+
+    except stripe.error.StripeError as e:
+        msg = getattr(e, "user_message", None) or str(e)
+        code = getattr(e, "code", None)
+        req_id = getattr(e, "request_id", None)
+        current_app.logger.exception("payments: Stripe error creating intent | %s rid=%s", msg, _request_id())
+
+        try:
+            with db.session.begin():
+                donation = db.session.get(Donation, donation_id)
+                if donation:
+                    donation.provider_status = "intent_failed"
+        except Exception:
+            pass
+
+        extra: Dict[str, Any] = {}
+        if code:
+            extra["code"] = code
+        if req_id:
+            extra["request_id"] = req_id
+
+        return _json_error(msg, 400, extra=extra)
+
+    except Exception:
+        current_app.logger.exception("payments: unexpected error creating Stripe intent rid=%s", _request_id())
+        try:
+            with db.session.begin():
+                donation = db.session.get(Donation, donation_id)
+                if donation:
+                    donation.provider_status = "intent_failed"
+        except Exception:
+            pass
+        return _json_error("Failed to create payment intent", 500)
+
+
+# =============================================================================
+# Stripe: Webhook
+# =============================================================================
+@bp.route("/stripe/webhook", methods=["POST", "OPTIONS"])
+def stripe_webhook():
+    if request.method == "OPTIONS":
+        return ("", 200)
+
+    s = Settings.load()
+    s.init_stripe()  # ✅ ensure Stripe SDK is configured consistently here too
+
+    endpoint_secret = s.stripe_whsec
+    payload = request.get_data(cache=False, as_text=False)
+    sig = request.headers.get("Stripe-Signature", "") or ""
+
+    if s.env == "production" and not endpoint_secret:
+        current_app.logger.error("payments: STRIPE_WEBHOOK_SECRET missing in production")
+        return _json_error("Missing STRIPE_WEBHOOK_SECRET", 400)
+
+    try:
+        if endpoint_secret:
+            event = stripe.Webhook.construct_event(payload, sig, endpoint_secret)
+            ev = event.to_dict_recursive()  # type: ignore[attr-defined]
+        else:
+            if s.env == "production":
+                return ("", 400)
+            ev = json.loads(payload.decode("utf-8"))
+            current_app.logger.warning("payments: Unsigned Stripe webhook accepted (non-prod) rid=%s", _request_id())
+    except Exception as e:
+        current_app.logger.warning("payments: Webhook verification failed: %s rid=%s", str(e), _request_id())
+        return ("", 400)
+
+    event_id = str(ev.get("id") or "")
+    etype = str(ev.get("type") or "").lower()
+    livemode = bool(ev.get("livemode") or False)
+
+    # Guard: ignore cross-environment events (common misconfig footgun)
+    if livemode and s.stripe_mode != "live":
+        current_app.logger.warning("payments: Ignoring LIVE webhook while not in live mode | rid=%s", _request_id())
+        return ("", 200)
+    if (not livemode) and s.stripe_mode == "live" and s.env == "production":
+        current_app.logger.warning("payments: Ignoring TEST webhook in production | rid=%s", _request_id())
+        return ("", 200)
+
+    obj = ((ev.get("data") or {}).get("object")) or {}
+    if not isinstance(obj, dict):
+        obj = {}
+    object_id = str(obj.get("id") or "")
+
+    # Idempotency: store event id (assumes StripeEvent.event_id is unique or effectively treated as such)
+    try:
+        with db.session.begin():
+            exists = db.session.query(StripeEvent).filter(StripeEvent.event_id == event_id).first()
+            if exists:
+                return ("", 200)
+
+            db.session.add(
+                StripeEvent(
+                    event_id=event_id,
+                    type=etype[:120],
+                    livemode=livemode,
+                    object_id=(object_id[:120] if object_id else None),
+                )
+            )
+    except Exception:
+        # If insert races or fails, return 200 to avoid retry storms; log for visibility.
+        current_app.logger.exception("payments: stripe_events insert failed | type=%s id=%s rid=%s", etype, event_id, _request_id())
+        return ("", 200)
+
+    try:
+        if etype.startswith("payment_intent."):
+            pi_id = str(obj.get("id") or "")
+            status = str(obj.get("status") or etype.split(".", 1)[1])[:60]
+            currency = str(obj.get("currency") or "").lower().strip()[:3] or None
+
+            md = obj.get("metadata") if isinstance(obj.get("metadata"), dict) else {}
+            donation_id_raw = (md or {}).get("donation_id") if md else None
+
+            amount = obj.get("amount")
+            amount_cents = int(amount) if isinstance(amount, int) else None
+
+            with db.session.begin():
+                donation: Optional[Donation] = None
+
+                if donation_id_raw:
+                    try:
+                        donation = db.session.get(Donation, int(donation_id_raw))
+                    except Exception:
+                        donation = None
+
+                if donation is None and pi_id:
+                    donation = db.session.query(Donation).filter(Donation.provider_intent_id == pi_id).first()
+
+                if donation:
+                    if not donation.provider_intent_id and pi_id:
+                        donation.provider_intent_id = pi_id
+                    donation.provider_status = status
+                    if currency and len(currency) == 3:
+                        donation.currency = currency
+                    if amount_cents is not None and amount_cents > 0:
+                        donation.amount_cents = amount_cents
+
+                    if etype == "payment_intent.succeeded":
+                        donation.paid_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        return ("", 200)
+    except Exception:
+        current_app.logger.exception("payments: webhook handler failed for type=%s id=%s rid=%s", etype, event_id, _request_id())
+        return ("", 200)
+
+
+# =============================================================================
+# PayPal: Create Order
+# =============================================================================
+@bp.post("/paypal/order")
+def paypal_order():
+    s = Settings.load()
+
+    tok, ok = _guard_bearer(s)
+    if not ok:
+        return _json_error("Missing or invalid bearer", 401)
+
+    if not s.paypal_enabled:
+        return _json_error("PayPal not configured", 500)
+
+    data = _request_payload()
+    meta = DonorMeta.from_payload(data)
+
+    if not meta.donor_email:
+        return _json_error("email required", 400)
+    if not _is_email(meta.donor_email):
+        return _json_error("valid email required", 400)
+
+    base_cents, err = _require_valid_amount(s, data)
+    if err:
+        return err
+
+    currency = s.normalize_currency(data.get("currency") or s.currency)
+
+    cover_fees = bool(data.get("cover_fees") or data.get("coverFees") or False)
+    round_up = bool(data.get("round_up") or data.get("roundUp") or False)
+
+    round_add = _round_up_add_cents(int(base_cents), step_dollars=5) if round_up else 0
+    base_plus_round = int(base_cents) + round_add
+
+    charge_cents = base_plus_round
+    fee_cents = 0
+    if cover_fees:
+        charge_cents, fee_cents = _gross_up_cover_fees(s, base_plus_round)
+
+    if charge_cents > s.max_amount_cents:
+        charge_cents = s.max_amount_cents
+
+    org = _resolve_org(meta, data)
+    logo_path = (str(data.get("logo_path") or data.get("logo") or "").strip()[:255]) or None
+    description = str(data.get("description") or f"Donation via {s.platform}").strip()[:250]
+
+    try:
+        donation_id = _create_donation_row(
+            meta=meta,
+            amount_cents=charge_cents,
+            currency=currency,
+            org=org,
+            logo_path=logo_path,
+            provider="paypal",
+        )
+    except Exception:
+        return _json_error("Failed to initialize donation", 500)
+
+    try:
+        access = _paypal_access_token(s)
+        url = f"{s.paypal_base}/v2/checkout/orders"
+
+        request_id = (
+            (request.headers.get("Idempotency-Key") or "").strip()
+            or (request.headers.get("X-Idempotency-Key") or "").strip()
+            or f"ff-{donation_id}"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {access}",
+            "Content-Type": "application/json",
+            "PayPal-Request-Id": request_id,
+        }
+
+        body = {
+            "intent": "AUTHORIZE" if s.paypal_intent == "authorize" else "CAPTURE",
+            "purchase_units": [
+                {
+                    "reference_id": str(donation_id),
+                    "custom_id": str(donation_id),
+                    "description": description[:127],
+                    "amount": {"currency_code": currency.upper(), "value": _safe_money_str_from_cents(charge_cents)},
+                }
+            ],
+            "application_context": {"shipping_preference": "NO_SHIPPING"},
+        }
+
+        r = _PAYPAL_HTTP.post(url, headers=headers, json=body, timeout=s.paypal_timeout_s)
+        if r.status_code >= 400:
+            current_app.logger.error("paypal order create failed: %s %s", r.status_code, r.text[:2000])
+            raise RuntimeError(f"PayPal create order failed ({r.status_code})")
+
+        j = r.json()
+        order_id = str(j.get("id") or "")
+        status = str(j.get("status") or "CREATED")
+
+        if not order_id:
+            raise RuntimeError("PayPal order missing id")
+
+        with db.session.begin():
+            donation = db.session.get(Donation, donation_id)
+            if donation:
+                donation.provider_intent_id = order_id[:255]
+                donation.provider_status = status[:60]
+
+        return _json_ok(
+            {
+                "donation_id": donation_id,
+                "order_id": order_id,
+                "status": status,
+                "amount_cents": int(charge_cents),
+                "fee_cents": int(fee_cents),
+                "round_up_add_cents": int(round_add),
+            }
+        )
+
+    except Exception:
+        current_app.logger.exception("paypal order error rid=%s", _request_id())
+        try:
+            with db.session.begin():
+                donation = db.session.get(Donation, donation_id)
+                if donation:
+                    donation.provider_status = "order_failed"
+        except Exception:
+            pass
+        return _json_error("Failed to create PayPal order", 500)
+
+
+# =============================================================================
+# PayPal: Capture Order
+# =============================================================================
+@bp.post("/paypal/capture")
+def paypal_capture():
+    s = Settings.load()
+
+    tok, ok = _guard_bearer(s)
+    if not ok:
+        return _json_error("Missing or invalid bearer", 401)
+
+    if not s.paypal_enabled:
+        return _json_error("PayPal not configured", 500)
+
+    data = _request_payload()
+    order_id = str(data.get("order_id") or data.get("orderID") or "").strip()
+    donation_id_raw = data.get("donation_id") or data.get("donationId")
+
+    if not order_id:
+        return _json_error("order_id required", 400)
+
+    donation: Optional[Donation] = None
+    if donation_id_raw:
+        try:
+            donation = db.session.get(Donation, int(donation_id_raw))
+        except Exception:
+            donation = None
+    if donation is None:
+        try:
+            donation = db.session.query(Donation).filter(Donation.provider_intent_id == order_id).first()
+        except Exception:
+            donation = None
+
+    try:
+        access = _paypal_access_token(s)
+        url = f"{s.paypal_base}/v2/checkout/orders/{order_id}/capture"
+        headers = {"Authorization": f"Bearer {access}", "Content-Type": "application/json"}
+
+        r = _PAYPAL_HTTP.post(url, headers=headers, json={}, timeout=s.paypal_timeout_s)
+        if r.status_code >= 400:
+            current_app.logger.error("paypal capture failed: %s %s", r.status_code, r.text[:2000])
+            raise RuntimeError(f"PayPal capture failed ({r.status_code})")
+
+        j = r.json()
+        status = str(j.get("status") or "UNKNOWN")
+
+        captured_cents: Optional[int] = None
+        try:
+            pus = j.get("purchase_units") or []
+            if pus and isinstance(pus, list):
+                payments = (pus[0] or {}).get("payments") or {}
+                captures = payments.get("captures") or []
+                if captures and isinstance(captures, list):
+                    amt = ((captures[0] or {}).get("amount") or {})
+                    val = str(amt.get("value") or "")
+                    if val:
+                        captured_cents = int((Decimal(val) * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+        except Exception:
+            captured_cents = None
+
+        if donation:
+            with db.session.begin():
+                d = db.session.get(Donation, donation.id)
+                if d:
+                    d.provider_status = status[:60]
+                    if captured_cents and captured_cents > 0:
+                        d.amount_cents = int(captured_cents)
+                    if status.upper() == "COMPLETED":
+                        d.paid_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        return _json_ok(
+            {
+                "donation_id": int(donation.id) if donation else None,
+                "order_id": order_id,
+                "status": status,
+                "captured_cents": captured_cents,
+            }
+        )
+
+    except Exception:
+        current_app.logger.exception("paypal capture error rid=%s", _request_id())
+        if donation:
+            try:
+                with db.session.begin():
+                    d = db.session.get(Donation, donation.id)
+                    if d:
+                        d.provider_status = "capture_failed"
+            except Exception:
+                pass
+        return _json_error("Failed to capture PayPal order", 500)
+
+
+__all__ = ["bp"]
+

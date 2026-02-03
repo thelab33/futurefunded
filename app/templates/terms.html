@@ -1,0 +1,75 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% extends "base.html" %}
+{% block title %}Terms of Service{% endblock %}
+{% block content %}
+<style>
+  /* Scoped copy rhythm for legal pages */
+  .prose { max-width: 72ch; line-height: 1.75; color: var(--muted); }
+  .prose h2 { margin: 1.25rem 0 .35rem; font-size: 1.05rem; color: var(--text); letter-spacing: -0.01em; }
+  .prose p { margin: .45rem 0; }
+  .prose ul { margin: .35rem 0 .85rem; }
+  .prose li { margin-top: .35rem; }
+</style>
+<main class="container section">
+  <div class="card pad measure">
+    <div class="kicker">FutureFunded</div>
+    <h1 style="margin-top:.35rem;">Terms of Service</h1>
+    <p class="help" style="margin-top:.5rem;">Last updated: <span class="num">{{ now().strftime("%Y-%m-%d") if now is defined else "" }}</span></p>
+
+    <div class="divider"></div>
+
+    <div class="prose">
+      <p>
+        These Terms of Service (“Terms”) govern your use of FutureFunded fundraising pages and donation checkout.
+        By using the site, you agree to these Terms.
+      </p>
+
+      <h2>Donations & payments</h2>
+      <ul>
+        <li>Donations are processed securely by Stripe.</li>
+        <li>Receipts are emailed after successful payment (if an email is provided).</li>
+        <li>Refunds, if offered, are handled by the fundraiser organizer subject to their policies and applicable law.</li>
+      </ul>
+
+      <h2>Organizer responsibility</h2>
+      <p>
+        Organizations running fundraisers are responsible for their programs and the use of funds.
+        FutureFunded provides infrastructure, not program oversight.
+      </p>
+
+      <h2>Acceptable use</h2>
+      <ul>
+        <li>Do not disrupt the site or access systems without authorization.</li>
+        <li>Do not use the site for unlawful activities.</li>
+      </ul>
+
+      <h2>Disclaimers</h2>
+      <p>
+        The service is provided “as is” without warranties of any kind, to the maximum extent permitted by law.
+      </p>
+
+      <h2>Contact</h2>
+      <p>Email: <span class="num">support@getfuturefunded.com</span></p>
+
+      <p class="help" style="margin-top:1rem;">
+        Tip: If you’re scaling paid traffic or multi-org onboarding, have counsel review these Terms.
+      </p>
+    </div>
+  </div>
+</main>
+{% endblock %}

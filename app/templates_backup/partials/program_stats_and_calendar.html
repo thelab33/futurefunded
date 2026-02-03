@@ -1,0 +1,292 @@
+{# =============================================================================
+   partials/program_pulse_mini.html
+   FundChamps • Program Pulse (Mini Widget • CSP-safe • A11y-first)
+   - Next Up chip + countdown + quick add (.ics / Google)
+   - Collapsible "Upcoming (3)" list
+   - Slim sponsors ribbon
+   - Local time formatting; reduced-motion & Save-Data aware
+   - No external deps; styles & JS fully scoped to #program-pulse-mini
+   ============================================================================= #}
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set theme_hex = theme_hex|default('#facc15') %}
+
+{# Data fallbacks (safe) #}
+{% set events = events if events is defined and events else [
+  {"date":"2025-07-20","name":"AAU Tournament","location":"East Austin Gym","time":"10:00 AM","is_upcoming":true,"type":"Tournament"},
+  {"date":"2025-07-22","name":"Team Practice","location":"East Austin Gym","time":"5:00 PM","is_upcoming":true,"type":"Practice"},
+  {"date":"2025-07-24","name":"League Game","location":"Del Valle HS","time":"7:00 PM","is_upcoming":true,"type":"Game"}
+] %}
+
+{% set sponsors_sorted = sponsors_sorted if sponsors_sorted is defined and sponsors_sorted else [] %}
+{% set default_logo = (url_for('static', filename='images/logo.webp') if url_for is defined else '/static/images/logo.webp') %}
+{% set display_sponsors = (sponsors_sorted[:10] if sponsors_sorted else [
+  {"name":"ESPN","logo":"https://upload.wikimedia.org/wikipedia/commons/2/2f/ESPN_wordmark.svg","url":"https://espn.com"}
+]) %}
+
+<section id="program-pulse-mini"
+         class="fc-ppm"
+         data-brand="{{ theme_hex }}"
+         role="complementary"
+         aria-labelledby="ppm-heading">
+
+  <style nonce="{{ NONCE }}">
+    /* ===== Scoped to #program-pulse-mini ===== */
+    #program-pulse-mini{ --brand: {{ theme_hex }}; --bg: rgba(23,23,24,.72); --line: rgba(255,255,255,.12); color:#f5f5f4; }
+    #program-pulse-mini .ppm-card{
+      background: var(--bg); border:1px solid var(--line); border-radius:1rem;
+      -webkit-backdrop-filter: blur(10px) saturate(120%); backdrop-filter: blur(10px) saturate(120%);
+      box-shadow: 0 12px 32px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.05);
+      padding: .9rem; width: 100%; max-width: 420px;
+    }
+    #program-pulse-mini .ppm-head{ display:flex; align-items:center; gap:.6rem; }
+    #program-pulse-mini .chip{
+      display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px;
+      background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); font-size:.72rem; font-weight:800; text-transform:uppercase;
+    }
+    #program-pulse-mini .title{ font-weight:900; letter-spacing:-.01em; font-size:1rem; }
+    #program-pulse-mini .sub{ color:#d4d4d8; font-size:.86rem; }
+    #program-pulse-mini .row{ display:flex; align-items:center; gap:.6rem; }
+    #program-pulse-mini .kbd{ font-variant-numeric:tabular-nums; }
+
+    /* Meter-lite */
+    #program-pulse-mini .meter{ position:relative; height:10px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.10); }
+    #program-pulse-mini .meter .fill{
+      position:absolute; inset-block:0; left:0; width:0%;
+      background: linear-gradient(90deg, #fffbe6, var(--brand), #f59e0b);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--brand) 60%, transparent);
+      transition: width .7s cubic-bezier(.2,.8,.2,1);
+    }
+
+    /* Buttons */
+    #program-pulse-mini .btn{
+      display:inline-flex; align-items:center; gap:.4rem; padding:.45rem .65rem; border-radius:.7rem;
+      font-weight:800; font-size:.82rem; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06);
+      color:#e7e5e4; text-decoration:none;
+    }
+    #program-pulse-mini .btn-brand{
+      color:#111827; background:linear-gradient(180deg, #fde047, var(--brand)); border-color: color-mix(in srgb, var(--brand) 60%, transparent);
+      box-shadow: 0 8px 20px color-mix(in srgb, var(--brand) 30%, transparent);
+    }
+    #program-pulse-mini .btn:focus-visible{ outline:2px solid #fff7cc; outline-offset:2px; }
+
+    /* Upcoming list */
+    #program-pulse-mini details{ margin-top:.6rem; }
+    #program-pulse-mini summary{
+      list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:.6rem;
+      padding:.45rem .55rem; border-radius:.6rem; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04);
+      font-weight:800; font-size:.86rem;
+    }
+    #program-pulse-mini summary::-webkit-details-marker{ display:none }
+    #program-pulse-mini .list{ margin-top:.5rem; display:grid; gap:.4rem; }
+    #program-pulse-mini .item{
+      display:grid; grid-template-columns:auto 1fr auto; gap:.6rem; align-items:center;
+      padding:.45rem .55rem; border-radius:.6rem; border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.2);
+      font-size:.88rem;
+    }
+    #program-pulse-mini .item .when{ color:#e7e5e4; font-weight:800; min-width:8.8ch; font-variant-numeric:tabular-nums; }
+    #program-pulse-mini .item .what{ font-weight:700; }
+    #program-pulse-mini .item .where{ color:#d4d4d8; font-size:.8rem; }
+
+    /* Sponsors ribbon */
+    #program-pulse-mini .ribbon{ margin-top:.7rem; display:flex; gap:.6rem; overflow:auto hidden; align-items:center; }
+    #program-pulse-mini .ribbon .logo{
+      height:22px; width:auto; background:#fff; border-radius:.4rem; padding:.18rem .36rem;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+    }
+    #program-pulse-mini .ribbon::-webkit-scrollbar{ height:6px }
+    #program-pulse-mini .ribbon::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.2); border-radius:999px }
+
+    @media (prefers-reduced-motion: reduce){
+      #program-pulse-mini .meter .fill{ transition:none }
+    }
+  </style>
+
+  <div class="ppm-card" aria-live="polite">
+    <div class="ppm-head" aria-describedby="ppm-sr">
+      <span class="chip">Next Up</span>
+      <div class="title" id="ppm-heading">Finding your next event…</div>
+    </div>
+
+    <div class="mt-2 sub" id="ppm-sub">—</div>
+
+    <!-- Countdown + quick add -->
+    <div class="mt-3 row" role="group" aria-label="Event actions">
+      <div class="chip" aria-live="polite" id="ppm-countdown" title="Time remaining">⏳ —</div>
+      <button type="button" class="btn" id="ppm-ics">+ .ics</button>
+      <a href="#" class="btn" id="ppm-gcal" rel="noopener">+ Google</a>
+      <a href="#program-stats-calendar" class="btn">All events →</a>
+    </div>
+
+    <!-- Mini meter (optional: will animate if you dispatch fc:meter:update) -->
+    <div class="mt-3">
+      <div class="meter" aria-hidden="true"><div class="fill" id="ppm-fill" style="width:0%"></div></div>
+      <div class="mt-1 sub"><span id="ppm-raised" class="kbd">—</span> / <span id="ppm-goal" class="kbd">—</span> · <strong id="ppm-pct">0%</strong></div>
+    </div>
+
+    <!-- Collapsible upcoming list -->
+    <details id="ppm-list">
+      <summary aria-controls="ppm-ul">Upcoming (<span id="ppm-count">0</span>)</summary>
+      <div id="ppm-ul" class="list" role="list"></div>
+    </details>
+
+    <!-- Sponsors ribbon -->
+    <div class="ribbon" aria-label="Sponsors">
+      {% for s in display_sponsors %}
+        <a href="{{ s.url or '#' }}" target="_blank" rel="noopener noreferrer sponsored" class="shrink-0" aria-label="Visit {{ s.name }}">
+          <img class="logo" src="{{ s.logo or default_logo }}" alt="{{ s.name }} logo" loading="lazy" decoding="async"/>
+        </a>
+      {% endfor %}
+    </div>
+
+    <span id="ppm-sr" class="sr-only"></span>
+  </div>
+
+  <script nonce="{{ NONCE }}">
+    (() => {
+      if (window.__ppmMini) return; window.__ppmMini = true;
+      const root = document.getElementById('program-pulse-mini'); if (!root) return;
+      const $ = (s, r=root)=> r.querySelector(s);
+
+      // Inputs (server-rendered table data not required)
+      const data = {
+        events: {{ events|tojson }},
+      };
+
+      // Elements
+      const heading   = $('#ppm-heading');
+      const sub       = $('#ppm-sub');
+      const sr        = $('#ppm-sr');
+      const countdown = $('#ppm-countdown');
+      const icsBtn    = $('#ppm-ics');
+      const gcalLink  = $('#ppm-gcal');
+      const listWrap  = $('#ppm-ul');
+      const listCount = $('#ppm-count');
+
+      // Mini meter (optional external updates via CustomEvent 'fc:meter:update')
+      const fill      = $('#ppm-fill');
+      const raisedEl  = $('#ppm-raised');
+      const goalEl    = $('#ppm-goal');
+      const pctEl     = $('#ppm-pct');
+
+      const fmt$ = n => '$' + (Math.round(+n||0)).toLocaleString();
+
+      function parseDateTime(date, time){
+        if (!date) return new Date(NaN);
+        const t = (time||'').trim();
+        let norm = t;
+        if (t && !/^\d{1,2}:\d{2}\s*[ap]m$/i.test(t) && /^[0-9]{1,2}\s*[ap]m$/i.test(t)) norm = t.replace(/^(\d{1,2})\s*([ap]m)$/i,'$1:00 $2');
+        const d1 = new Date(`${date} ${norm||'12:00 PM'}`); if (!isNaN(d1)) return d1;
+        return new Date(date);
+      }
+
+      function toICS(evt){
+        const start = parseDateTime(evt.date, evt.time);
+        const end   = new Date(start.getTime() + 90*60*1000);
+        const fmt = d => d.toISOString().replace(/[-:]/g,'').replace('.000','');
+        const esc = s => String(s||'').replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n');
+        return [
+          'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//FundChamps//Mini//EN',
+          'BEGIN:VEVENT',
+          'UID=' + (Date.now()+'@fundchamps'),
+          'DTSTAMP=' + fmt(new Date()),
+          'DTSTART=' + fmt(start),
+          'DTEND=' + fmt(end),
+          'SUMMARY=' + esc(evt.name || evt.opponent || 'Team Event'),
+          evt.location ? 'LOCATION=' + esc(evt.location) : null,
+          'END:VEVENT','END:VCALENDAR'
+        ].filter(Boolean).join('\\r\\n');
+      }
+
+      function gcalURL(evt){
+        const start = parseDateTime(evt.date, evt.time);
+        const end   = new Date(start.getTime() + 90*60*1000);
+        const fmt = d => d.toISOString().replace(/[-:]/g,'').replace('.000','');
+        const qs = new URLSearchParams({
+          action:'TEMPLATE',
+          text: (evt.name || evt.opponent || 'Team Event'),
+          dates: `${fmt(start)}/${fmt(end)}`,
+          details: 'FundChamps event',
+          location: evt.location || '',
+          trp: 'true'
+        });
+        return 'https://calendar.google.com/calendar/render?' + qs.toString();
+      }
+
+      // Compute upcoming + next
+      const now = new Date();
+      const upcoming = (data.events||[])
+        .map(e => ({...e, _start: parseDateTime(e.date, e.time)}))
+        .filter(e => !isNaN(e._start) && e._start >= now)
+        .sort((a,b) => a._start - b._start);
+
+      listCount.textContent = String(upcoming.length);
+
+      if (upcoming.length === 0){
+        heading.textContent = 'No upcoming events';
+        sub.textContent = 'Check back soon!';
+        countdown.textContent = '⏳ —';
+        icsBtn.disabled = true; gcalLink.setAttribute('aria-disabled','true');
+      } else {
+        const next = upcoming[0];
+        const friendlyWhen = next._start.toLocaleString(undefined, { dateStyle:'medium', timeStyle:'short' });
+        heading.textContent = next.name || next.opponent || 'Team Event';
+        sub.textContent = `${friendlyWhen} • ${next.location || 'TBD'}${next.type ? ' • ' + next.type : ''}`;
+
+        // Countdown (minutely)
+        const updateCD = () => {
+          const ms = next._start - new Date();
+          if (ms <= 0){ countdown.textContent = '⏳ Now'; return; }
+          const d = Math.floor(ms/86400000);
+          const h = Math.floor((ms%86400000)/3600000);
+          const m = Math.floor((ms%3600000)/60000);
+          countdown.textContent = `⏳ ${d}d ${h}h ${m}m`;
+        };
+        updateCD(); setInterval(updateCD, 60000);
+
+        // Actions
+        icsBtn.addEventListener('click', () => {
+          const blob = new Blob([toICS(next)], { type:'text/calendar;charset=utf-8' });
+          const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'next-event.ics' });
+          document.body.appendChild(a); a.click(); a.remove();
+        });
+
+        gcalLink.href = gcalURL(next);
+      }
+
+      // Render first 3 upcoming in list
+      listWrap.innerHTML = '';
+      upcoming.slice(0,3).forEach(evt => {
+        const row = document.createElement('div'); row.className = 'item'; row.role = 'listitem';
+        const when = document.createElement('div'); when.className='when';
+        when.textContent = evt._start.toLocaleString(undefined,{ month:'short', day:'2-digit'}) + ' ' +
+                           evt._start.toLocaleTimeString(undefined,{ hour:'numeric', minute:'2-digit' });
+        const what = document.createElement('div'); what.className='what';
+        what.textContent = evt.name || evt.opponent || 'Team Event';
+        const where = document.createElement('div'); where.className='where';
+        where.textContent = evt.location || '';
+        row.appendChild(when); row.appendChild(what); row.appendChild(where);
+        listWrap.appendChild(row);
+      });
+
+      sr.textContent = 'Program Pulse mini ready. Press Enter on “Upcoming” to expand the list.';
+
+      // Optional: respond to global meter updates
+      function setMeter(raised, goal){
+        const R = Math.max(0, +raised||0), G = Math.max(0, +goal||0);
+        const P = G ? Math.max(0, Math.min(100, (R/G)*100)) : 0;
+        raisedEl.textContent = fmt$(R);
+        goalEl.textContent   = fmt$(G);
+        pctEl.textContent    = P.toFixed(0) + '%';
+        fill.style.width     = P.toFixed(1) + '%';
+      }
+      addEventListener('fc:meter:update', ev => {
+        const d = ev.detail||{}; setMeter(d.raised, d.goal);
+      }, { passive:true });
+
+      // If you rendered server-side numbers, you can prime them here by dispatching:
+      // window.dispatchEvent(new CustomEvent('fc:meter:update', { detail: { raised:  {{ (funds_raised or 0)|round(0) }}, goal: {{ (fundraising_goal or 0)|round(0) }} } }));
+    })();
+  </script>
+</section>
+

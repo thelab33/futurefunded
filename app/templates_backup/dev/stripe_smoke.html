@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stripe Smoke Test • SV-Elite</title>
+    <style nonce="{{ NONCE }}">
+      :root {
+        --fc-bg: #0b0b0c;
+        --fc-panel: #121316;
+        --fc-ink: #e6e7eb;
+        --fc-muted: #98a1b3;
+        --fc-edge: #1c1f26;
+        --fc-gold: #f5b942;
+        --ok: #10b981;
+        --err: #ef4444;
+        --warn: #f59e0b;
+        --rad: 14px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #0b0b0c, #0d0e12 20%, #0b0b0c);
+        color: var(--fc-ink);
+        font:
+          14px/1.45 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Inter,
+          Arial;
+      }
+      .shell {
+        max-width: 880px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--fc-panel);
+        border: 1px solid var(--fc-edge);
+        border-radius: var(--rad);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--fc-edge);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+      header .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        color: #111;
+        background: linear-gradient(180deg, var(--fc-gold), #e8a423);
+        padding: 6px 10px;
+        border-radius: 999px;
+      }
+      main {
+        padding: 20px;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      label {
+        display: block;
+        font-weight: 700;
+        color: var(--fc-ink);
+        margin: 2px 0 6px;
+      }
+      .muted {
+        color: var(--fc-muted);
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--fc-edge);
+        background: #0e1015;
+        color: var(--fc-ink);
+      }
+      input:focus,
+      select:focus,
+      button:focus {
+        outline: 2px solid color-mix(in srgb, var(--fc-gold) 60%, #fff 40%);
+        outline-offset: 2px;
+      }
+      .row {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr auto;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        border: 1px solid #000;
+        background: #111;
+        padding: 12px 16px;
+        border-radius: 12px;
+      }
+      .btn-primary {
+        background: linear-gradient(180deg, #16181f, #0e1015);
+        border: 1px solid #000;
+      }
+      .btn-ghost {
+        background: transparent;
+        border: 1px solid var(--fc-edge);
+      }
+      .pill {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--fc-edge);
+      }
+      #card-wrap {
+        display: none;
+      }
+      #card-element {
+        padding: 12px;
+        border: 1px dashed var(--fc-edge);
+        border-radius: 12px;
+        background: #0a0c11;
+      }
+      .status {
+        margin-top: 12px;
+        font-weight: 800;
+      }
+      .status.ok {
+        color: var(--ok);
+      }
+      .status.err {
+        color: var(--err);
+      }
+      .status.warn {
+        color: var(--warn);
+      }
+      #log {
+        display: none;
+        margin-top: 12px;
+        background: #0a0c11;
+        color: #e6e7eb;
+        border: 1px solid var(--fc-edge);
+        padding: 12px;
+        border-radius: 12px;
+        white-space: pre-wrap;
+        max-height: 360px;
+        overflow: auto;
+      }
+      footer {
+        padding: 16px 20px;
+        border-top: 1px solid var(--fc-edge);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--fc-muted);
+      }
+      .kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: #0a0c11;
+        border: 1px solid var(--fc-edge);
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+      .inline {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .preset {
+        padding: 8px 10px;
+        border: 1px solid var(--fc-edge);
+        background: #0e1015;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+    </style>
+  <style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+</head>
+  <body>
+    <div class="shell">
+      <section class="card" role="region" aria-labelledby="title">
+        <header>
+          <h1 id="title">Stripe Smoke Test</h1>
+          <span class="badge" aria-label="Dev only">DEV</span>
+        </header>
+
+        <main>
+          <p class="muted" id="desc">
+            Dev-only page to verify PaymentIntent creation and confirmation.
+          </p>
+
+          <div class="grid" aria-describedby="desc">
+            <div>
+              <div class="inline" style="justify-content: space-between">
+                <label for="amount">Amount (USD)</label>
+                <div class="inline" aria-label="presets">
+                  <button class="preset" data-amt="25">$25</button>
+                  <button class="preset" data-amt="50">$50</button>
+                  <button class="preset" data-amt="100">$100</button>
+                </div>
+              </div>
+              <input
+                id="amount"
+                type="number"
+                min="1"
+                step="1"
+                value="50"
+                inputmode="numeric"
+              />
+            </div>
+
+            <div>
+              <label for="mode">Mode</label>
+              <select id="mode" aria-label="Confirmation mode">
+                <option value="elements">Elements (card UI)</option>
+                <option value="headless">Headless (pm_card_visa)</option>
+              </select>
+              <div class="inline" style="margin-top: 8px">
+                <input type="checkbox" id="threeDS" />
+                <label for="threeDS" class="muted" style="margin: 0"
+                  >Simulate 3-D Secure challenge</label
+                >
+              </div>
+            </div>
+
+            <div id="card-wrap" class="col-span-2">
+              <label for="card-element">Card details</label>
+              <div id="card-element" role="group" aria-label="Card input"></div>
+              <div class="hint" style="margin-top: 6px">
+                Use test card <span class="kbd">4242 4242 4242 4242</span> ·
+                <span class="kbd">12/34</span> · <span class="kbd">123</span> ·
+                any ZIP
+                <span class="muted"
+                  >— for 3-D Secure, try
+                  <span class="kbd">4000 0025 0000 3155</span></span
+                >
+              </div>
+            </div>
+
+            <div>
+              <label for="token">Bearer (optional)</label>
+              <div class="row">
+                <input
+                  id="token"
+                  placeholder="devtoken (if your server requires it)"
+                />
+                <button
+                  class="btn btn-ghost"
+                  type="button"
+                  id="save-token"
+                  aria-label="Save token"
+                >
+                  Save
+                </button>
+              </div>
+              <div class="hint">
+                Stored in <span class="kbd">localStorage</span> for this page
+                only.
+              </div>
+            </div>
+
+            <div>
+              <label for="idem">Idempotency-Key (optional)</label>
+              <div class="row">
+                <input id="idem" placeholder="e.g. smoke-001" />
+                <button class="btn btn-ghost" type="button" id="gen-idem">
+                  Generate
+                </button>
+              </div>
+              <div class="hint">
+                Adds <span class="kbd">Idempotency-Key</span> header on PI
+                creation.
+              </div>
+            </div>
+
+            <div class="col-span-2">
+              <label for="note">Metadata (optional)</label>
+              <input id="note" placeholder="source=web_smoke" />
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top: 14px">
+            <button class="btn btn-primary" id="pay" type="button">
+              Pay $<span id="amt-label">50</span> (Test)
+            </button>
+            <button
+              class="btn btn-ghost"
+              type="button"
+              id="toggle-log"
+              aria-expanded="false"
+              aria-controls="log"
+            >
+              Show raw log
+            </button>
+          </div>
+
+          <div
+            id="status"
+            class="status muted"
+            role="status"
+            aria-live="polite"
+          ></div>
+          <pre id="log"></pre>
+        </main>
+
+        <footer>
+          <div class="hint">
+            Server enforces
+            <span class="kbd">allow_redirects: "never"</span> for APM.
+          </div>
+          <div class="pill">
+            <span aria-hidden="true">⚡</span><span id="pubkey">pk: —</span>
+            <span class="pill" id="ready" style="margin-left: 8px"
+              >stripe: …</span
+            >
+          </div>
+        </footer>
+      </section>
+    </div>
+
+    <script
+      {{
+      nonce_attr()
+      }}
+      nonce="{{ NONCE }}"
+      src="https://js.stripe.com/v3/"
+    ></script>
+    <script {{ nonce_attr() }} nonce="{{ NONCE }}">
+      (async function () {
+        const $ = (id) => document.getElementById(id);
+        const set = (el, msg, cls = "") => {
+          el.className = `status ${cls}`.trim();
+          el.textContent = msg;
+        };
+        const ms = (t) => `${Math.round(performance.now() - t)}ms`;
+
+        const statusEl = $("status"),
+          logEl = $("log");
+        const amtIn = $("amount"),
+          amtLab = $("amt-label"),
+          modeSel = $("mode");
+        const tokenIn = $("token"),
+          saveBtn = $("save-token");
+        const toggleLog = $("toggle-log"),
+          cardWrap = $("card-wrap");
+        const threeDS = $("threeDS"),
+          pubkeyEl = $("pubkey"),
+          readyEl = $("ready");
+        const idemIn = $("idem"),
+          genIdem = $("gen-idem");
+
+        // Log toggle
+        toggleLog.addEventListener("click", () => {
+          const open = logEl.style.display !== "none";
+          logEl.style.display = open ? "none" : "block";
+          toggleLog.setAttribute("aria-expanded", String(!open));
+          toggleLog.textContent = open ? "Show raw log" : "Hide raw log";
+        });
+        const log = (x) => {
+          logEl.style.display = "block";
+          toggleLog.setAttribute("aria-expanded", "true");
+          toggleLog.textContent = "Hide raw log";
+          logEl.textContent =
+            typeof x === "string" ? x : JSON.stringify(x, null, 2);
+        };
+
+        // Token & idempotency helpers
+        tokenIn.value = localStorage.getItem("dev_api_token") || "";
+        saveBtn.onclick = () => {
+          localStorage.setItem("dev_api_token", tokenIn.value.trim());
+          set(statusEl, "Saved bearer token", "ok");
+        };
+        genIdem.onclick = () => {
+          idemIn.value = "smoke-" + Math.random().toString(36).slice(2, 10);
+        };
+
+        // Amount sync + presets
+        const syncAmt = () => {
+          const v = Math.max(1, parseInt(amtIn.value || "1", 10));
+          amtLab.textContent = String(v);
+        };
+        amtIn.addEventListener("input", syncAmt);
+        syncAmt();
+        document.querySelectorAll(".preset").forEach((b) =>
+          b.addEventListener("click", () => {
+            amtIn.value = b.dataset.amt;
+            syncAmt();
+          }),
+        );
+
+        // JSON helper
+        const jsonOrText = async (res) => {
+          const ct = (res.headers.get("content-type") || "").toLowerCase();
+          if (ct.includes("application/json")) return res.json();
+          const txt = await res.text();
+          throw new Error(`Non-JSON (${res.status}) ${txt.slice(0, 240)}`);
+        };
+
+        // 0) Readiness (nice-to-have)
+        try {
+          const r = await fetch("/api/payments/readiness")
+            .then(jsonOrText)
+            .catch(() => null);
+          if (r && typeof r.stripe_ready === "boolean") {
+            readyEl.textContent = r.stripe_ready
+              ? "stripe: ready"
+              : "stripe: not-configured";
+            readyEl.style.borderColor = r.stripe_ready
+              ? "rgba(16,185,129,.5)"
+              : "rgba(239,68,68,.5)";
+          } else {
+            readyEl.textContent = "stripe: unknown";
+          }
+        } catch (_) {}
+
+        // 1) Frontend config
+        set(statusEl, "Booting…");
+        let stripePk = "";
+        try {
+          const t0 = performance.now();
+          const cfg = await fetch("/api/payments/config").then(jsonOrText);
+          stripePk = cfg?.stripe_public_key || "";
+          pubkeyEl.textContent = `pk: ${stripePk ? stripePk.replace(/(.{10}).+/, "$1…") : "—"}`;
+          if (!stripePk)
+            throw new Error("No publishable key from /api/payments/config");
+          set(statusEl, `Loaded config in ${ms(t0)}`);
+        } catch (e) {
+          set(statusEl, e.message || String(e), "err");
+          return;
+        }
+
+        const stripe = Stripe(stripePk);
+        const elements = stripe.elements();
+        const card = elements.create("card", { hidePostalCode: false });
+        const toggleUI = () => {
+          const useElements = modeSel.value === "elements";
+          cardWrap.style.display = useElements ? "block" : "none";
+          if (useElements && !card._mounted) {
+            card.mount("#card-element");
+            card._mounted = true;
+          }
+        };
+        modeSel.addEventListener("change", toggleUI);
+        toggleUI();
+
+        // 2) Create PI then confirm
+        $("pay").addEventListener("click", async () => {
+          try {
+            const t0 = performance.now();
+            set(statusEl, "Creating PaymentIntent…");
+
+            const amount = Math.max(1, parseInt(amtIn.value || "1", 10));
+            const headers = { "Content-Type": "application/json" };
+            const tok = (localStorage.getItem("dev_api_token") || "").trim();
+            if (tok) headers["Authorization"] = "Bearer " + tok;
+            const idem = (idemIn.value || "").trim();
+            if (idem) headers["Idempotency-Key"] = idem;
+
+            const payload = {
+              amount,
+              currency: "usd",
+              source: "web_smoke",
+              description: "Stripe smoke test",
+              metadata: { note: ($("note").value || "").slice(0, 120) },
+            };
+
+            // NOTE: server route is /payments/stripe/intent (not /api/…)
+            const res = await fetch("/payments/stripe/intent", {
+              method: "POST",
+              headers,
+              body: JSON.stringify(payload),
+            });
+            const data = await jsonOrText(res).catch((e) => {
+              throw e;
+            });
+            log({
+              request: "/payments/stripe/intent",
+              headers,
+              payload,
+              response: data,
+            });
+
+            if (!res.ok) {
+              set(statusEl, data?.error?.message || "Server error", "err");
+              return;
+            }
+            const clientSecret = data.client_secret;
+            if (!clientSecret) {
+              set(statusEl, "Missing client_secret", "err");
+              return;
+            }
+
+            set(statusEl, `PI created in ${ms(t0)} — confirming…`);
+
+            // Optional: peek PI (client-side) for quick sanity
+            try {
+              const peek = await stripe.retrievePaymentIntent(clientSecret);
+              if (peek?.paymentIntent) {
+                log({
+                  ...JSON.parse(logEl.textContent || "{}"),
+                  peek: {
+                    id: peek.paymentIntent.id,
+                    amount: peek.paymentIntent.amount,
+                    status: peek.paymentIntent.status,
+                    pm_types: peek.paymentIntent.payment_method_types,
+                  },
+                });
+              }
+            } catch (_) {}
+
+            let result;
+            if (modeSel.value === "headless") {
+              // Headless shortcut. If 3-D Secure is checked, use Stripe test PM that requires challenge.
+              const pm = threeDS.checked
+                ? "pm_card_threeDSecure2Required"
+                : "pm_card_visa";
+              result = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: pm,
+              });
+            } else {
+              result = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: { card },
+              });
+            }
+
+            if (result.error) {
+              set(statusEl, `Declined: ${result.error.message}`, "err");
+              log(result.error);
+              return;
+            }
+            const pi = result.paymentIntent;
+            if (pi?.status === "succeeded") {
+              set(
+                statusEl,
+                `✅ Success! ${pi.id} — $${(pi.amount / 100).toFixed(2)}`,
+                "ok",
+              );
+              log(pi);
+            } else if (pi?.status === "requires_action") {
+              set(
+                statusEl,
+                `Action required — handled by Stripe.js. Status: ${pi.status}`,
+                "warn",
+              );
+              log(pi);
+            } else {
+              set(statusEl, `PI status: ${pi?.status || "unknown"}`, "warn");
+              log(pi || result);
+            }
+          } catch (e) {
+            set(statusEl, `Unexpected: ${e.message || e}`, "err");
+            log(e.stack || String(e));
+          }
+        });
+
+        // Motion-safe
+        if (
+          matchMedia &&
+          matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          document.documentElement.style.scrollBehavior = "auto";
+        }
+      })();
+    </script>
+  
+<!-- Floating Donate CTA -->
+<div class="fc-float-cta" id="floating-donate-cta" style="display:none; position:fixed;bottom:1.7rem;right:1.7rem;z-index:1999;">
+  <a class="fcx-btn fcx-btn-accent fc-pro-cta" href="{{ HREF_DONATE }}" target="_blank" rel="noopener noreferrer" data-cta="donate">
+    Donate Now →
+  </a>
+</div>
+<script>
+(() => {
+  const float = document.getElementById("floating-donate-cta");
+  const donateBtns = document.querySelectorAll("[data-cta='donate']");
+  const check = () => {
+    let donateVisible = false;
+    donateBtns.forEach(btn => {
+      const rect = btn.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) donateVisible = true;
+    });
+    float.style.display = donateVisible ? "none" : "grid";
+  };
+  window.addEventListener("scroll", check, { passive: true });
+  window.addEventListener("resize", check);
+  check();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80" role="img" aria-label="FutureFunded">
+  <rect width="320" height="80" rx="16" fill="currentColor" opacity="0.08"/>
+  <text x="20" y="50" font-family="system-ui,-apple-system,Segoe UI,Roboto,Arial" font-size="28" fill="currentColor">
+    FutureFunded
+  </text>
+</svg>

@@ -1,0 +1,242 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{# ===========================================================================
+   FundChamps • Launch Bundle (v1.2, production)
+   - One include: QR injection + Section-Head shim + Footer polish
+   - Tokens: --accent, --gap, --container-max, --ring (mirrors header if present)
+   - CSP-safe: local nonce; single idempotent module; no external deps
+   =========================================================================== #}
+
+{# ---- Nonce resolver (safe with or without csp_nonce) ---- #}
+{% if csp_nonce is defined %}
+  {% if csp_nonce is string %}{% set NONCE = csp_nonce %}{% else %}{% set NONCE = csp_nonce() %}{% endif %}
+{% elif NONCE is not defined %}
+  {% set NONCE = '' %}
+{% endif %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+
+{# ---- Optional overrides you can pass from the page ---- #}
+{% set _qr_default = (url_for('static', filename='images/qr/connect-atx-qr.png') if url_for is defined else '/static/images/qr/connect-atx-qr.png') %}
+{% set QR_SRC     = QR_SRC|default(_qr_default, true) %}
+{% set DONATE_URL = DONATE_URL|default(HREF_DONATE|default('/donate'), true) %}
+
+<style {{ nonce_attr() }}>
+/* ================== Section-Head Typography Shim (scoped, safe) ================== */
+/* Token bridge (prefer header tokens if present) */
+#site-main[data-page="fundraiser"]{
+  --accent: var(--header-accent, var(--accent, #facc15));
+  --gap: var(--gap, clamp(1rem, 1.8vw, 2.5rem));
+  --container-max: var(--container-max, 1280px);
+  --ring: var(--header-ring, color-mix(in srgb, var(--accent) 55%, #ffffff));
+}
+
+/* Titles / subtitles used by: Sponsorships, Impact, Final CTA */
+:where(.band) :where(.section-head .hd),
+:where(.section-head .hd),
+:where(.cta-hd){
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--fg, #f8fafc);
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.15;
+  margin: 0 0 .45em 0;
+}
+:where(.band) :where(.section-head .sub),
+:where(.section-head .sub),
+:where(.cta-sub){
+  color: var(--muted, #9aa3b2);
+  font-size: 1.05rem;
+  margin: 0 0 1.8rem 0;
+  max-width: 56ch;
+}
+
+/* Ensure those sections visually match your glass chrome */
+:where(.band) :where(.shell),
+:where(.cta-banner),
+:where(.shell.cta-banner),
+:where(.shell.shell--tiers),
+:where(.shell.shell--impact){
+  background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid #ffffff14;
+  border-radius: 1.5rem;
+  box-shadow: 0 12px 48px rgba(0,0,0,.35);
+}
+
+/* CTA band tint consistency */
+.band.band--cta{ position: relative; overflow: hidden; }
+.band.band--cta .cta-hd{ color: var(--fg, #f8fafc); }
+.band.band--cta .cta-sub{ color: var(--muted, #9aa3b2); }
+
+/* ================== Footer Fix & Polish ================== */
+/* (1) Restore missing .ft-legal selector (typo previously blocked styles) */
+.ft-legal{
+  display:flex; gap:.8rem; align-items:center; justify-content:space-between;
+  border-top: 1px dashed var(--hair, #ffffff14);
+  margin-top: clamp(12px, 2vw, 16px);
+  padding-top: clamp(10px, 1.6vw, 14px);
+  font-size:.92rem;
+  color: var(--header-muted, var(--muted, #9aa3b2));
+}
+.ft-powered-link{
+  color: color-mix(in srgb, var(--accent) 70%, #fff);
+  text-decoration:none; font-weight:900;
+}
+.ft-powered-link:hover{ text-decoration:underline; }
+
+/* (2) Trust logos: consistent size/contrast + mobile wrap */
+.ft-trust-logos{ display:flex; flex-wrap:wrap; gap:.8rem 1rem; align-items:center; opacity:.92; }
+.ft-trust-logos img{ display:block; height:18px; width:auto; filter:grayscale(100%) contrast(1.1); opacity:.9; }
+
+/* (3) Focus visibility */
+.ft-link:focus-visible,
+.ft-btn:focus-visible,
+.ft-powered-link:focus-visible{
+  outline: 3px solid color-mix(in srgb, var(--ring) 85%, #fff 10%);
+  outline-offset: 2px;
+}
+
+/* (4) Mobile footer wrap */
+@media (max-width: 760px){
+  .ft-legal{ flex-direction:column; gap:.5rem; }
+}
+
+/* ================== Hero QR Slot Defaults (if we inject one) ================== */
+.fc-qr{
+  display:inline-grid; place-items:center;
+  width:72px; height:72px; border-radius:10px;
+  background:#0f1220; border:2px solid var(--accent, #facc15);
+  box-shadow:0 8px 24px #0006;
+}
+.fc-qr img{ width:100%; height:100%; object-fit:cover; border-radius:8px; display:block; background:#fff; }
+</style>
+
+<script {{ nonce_attr() }}>
+/* ====================================================================
+   Launch Bundle Module — idempotent, CSP-safe
+   - Inject QR into hero (if missing) w/ static path + inline SVG fallback
+   - Fix footer gradient stop (gold → gold/red mix)
+   - Light reveal helper + UTM propagation
+   ==================================================================== */
+(() => {
+  if (window.__FC_LAUNCH_WIRED__) return; window.__FC_LAUNCH_WIRED__ = true;
+
+  const NONCE       = {{ NONCE|tojson }};
+  const QR_SRC      = {{ QR_SRC|tojson }};
+  const DONATE_URL  = {{ DONATE_URL|tojson }};
+
+  const $  = (s, el=document) => el.querySelector(s);
+  const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+
+  /* ---------------- 1) HERO QR INJECTION (robust, idempotent) ---------------- */
+  (function injectQR(){
+    // Prefer explicit slots in your hero, then content-based fallback
+    let slot = $('[data-qr-slot], [data-qr], .qr-slot, .hero-qr, .qr-card');
+    if (!slot) {
+      const candidates = $$('div,aside,section').filter(n => /scan to give/i.test(n.textContent||''));
+      slot = candidates.find(n => !n.querySelector('img'));
+    }
+    if (!slot || slot.dataset.fcQrWired === '1') return;
+
+    // If there is already an <img>, just ensure it has a fallback
+    let img = slot.querySelector('img');
+    if (!img) {
+      const wrap = document.createElement('div');
+      wrap.className = 'fc-qr';
+      img = document.createElement('img');
+      img.alt = 'Donate QR code';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.src = QR_SRC;
+      wrap.appendChild(img);
+      slot.insertAdjacentElement('afterbegin', wrap);
+    }
+
+    // Inline SVG fallback (CSP-safe placeholder if file is missing)
+    img.addEventListener('error', () => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('viewBox','0 0 120 120');
+      svg.setAttribute('width', String(img.width||92));
+      svg.setAttribute('height', String(img.height||92));
+      svg.innerHTML = `
+        <defs><filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity=".35"/>
+        </filter></defs>
+        <rect x="2" y="2" width="116" height="116" rx="10" fill="#fff" stroke="var(--accent)" stroke-width="4" filter="url(#s)"/>
+        <rect x="12" y="12" width="30" height="30" fill="#111"/>
+        <rect x="78" y="12" width="30" height="30" fill="#111"/>
+        <rect x="12" y="78" width="30" height="30" fill="#111"/>
+        <rect x="48" y="48" width="24" height="24" fill="#111"/>
+        <rect x="86" y="66" width="14" height="14" fill="#111"/>
+        <rect x="66" y="86" width="24" height="14" fill="#111"/>
+      `;
+      img.replaceWith(svg);
+    }, { once:true });
+
+    slot.dataset.fcQrWired = '1';
+  })();
+
+  /* ------------- 2) FOOTER GRADIENT STOP: gold → subtle gold/red mix ---------- */
+  (function fixFooterGrad(){
+    const svg = document.querySelector('#site-footer .ft-mark--svg svg');
+    if (!svg || svg.dataset.fcGradFixed === '1') return;
+    try{
+      const stops = svg.querySelectorAll('linearGradient stop');
+      if (stops.length>= 2) {
+        stops[stops.length-1].setAttribute(
+          'stop-color',
+          'color-mix(in srgb, var(--accent, #facc15) 30%, #ef4444)'
+        );
+      }
+      svg.dataset.fcGradFixed = '1';
+    }catch{}
+  })();
+
+  /* ---------------- 3) Reveal-on-view (tiny helper, passive) ------------------ */
+  (function reveal(){
+    const io = ('IntersectionObserver' in window)
+      ? new IntersectionObserver((ents)=>{ if (document.hidden) return;
+          for (const e of ents) if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+        }, { threshold:.15 })
+      : null;
+    if (!io) return;
+    $$('#hero, .band, [data-animate]').forEach(el=>{ if (!el.classList.contains('in')) io.observe(el); });
+    document.addEventListener('visibilitychange', ()=>{/* reserved for pause hooks */}, {passive:true});
+  })();
+
+  /* --------------- 4) UTM propagation for donate/external links ---------------- */
+  (function attachUtm(){
+    const keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','gclid','fbclid'];
+    const inbound = new URL(location.href).searchParams;
+    const utm = new URLSearchParams();
+    for (const k of keys) if (inbound.has(k)) utm.set(k, inbound.get(k));
+    if (!utm.toString()) return;
+
+    $$('a[href]').forEach(a=>{
+      try{
+        const h = a.getAttribute('href'); if(!h || h.startsWith('#')||h.startsWith('mailto:')||h.startsWith('tel:')) return;
+        const u = new URL(h, location.origin);
+        const isDonate = /\/donate(\b|\/|\?)/.test(u.pathname);
+        const isExternal = u.origin !== location.origin;
+        if (!isDonate && !isExternal) return;
+        for (const [k,v] of utm) u.searchParams.set(k,v);
+        a.setAttribute('href', u.toString());
+      }catch{}
+    });
+  })();
+})();
+</script>
+

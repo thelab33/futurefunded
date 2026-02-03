@@ -1,0 +1,1785 @@
+
+[FF_GUARD_RUNTIME]
+const FF_safeCall = (label, fn) => {
+  try { return fn(); }
+  catch (e) {
+    console.error("[FF] " + label, e);
+    // Surface a minimal UI hint if donate error panel exists
+    const box = document.querySelector("#payError");
+    const txt = document.querySelector("#payErrorText");
+    if (box && txt) {
+      txt.textContent = "App error in " + label + ". Open console for details.";
+      box.hidden = false;
+    }
+    return null;
+  }
+};
+
+window.addEventListener("error", (ev) => {
+  console.error("[FF] window.error", ev?.error || ev?.message || ev);
+});
+window.addEventListener("unhandledrejection", (ev) => {
+  console.error("[FF] unhandledrejection", ev?.reason || ev);
+});
+
+/* FutureFunded • Flagship v16 — ff-app.js (DROP-IN, HARDENED)
+   Owns: theme, drawer, modals, share/copy/QR, progress+countdown,
+         impact ladder (render + filter + search),
+         teams (render + photo + selection + attribution),
+         donate summary, Stripe Payment Element lifecycle (idempotent + safe).
+   DOM contract preserved: IDs + data-ff hooks.
+*/
+
+(() => {
+  "use strict";
+
+  const FF_VERSION = "16.0.0";
+  const BOOT_KEY = "__FF_APP_BOOT__";
+
+  // Hard init guard (covers: script loaded twice, hot reload, partial reinjection)
+  if (window[BOOT_KEY]?.inited) return;
+  window[BOOT_KEY] = {
+    inited: true,
+    version: FF_VERSION,
+    startedAt: Date.now(),
+  };
+
+  // -----------------------------
+  // Utilities
+  // -----------------------------
+  const qs = (sel, root = document) => root.querySelector(sel);
+  const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const on = (el, evt, fn, opts) => el && el.addEventListener(evt, fn, opts);
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+  const meta = (name) => {
+    const el = qs(`meta[name="${CSS.escape(name)}"]`);
+    return el ? (el.getAttribute("content") || "").trim() : "";
+  };
+
+  const safeJsonParse = (s, fallback = null) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return fallback;
+    }
+  };
+
+  const debounce = (fn, ms = 250) => {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  };
+
+  const wrap =
+    (label, fn) =>
+    (...args) => {
+      try {
+        const r = fn(...args);
+        if (r && typeof r.then === "function")
+          r.catch((err) => Crash.capture(err, { label }));
+        return r;
+      } catch (err) {
+        Crash.capture(err, { label });
+      }
+    };
+
+  const isEmail = (v) => /\S+@\S+\.\S+/.test(String(v || "").trim());
+
+  const parseMoneyToCents = (raw) => {
+    const s = String(raw ?? "").replace(/[^\d.]/g, "");
+    if (!s) return 0;
+    const n = Number(s);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    // clamp to avoid absurd values causing UI issues
+    const capped = Math.min(n, 1000000);
+    return Math.round(capped * 100);
+  };
+
+  const formatMoney = (cents, currency = "USD", locale = "en-US") => {
+    const n = Number(cents || 0) / 100;
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+      }).format(n);
+    } catch {
+      return `$${n.toFixed(2)}`;
+    }
+  };
+
+  const setText = (el, txt) => {
+    if (el) el.textContent = txt ?? "";
+  };
+  const setHidden = (el, hidden) => {
+    if (el) el.hidden = !!hidden;
+  };
+
+  const escapeHtml = (s) =>
+    String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+  const nowMs = () => (performance?.now ? performance.now() : Date.now());
+
+  const fetchWithTimeout = async (url, opts = {}, timeoutMs = 12000) => {
+    const controller = new AbortController();
+    const t = setTimeout(
+      () => controller.abort(new Error("timeout")),
+      timeoutMs,
+    );
+
+    // If caller supplied a signal, we still honor it by aborting our controller too.
+    if (opts.signal) {
+      const callerSignal = opts.signal;
+      if (callerSignal.aborted) controller.abort(callerSignal.reason);
+      else
+        callerSignal.addEventListener(
+          "abort",
+          () => controller.abort(callerSignal.reason),
+          { once: true },
+        );
+    }
+
+    try {
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  // -----------------------------
+  // Diagnostics: logging + crash capture
+  // -----------------------------
+  const Diag = (window.__FF_DIAG__ = window.__FF_DIAG__ || {
+    version: FF_VERSION,
+    bootAt: new Date().toISOString(),
+    breadcrumbs: [],
+    errors: [],
+  });
+
+  const Log = (() => {
+    const debugEnabled =
+      meta("ff-debug") === "1" || localStorage.getItem("ff_debug") === "1";
+    const push = (kind, msg, data) => {
+      Diag.breadcrumbs.push({
+        t: Date.now(),
+        kind,
+        msg: String(msg || ""),
+        data: data || null,
+      });
+      if (Diag.breadcrumbs.length > 200) Diag.breadcrumbs.shift();
+    };
+    return {
+      debug: (msg, data) => {
+        if (debugEnabled) {
+          push("debug", msg, data);
+          console.debug("[FutureFunded]", msg, data || "");
+        }
+      },
+      info: (msg, data) => {
+        push("info", msg, data);
+        console.info("[FutureFunded]", msg, data || "");
+      },
+      warn: (msg, data) => {
+        push("warn", msg, data);
+        console.warn("[FutureFunded]", msg, data || "");
+      },
+      error: (msg, data) => {
+        push("error", msg, data);
+        console.error("[FutureFunded]", msg, data || "");
+      },
+    };
+  })();
+
+  const Crash = {
+    capture(err, ctx = {}) {
+      const e =
+        err instanceof Error
+          ? err
+          : new Error(String(err?.message || err || "Unknown error"));
+      const rec = {
+        t: Date.now(),
+        message: e.message,
+        stack: e.stack || "",
+        ctx,
+      };
+      Diag.errors.push(rec);
+      if (Diag.errors.length > 50) Diag.errors.shift();
+      Log.error(e.message, {
+        ctx,
+        stack: (e.stack || "").split("\n").slice(0, 6).join("\n"),
+      });
+
+      // Optional: ship to server if you set <meta name="ff-error-endpoint" content="/client/log">
+      const endpoint = meta("ff-error-endpoint");
+      if (endpoint && navigator.sendBeacon) {
+        try {
+          const payload = JSON.stringify({
+            ok: true,
+            type: "ff_client_error",
+            rec,
+            href: location.href,
+            ua: navigator.userAgent,
+          });
+          navigator.sendBeacon(
+            endpoint,
+            new Blob([payload], { type: "application/json" }),
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+  };
+
+  window.addEventListener("error", (e) => {
+    Crash.capture(e?.error || new Error(e?.message || "Window error"), {
+      label: "window.error",
+    });
+  });
+
+  window.addEventListener("unhandledrejection", (e) => {
+    Crash.capture(e?.reason || new Error("Unhandled rejection"), {
+      label: "window.unhandledrejection",
+    });
+  });
+
+  // -----------------------------
+  // Toasts (capped to avoid DOM growth)
+  // -----------------------------
+  const toast = (() => {
+    const host = () => qs("[data-ff-toasts]");
+    const MAX = 4;
+    return (msg, kind = "info", ms = 3000) => {
+      const h = host();
+      if (!h) return;
+      while (h.children.length >= MAX) h.firstElementChild?.remove();
+
+      const t = document.createElement("div");
+      t.className = `ff-toast ff-toast--${kind}`;
+      t.setAttribute("role", "status");
+      t.setAttribute("aria-live", "polite");
+      t.textContent = msg;
+      h.appendChild(t);
+      setTimeout(() => t.remove(), ms);
+    };
+  })();
+
+const Config = {
+  defaults: {
+    org: {},
+    fundraiser: {},
+    gallery: { enabled: false, items: [] },
+    impact: { enabled: true, items: [] },
+    teams: [],
+    flagship: {
+      version: FF_VERSION,
+      defaults: { currency: "USD", locale: "en-US", timezone: "America/Chicago" },
+    },
+  },
+  data: null,
+
+  load() {
+    const raw = (qs("#ffConfig")?.textContent || "").trim();
+    const parsed = safeJsonParse(raw, null);
+
+    // Start with defaults
+    const base = structuredClone
+      ? structuredClone(this.defaults)
+      : JSON.parse(JSON.stringify(this.defaults));
+
+    // Merge parsed over defaults (shallow + nested objects)
+    this.data = deepMerge(base, (parsed && typeof parsed === "object") ? parsed : {});
+
+    // Normalize key types / shapes defensively
+    this.data.teams = Array.isArray(this.data.teams) ? this.data.teams : [];
+      console.info('[FF] config teams:', this.data.teams.length);
+    this.data.gallery = this.data.gallery && typeof this.data.gallery === "object"
+      ? this.data.gallery
+      : { enabled: false, items: [] };
+
+    if (!Array.isArray(this.data.gallery.items)) this.data.gallery.items = [];
+  },
+};
+
+// Minimal deep merge (objects only; arrays replaced)
+function deepMerge(target, source) {
+  if (!source || typeof source !== "object") return target;
+  for (const k of Object.keys(source)) {
+    const sv = source[k];
+    const tv = target[k];
+    if (sv && typeof sv === "object" && !Array.isArray(sv) && tv && typeof tv === "object" && !Array.isArray(tv)) {
+      target[k] = deepMerge({ ...tv }, sv);
+    } else {
+      target[k] = sv;
+    }
+  }
+  return target;
+}
+  // -----------------------------
+  // DOM
+  // -----------------------------
+  const DOM = {
+    // Brand / header
+    orgName: () => qs("#orgName"),
+    orgMeta: () => qs("#orgMeta"),
+    footerOrgName: () => qs("#footerOrgName"),
+    footerOrgMeta: () => qs("#footerOrgMeta"),
+    seasonPill: () => qs("#seasonPill"),
+    sportPill: () => qs("#sportPill"),
+    heroAccentLine: () => qs("#heroAccentLine"),
+    heroOrgLine: () => qs("#heroOrgLine"),
+
+    // Progress
+    topbarRaised: () => qs("#topbarRaised"),
+    topbarGoal: () => qs("#topbarGoal"),
+    raisedBig: () => qs("#raisedBig"),
+    raisedRow: () => qs("#raisedRow"),
+    goalRow: () => qs("#goalRow"),
+    remainingText: () => qs("#remainingText"),
+    deadlineText: () => qs("#deadlineText"),
+    pctText: () => qs("#pctText"),
+    overallBar: () => qs("#overallBar"),
+
+    // Countdown
+    heroCountdown: () => qs("#heroCountdown"),
+    topbarCountdown: () => qs("#topbarCountdown"),
+    topbarDeadline: () => qs("#topbarDeadline"),
+
+    // Impact
+    impactGrid: () => qs("#impactGrid") || qs("[data-ff-impact-grid]"),
+    impactSearch: () => qs("#impactSearch") || qs("[data-ff-impact-search]"),
+    impactEmpty: () => qs("[data-ff-impact-empty]"),
+
+    // Teams
+    teamsGrid: () => qs("#teamsGrid") || qs("[data-ff-teams-grid]"),
+    teamsStatus: () => qs("#teamsStatus") || qs("[data-ff-teams-status]"),
+
+    // Donate form
+    donationForm: () => qs("#donationForm"),
+    amount: () => qs("#amount"),
+    email: () => qs("#email"),
+    fullName: () => qs("#fullName"),
+    message: () => qs("#message"),
+    anonymous: () => qs("#anonymous"),
+    coverFees: () => qs("#coverFees"),
+
+    attribBox: () => qs("#attribBox"),
+    summaryTeamRow: () => qs("#summaryTeamRow"),
+    summaryTeam: () => qs("#summaryTeam"),
+
+    receiptEmail: () => qs("#receiptEmail"),
+    summaryAmount: () => qs("#summaryAmount"),
+    summaryFees: () => qs("#summaryFees"),
+    summaryTotal: () => qs("#summaryTotal"),
+
+    payBtn: () => qs("#payBtn"),
+    payError: () => qs("#payError"),
+    payErrorText: () => qs("#payErrorText"),
+    paySuccess: () => qs("#paySuccess"),
+    paySuccessText: () => qs("#paySuccessText"),
+
+    checkoutStatusText: () => qs("#checkoutStatusText"),
+    checkoutMethodPill: () => qs("#checkoutMethodPill"),
+    checkoutMethodText: () => qs("#checkoutMethodText"),
+
+    stripeMountEl: () =>
+      qs("#donate [data-ff-stripe-element]") || qs("#donate #paymentElement"),
+
+    // Share / modals
+    shareLink: () => qs("#shareLink"),
+    proofCaption: () => qs("#proofCaption"),
+    shareModal: () => qs("#ffShareModal"),
+    proofModal: () => qs("#ffProofModal"),
+    policyModal: () => qs("#ffPolicyModal"),
+
+    // QR images
+    qrImgs: () => qsa("[data-ff-qr]"),
+
+    // UI
+    scrollProgressBar: () => qs("#scrollProgressBar"),
+    backToTop: () => qs("[data-ff-backtotop]"),
+    mobileDrawer: () => qs("#mobileDrawer"),
+  };
+
+  // -----------------------------
+  // Theme
+  // -----------------------------
+  const Theme = {
+    key: "ff_theme",
+    init() {
+      const saved = localStorage.getItem(this.key);
+      if (saved === "light" || saved === "dark")
+        document.documentElement.setAttribute("data-theme", saved);
+
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest("[data-ff-theme-toggle]");
+          if (!btn) return;
+          const cur =
+            document.documentElement.getAttribute("data-theme") || "dark";
+          const next = cur === "dark" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", next);
+          btn.setAttribute("aria-pressed", String(next === "dark"));
+          localStorage.setItem(this.key, next);
+        },
+        true,
+      );
+    },
+  };
+
+  // -----------------------------
+  // Drawer
+  // -----------------------------
+  const Drawer = {
+    open() {
+      const d = DOM.mobileDrawer();
+      if (!d) return;
+      d.hidden = false;
+      d.setAttribute("aria-hidden", "false");
+      qs("[data-ff-drawer-open]")?.setAttribute("aria-expanded", "true");
+      qs("[data-ff-drawer-panel]", d)?.focus?.();
+      document.body.style.overflow = "hidden";
+    },
+    close() {
+      const d = DOM.mobileDrawer();
+      if (!d) return;
+      d.hidden = true;
+      d.setAttribute("aria-hidden", "true");
+      qs("[data-ff-drawer-open]")?.setAttribute("aria-expanded", "false");
+      document.body.style.overflow = "";
+    },
+    init() {
+      on(
+        document,
+        "click",
+        (e) => {
+          if (e.target.closest("[data-ff-drawer-open]")) {
+            e.preventDefault();
+            this.open();
+          }
+          if (e.target.closest("[data-ff-drawer-close]")) {
+            e.preventDefault();
+            this.close();
+          }
+        },
+        true,
+      );
+      on(document, "keydown", (e) => {
+        if (e.key === "Escape") this.close();
+      });
+    },
+  };
+
+  // -----------------------------
+  // Modals
+  // -----------------------------
+  const Modals = {
+    open(el) {
+      if (!el) return;
+      el.hidden = false;
+      el.setAttribute("aria-hidden", "false");
+      qs("[data-ff-modal-panel]", el)?.focus?.();
+      document.body.style.overflow = "hidden";
+    },
+    close(el) {
+      if (!el) return;
+      el.hidden = true;
+      el.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    },
+    init() {
+      on(
+        document,
+        "click",
+        (e) => {
+          if (e.target.closest("[data-ff-share-open]")) {
+            e.preventDefault();
+            Share.refreshUI();
+            this.open(DOM.shareModal());
+          }
+          if (e.target.closest("[data-ff-proof-open]")) {
+            e.preventDefault();
+            Share.refreshUI();
+            this.open(DOM.proofModal());
+          }
+          if (e.target.closest("[data-ff-policy-open]")) {
+            e.preventDefault();
+            this.open(DOM.policyModal());
+          }
+
+          const closeBtn = e.target.closest("[data-ff-modal-close]");
+          if (closeBtn) {
+            e.preventDefault();
+            this.close(closeBtn.closest(".ff-modal"));
+          }
+        },
+        true,
+      );
+
+      on(document, "keydown", (e) => {
+        if (e.key !== "Escape") return;
+        [DOM.shareModal(), DOM.proofModal(), DOM.policyModal()].forEach((m) => {
+          if (m && !m.hidden) this.close(m);
+        });
+        Drawer.close();
+      });
+    },
+  };
+
+  // -----------------------------
+  // Share / Copy / QR
+  // -----------------------------
+  const Share = {
+    baseUrl() {
+      const canon = meta("ff-canonical") || meta("ff-stripe-return-url");
+      const u = canon || window.location.href;
+      const url = new URL(u, window.location.origin);
+      url.hash = "";
+      return url;
+    },
+    shareUrl() {
+      const url = this.baseUrl();
+      if (State.selectedTeam?.id)
+        url.searchParams.set("src", `team:${State.selectedTeam.id}`);
+      return url.toString();
+    },
+    refreshUI() {
+      const url = this.shareUrl();
+      const input = DOM.shareLink();
+      if (input) input.value = url;
+
+      const qrEndpoint = meta("ff-qr-endpoint");
+      if (qrEndpoint) {
+        const qrSrc = `${qrEndpoint}?size=220x220&data=${encodeURIComponent(url)}`;
+        DOM.qrImgs().forEach((img) => {
+          img.src = qrSrc;
+        });
+      }
+
+      const cap = DOM.proofCaption();
+      if (cap) {
+        const org = Config.data.org?.name || "our program";
+        cap.value = `Supporting ${org} this season.\n\nSecure checkout + instant receipt:\n${url}\n\n#FutureFunded #Community`;
+      }
+    },
+    async copyLink() {
+      const url = this.shareUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+        toast("Link copied", "success");
+      } catch {
+        const t = document.createElement("textarea");
+        t.value = url;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand("copy");
+        t.remove();
+        toast("Link copied", "success");
+      }
+    },
+    init() {
+      on(
+        document,
+        "click",
+        (e) => {
+          if (e.target.closest("[data-ff-copy-link]")) {
+            e.preventDefault();
+            this.copyLink();
+          }
+          if (e.target.closest("[data-ff-native-share]")) {
+            e.preventDefault();
+            const url = this.shareUrl();
+            if (navigator.share)
+              navigator.share({ title: document.title, url }).catch(() => {});
+            else this.copyLink();
+          }
+          if (e.target.closest("[data-ff-sms-share]")) {
+            e.preventDefault();
+            const url = this.shareUrl();
+            window.location.href = `sms:&body=${encodeURIComponent(url)}`;
+          }
+          if (e.target.closest("[data-ff-email-share]")) {
+            e.preventDefault();
+            const url = this.shareUrl();
+            const subj = encodeURIComponent(document.title || "Fundraiser");
+            const body = encodeURIComponent(`Here’s the link:\n\n${url}`);
+            window.location.href = `mailto:?subject=${subj}&body=${body}`;
+          }
+        },
+        true,
+      );
+    },
+  };
+
+  // -----------------------------
+  // Brand + Progress + Countdown
+  // -----------------------------
+  const Brand = {
+    apply() {
+      const { org } = Config.data;
+      setText(DOM.orgName(), org?.name || "Organization");
+      setText(DOM.footerOrgName(), org?.name || "Organization");
+      setText(DOM.orgMeta(), org?.meta || "");
+      setText(DOM.footerOrgMeta(), org?.meta || "");
+      setText(DOM.seasonPill(), org?.seasonPill || "Season Fund");
+      setText(DOM.sportPill(), org?.sportPill || "Program");
+      setText(DOM.heroAccentLine(), org?.heroAccentLine || "");
+      setText(DOM.heroOrgLine(), `${org?.name || "Organization"} • Fundraiser`);
+      Share.refreshUI();
+    },
+  };
+
+  const Progress = {
+    totals() {
+      const teams = Config.data.teams || [];
+      const raisedCents = teams.reduce(
+        (sum, t) => sum + Math.max(0, Math.round(Number(t.raised || 0) * 100)),
+        0,
+      );
+      const goalDollars = Number(Config.data.fundraiser?.goalAmount || 0);
+      const goalCents = Math.round(goalDollars * 100);
+      return { raisedCents, goalCents };
+    },
+    render() {
+      const { currency, locale } = Config.data.flagship.defaults;
+      const { raisedCents, goalCents } = this.totals();
+      const pct =
+        goalCents > 0
+          ? clamp(Math.round((raisedCents / goalCents) * 100), 0, 999)
+          : 0;
+      const remaining = Math.max(0, goalCents - raisedCents);
+
+      setText(DOM.topbarRaised(), formatMoney(raisedCents, currency, locale));
+      setText(DOM.topbarGoal(), formatMoney(goalCents, currency, locale));
+      setText(DOM.raisedBig(), formatMoney(raisedCents, currency, locale));
+      setText(DOM.raisedRow(), formatMoney(raisedCents, currency, locale));
+      setText(DOM.goalRow(), formatMoney(goalCents, currency, locale));
+      setText(DOM.pctText(), String(pct));
+      setText(DOM.remainingText(), formatMoney(remaining, currency, locale));
+
+      const bar = DOM.overallBar();
+      if (bar) bar.style.width = `${clamp(pct, 0, 100)}%`;
+    },
+  };
+
+  const Countdown = {
+    timer: null,
+    format(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (d > 0) return `${d}d ${h}h`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    },
+    init() {
+      const iso = Config.data.fundraiser?.deadlineISO;
+      if (!iso) return;
+      const deadline = new Date(iso);
+
+      const tick = () => {
+        const ms = deadline.getTime() - Date.now();
+        const loc = Config.data.flagship.defaults.locale || "en-US";
+        setText(DOM.heroCountdown(), this.format(ms));
+        setText(DOM.topbarCountdown(), this.format(ms));
+        setText(DOM.topbarDeadline(), deadline.toLocaleDateString(loc));
+        setText(DOM.deadlineText(), deadline.toLocaleDateString(loc));
+      };
+
+      tick();
+      clearInterval(this.timer);
+      this.timer = setInterval(tick, 60 * 1000);
+    },
+  };
+
+  // -----------------------------
+  // Donate summary + prefill hooks
+  // -----------------------------
+  const Donate = {
+    estimateFeeCents(donationCents) {
+      const pct = 0.029;
+      const fixed = 30;
+      return Math.max(0, Math.round(donationCents * pct) + fixed);
+    },
+    getCurrency() {
+      return Config.data.flagship.defaults.currency || "USD";
+    },
+    getLocale() {
+      return Config.data.flagship.defaults.locale || "en-US";
+    },
+    readForm() {
+      State.donate.amountCents = parseMoneyToCents(DOM.amount()?.value);
+      State.donate.email = String(DOM.email()?.value || "").trim();
+      State.donate.name = String(DOM.fullName()?.value || "").trim();
+      State.donate.message = String(DOM.message()?.value || "").trim();
+      State.donate.anonymous = !!DOM.anonymous()?.checked;
+      State.donate.coverFees = !!DOM.coverFees()?.checked;
+      State.donate.recognition = State.donate.anonymous
+        ? "anonymous"
+        : "public";
+    },
+    setAmountFromDollars(dollars) {
+      const v = Number(dollars);
+      if (!Number.isFinite(v) || v <= 0) return;
+      if (DOM.amount()) DOM.amount().value = String(v);
+      this.readForm();
+      this.renderSummary();
+      StripeCheckout.queuePrepare(true);
+    },
+    renderSummary() {
+      this.readForm();
+      const donationCents = State.donate.amountCents;
+      const feeCents = State.donate.coverFees
+        ? this.estimateFeeCents(donationCents)
+        : 0;
+      const totalCents = donationCents + feeCents;
+
+      setText(DOM.receiptEmail(), State.donate.email || "your email");
+      setText(
+        DOM.summaryAmount(),
+        donationCents
+          ? formatMoney(donationCents, this.getCurrency(), this.getLocale())
+          : "—",
+      );
+      setText(
+        DOM.summaryFees(),
+        State.donate.coverFees && donationCents
+          ? formatMoney(feeCents, this.getCurrency(), this.getLocale())
+          : "—",
+      );
+      setText(
+        DOM.summaryTotal(),
+        donationCents
+          ? formatMoney(totalCents, this.getCurrency(), this.getLocale())
+          : "—",
+      );
+    },
+    init() {
+      on(
+        DOM.amount(),
+        "input",
+        debounce(() => {
+          this.renderSummary();
+        }, 150),
+      );
+      on(
+        DOM.email(),
+        "input",
+        debounce(() => {
+          this.renderSummary();
+        }, 150),
+      );
+
+      // Only prepare Stripe on commit-y events (not every keystroke)
+      on(DOM.amount(), "change", () => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare(false);
+      });
+      on(DOM.amount(), "blur", () => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare(false);
+      });
+
+      on(DOM.email(), "change", () => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare(false);
+      });
+      on(DOM.email(), "blur", () => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare(false);
+      });
+
+      on(DOM.coverFees(), "change", () => {
+        this.renderSummary();
+        StripeCheckout.queuePrepare(true);
+      });
+      on(DOM.anonymous(), "change", () => {
+        this.renderSummary();
+        Share.refreshUI();
+      });
+
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest("[data-ff-quick-amount]");
+          if (!btn) return;
+          e.preventDefault();
+          this.setAmountFromDollars(btn.getAttribute("data-ff-quick-amount"));
+          qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        },
+        true,
+      );
+
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest(
+            "[data-ff-prefill-amount],[data-ff-prefill],[data-ff-sponsor-cta]",
+          );
+          if (!btn) return;
+          const amt =
+            btn.getAttribute("data-ff-prefill-amount") ||
+            btn.getAttribute("data-ff-prefill");
+          const n = Number(amt);
+          if (!Number.isFinite(n) || n <= 0) return;
+          e.preventDefault();
+          this.setAmountFromDollars(n);
+          qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        },
+        true,
+      );
+
+      on(
+        DOM.donationForm(),
+        "submit",
+        wrap("donationForm.submit", (e) => StripeCheckout.handleSubmit(e)),
+      );
+      this.renderSummary();
+    },
+  };
+
+  // -----------------------------
+  // Impact Ladder (optimized render)
+  // -----------------------------
+  const Impact = {
+    _lastKey: "",
+    defaults() {
+      return [
+        {
+          id: "i25",
+          amount: 25,
+          title: "Help with snacks",
+          desc: "Keep kids fueled on game day.",
+          tags: ["gear"],
+          cta: "Give $25",
+        },
+        {
+          id: "i75",
+          amount: 75,
+          title: "Cover a gym hour",
+          desc: "Practice time and court rental.",
+          tags: ["fees"],
+          cta: "Give $75",
+        },
+        {
+          id: "i150",
+          amount: 150,
+          title: "Tournament entry",
+          desc: "Help cover weekend registration fees.",
+          tags: ["fees", "travel"],
+          cta: "Give $150",
+        },
+        {
+          id: "i500",
+          amount: 500,
+          title: "Season training block",
+          desc: "Skill work + conditioning sessions.",
+          tags: ["fees"],
+          cta: "Give $500",
+        },
+      ];
+    },
+    items() {
+      const cfg = Config.data.impact || {};
+      const items = Array.isArray(cfg.items) ? cfg.items : [];
+      return items.length ? items : this.defaults();
+    },
+    render() {
+      const grid = DOM.impactGrid();
+      if (!grid) return;
+
+      const q = (State.impact.q || "").trim().toLowerCase();
+      const filter = State.impact.filter || "all";
+
+      const renderKey = `${filter}|${q}|${Config.data.impact?.items?.length || 0}`;
+      if (renderKey === this._lastKey) return;
+      this._lastKey = renderKey;
+
+      const list = this.items()
+        .map((x) => ({
+          id: String(x.id || ""),
+          amount: Number(x.amount || x.amountDollars || 0),
+          title: String(x.title || "Impact"),
+          desc: String(x.desc || x.description || ""),
+          tags: Array.isArray(x.tags)
+            ? x.tags.map(String)
+            : x.tag
+              ? [String(x.tag)]
+              : [],
+          cta: String(x.cta || ""),
+        }))
+        .filter((x) => x.amount > 0);
+
+      let view = list;
+      if (filter !== "all") view = view.filter((x) => x.tags.includes(filter));
+      if (q)
+        view = view.filter((x) =>
+          `${x.title} ${x.desc} ${x.tags.join(" ")}`.toLowerCase().includes(q),
+        );
+
+      const frag = document.createDocumentFragment();
+
+      for (const it of view) {
+        const card = document.createElement("article");
+        card.className =
+          "ff-impactcard ff-card ff-card--lift ff-card--premium ff-pad";
+        card.setAttribute("role", "listitem");
+
+        const label =
+          it.cta ||
+          `Give ${formatMoney(Math.round(it.amount * 100), Config.data.flagship.defaults.currency, Config.data.flagship.defaults.locale)}`;
+
+        // Use escaped strings (config may be admin-supplied)
+        card.innerHTML = `
+          <div class="ff-row ff-row--between ff-wrap ff-ais">
+            <div class="ff-minw-0">
+              <div class="ff-kicker">Impact</div>
+              <div class="ff-card__title">${escapeHtml(it.title)}</div>
+              <p class="ff-help ff-muted">${escapeHtml(it.desc)}</p>
+              <div class="ff-row ff-wrap ff-mt-1">
+                ${it.tags.map((t) => `<span class="ff-pill">${escapeHtml(t)}</span>`).join("")}
+              </div>
+            </div>
+            <div class="ff-row ff-wrap" role="group" aria-label="Impact actions">
+              <button class="ff-btn ff-btn--primary ff-btn--sm" type="button" data-ff-impact-amount="${it.amount}">${escapeHtml(label)}</button>
+              <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-share-open>Share</button>
+              <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-copy-link>Copy link</button>
+            </div>
+          </div>
+        `;
+        frag.appendChild(card);
+      }
+
+      grid.replaceChildren(frag);
+      setHidden(DOM.impactEmpty(), view.length !== 0);
+    },
+    init() {
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest("[data-ff-impact-filter]");
+          if (!btn) return;
+          e.preventDefault();
+          const f = btn.getAttribute("data-ff-impact-filter") || "all";
+          State.impact.filter = f;
+
+          qsa("[data-ff-impact-filter]").forEach((b) => {
+            const active =
+              (b.getAttribute("data-ff-impact-filter") || "all") === f;
+            b.classList.toggle("is-selected", active);
+            b.setAttribute("aria-pressed", String(active));
+          });
+
+          this.render();
+        },
+        true,
+      );
+
+      const search = DOM.impactSearch();
+      on(
+        search,
+        "input",
+        debounce((e) => {
+          State.impact.q = e.target.value || "";
+          this.render();
+        }, 150),
+      );
+
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest("[data-ff-impact-amount]");
+          if (!btn) return;
+          e.preventDefault();
+          const n = Number(btn.getAttribute("data-ff-impact-amount"));
+          if (!Number.isFinite(n) || n <= 0) return;
+          Donate.setAmountFromDollars(n);
+          qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        },
+        true,
+      );
+
+      this.render();
+    },
+  };
+
+  // -----------------------------
+  // Teams (optimized render + safer images)
+  // -----------------------------
+  const Teams = {
+    _lastKey: "",
+    sorters: {
+      featured: (a, b) => (b.featured === true) - (a.featured === true),
+      goal: (a, b) => {
+        const ap = a.goal ? a.raised / a.goal : 0;
+        const bp = b.goal ? b.raised / b.goal : 0;
+        return bp - ap;
+      },
+      recent: (a, b) => (b.raised || 0) - (a.raised || 0),
+    },
+    render() {
+      const grid = DOM.teamsGrid();
+      if (!grid) return;
+
+      const q = (State.teams.q || "").trim().toLowerCase();
+      const sort = State.teams.sort || "featured";
+      const renderKey = `${sort}|${q}|${(Config.data.teams || []).length}`;
+      if (renderKey === this._lastKey) return;
+      this._lastKey = renderKey;
+
+      const teams = (Config.data.teams || []).map((t) => ({
+        ...t,
+        id: String(t.id || ""),
+        name: String(t.name || "Team"),
+        meta: String(t.meta || ""),
+        photo: String(t.photo || ""),
+        goal: Number(t.goal || 0),
+        raised: Number(t.raised || 0),
+        featured: !!t.featured,
+      }));
+
+      let list = q
+        ? teams.filter((t) => `${t.name} ${t.meta}`.toLowerCase().includes(q))
+        : teams.slice();
+      const sorter = this.sorters[sort] || this.sorters.featured;
+      list.sort(sorter);
+
+      const frag = document.createDocumentFragment();
+
+      for (const t of list) {
+        const card = document.createElement("article");
+        card.className =
+          "ff-teamcard ff-card ff-card--lift ff-card--premium ff-pad";
+        card.setAttribute("role", "listitem");
+
+        const pct =
+          t.goal > 0 ? clamp(Math.round((t.raised / t.goal) * 100), 0, 999) : 0;
+
+        // Media wrapper
+        const media = document.createElement("div");
+        media.className = "ff-teamcard__media";
+
+        if (t.photo) {
+          const img = document.createElement("img");
+          img.className = "ff-teamcard__img";
+          img.src = t.photo;
+          img.alt = t.name;
+          img.loading = "lazy";
+          img.decoding = "async";
+          img.referrerPolicy = "no-referrer";
+          img.addEventListener("error", () => img.remove(), { once: true });
+          media.appendChild(img);
+        }
+
+        card.appendChild(media);
+
+        // Body (use minimal innerHTML with escaped strings)
+        const currency = Config.data.flagship.defaults.currency;
+        const locale = Config.data.flagship.defaults.locale;
+        card.insertAdjacentHTML(
+          "beforeend",
+          `
+          <div class="ff-row ff-row--between ff-wrap ff-ais ff-mt-2">
+            <div class="ff-minw-0">
+              <div class="ff-kicker">${t.featured ? "Featured" : "Team"}</div>
+              <div class="ff-card__title">${escapeHtml(t.name)}</div>
+              <p class="ff-help ff-muted">${escapeHtml(t.meta)}</p>
+            </div>
+            <button class="ff-btn ff-btn--primary ff-btn--sm" type="button" data-ff-select-team="${escapeHtml(t.id)}">Select</button>
+          </div>
+
+          <div class="ff-meter ff-mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+            aria-valuenow="${clamp(pct, 0, 100)}" aria-valuetext="${pct}% funded">
+            <span style="display:block;width:${clamp(pct, 0, 100)}%"></span>
+          </div>
+
+          <div class="ff-row ff-row--between ff-wrap ff-mt-2">
+            <span class="ff-help">Raised: <strong class="ff-num">${escapeHtml(formatMoney(Math.round(t.raised * 100), currency, locale))}</strong></span>
+            <span class="ff-help">Goal: <strong class="ff-num">${escapeHtml(formatMoney(Math.round(t.goal * 100), currency, locale))}</strong></span>
+          </div>
+        `,
+        );
+
+        frag.appendChild(card);
+      }
+
+      grid.replaceChildren(frag);
+      setText(DOM.teamsStatus(), `${list.length} teams shown`);
+    },
+    select(teamId) {
+      const t = (Config.data.teams || []).find(
+        (x) => String(x.id) === String(teamId),
+      );
+      if (!t) return;
+
+      State.selectedTeam = { id: String(t.id), name: String(t.name || "Team") };
+
+      const pill = qs("[data-ff-team-selected]");
+      const nameEl = qs("[data-ff-team-selected-name]");
+      if (pill) pill.hidden = false;
+      setText(nameEl, State.selectedTeam.name);
+
+      if (DOM.attribBox()) DOM.attribBox().hidden = false;
+
+      setHidden(DOM.summaryTeamRow(), false);
+      setText(DOM.summaryTeam(), State.selectedTeam.name);
+
+      Share.refreshUI();
+      Donate.renderSummary();
+      toast(`Selected: ${State.selectedTeam.name}`, "success", 2500);
+    },
+    clear() {
+      State.selectedTeam = null;
+      const pill = qs("[data-ff-team-selected]");
+      if (pill) pill.hidden = true;
+
+      if (DOM.attribBox()) DOM.attribBox().hidden = true;
+
+      setHidden(DOM.summaryTeamRow(), true);
+      Share.refreshUI();
+      Donate.renderSummary();
+      toast("Team selection cleared", "info", 2000);
+    },
+    init() {
+      const search = qs("[data-ff-team-search]") || qs("#teamSearch");
+      on(
+        search,
+        "input",
+        debounce((e) => {
+          State.teams.q = e.target.value || "";
+          this.render();
+        }, 150),
+      );
+
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest("[data-ff-team-sort] [data-ff-sort]");
+          if (!btn) return;
+          e.preventDefault();
+          const sort = btn.getAttribute("data-ff-sort") || "featured";
+          State.teams.sort = sort;
+
+          qsa("[data-ff-team-sort] [data-ff-sort]").forEach((b) => {
+            const active = (b.getAttribute("data-ff-sort") || "") === sort;
+            b.classList.toggle("is-selected", active);
+            b.setAttribute("aria-pressed", String(active));
+          });
+
+          this.render();
+        },
+        true,
+      );
+
+      on(
+        document,
+        "click",
+        (e) => {
+          const btn = e.target.closest("[data-ff-select-team]");
+          if (!btn) return;
+          e.preventDefault();
+          this.select(btn.getAttribute("data-ff-select-team"));
+          qs("#donate")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        },
+        true,
+      );
+
+      on(
+        document,
+        "click",
+        (e) => {
+          if (!e.target.closest("[data-ff-attrib-clear]")) return;
+          e.preventDefault();
+          this.clear();
+        },
+        true,
+      );
+
+      this.render();
+    },
+  };
+
+  // -----------------------------
+  // Stripe Payment Element (hardened lifecycle) — DROP-IN REPLACEMENT
+  // -----------------------------
+  const StripeCheckout = {
+    stripe: null,
+    stripePk: "",
+    elements: null,
+    paymentElement: null,
+    mounted: false,
+    clientSecret: "",
+    lastKey: "",
+    preparing: false,
+    prepareDebounced: null,
+    inConfirm: false,
+
+    // single-flight resources
+    stripeJsPromise: null,
+    pkPromise: null,
+
+    // intent caching & cancellation
+    intentCache: new Map(), // key -> { clientSecret, publishableKey, ts }
+    intentAbort: null,
+    cooldownUntil: 0,
+
+    endpoints: {
+      intent: () =>
+        meta("ff-stripe-intent-endpoint") || "/payments/stripe/intent",
+      config: () => meta("ff-payments-config-endpoint") || "/payments/config",
+      returnUrl: () => {
+        const u =
+          meta("ff-stripe-return-url") ||
+          meta("ff-canonical") ||
+          window.location.href;
+        // Guard: ensure it's an absolute URL (Stripe prefers it)
+        try {
+          return new URL(u, window.location.origin).toString();
+        } catch {
+          return window.location.href;
+        }
+      },
+    },
+
+    // ---- UI helpers ----
+    setStatus(txt) {
+      setText(DOM.checkoutStatusText(), txt || "Ready");
+    },
+
+    showError(msg) {
+      const box = DOM.payError();
+      if (DOM.payErrorText())
+        DOM.payErrorText().textContent = msg || "Payment error.";
+      if (box) {
+        box.hidden = !msg;
+        if (msg) box.focus?.();
+      }
+      setHidden(DOM.paySuccess(), true);
+    },
+
+    showSuccess(msg) {
+      const box = DOM.paySuccess();
+      if (DOM.paySuccessText())
+        DOM.paySuccessText().textContent =
+          msg || "Thank you! Your receipt has been emailed.";
+      if (box) {
+        box.hidden = false;
+        box.focus?.();
+      }
+      setHidden(DOM.payError(), true);
+    },
+
+    // ---- Stripe JS loader (deduped) ----
+    async loadStripeJs() {
+      if (window.Stripe) return;
+
+      if (this.stripeJsPromise) return this.stripeJsPromise;
+
+      const src = meta("ff-stripe-js") || "https://js.stripe.com/v3/";
+      const existing = qs('script[data-ff-stripe-js="1"]');
+
+      this.stripeJsPromise = new Promise((resolve, reject) => {
+        if (existing) {
+          existing.addEventListener("load", () => resolve(), { once: true });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("Stripe JS failed to load")),
+            { once: true },
+          );
+          return;
+        }
+
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.setAttribute("data-ff-stripe-js", "1");
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("Stripe JS failed to load"));
+        document.head.appendChild(s);
+      });
+
+      return this.stripeJsPromise;
+    },
+
+    // ---- PK lookup (meta first, then /payments/config) ----
+    async fetchPublishableKey() {
+      const pkMeta = meta("ff-stripe-pk");
+      if (pkMeta) return pkMeta;
+
+      if (this.pkPromise) return this.pkPromise;
+
+      this.pkPromise = (async () => {
+        const r = await fetchWithTimeout(
+          this.endpoints.config(),
+          { credentials: "same-origin" },
+          12000,
+        );
+        const j = await r.json().catch(() => ({}));
+        if (j && j.ok && j.stripe_publishable_key)
+          return j.stripe_publishable_key;
+        throw new Error(
+          "Stripe publishable key missing. Set meta ff-stripe-pk or implement /payments/config.",
+        );
+      })();
+
+      return this.pkPromise;
+    },
+
+    // ---- Payload normalization (client compatibility + backend expectations) ----
+    normalizePayload(payload) {
+      if (!payload || typeof payload !== "object") return payload;
+
+      // Allow legacy/camelCase from other callers (safe no-op for our own builder)
+      if (payload.amount_cents == null && payload.amountCents != null)
+        payload.amount_cents = payload.amountCents;
+      if (payload.cover_fees == null && payload.coverFees != null)
+        payload.cover_fees = payload.coverFees;
+      if (payload.round_up == null && payload.roundUp != null)
+        payload.round_up = payload.roundUp;
+
+      // Ensure donor object exists
+      if (!payload.donor || typeof payload.donor !== "object")
+        payload.donor = {};
+
+      // Promote top-level fields into donor when present
+      if (!payload.donor.email && payload.email)
+        payload.donor.email = payload.email;
+      if (!payload.donor.name && (payload.fullName || payload.name))
+        payload.donor.name = payload.fullName || payload.name;
+
+      // Trim + normalize
+      payload.currency = String(payload.currency || "usd")
+        .trim()
+        .toLowerCase();
+      payload.donor.email = String(payload.donor.email || "")
+        .trim()
+        .toLowerCase();
+      payload.donor.name = String(payload.donor.name || "").trim();
+
+      // Booleans should be true/false
+      payload.cover_fees = !!payload.cover_fees;
+      payload.round_up = !!payload.round_up;
+
+      return payload;
+    },
+
+    // ---- IMPORTANT: amount_cents is BASE donation (backend computes fee/round-up) ----
+    buildIntentPayload() {
+      Donate.readForm();
+
+      const donationCents = Number(State.donate.amountCents || 0) | 0;
+      const currency = (
+        Config?.data?.flagship?.defaults?.currency || "USD"
+      ).toLowerCase();
+
+      const email = (State.donate.email || "").trim();
+      const name = (State.donate.fullName || State.donate.name || "").trim();
+
+      const payload = {
+        // base donation amount (server will compute fee/round-up)
+        amount_cents: donationCents,
+        currency,
+
+        donor: { email, name },
+
+        cover_fees: !!State.donate.coverFees,
+        round_up: !!State.donate.roundUp,
+
+        // Optional extra fields (server may ignore; useful for analytics/debug)
+        donation_amount_cents: donationCents,
+        attribution: State.selectedTeam
+          ? {
+              team_id: State.selectedTeam.id,
+              team_name: State.selectedTeam.name,
+            }
+          : null,
+        metadata: {
+          ff_team_id: State.selectedTeam?.id || "",
+          ff_team_name: State.selectedTeam?.name || "",
+          ff_canonical: meta("ff-canonical") || "",
+          ff_build:
+            document.documentElement.getAttribute("data-ff-build") || "",
+          ff_version:
+            Config?.data?.flagship?.version ||
+            document.documentElement.getAttribute("data-ff-version") ||
+            FF_VERSION,
+        },
+      };
+
+      if (!payload.attribution) delete payload.attribution;
+
+      // Final normalization pass (guarantees donor trimming + casing)
+      return this.normalizePayload(payload);
+    },
+
+    // Cache key should reflect what changes the clientSecret
+    keyForPayload(payload) {
+      const amt = payload?.amount_cents || 0;
+      const cf = payload?.cover_fees ? 1 : 0;
+      const ru = payload?.round_up ? 1 : 0;
+      const cur = payload?.currency || "usd";
+      const team = State.selectedTeam?.id || "";
+      const email = payload?.donor?.email || ""; // optional but helps avoid mismatched secrets across emails
+      return `${amt}|${cf}|${ru}|${cur}|${team}|${email}`;
+    },
+
+    getMountEl() {
+      return DOM.stripeMountEl() || null;
+    },
+
+    teardown() {
+      // Abort in-flight intent request
+      try {
+        this.intentAbort?.abort?.(new Error("teardown"));
+      } catch {
+        /* ignore */
+      }
+      this.intentAbort = null;
+
+      // Unmount Stripe element if present
+      try {
+        this.paymentElement?.unmount?.();
+      } catch {
+        /* ignore */
+      }
+
+      const host = this.getMountEl();
+      if (host) host.replaceChildren();
+
+      this.elements = null;
+      this.paymentElement = null;
+      this.clientSecret = "";
+      this.mounted = false;
+      // keep lastKey for short-circuit logic; reset when we actually change
+    },
+
+    async createIntent(payload, key) {
+      payload = this.normalizePayload(payload);
+
+      if (!payload.amount_cents || payload.amount_cents < 100) {
+        throw new Error("Enter a valid amount (minimum $1.00).");
+      }
+      if (!isEmail(payload.donor.email)) {
+        throw new Error("Enter a valid email for the receipt.");
+      }
+
+      // Cache TTL: 20 minutes (reduces churn, still safe for typical sessions)
+      const cached = this.intentCache.get(key);
+      if (cached && Date.now() - cached.ts < 20 * 60 * 1000) return cached;
+
+      // Cancel any in-flight intent
+      try {
+        this.intentAbort?.abort?.(new Error("superseded"));
+      } catch {
+        /* ignore */
+      }
+      this.intentAbort = new AbortController();
+
+      const csrf = meta("csrf-token");
+      const headers = { "Content-Type": "application/json" };
+      if (csrf) headers["X-CSRFToken"] = csrf;
+
+      const r = await fetchWithTimeout(
+        this.endpoints.intent(),
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers,
+          body: JSON.stringify(payload),
+          signal: this.intentAbort.signal,
+        },
+        15000,
+      );
+
+      const j = await r.json().catch(() => ({}));
+      if (!j || !j.ok)
+        throw new Error(
+          j?.error?.message || j?.message || "PaymentIntent creation failed.",
+        );
+
+      const cs = j.client_secret || j.clientSecret;
+      if (!cs) throw new Error("Server did not return client_secret.");
+
+      const result = {
+        clientSecret: cs,
+        publishableKey: j.publishable_key || j.publishableKey || "",
+        ts: Date.now(),
+      };
+
+      this.intentCache.set(key, result);
+      return result;
+    },
+
+    async mountIfNeeded(force = false) {
+      const host = this.getMountEl();
+      if (!host)
+        throw new Error("Stripe mount element missing in Donate section.");
+      if (!document.contains(host))
+        throw new Error("Stripe mount host is not in the DOM.");
+
+      if (Date.now() < this.cooldownUntil) {
+        Log.debug("Stripe cooldown active; skipping mount");
+        return;
+      }
+
+      const payload = this.buildIntentPayload();
+      const key = this.keyForPayload(payload);
+
+      // If already mounted and nothing meaningfully changed, skip
+      if (
+        !force &&
+        this.mounted &&
+        this.lastKey === key &&
+        host.childElementCount > 0
+      )
+        return;
+
+      const t0 = nowMs();
+      this.setStatus("Loading…");
+      this.showError("");
+
+      // Hard reset before mounting (clientSecret cannot be swapped in-place)
+      this.teardown();
+
+      try {
+        await this.loadStripeJs();
+
+        let pk = meta("ff-stripe-pk");
+        if (!pk) pk = await this.fetchPublishableKey();
+
+        const intent = await this.createIntent(payload, key);
+        if (intent.publishableKey) pk = intent.publishableKey;
+
+        this.clientSecret = intent.clientSecret;
+
+        if (!this.stripe || this.stripePk !== pk) {
+          this.stripe = window.Stripe(pk);
+          this.stripePk = pk;
+        }
+
+        this.elements = this.stripe.elements({
+          clientSecret: this.clientSecret,
+        });
+
+        this.paymentElement = this.elements.create("payment");
+        this.paymentElement.mount(host);
+
+        this.mounted = true;
+        this.lastKey = key;
+
+        this.setStatus("Ready");
+        Log.debug("Stripe mounted", { ms: Math.round(nowMs() - t0), key });
+      } catch (err) {
+        // Backoff to prevent “focusin retry storms” if Stripe/config is down
+        this.cooldownUntil = Date.now() + 2500;
+        throw err;
+      }
+    },
+
+    queuePrepare(force = false) {
+      if (!this.prepareDebounced) {
+        this.prepareDebounced = debounce(
+          wrap("StripeCheckout.prepareDebounced", async (forceInner) => {
+            try {
+              await this.prepare(forceInner);
+            } catch (err) {
+              Log.warn("prepare failed", {
+                message: err?.message || String(err),
+              });
+              this.setStatus("Ready");
+            }
+          }),
+          350,
+        );
+      }
+      this.prepareDebounced(force);
+    },
+
+    async prepare(force = false) {
+      if (this.preparing) return;
+      this.preparing = true;
+
+      try {
+        Donate.readForm();
+
+        // only prepare when minimum viable values exist
+        if ((State.donate.amountCents || 0) < 100) return;
+        if (!isEmail(State.donate.email || "")) return;
+
+        await this.mountIfNeeded(force);
+      } finally {
+        this.preparing = false;
+      }
+    },
+
+    async confirmPayment() {
+      if (!this.stripe || !this.elements)
+        throw new Error("Stripe is not initialized.");
+      if (this.inConfirm) return; // guard double click
+      this.inConfirm = true;
+
+      const payBtn = DOM.payBtn();
+      if (payBtn) payBtn.disabled = true;
+
+      try {
+        this.setStatus("Processing…");
+
+        const { error, paymentIntent } = await this.stripe.confirmPayment({
+          elements: this.elements,
+          redirect: "if_required",
+          confirmParams: { return_url: this.endpoints.returnUrl() },
+        });
+
+        if (error)
+          throw new Error(error.message || "Payment confirmation failed.");
+
+        if (paymentIntent?.status) {
+          setHidden(DOM.checkoutMethodPill(), false);
+          setText(
+            DOM.checkoutMethodText(),
+            paymentIntent.payment_method_types?.[0] || "Stripe",
+          );
+        }
+
+        // Most successful non-redirect flows will land here as succeeded/processing
+        this.setStatus("Complete");
+        this.showSuccess("Payment successful. Your receipt has been emailed.");
+        Progress.render(); // optimistic UI refresh
+      } finally {
+        this.inConfirm = false;
+        if (payBtn) payBtn.disabled = false;
+      }
+    },
+
+    async handleSubmit(e) {
+      e.preventDefault();
+      try {
+        this.showError("");
+        setHidden(DOM.paySuccess(), true);
+        await this.mountIfNeeded(true);
+        await this.confirmPayment();
+      } catch (err) {
+        this.setStatus("Ready");
+        this.showError(err?.message || "Payment failed. Please try again.");
+        Crash.capture(err, { label: "StripeCheckout.handleSubmit" });
+      }
+    },
+
+    init() {
+      const form = DOM.donationForm();
+      if (form) on(form, "focusin", () => this.queuePrepare(false), true);
+      on(window, "hashchange", () => {
+        if (window.location.hash === "#donate") this.queuePrepare(false);
+      });
+
+      this.setStatus("Ready");
+    },
+  };
+  // -----------------------------
+  // Scroll UX (rAF-throttled)
+  // -----------------------------
+  const ScrollUX = {
+    init() {
+      const bar = DOM.scrollProgressBar();
+      const back = DOM.backToTop();
+
+      const tick = () => {
+        const doc = document.documentElement;
+        const scrollTop = doc.scrollTop || document.body.scrollTop || 0;
+        const max = Math.max(1, doc.scrollHeight - doc.clientHeight);
+        const pct = clamp(Math.round((scrollTop / max) * 100), 0, 100);
+        if (bar) bar.style.width = `${pct}%`;
+        if (back) {
+          const show = scrollTop > 800;
+          back.setAttribute("aria-hidden", String(!show));
+          back.classList.toggle("is-visible", show);
+        }
+      };
+
+      let ticking = false;
+      on(
+        window,
+        "scroll",
+        () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            ticking = false;
+            tick();
+          });
+        },
+        { passive: true },
+      );
+
+      tick();
+    },
+  };
+
+  // -----------------------------
+  // App Init
+  // -----------------------------
+  const App = {
+    _inited: false,
+    init() {
+      if (this._inited) return;
+      this._inited = true;
+
+      Config.load();
+
+      // Hard debug warnings for duplicate IDs
+      const dupPay = qsa("#payBtn").length;
+      const dupPE = qsa("#paymentElement").length;
+      if (dupPay > 1 || dupPE > 1) {
+        Log.warn("Duplicate IDs detected", {
+          payBtn: dupPay,
+          paymentElement: dupPE,
+        });
+        Log.warn("Keep ONLY the Stripe mount inside #donate.");
+      }
+
+      Theme.init();
+      Drawer.init();
+      Modals.init();
+      Share.init();
+
+      Brand.apply();
+      Progress.render();
+      Countdown.init();
+      Impact.init();
+      Teams.init();
+      Donate.init();
+      StripeCheckout.init();
+      ScrollUX.init();
+
+      Share.refreshUI();
+      Log.info("App initialized", { version: FF_VERSION });
+    },
+  };
+
+  // Init even if DOMContentLoaded already fired
+  if (document.readyState === "loading") {
+    on(
+      document,
+      "DOMContentLoaded",
+      wrap("DOMContentLoaded", () => App.init()),
+    );
+  } else {
+    queueMicrotask(wrap("queueMicrotask.init", () => App.init()));
+  }
+})();

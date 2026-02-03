@@ -1,0 +1,8 @@
+app/static/js/donation.js:querySelectorAll(".ff-js-frequency")
+app/static/js/donation.js:querySelectorAll(".ff-js-quick-amount")
+app/static/js/ff-app.js:querySelector(`[data-ff-id="${cssEscape(id)
+app/static/js/ff-inline-legacy.js:querySelectorAll("a.ff-tab[href^='#']")
+app/static/js/ff-paypal-loader.js:querySelector('meta[name="ff-paypal-client-id"]')
+app/static/js/ff-paypal-loader.js:querySelector('meta[name="ff-paypal-currency"]')
+app/static/js/ff-paypal-loader.js:querySelector('meta[name="ff-paypal-intent"]')
+app/static/js/ff-premium.js:querySelector('.ff-percent')

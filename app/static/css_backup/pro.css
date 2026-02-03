@@ -1,0 +1,125 @@
+body {
+  background: linear-gradient(180deg, #18181b 0%, #232127 100%);
+  color: #fff;
+}
+section {
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.hero,
+.tiers,
+.impact,
+.about {
+  padding: 4rem 0;
+}
+@media (max-width: 900px) {
+  .hero,
+  .tiers,
+  .impact,
+  .about {
+    padding: 2rem 0;
+  }
+}
+.fc-card,
+.tiers .card,
+article {
+  border-radius: 1.25rem;
+  box-shadow: 0 2px 32px #0007;
+  background: rgba(35, 33, 39, 0.92);
+  border: 1.5px solid #facc1530;
+  transition:
+    box-shadow 0.3s,
+    transform 0.2s;
+}
+.tiers .card:hover {
+  box-shadow:
+    0 12px 40px #b91c1c44,
+    0 1.5px 0 #facc15;
+  transform: translateY(-6px) scale(1.025);
+}
+h1,
+.hero h1 {
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+h2,
+.tiers h2,
+.impact h2,
+.about h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.text-elite-gold,
+.accent,
+.btn-gold {
+  color: #facc15 !important;
+  text-shadow: 0 1.5px 0 #18181b;
+}
+.btn-gold {
+  background: linear-gradient(90deg, #ffe066 0%, #facc15 100%);
+  color: #18181b;
+  border: 2px solid #facc15;
+  font-weight: 800;
+  border-radius: 9999px;
+  transition:
+    box-shadow 0.2s,
+    background 0.2s;
+  box-shadow: 0 2px 8px #facc1530;
+}
+.btn-gold:focus,
+.btn-gold:hover {
+  background: linear-gradient(90deg, #facc15 0%, #ffe066 100%);
+  box-shadow: 0 6px 24px #facc1540;
+  outline: 2.5px solid #facc15;
+}
+.btn-gold.animate-pulse {
+  animation: pulseGold 1.6s infinite alternate;
+}
+@keyframes pulseGold {
+  0% {
+    box-shadow: 0 0 0 0 #facc1540;
+  }
+  100% {
+    box-shadow: 0 0 16px 2px #facc1540;
+  }
+}
+.swoosh-divider {
+  background: linear-gradient(
+    120deg,
+    #b91c1c 60%,
+    #facc15 85%,
+    transparent 100%
+  );
+  clip-path: polygon(0 100%, 100% 80%, 100% 100%, 0 100%);
+  height: 54px;
+  width: 100vw;
+  margin-top: -48px;
+  z-index: 5;
+  position: relative;
+  opacity: 0.92;
+  transition: opacity 0.2s;
+}
+.staggered-tiers .card-pop {
+  z-index: 2;
+  box-shadow: 0 8px 40px #0008;
+  transform: scale(1.08) translateY(-12px);
+}
+.staggered-tiers .card-edge {
+  opacity: 0.95;
+  filter: blur(0.5px);
+}
+@media (max-width: 900px) {
+  .staggered-tiers .card-pop,
+  .staggered-tiers .card-edge {
+    transform: none !important;
+    box-shadow: none;
+    filter: none;
+  }
+}

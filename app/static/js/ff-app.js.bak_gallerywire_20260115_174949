@@ -1,0 +1,2416 @@
+/*! ff-app.js — FutureFunded Flagship v13 (drop-in replacement)
+    Goals (per your v13 contract):
+      - UI/content config from #ffConfig (application/json)
+      - Org/campaign/tier/env/version from [data-ff-shell] attributes
+      - Payments/endpoints ONLY from <meta> tags (csrf/stripe/paypal/qr)
+      - Exposes: window.FF.toast / buildShareUrl / setShareFields / scrollToDonate
+      - Payload shaping can be locked to payments.py via OPTIONAL meta:
+          <meta name="ff-payments-payload-shape" content="nested_donor_v1|flat_donor_v1" />
+          <meta name="ff-payments-extra-json" content='{"source":"web"}' /> (or base64 JSON)
+*/
+(() => {
+  "use strict";
+
+  // Prevent double-init if included twice
+  if (window.__FF_APP_V13_LOADED) return;
+  window.__FF_APP_V13_LOADED = true;
+
+  /* ---------------------------------------------
+   * Utilities
+   * -------------------------------------------*/
+  const qs = (sel, root = document) => root.querySelector(sel);
+  const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const on = (el, ev, fn, opt) => el && el.addEventListener(ev, fn, opt);
+  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+  const safeText = (v) => (v == null ? "" : String(v));
+  const toInt = (v, def = 0) => {
+    const n = Number.parseInt(String(v ?? ""), 10);
+    return Number.isFinite(n) ? n : def;
+  };
+  const toNum = (v, def = 0) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : def;
+  };
+  const now = () => Date.now();
+
+  const parseJSON = (txt, fallback) => {
+    try {
+      return JSON.parse(txt);
+    } catch {
+      return fallback;
+    }
+  };
+
+  const decodeMaybeBase64Json = (txt, fallback) => {
+    const s = safeText(txt).trim();
+    if (!s) return fallback;
+    if (s.startsWith("{") || s.startsWith("[")) return parseJSON(s, fallback);
+    try {
+      const decoded = atob(s);
+      return parseJSON(decoded, fallback);
+    } catch {
+      return fallback;
+    }
+  };
+
+  const debounce = (fn, ms = 150) => {
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  };
+
+  const escapeHTML = (s) =>
+    safeText(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+
+  // Allow only safe URL protocols for outbound links
+  const safeUrl = (raw) => {
+    const s = safeText(raw).trim();
+    if (!s) return "";
+    try {
+      const u = new URL(s, window.location.origin);
+      const p = (u.protocol || "").toLowerCase();
+      if (p === "http:" || p === "https:" || p === "mailto:" || p === "tel:") return u.toString();
+      return "";
+    } catch {
+      return "";
+    }
+  };
+
+  const setHidden = (el, v) => {
+    if (!el) return;
+    el.hidden = !!v;
+    el.setAttribute("aria-hidden", v ? "true" : "false");
+  };
+
+  const setAriaPressed = (el, v) => el && el.setAttribute("aria-pressed", v ? "true" : "false");
+
+  const parseMoneyToCents = (raw) => {
+    const s = safeText(raw).trim();
+    if (!s) return 0;
+    const cleaned = s.replace(/[^\d.]/g, "");
+    if (!cleaned) return 0;
+    const parts = cleaned.split(".");
+    const whole = parts[0] || "0";
+    const frac = (parts[1] || "").slice(0, 2).padEnd(2, "0");
+    const cents = toInt(whole, 0) * 100 + toInt(frac, 0);
+    return Math.max(0, cents);
+  };
+
+  const formatCurrency = (cents, currency = "USD", locale = "en-US", exact = false) => {
+    const n = (toNum(cents, 0) / 100) || 0;
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: exact ? 2 : 0,
+        maximumFractionDigits: exact ? 2 : 0,
+      }).format(n);
+    } catch {
+      return `$${exact ? n.toFixed(2) : Math.round(n).toLocaleString("en-US")}`;
+    }
+  };
+
+  const parseISO = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return Number.isFinite(d.getTime()) ? d : null;
+  };
+
+  const humanCountdown = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d >= 7) return `${d}d`;
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return "soon";
+  };
+
+  const deepMerge = (a, b) => {
+    if (!b || typeof b !== "object") return a;
+    const out = Array.isArray(a) ? [...a] : { ...(a || {}) };
+    for (const [k, v] of Object.entries(b)) {
+      if (v && typeof v === "object" && !Array.isArray(v) && out[k] && typeof out[k] === "object" && !Array.isArray(out[k])) {
+        out[k] = deepMerge(out[k], v);
+      } else {
+        out[k] = v;
+      }
+    }
+    return out;
+  };
+
+  const prefersReducedMotion = () => {
+    try {
+      return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  };
+
+  const fetchJson = async (url, { method = "GET", headers = {}, body = null, credentials = "same-origin" } = {}) => {
+    const res = await fetch(url, { method, headers, body, credentials });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+    return data;
+  };
+
+  /* ---------------------------------------------
+   * Meta tags (payments/endpoints only)
+   * -------------------------------------------*/
+  const meta = (name) => (qs(`meta[name="${name}"]`)?.content || "").trim();
+
+  const captureMode = document.documentElement.getAttribute("data-ff-capture") === "true";
+  const csrfToken = meta("ff-csrf-token") || meta("csrf-token") || "";
+
+  const stripePk = meta("ff-stripe-pk");
+  const stripeJsSrc = meta("ff-stripe-js") || "https://js.stripe.com/v3/";
+  const stripeIntentEndpoint = meta("ff-stripe-intent-endpoint") || meta("ff-checkout-endpoint") || "/payments/stripe/intent";
+  const stripeReturnUrl = meta("ff-stripe-return-url") || window.location.href;
+
+  const paypalClientId = meta("ff-paypal-client-id");
+  const paypalCurrency = meta("ff-paypal-currency") || "USD";
+  const paypalIntent = meta("ff-paypal-intent") || "capture";
+  const paypalCreateEndpoint = meta("ff-paypal-create-endpoint") || "/payments/paypal/order";
+  const paypalCaptureEndpoint = meta("ff-paypal-capture-endpoint") || "/payments/paypal/capture";
+
+  const qrEndpoint = meta("ff-qr-endpoint") || "https://api.qrserver.com/v1/create-qr-code/";
+
+  // Optional payload lock (to match payments.py exactly)
+  const payloadShape = meta("ff-payments-payload-shape") || "nested_donor_v1";
+  const payloadExtra = decodeMaybeBase64Json(meta("ff-payments-extra-json") || "", {});
+
+  /* ---------------------------------------------
+   * Shell env (from [data-ff-shell])
+   * Picks the "best" shell element if multiple exist.
+   * -------------------------------------------*/
+  const pickShellEl = () => {
+    const els = qsa("[data-ff-shell]");
+    if (!els.length) return null;
+    let best = els[0];
+    let bestScore = -1;
+    for (const el of els) {
+      const d = el.dataset || {};
+      const score =
+        (d.ffOrg ? 1 : 0) +
+        (d.ffCampaign ? 1 : 0) +
+        (d.ffTier ? 1 : 0) +
+        (d.ffEnv ? 1 : 0) +
+        (d.ffVersion ? 1 : 0) +
+        (d.ffEmbed ? 1 : 0) +
+        (d.ffWhitelabel ? 1 : 0) +
+        (d.ffPage ? 1 : 0);
+      if (score > bestScore) {
+        bestScore = score;
+        best = el;
+      }
+    }
+    return best;
+  };
+
+  const shellEl = pickShellEl();
+  const shellEnv = {
+    orgId: safeText(shellEl?.dataset?.ffOrg || "default"),
+    campaignId: safeText(shellEl?.dataset?.ffCampaign || "season"),
+    tier: safeText(shellEl?.dataset?.ffTier || "standard"),
+    env: safeText(shellEl?.dataset?.ffEnv || "prod"),
+    version: safeText(shellEl?.dataset?.ffVersion || "13.0.0"),
+    embed: safeText(shellEl?.dataset?.ffEmbed || "false") === "true",
+    whiteLabel: safeText(shellEl?.dataset?.ffWhitelabel || "false") === "true",
+    page: safeText(shellEl?.dataset?.ffPage || "fundraiser"),
+  };
+
+  /* ---------------------------------------------
+   * Config (UI/content only) from #ffConfig
+   * -------------------------------------------*/
+  const readConfigFromScript = () => {
+    const scripts = qsa('script#ffConfig[type="application/json"]');
+    if (!scripts.length) return {};
+    for (let i = scripts.length - 1; i >= 0; i--) {
+      const raw = (scripts[i].textContent || "").trim();
+      if (!raw) continue;
+      const parsed = parseJSON(raw, null);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+    return {};
+  };
+
+  const DEFAULTS = {
+    org: {
+      name: "Organization",
+      meta: "City • State",
+      seasonPill: "Season Fund",
+      sportPill: "Youth program",
+      heroAccentLine: "Keep kids playing.",
+      footerTagline: "Fuel the season. Fund the future.",
+      announcement: "",
+    },
+    fundraiser: {
+      goalAmount: 25000,
+      raisedAmount: null,
+      deadlineISO: "",
+      updatedISO: "",
+      allocationUpdatedISO: "",
+      match: null,
+      allocation: [
+        { label: "Gym time + training", pct: 35 },
+        { label: "Tournaments + fees", pct: 30 },
+        { label: "Travel support", pct: 25 },
+        { label: "Scholarships", pct: 10 },
+      ],
+      impact: [
+        { id: "gear_uniforms", cat: "gear", title: "Uniform set", desc: "Jerseys + shorts for a player", amount: 150 },
+        { id: "travel_gas", cat: "travel", title: "Travel fuel", desc: "Gas for tournament weekend", amount: 75 },
+        { id: "fees_entry", cat: "fees", title: "Entry fee help", desc: "Support tournament entry", amount: 250 },
+        { id: "scholarship_partial", cat: "scholarship", title: "Scholarship assist", desc: "Support a family in need", amount: 200 },
+      ],
+      sponsorTiers: [
+        { id: "bronze", title: "Bronze Sponsor", amount: 250, perk: "Name listed + wall placement" },
+        { id: "silver", title: "Silver Sponsor", amount: 500, perk: "Logo wall + leaderboard" },
+        { id: "gold", title: "Gold Sponsor", amount: 1000, perk: "Top leaderboard + proof kit" },
+        { id: "platinum", title: "Platinum Sponsor", amount: 2500, perk: "Match option + spotlight" },
+      ],
+      sponsors: [],
+      recentGifts: [],
+      popularAmountCents: 7500,
+      fees: {
+        enabledCoverFees: true,
+        percent: 0.029,
+        fixedCents: 30,
+        maxCents: 0,
+      },
+    },
+    teams: [],
+    flagship: {
+      features: {
+        shareAttribution: true,
+        monthlyGivingPlaceholder: true,
+      },
+      defaults: {
+        currency: "USD",
+        locale: "en-US",
+      },
+      analytics: {
+        utm: { enabled: true, sourceParam: "src", campaignParam: "cmp" },
+      },
+      accessibility: { reducedMotionRespect: true },
+    },
+  };
+
+  const C = deepMerge(DEFAULTS, readConfigFromScript() || {});
+  const locale = safeText(C?.flagship?.defaults?.locale || "en-US");
+  const currency = safeText(C?.flagship?.defaults?.currency || "USD");
+
+  /* ---------------------------------------------
+   * DOM cache (IDs + data-ff-* hooks from your HTML)
+   * -------------------------------------------*/
+  const D = {
+    // Branding
+    orgName: qs("#orgName"),
+    orgMeta: qs("#orgMeta"),
+    footerOrgName: qs("#footerOrgName"),
+    footerOrgMeta: qs("#footerOrgMeta"),
+    seasonPill: qs("#seasonPill"),
+    sportPill: qs("#sportPill"),
+    heroAccentLine: qs("#heroAccentLine"),
+    heroOrgLine: qs("#heroOrgLine"),
+
+    // Topbar
+    topbarRaised: qs("#topbarRaised"),
+    topbarGoal: qs("#topbarGoal"),
+    topbarDeadline: qs("#topbarDeadline"),
+    topbarCountdown: qs("#topbarCountdown"),
+    topbarMatchStrip: qs("[data-ff-match-strip]"),
+    topbarMatchText: qs("#topbarMatchText"),
+    topbarMatchRemaining: qs("#topbarMatchRemaining"),
+
+    // Hero countdown
+    heroCountdown: qs("#heroCountdown"),
+
+    // Progress
+    raisedBig: qs("#raisedBig"),
+    remainingText: qs("#remainingText"),
+    deadlineText: qs("#deadlineText"),
+    lastUpdatedText: qs("#lastUpdatedText"),
+    goalPill: qs("#goalPill"),
+    raisedRow: qs("#raisedRow"),
+    goalRow: qs("#goalRow"),
+    pctText: qs("#pctText"),
+    overallBar: qs("#overallBar"),
+    scrollProgressBar: qs("#scrollProgressBar"),
+
+    // Match
+    heroMatchPill: qs("#heroMatchPill"),
+    matchDetailRow: qs("[data-ff-match-details]"),
+    matchRemainingPill: qs("#matchRemainingPill"),
+    matchEndsPill: qs("#matchEndsPill"),
+    matchStatus: qs("#matchStatus"),
+    sponsorMatchPill: qs("[data-ff-sponsor-match-pill]"),
+
+    // Announcement
+    announce: qs("[data-ff-announcement]"),
+    announcementText: qs("#announcementText"),
+    announceDismiss: qs("[data-ff-announcement-dismiss]"),
+
+    // Share + QR
+    shareLink: qs("#shareLink"),
+    shareCopyBtns: qsa("[data-ff-copy-share]"),
+    shareNativeBtns: qsa("[data-ff-native-share]"),
+    qrImgs: qsa("[data-ff-qr]"),
+    downloadQrBtns: qsa("[data-ff-download-qr]"),
+
+    // Allocation
+    allocationList: qs("[data-ff-allocation-list]"),
+    allocationUpdated: qs("[data-ff-allocation-updated]"),
+    allocationUpdatedText: qs("[data-ff-allocation-updated-text]"),
+
+    // Impact
+    impactGrid: qs("[data-ff-impact-grid]"),
+    impactEmpty: qs("[data-ff-impact-empty]"),
+    impactSearch: qs("[data-ff-impact-search]"),
+    impactFilterBtns: qsa("[data-ff-impact-filter]"),
+
+    // Sponsors
+    sponsorTiersHost: qs("[data-ff-sponsor-tiers]"),
+    sponsorPodium: qs("[data-ff-sponsor-podium]"),
+    sponsorList: qs("[data-ff-sponsor-leaderboard]"),
+    sponsorSortBtns: qsa("[data-ff-sponsor-sort] [data-ff-sort]"),
+    sponsorWall: qs("[data-ff-sponsor-wall]"),
+    sponsorWallViewBtns: qsa("[data-ff-sponsor-wall-view] [data-ff-wall]"),
+    refreshSponsorsBtn: qs("[data-ff-refresh-sponsors]"),
+
+    // Teams
+    teamsGrid: qs("[data-ff-teams-grid]"),
+    teamsStatus: qs("[data-ff-teams-status]"),
+    teamSearch: qs("[data-ff-team-search]"),
+    teamSortBtns: qsa("[data-ff-team-sort] [data-ff-sort]"),
+    attribBox: qs("[data-ff-attrib-box]"),
+    attribTitle: qs("[data-ff-attrib-title]"),
+    attribHelp: qs("[data-ff-attrib-help]"),
+    attribClearBtns: qsa("[data-ff-attrib-clear]"),
+    summaryTeamRow: qs("#summaryTeamRow"),
+    summaryTeam: qs("#summaryTeam"),
+
+    // Donate
+    donationForm: qs("#donationForm"),
+    amount: qs("#amount"),
+    email: qs("#email"),
+    fullName: qs("#fullName"),
+    message: qs("#message"),
+    anonymous: qs("#anonymous"),
+    coverFees: qs("#coverFees"),
+    payBtn: qs("#payBtn"),
+    payError: qs("#payError"),
+    payErrorText: qs("#payErrorText"),
+    paySuccess: qs("#paySuccess"),
+    paySuccessText: qs("#paySuccessText"),
+    summaryAmount: qs("#summaryAmount"),
+    summaryFees: qs("#summaryFees"),
+    summaryTotal: qs("#summaryTotal"),
+    receiptEmail: qs("#receiptEmail"),
+    checkoutStatusText: qs("#checkoutStatusText"),
+    checkoutMethodPill: qs("[data-ff-payment-method]"),
+    checkoutMethodText: qs("#checkoutMethodText"),
+    stripeMount: qs("#stripeMount"),
+    paymentElementHost: qs("[data-ff-stripe-element]"),
+    paypalMount: qs("#paypalMount"),
+    paypalButtonsHost: qs("[data-ff-paypal-buttons]"),
+    paymentLive: qs("[data-ff-payment-live]"),
+
+    // Recognition
+    recognitionBtns: qsa("[data-ff-recognition]"),
+    recognitionPreviewText: qs("#recognitionPreviewText"),
+
+    // Chips / Prefills
+    quickAmountBtns: qsa("[data-ff-quick-amount]"),
+    clearAmountBtn: qs("[data-ff-clear-amount]"),
+    popularAmountPill: qs("[data-ff-popular-amount]"),
+    popularAmountText: qs("#popularAmountText"),
+    sponsorCtas: qsa("[data-ff-sponsor-cta]"),
+    prefills: qsa("[data-ff-prefill]"),
+
+    // Recent gifts
+    recentGiftsHost: qs("[data-ff-recent-gifts]"),
+    refreshBtns: qsa("[data-ff-refresh]"),
+
+    // Nav / Tabs / Back to top
+    backToTopBtn: qs("[data-ff-backtotop], #backToTop"),
+    tabLinks: qsa('[data-ff-tab][href^="#"]'),
+    anchorLinks: qsa('a[href^="#"]:not([href="#"])'),
+
+    // Toast host
+    toasts: qs("[data-ff-toasts]"),
+  };
+
+  /* ---------------------------------------------
+   * Toasts
+   * -------------------------------------------*/
+  const toast = (msg, kind = "info") => {
+    if (captureMode) return;
+    const host = D.toasts;
+    if (!host) return;
+
+    const t = document.createElement("div");
+    t.className = `ff-toast ff-toast--${kind}`;
+    t.setAttribute("role", "status");
+    t.setAttribute("aria-live", "polite");
+    t.style.opacity = "0";
+    t.style.transform = "translateY(6px)";
+    t.innerHTML = `<div class="ff-kicker">${escapeHTML(kind)}</div><div class="ff-help">${escapeHTML(msg)}</div>`;
+    host.appendChild(t);
+
+    requestAnimationFrame(() => {
+      t.style.opacity = "1";
+      t.style.transform = "translateY(0)";
+    });
+
+    setTimeout(() => {
+      t.style.opacity = "0";
+      t.style.transform = "translateY(-2px)";
+    }, 2400);
+
+    setTimeout(() => {
+      try {
+        host.removeChild(t);
+      } catch {}
+    }, 2900);
+  };
+
+  /* ---------------------------------------------
+   * State
+   * -------------------------------------------*/
+  const S = {
+    org: {
+      name: safeText(C.org?.name),
+      meta: safeText(C.org?.meta),
+      seasonPill: safeText(C.org?.seasonPill),
+      sportPill: safeText(C.org?.sportPill),
+      heroAccentLine: safeText(C.org?.heroAccentLine),
+      footerTagline: safeText(C.org?.footerTagline),
+    },
+    fundraiser: {
+      goalCents: toInt(C.fundraiser?.goalAmount, 0) * 100,
+      deadlineISO: safeText(C.fundraiser?.deadlineISO || ""),
+      updatedISO: safeText(C.fundraiser?.updatedISO || ""),
+      allocationUpdatedISO: safeText(C.fundraiser?.allocationUpdatedISO || ""),
+      match: C.fundraiser?.match || null,
+      allocation: Array.isArray(C.fundraiser?.allocation) ? C.fundraiser.allocation : DEFAULTS.fundraiser.allocation,
+      impact: Array.isArray(C.fundraiser?.impact) ? C.fundraiser.impact : DEFAULTS.fundraiser.impact,
+      sponsorTiers: Array.isArray(C.fundraiser?.sponsorTiers) ? C.fundraiser.sponsorTiers : DEFAULTS.fundraiser.sponsorTiers,
+      sponsors: Array.isArray(C.fundraiser?.sponsors) ? C.fundraiser.sponsors : [],
+      recentGifts: Array.isArray(C.fundraiser?.recentGifts) ? C.fundraiser.recentGifts : [],
+      popularAmountCents: toInt(C.fundraiser?.popularAmountCents, DEFAULTS.fundraiser.popularAmountCents),
+      fees: deepMerge(DEFAULTS.fundraiser.fees, C.fundraiser?.fees || {}),
+      raisedCents: 0,
+    },
+    teams: Array.isArray(C.teams) ? C.teams.slice() : [],
+    ui: {
+      impactFilter: "all",
+      impactQuery: "",
+      sponsorSort: "rank",
+      sponsorWall: "logos",
+      teamSort: "featured",
+      teamQuery: "",
+      selectedTeamId: "",
+      selectedTeamName: "",
+      purpose: "donation",
+      sku: "",
+      impactId: "",
+      giftType: "one-time",
+      recognition: "public",
+      amountCents: 0,
+      coverFees: false,
+
+      stripe: null,
+      elements: null,
+      paymentElement: null,
+      clientSecret: "",
+      stripeMounted: false,
+      stripeReadyToPay: false,
+      stripeBusy: false,
+
+      paypalReady: false,
+    },
+    utm: {},
+  };
+
+  /* ---------------------------------------------
+   * Attribution / UTM
+   * -------------------------------------------*/
+  const normalizeTeams = () => {
+    const raw = Array.isArray(S.teams) ? S.teams : [];
+    return raw
+      .filter((t) => t && t.id && t.name)
+      .map((t) => {
+        const goal = toInt(t.goal, 0) * 100;
+        const raised = toInt(t.raised, 0) * 100;
+        const pct = goal > 0 ? clamp(Math.round((raised / goal) * 100), 0, 999) : 0;
+        return {
+          id: safeText(t.id),
+          name: safeText(t.name),
+          meta: safeText(t.meta || ""),
+          goalCents: goal,
+          raisedCents: raised,
+          pct,
+          featured: !!t.featured,
+          needs: !!t.needs,
+          restricted: !!t.restricted,
+          photo: safeText(t.photo || ""),
+          ask: safeText(t.ask || ""),
+          ts: parseISO(t.tsISO || t.timestamp || "")?.getTime() || 0,
+        };
+      });
+  };
+
+  const readUtm = () => {
+    const url = new URL(window.location.href);
+    const p = url.searchParams;
+
+    const utm = {};
+    for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
+      if (p.has(k)) utm[k] = p.get(k) || "";
+    }
+
+    const srcParam = safeText(C?.flagship?.analytics?.utm?.sourceParam || "src");
+    const cmpParam = safeText(C?.flagship?.analytics?.utm?.campaignParam || "cmp");
+    if (p.has(srcParam)) utm[srcParam] = p.get(srcParam) || "";
+    if (p.has(cmpParam)) utm[cmpParam] = p.get(cmpParam) || "";
+
+    const teamId = p.get("team") || p.get("t") || "";
+    if (teamId) utm.team = teamId;
+
+    const needId = p.get("need") || "";
+    if (needId) utm.need = needId;
+
+    try {
+      const ref = document.referrer || "";
+      if (ref) utm.referrer = ref;
+    } catch {}
+
+    S.utm = utm;
+
+    if (utm.team) setSelectedTeam(utm.team, { silent: true });
+    if (utm.need) {
+      const impact = normalizeImpactList().find((x) => x.id === utm.need);
+      if (impact) setPrefill({ amountCents: impact.amountCents, purpose: "impact", impactId: impact.id }, { silent: true });
+    }
+
+    try {
+      const key = `ff_attrib_${shellEnv.orgId}_${shellEnv.campaignId}`;
+      localStorage.setItem(key, JSON.stringify({ ts: new Date().toISOString(), utm }));
+    } catch {}
+  };
+
+  const buildShareUrl = (overrides = {}) => {
+    const url = new URL(window.location.href);
+
+    // strip Stripe redirect params
+    for (const k of ["payment_intent", "payment_intent_client_secret", "redirect_status"]) url.searchParams.delete(k);
+
+    const shareAttrib = !!C?.flagship?.features?.shareAttribution;
+    if (shareAttrib && (overrides.teamId || S.ui.selectedTeamId)) {
+      url.searchParams.set("team", overrides.teamId || S.ui.selectedTeamId);
+    } else {
+      url.searchParams.delete("team");
+    }
+
+    if (overrides.needId) url.searchParams.set("need", overrides.needId);
+    else url.searchParams.delete("need");
+
+    const srcParam = safeText(C?.flagship?.analytics?.utm?.sourceParam || "src");
+    const cmpParam = safeText(C?.flagship?.analytics?.utm?.campaignParam || "cmp");
+
+    if (S.utm[srcParam] && !url.searchParams.get(srcParam)) url.searchParams.set(srcParam, S.utm[srcParam]);
+    if (S.utm[cmpParam] && !url.searchParams.get(cmpParam)) url.searchParams.set(cmpParam, S.utm[cmpParam]);
+
+    return url.toString();
+  };
+
+  const buildQrSrc = (dataUrl, size = 180) => {
+    const ep = qrEndpoint;
+    if (ep.includes("?")) {
+      return ep + (ep.endsWith("&") || ep.endsWith("?") ? "" : "&") + `size=${size}x${size}&data=${encodeURIComponent(dataUrl)}`;
+    }
+    const u = new URL(ep, window.location.origin);
+    u.searchParams.set("size", `${size}x${size}`);
+    u.searchParams.set("data", dataUrl);
+    return u.toString();
+  };
+
+  const setShareFields = () => {
+    const url = buildShareUrl();
+    if (D.shareLink) D.shareLink.value = url;
+
+    const src = buildQrSrc(url, 180);
+    for (const img of D.qrImgs) {
+      if (!img) continue;
+      if (img.getAttribute("src") !== src) img.setAttribute("src", src);
+    }
+  };
+
+  const copyToClipboard = async (txt) => {
+    const s = safeText(txt);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(s);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = s;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch {
+      return false;
+    }
+  };
+
+  /* ---------------------------------------------
+   * Rendering: Branding + Announcement
+   * -------------------------------------------*/
+  const applyBrand = () => {
+    if (D.orgName) D.orgName.textContent = S.org.name;
+    if (D.orgMeta) D.orgMeta.textContent = S.org.meta;
+    if (D.footerOrgName) D.footerOrgName.textContent = S.org.name;
+    if (D.footerOrgMeta) D.footerOrgMeta.textContent = S.org.meta;
+    if (D.seasonPill) D.seasonPill.textContent = S.org.seasonPill;
+    if (D.sportPill) D.sportPill.textContent = S.org.sportPill;
+    if (D.heroAccentLine) D.heroAccentLine.textContent = S.org.heroAccentLine;
+    if (D.heroOrgLine) D.heroOrgLine.textContent = `${S.org.name} • Fundraiser`;
+  };
+
+  const applyAnnouncement = () => {
+    if (!D.announce || !D.announcementText) return;
+
+    const ann = safeText(C?.org?.announcement || C?.fundraiser?.announcement || "");
+    if (!ann) {
+      setHidden(D.announce, true);
+      return;
+    }
+
+    const key = `ff_announce_dismiss_${shellEnv.orgId}_${shellEnv.campaignId}`;
+    try {
+      if (localStorage.getItem(key)) {
+        setHidden(D.announce, true);
+        return;
+      }
+    } catch {}
+
+    D.announcementText.textContent = ann;
+    setHidden(D.announce, false);
+
+    if (D.announceDismiss) {
+      on(D.announceDismiss, "click", () => {
+        setHidden(D.announce, true);
+        try {
+          localStorage.setItem(key, String(now()));
+        } catch {}
+      });
+    }
+  };
+
+  /* ---------------------------------------------
+   * Fundraising math + progress UI
+   * -------------------------------------------*/
+  const deriveRaisedCents = () => {
+    const explicit = C?.fundraiser?.raisedAmount;
+    if (explicit != null) return toInt(explicit, 0) * 100;
+
+    if (Array.isArray(S.teams) && S.teams.length) {
+      let sum = 0;
+      for (const t of S.teams) sum += toInt(t.raised, 0) * 100;
+      return sum;
+    }
+
+    let sum = 0;
+    for (const s of S.fundraiser.sponsors || []) sum += toInt(s.amountCents ?? (toInt(s.amount, 0) * 100), 0);
+    for (const g of S.fundraiser.recentGifts || []) sum += toInt(g.amountCents ?? (toInt(g.amount, 0) * 100), 0);
+    return sum;
+  };
+
+  const applyUpdated = () => {
+    if (!D.lastUpdatedText) return;
+    const d = parseISO(S.fundraiser.updatedISO) || new Date();
+    let label = "Updated — just now";
+    try {
+      const mins = Math.max(0, Math.round((now() - d.getTime()) / 60000));
+      if (mins < 2) label = "Updated — just now";
+      else if (mins < 60) label = `Updated — ${mins}m ago`;
+      else {
+        const hrs = Math.round(mins / 60);
+        label = hrs < 24 ? `Updated — ${hrs}h ago` : `Updated — ${d.toLocaleDateString(locale, { month: "short", day: "numeric" })}`;
+      }
+    } catch {
+      label = `Updated — ${d.toISOString().slice(0, 10)}`;
+    }
+    D.lastUpdatedText.textContent = label;
+  };
+
+  const setProgressUI = () => {
+    const raised = toInt(S.fundraiser.raisedCents, 0);
+    const goal = toInt(S.fundraiser.goalCents, 0);
+    const pct = goal > 0 ? clamp(Math.round((raised / goal) * 100), 0, 999) : 0;
+    const remaining = Math.max(0, goal - raised);
+
+    const raisedTxt = formatCurrency(raised, currency, locale);
+    const goalTxt = formatCurrency(goal, currency, locale);
+
+    if (D.raisedBig) D.raisedBig.textContent = raisedTxt;
+    if (D.raisedRow) D.raisedRow.textContent = raisedTxt;
+    if (D.goalRow) D.goalRow.textContent = goalTxt;
+    if (D.goalPill) D.goalPill.textContent = goalTxt;
+
+    if (D.remainingText) D.remainingText.textContent = formatCurrency(remaining, currency, locale);
+    if (D.pctText) D.pctText.textContent = String(pct);
+
+    if (D.overallBar) {
+      const w = clamp(goal > 0 ? (raised / goal) * 100 : 0, 0, 100);
+      D.overallBar.style.width = `${w.toFixed(2)}%`;
+      const meter = qs('[data-ff-meter="overall"]');
+      if (meter) {
+        meter.setAttribute("aria-valuenow", String(clamp(pct, 0, 100)));
+        meter.setAttribute("aria-valuetext", `${clamp(pct, 0, 100)}% funded`);
+      }
+    }
+
+    if (D.topbarRaised) D.topbarRaised.textContent = raisedTxt;
+    if (D.topbarGoal) D.topbarGoal.textContent = goalTxt;
+  };
+
+  /* ---------------------------------------------
+   * Deadline / Countdown
+   * -------------------------------------------*/
+  let countdownTimer = null;
+
+  const startDeadlineLoop = () => {
+    const deadline = parseISO(S.fundraiser.deadlineISO);
+
+    const deadlineLabel = (() => {
+      if (!deadline) return "—";
+      try {
+        return deadline.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+      } catch {
+        return deadline.toISOString().slice(0, 10);
+      }
+    })();
+
+    if (D.deadlineText) D.deadlineText.textContent = deadline ? deadlineLabel : "No deadline";
+    if (D.topbarDeadline) D.topbarDeadline.textContent = deadline ? deadlineLabel : "—";
+
+    if (!deadline) return;
+
+    const tick = () => {
+      const ms = deadline.getTime() - now();
+      const label = ms <= 0 ? "Ended" : humanCountdown(ms);
+      if (D.heroCountdown) D.heroCountdown.textContent = label;
+      if (D.topbarCountdown) D.topbarCountdown.textContent = label;
+    };
+
+    tick();
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(tick, 15000);
+  };
+
+  /* ---------------------------------------------
+   * Match UI
+   * -------------------------------------------*/
+  const applyMatch = () => {
+    const m = S.fundraiser.match;
+    const isActive = !!m?.active;
+
+    if (D.heroMatchPill) setHidden(D.heroMatchPill, !isActive);
+    if (D.sponsorMatchPill) setHidden(D.sponsorMatchPill, !isActive);
+    if (D.matchDetailRow) setHidden(D.matchDetailRow, !isActive);
+
+    if (D.matchStatus) D.matchStatus.textContent = isActive ? "On" : "Off";
+
+    if (D.topbarMatchStrip) setHidden(D.topbarMatchStrip, !isActive);
+    if (!isActive) return;
+
+    const remainingCents = toInt(m.remainingCents ?? (toInt(m.remaining, 0) * 100), 0);
+    const ends = parseISO(m.endsISO || "");
+
+    if (D.matchRemainingPill) D.matchRemainingPill.textContent = `Remaining ${formatCurrency(remainingCents, currency, locale)}`;
+    if (D.matchEndsPill) D.matchEndsPill.textContent = ends ? `Ends ${humanCountdown(ends.getTime() - now())}` : "Ends —";
+
+    if (D.topbarMatchText) D.topbarMatchText.textContent = "Active";
+    if (D.topbarMatchRemaining) D.topbarMatchRemaining.textContent = formatCurrency(remainingCents, currency, locale);
+  };
+
+  /* ---------------------------------------------
+   * Allocation list
+   * -------------------------------------------*/
+  const renderAllocation = () => {
+    if (!D.allocationList) return;
+    const items = Array.isArray(S.fundraiser.allocation) ? S.fundraiser.allocation : [];
+    if (!items.length) {
+      D.allocationList.innerHTML = `<div class="ff-help">Allocation coming soon.</div>`;
+      return;
+    }
+
+    const total = items.reduce((a, x) => a + toNum(x.pct, 0), 0) || 100;
+    D.allocationList.innerHTML = items
+      .map((x) => {
+        const pct = clamp(Math.round((toNum(x.pct, 0) / total) * 100), 0, 100);
+        return `<div class="ff-slimitem"><span class="ff-help">${escapeHTML(safeText(x.label || ""))}</span><strong class="ff-help ff-num">${pct}%</strong></div>`;
+      })
+      .join("");
+
+    if (D.allocationUpdated && D.allocationUpdatedText) {
+      const upd = safeText(S.fundraiser.allocationUpdatedISO || S.fundraiser.updatedISO || "");
+      if (upd) {
+        setHidden(D.allocationUpdated, false);
+        const d = parseISO(upd);
+        D.allocationUpdatedText.textContent = d ? d.toLocaleDateString(locale, { month: "short", day: "numeric" }) : upd;
+      } else {
+        setHidden(D.allocationUpdated, true);
+      }
+    }
+  };
+
+  /* ---------------------------------------------
+   * Impact grid
+   * -------------------------------------------*/
+  const impactCats = new Set(["gear", "travel", "fees", "scholarship"]);
+
+  const normalizeImpactList = () => {
+    const items = Array.isArray(S.fundraiser.impact) ? S.fundraiser.impact : [];
+    return items
+      .filter((x) => x && x.id && x.title)
+      .map((x) => ({
+        id: safeText(x.id),
+        cat: impactCats.has(safeText(x.cat)) ? safeText(x.cat) : "gear",
+        title: safeText(x.title),
+        desc: safeText(x.desc || ""),
+        amountCents: toInt(x.amountCents ?? (toInt(x.amount, 0) * 100), 0),
+      }));
+  };
+
+  const renderImpact = () => {
+    if (!D.impactGrid) return;
+
+    const items = normalizeImpactList();
+    const filter = S.ui.impactFilter;
+    const q = safeText(S.ui.impactQuery).trim().toLowerCase();
+
+    const filtered = items.filter((x) => {
+      const okCat = filter === "all" ? true : x.cat === filter;
+      if (!okCat) return false;
+      if (!q) return true;
+      return (x.title + " " + x.desc + " " + x.cat).toLowerCase().includes(q);
+    });
+
+    if (!filtered.length) {
+      if (D.impactEmpty) setHidden(D.impactEmpty, false);
+      D.impactGrid.innerHTML = "";
+      return;
+    }
+    if (D.impactEmpty) setHidden(D.impactEmpty, true);
+
+    const card = (x) => {
+      const amt = formatCurrency(x.amountCents, currency, locale);
+      return `
+        <article class="ff-mini" role="listitem" tabindex="0"
+          data-ff-impact-item
+          data-impact-id="${escapeHTML(x.id)}"
+          aria-label="${escapeHTML(x.title)}">
+          <div class="ff-row ff-row--between ff-ais">
+            <div style="min-width:0">
+              <div class="ff-kicker">${escapeHTML(x.cat.toUpperCase())}</div>
+              <div class="ff-card__title">${escapeHTML(x.title)}</div>
+              <p class="ff-help" style="margin-top:6px">${escapeHTML(x.desc)}</p>
+            </div>
+            <span class="ff-pill ff-pill--accent">${escapeHTML(amt)}</span>
+          </div>
+          <div class="ff-row ff-wrap" style="margin-top:10px" role="group" aria-label="Actions">
+            <button class="ff-btn ff-btn--primary ff-btn--sm" type="button"
+              data-ff-impact-cta data-impact-id="${escapeHTML(x.id)}" data-impact-cents="${escapeHTML(String(x.amountCents))}">
+              Prefill ${escapeHTML(amt)}
+            </button>
+            <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button"
+              data-ff-impact-share data-impact-id="${escapeHTML(x.id)}">
+              Share need
+            </button>
+          </div>
+        </article>
+      `;
+    };
+
+    D.impactGrid.innerHTML = filtered.map(card).join("");
+
+    qsa("[data-ff-impact-item]", D.impactGrid).forEach((el) => {
+      on(el, "keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          const id = el.getAttribute("data-impact-id") || "";
+          const btn = qs("[data-ff-impact-cta]", el);
+          const cents = toInt(btn?.getAttribute("data-impact-cents"), 0);
+          setPrefill({ amountCents: cents, purpose: "impact", impactId: id });
+          scrollToDonate();
+          toast("Checkout prefilled.", "success");
+        }
+      });
+    });
+
+    qsa("[data-ff-impact-cta]", D.impactGrid).forEach((btn) => {
+      on(btn, "click", () => {
+        const cents = toInt(btn.getAttribute("data-impact-cents"), 0);
+        const id = btn.getAttribute("data-impact-id") || "";
+        setPrefill({ amountCents: cents, purpose: "impact", impactId: id });
+        scrollToDonate();
+        toast("Checkout prefilled.", "success");
+      });
+    });
+
+    qsa("[data-ff-impact-share]", D.impactGrid).forEach((btn) => {
+      on(btn, "click", async () => {
+        const id = btn.getAttribute("data-impact-id") || "";
+        const url = buildShareUrl({ needId: id });
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: document.title, text: "Support this specific need.", url });
+            toast("Shared.", "success");
+            return;
+          } catch {}
+        }
+        const ok = await copyToClipboard(url);
+        toast(ok ? "Need link copied." : "Copy failed. Use the Share field above.", ok ? "success" : "error");
+      });
+    });
+  };
+
+  const bindImpactControls = () => {
+    if (D.impactSearch) {
+      on(
+        D.impactSearch,
+        "input",
+        debounce(() => {
+          S.ui.impactQuery = D.impactSearch.value || "";
+          renderImpact();
+        }, 120)
+      );
+    }
+
+    for (const btn of D.impactFilterBtns) {
+      on(btn, "click", () => {
+        const f = btn.getAttribute("data-ff-impact-filter") || "all";
+        S.ui.impactFilter = f;
+        for (const b of D.impactFilterBtns) {
+          const selected = b === btn;
+          b.classList.toggle("is-selected", selected);
+          setAriaPressed(b, selected);
+        }
+        renderImpact();
+      });
+    }
+  };
+
+  /* ---------------------------------------------
+   * Sponsors
+   * -------------------------------------------*/
+  const normalizeSponsors = () => {
+    const raw = Array.isArray(S.fundraiser.sponsors) ? S.fundraiser.sponsors : [];
+    return raw
+      .map((s) => ({
+        name: safeText(s.name || "Sponsor"),
+        amountCents: toInt(s.amountCents ?? (toInt(s.amount, 0) * 100), 0),
+        logo: safeText(s.logo || ""),
+        url: safeUrl(s.url || ""),
+        ts: parseISO(s.tsISO || s.timestamp || "")?.getTime() || 0,
+      }))
+      .filter((x) => x.amountCents > 0)
+      .sort((a, b) => b.amountCents - a.amountCents);
+  };
+
+  const sponsorBadge = (name) => {
+    const initials = safeText(name)
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || "")
+      .join("");
+    return initials || "S";
+  };
+
+  const bindSponsorPrefills = (root = document) => {
+    qsa("[data-ff-sponsor-cta]", root).forEach((btn) => {
+      if (btn.__ffBoundSponsor) return;
+      btn.__ffBoundSponsor = true;
+      on(btn, "click", () => {
+        const dollars = toInt(btn.getAttribute("data-ff-prefill-amount"), 0);
+        const cents = dollars * 100;
+        setPrefill({ amountCents: cents, purpose: "sponsorship", sku: "sponsor" }, { silent: true });
+        scrollToDonate();
+        toast("Sponsor amount prefilled.", "success");
+      });
+    });
+  };
+
+  const renderSponsorTiers = () => {
+    if (!D.sponsorTiersHost) return;
+    const tiers = Array.isArray(S.fundraiser.sponsorTiers) ? S.fundraiser.sponsorTiers : [];
+    if (!tiers.length) {
+      D.sponsorTiersHost.innerHTML = `<li class="ff-mini"><div class="ff-help">Sponsor tiers coming soon.</div></li>`;
+      return;
+    }
+
+    const norm = tiers.map((t) => ({
+      ...t,
+      amountCents: toInt(t.amountCents ?? (toInt(t.amount, 0) * 100), 0),
+      perk: safeText(t.perk || "Recognition on wall + leaderboard"),
+      title: safeText(t.title || "Sponsor"),
+    }));
+
+    D.sponsorTiersHost.innerHTML = norm
+      .map((t) => {
+        const amt = formatCurrency(t.amountCents, currency, locale);
+        return `
+          <li class="ff-mini" role="listitem" aria-label="${escapeHTML(t.title)}">
+            <div class="ff-row ff-row--between ff-ais">
+              <div style="min-width:0">
+                <div class="ff-kicker">Tier</div>
+                <div class="ff-card__title">${escapeHTML(t.title)}</div>
+                <p class="ff-help" style="margin-top:6px">${escapeHTML(t.perk)}</p>
+              </div>
+              <span class="ff-pill ff-pill--accent">${escapeHTML(amt)}</span>
+            </div>
+            <div class="ff-row ff-wrap" style="margin-top:10px" role="group" aria-label="Actions">
+              <button class="ff-btn ff-btn--primary ff-btn--sm" type="button"
+                data-ff-sponsor-cta data-ff-prefill-amount="${escapeHTML(String(Math.round(t.amountCents / 100)))}">
+                Sponsor ${escapeHTML(amt)}
+              </button>
+            </div>
+          </li>
+        `;
+      })
+      .join("");
+
+    bindSponsorPrefills(D.sponsorTiersHost);
+  };
+
+  const renderSponsorBoard = () => {
+    const sponsors = normalizeSponsors();
+
+    if (D.sponsorPodium) {
+      const top = sponsors.slice(0, 3);
+      if (!top.length) {
+        D.sponsorPodium.innerHTML = `<li class="ff-mini"><div class="ff-help">Sponsors appear after successful payments.</div></li>`;
+      } else {
+        D.sponsorPodium.innerHTML = top
+          .map((s, i) => {
+            const amt = formatCurrency(s.amountCents, currency, locale);
+            const badge = sponsorBadge(s.name);
+            const left = s.logo
+              ? `<img src="${escapeHTML(s.logo)}" alt="${escapeHTML(s.name)} logo" loading="lazy" decoding="async"
+                   style="width:44px;height:44px;border-radius:12px;object-fit:cover;border:1px solid var(--ff-border)" />`
+              : `<div aria-hidden="true" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;border:1px solid var(--ff-border);background:color-mix(in oklab,var(--ff-surface-0) 80%,transparent);font-weight:700">${escapeHTML(
+                  badge
+                )}</div>`;
+            const inner = `
+              <div class="ff-row ff-row--between ff-ais" style="gap:12px">
+                <div class="ff-row ff-ais" style="gap:12px;min-width:0">
+                  ${left}
+                  <div style="min-width:0">
+                    <div class="ff-kicker">Rank #${i + 1}</div>
+                    <div class="ff-card__title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px">${escapeHTML(
+                      s.name
+                    )}</div>
+                  </div>
+                </div>
+                <span class="ff-pill ff-pill--accent">${escapeHTML(amt)}</span>
+              </div>
+            `;
+            return s.url
+              ? `<li class="ff-mini" role="listitem"><a href="${escapeHTML(
+                  s.url
+                )}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;display:block">${inner}</a></li>`
+              : `<li class="ff-mini" role="listitem">${inner}</li>`;
+          })
+          .join("");
+      }
+    }
+
+    if (D.sponsorList) {
+      const list =
+        S.ui.sponsorSort === "recent"
+          ? sponsors.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0))
+          : sponsors.slice();
+
+      if (!list.length) {
+        D.sponsorList.innerHTML = `<li class="ff-mini"><div class="ff-help">No sponsors yet. Be the first.</div></li>`;
+      } else {
+        D.sponsorList.innerHTML = list
+          .map((s, idx) => {
+            const amt = formatCurrency(s.amountCents, currency, locale);
+            const badge = sponsorBadge(s.name);
+            const left = s.logo
+              ? `<img src="${escapeHTML(s.logo)}" alt="${escapeHTML(s.name)} logo" loading="lazy" decoding="async"
+                   style="width:44px;height:44px;border-radius:12px;object-fit:cover;border:1px solid var(--ff-border)" />`
+              : `<div aria-hidden="true" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;border:1px solid var(--ff-border);background:color-mix(in oklab,var(--ff-surface-0) 80%,transparent);font-weight:700">${escapeHTML(
+                  badge
+                )}</div>`;
+            const inner = `
+              <div class="ff-row ff-row--between ff-ais" style="gap:12px">
+                <div class="ff-row ff-ais" style="gap:12px;min-width:0">
+                  ${left}
+                  <div style="min-width:0">
+                    <div class="ff-kicker">${S.ui.sponsorSort === "recent" ? "Recent" : `Rank #${idx + 1}`}</div>
+                    <div class="ff-card__title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px">${escapeHTML(
+                      s.name
+                    )}</div>
+                  </div>
+                </div>
+                <strong class="ff-help ff-num">${escapeHTML(amt)}</strong>
+              </div>
+            `;
+            return s.url
+              ? `<li class="ff-mini" role="listitem"><a href="${escapeHTML(
+                  s.url
+                )}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;display:block">${inner}</a></li>`
+              : `<li class="ff-mini" role="listitem">${inner}</li>`;
+          })
+          .join("");
+      }
+    }
+
+    if (D.sponsorWall) {
+      const sponsorsForWall = sponsors.slice(0, 24);
+      if (!sponsorsForWall.length) {
+        D.sponsorWall.innerHTML = `<div class="ff-mini"><div class="ff-help">Sponsor logos appear after successful payments.</div></div>`;
+        return;
+      }
+
+      if (S.ui.sponsorWall === "list") {
+        D.sponsorWall.innerHTML = sponsorsForWall
+          .map((s) => {
+            const amt = formatCurrency(s.amountCents, currency, locale);
+            return `<div class="ff-mini"><div class="ff-row ff-row--between ff-ais"><div class="ff-card__title">${escapeHTML(
+              s.name
+            )}</div><span class="ff-pill ff-pill--accent">${escapeHTML(amt)}</span></div></div>`;
+          })
+          .join("");
+      } else {
+        D.sponsorWall.innerHTML = sponsorsForWall
+          .map((s) => {
+            if (s.logo) {
+              const img = `<img src="${escapeHTML(s.logo)}" alt="${escapeHTML(s.name)} logo" loading="lazy" decoding="async"
+                  style="width:64px;height:64px;border-radius:16px;object-fit:cover;border:1px solid var(--ff-border)" />`;
+              return s.url
+                ? `<a href="${escapeHTML(s.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHTML(
+                    s.name
+                  )}" style="display:inline-block">${img}</a>`
+                : img;
+            }
+            const badge = sponsorBadge(s.name);
+            const box = `<div aria-label="${escapeHTML(
+              s.name
+            )}" style="width:64px;height:64px;border-radius:16px;display:grid;place-items:center;border:1px solid var(--ff-border);background:color-mix(in oklab,var(--ff-surface-0) 80%,transparent);font-weight:800">${escapeHTML(
+              badge
+            )}</div>`;
+            return s.url
+              ? `<a href="${escapeHTML(s.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block">${box}</a>`
+              : box;
+          })
+          .join("");
+      }
+    }
+  };
+
+  const bindSponsorControls = () => {
+    for (const btn of D.sponsorSortBtns) {
+      on(btn, "click", () => {
+        const sort = btn.getAttribute("data-ff-sort") || "rank";
+        S.ui.sponsorSort = sort;
+        for (const b of D.sponsorSortBtns) {
+          const selected = b === btn;
+          b.classList.toggle("is-selected", selected);
+          setAriaPressed(b, selected);
+        }
+        renderSponsorBoard();
+      });
+    }
+
+    for (const btn of D.sponsorWallViewBtns) {
+      on(btn, "click", () => {
+        const view = btn.getAttribute("data-ff-wall") || "logos";
+        S.ui.sponsorWall = view;
+        for (const b of D.sponsorWallViewBtns) {
+          const selected = b === btn;
+          b.classList.toggle("is-selected", selected);
+          setAriaPressed(b, selected);
+        }
+        renderSponsorBoard();
+      });
+    }
+
+    if (D.refreshSponsorsBtn) {
+      on(D.refreshSponsorsBtn, "click", () => {
+        renderSponsorBoard();
+        toast("Sponsors refreshed.", "success");
+      });
+    }
+  };
+
+  /* ---------------------------------------------
+   * Teams grid
+   * -------------------------------------------*/
+  const renderTeams = () => {
+    if (!D.teamsGrid) return;
+
+    const teams = normalizeTeams();
+    const q = safeText(S.ui.teamQuery).trim().toLowerCase();
+    let list = teams.filter((t) => {
+      if (!q) return true;
+      return (t.name + " " + t.meta + " " + t.ask).toLowerCase().includes(q);
+    });
+
+    if (S.ui.teamSort === "featured") {
+      list = list.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    } else if (S.ui.teamSort === "goal") {
+      list = list.sort((a, b) => (b.pct || 0) - (a.pct || 0));
+    } else if (S.ui.teamSort === "recent") {
+      list = list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    }
+
+    if (!list.length) {
+      D.teamsGrid.innerHTML = `<div class="ff-mini"><div class="ff-kicker">No matches</div><div class="ff-card__title">Try a different search</div><p class="ff-help">Try fewer words (e.g., “6th”, “Gold”, “Black”).</p></div>`;
+      if (D.teamsStatus) D.teamsStatus.textContent = "No teams match your search.";
+      return;
+    }
+
+    if (D.teamsStatus) D.teamsStatus.textContent = `${list.length} teams shown.`;
+
+    const card = (t) => {
+      const goal = formatCurrency(t.goalCents, currency, locale);
+      const raised = formatCurrency(t.raisedCents, currency, locale);
+      const pct = t.goalCents > 0 ? clamp(Math.round((t.raisedCents / t.goalCents) * 100), 0, 999) : 0;
+      const selected = S.ui.selectedTeamId === t.id;
+
+      const img = t.photo
+        ? `<img src="${escapeHTML(t.photo)}" alt="${escapeHTML(t.name)} photo" loading="lazy" decoding="async"
+             style="width:100%;height:150px;object-fit:cover;border-radius:16px;border:1px solid var(--ff-border)" />`
+        : "";
+
+      return `
+        <article class="ff-mini" role="listitem" data-ff-team-card data-team-id="${escapeHTML(t.id)}" aria-label="${escapeHTML(t.name)}">
+          ${img}
+          <div class="ff-row ff-row--between ff-ais" style="margin-top:10px">
+            <div style="min-width:0">
+              <div class="ff-kicker">${t.featured ? "Featured" : "Team"}</div>
+              <div class="ff-card__title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(t.name)}</div>
+              <p class="ff-help" style="margin-top:6px">${escapeHTML(t.meta)}</p>
+            </div>
+            <span class="ff-pill ${selected ? "ff-pill--accent" : ""}" aria-label="Goal progress">${escapeHTML(String(pct))}%</span>
+          </div>
+
+          <div class="ff-meter" role="progressbar" aria-label="Team progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHTML(
+            String(clamp(pct, 0, 100))
+          )}" aria-valuetext="${escapeHTML(String(clamp(pct, 0, 100)))}% funded" style="margin-top:10px">
+            <span style="width:${escapeHTML(String(clamp(pct, 0, 100)))}%"></span>
+          </div>
+
+          <div class="ff-row ff-row--between ff-wrap" style="margin-top:10px">
+            <span class="ff-help">Raised: <strong class="ff-num">${escapeHTML(raised)}</strong></span>
+            <span class="ff-help">Goal: <strong class="ff-num">${escapeHTML(goal)}</strong></span>
+          </div>
+
+          ${t.ask ? `<p class="ff-help ff-muted" style="margin-top:10px">${escapeHTML(t.ask)}</p>` : ""}
+
+          <div class="ff-row ff-wrap" style="margin-top:10px" role="group" aria-label="Team actions">
+            <button class="ff-btn ff-btn--secondary ff-btn--sm" type="button" data-ff-team-select data-team-id="${escapeHTML(
+              t.id
+            )}" aria-pressed="${selected ? "true" : "false"}">
+              ${selected ? "Selected" : "Select team"}
+            </button>
+            <button class="ff-btn ff-btn--primary ff-btn--sm" type="button" data-ff-team-donate data-team-id="${escapeHTML(
+              t.id
+            )}">
+              Donate to this team
+            </button>
+            <button class="ff-btn ff-btn--ghost ff-btn--sm" type="button" data-ff-team-share data-team-id="${escapeHTML(
+              t.id
+            )}">
+              Share team link
+            </button>
+          </div>
+        </article>
+      `;
+    };
+
+    D.teamsGrid.innerHTML = list.map(card).join("");
+
+    qsa("[data-ff-team-select]", D.teamsGrid).forEach((btn) => {
+      on(btn, "click", () => {
+        const id = btn.getAttribute("data-team-id") || "";
+        const next = S.ui.selectedTeamId === id ? "" : id;
+        setSelectedTeam(next, { silent: false });
+      });
+    });
+
+    qsa("[data-ff-team-donate]", D.teamsGrid).forEach((btn) => {
+      on(btn, "click", () => {
+        const id = btn.getAttribute("data-team-id") || "";
+        setSelectedTeam(id, { silent: true });
+        scrollToDonate();
+        toast("Team selected. Donate below.", "success");
+      });
+    });
+
+    qsa("[data-ff-team-share]", D.teamsGrid).forEach((btn) => {
+      on(btn, "click", async () => {
+        const id = btn.getAttribute("data-team-id") || "";
+        const url = buildShareUrl({ teamId: id });
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: document.title, text: "Support this team.", url });
+            toast("Shared.", "success");
+            return;
+          } catch {}
+        }
+        const ok = await copyToClipboard(url);
+        toast(ok ? "Team link copied." : "Copy failed. Use the Share field above.", ok ? "success" : "error");
+      });
+    });
+  };
+
+  const bindTeamControls = () => {
+    if (D.teamSearch) {
+      on(
+        D.teamSearch,
+        "input",
+        debounce(() => {
+          S.ui.teamQuery = D.teamSearch.value || "";
+          renderTeams();
+        }, 120)
+      );
+    }
+
+    for (const btn of D.teamSortBtns) {
+      on(btn, "click", () => {
+        const sort = btn.getAttribute("data-ff-sort") || "featured";
+        S.ui.teamSort = sort;
+        for (const b of D.teamSortBtns) {
+          const selected = b === btn;
+          b.classList.toggle("is-selected", selected);
+          setAriaPressed(b, selected);
+        }
+        renderTeams();
+      });
+    }
+
+    for (const btn of D.attribClearBtns) on(btn, "click", () => setSelectedTeam("", { silent: false }));
+  };
+
+  const setSelectedTeam = (teamId, { silent } = { silent: false }) => {
+    const id = safeText(teamId || "");
+    S.ui.selectedTeamId = id;
+
+    const team = normalizeTeams().find((t) => t.id === id);
+    S.ui.selectedTeamName = team ? team.name : "";
+
+    const has = !!S.ui.selectedTeamId;
+    if (D.attribBox) setHidden(D.attribBox, !has);
+    if (D.attribTitle) D.attribTitle.textContent = "Supporting a team";
+    if (D.attribHelp) D.attribHelp.textContent = has ? `This donation will credit ${S.ui.selectedTeamName}.` : "This donation will credit the selected group.";
+
+    if (D.summaryTeamRow) setHidden(D.summaryTeamRow, !has);
+    if (D.summaryTeam) D.summaryTeam.textContent = has ? S.ui.selectedTeamName : "Team";
+
+    setShareFields();
+    renderTeams();
+
+    if (!silent) toast(has ? `Team selected: ${S.ui.selectedTeamName}` : "Team cleared.", "info");
+  };
+
+  /* ---------------------------------------------
+   * Checkout: summary + recognition + prefills
+   * -------------------------------------------*/
+  const estimateFeesCents = (donationCents) => {
+    const f = S.fundraiser.fees || {};
+    const pct = toNum(f.percent, 0);
+    const fixed = toInt(f.fixedCents, 0);
+    let fee = Math.round(donationCents * pct + fixed);
+    const max = toInt(f.maxCents, 0);
+    if (max > 0) fee = Math.min(fee, max);
+    return Math.max(0, fee);
+  };
+
+  const applyPopularAmount = () => {
+    if (!D.popularAmountPill || !D.popularAmountText) return;
+    const p = toInt(S.fundraiser.popularAmountCents, 0);
+    if (p > 0) {
+      setHidden(D.popularAmountPill, false);
+      D.popularAmountText.textContent = formatCurrency(p, currency, locale);
+    } else {
+      setHidden(D.popularAmountPill, true);
+    }
+  };
+
+  const emailOk = (s) => {
+    const v = safeText(s).trim();
+    if (!v) return false;
+    if (v.length > 320) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+  };
+
+  const syncRecognitionUI = () => {
+    const isAnon = !!D.anonymous?.checked || S.ui.recognition === "anonymous";
+    S.ui.recognition = isAnon ? "anonymous" : "public";
+
+    for (const btn of D.recognitionBtns) {
+      const mode = btn.getAttribute("data-ff-recognition") || "public";
+      const selected = (mode === "anonymous" && isAnon) || (mode === "public" && !isAnon);
+      btn.classList.toggle("is-selected", selected);
+      setAriaPressed(btn, selected);
+    }
+
+    if (D.recognitionPreviewText) {
+      if (isAnon) D.recognitionPreviewText.textContent = "Anonymous";
+      else {
+        const nm = safeText(D.fullName?.value || "").trim();
+        D.recognitionPreviewText.textContent = nm ? nm : "Your name";
+      }
+    }
+  };
+
+  const updateSummaryUI = () => {
+    const donation = Math.max(0, S.ui.amountCents);
+    const cover = !!S.ui.coverFees;
+    const fees = cover ? estimateFeesCents(donation) : 0;
+    const total = donation + fees;
+
+    if (D.summaryAmount) D.summaryAmount.textContent = formatCurrency(donation, currency, locale);
+    if (D.summaryFees) D.summaryFees.textContent = cover ? formatCurrency(fees, currency, locale, true) : "—";
+    if (D.summaryTotal) D.summaryTotal.textContent = donation > 0 ? formatCurrency(total, currency, locale, true) : "—";
+
+    if (D.receiptEmail) D.receiptEmail.textContent = safeText(D.email?.value || "your email").trim() || "your email";
+    if (D.clearAmountBtn) setHidden(D.clearAmountBtn, donation <= 0);
+
+    for (const btn of D.quickAmountBtns) {
+      const cents = toInt(btn.getAttribute("data-ff-quick-amount") || btn.getAttribute("data-quick-amount"), 0) * 100;
+      const selected = cents > 0 && donation === cents;
+      btn.classList.toggle("is-selected", selected);
+      setAriaPressed(btn, selected);
+    }
+
+    if (D.checkoutStatusText) {
+      if (donation <= 0) D.checkoutStatusText.textContent = "Ready";
+      else if (!emailOk(D.email?.value || "")) D.checkoutStatusText.textContent = "Email required";
+      else if (S.ui.stripeMounted && !S.ui.stripeReadyToPay) D.checkoutStatusText.textContent = "Enter payment details";
+      else D.checkoutStatusText.textContent = "Ready";
+    }
+
+    const method = paypalClientId ? "Stripe + PayPal" : "Stripe";
+    if (D.checkoutMethodPill && D.checkoutMethodText) {
+      setHidden(D.checkoutMethodPill, false);
+      D.checkoutMethodText.textContent = method;
+    }
+
+    const proofAmt = qs("#proofAmount");
+    if (proofAmt)
+      proofAmt.textContent =
+        donation > 0 ? formatCurrency(donation, currency, locale) : formatCurrency(S.fundraiser.popularAmountCents, currency, locale);
+    const proofName = qs("#proofDonorName");
+    if (proofName)
+      proofName.textContent =
+        S.ui.recognition === "anonymous" ? "Anonymous" : safeText(D.fullName?.value || "").trim() || "Your name";
+  };
+
+  const setPrefill = (opts, { silent } = { silent: false }) => {
+    const amountCents = toInt(opts?.amountCents, 0);
+    const purpose = safeText(opts?.purpose || "donation");
+    const sku = safeText(opts?.sku || "");
+    const impactId = safeText(opts?.impactId || "");
+
+    S.ui.amountCents = Math.max(0, amountCents);
+    S.ui.purpose = purpose;
+    S.ui.sku = sku;
+    S.ui.impactId = impactId;
+
+    if (D.amount) D.amount.value = amountCents > 0 ? String(Math.round(amountCents / 100)) : "";
+
+    updateSummaryUI();
+    if (!silent) toast("Prefilled.", "success");
+  };
+
+  const bindDonateControls = () => {
+    if (D.amount) {
+      on(
+        D.amount,
+        "input",
+        debounce(() => {
+          S.ui.amountCents = parseMoneyToCents(D.amount.value);
+          updateSummaryUI();
+        }, 120)
+      );
+    }
+
+    if (D.email) on(D.email, "input", debounce(() => updateSummaryUI(), 120));
+    if (D.fullName) on(D.fullName, "input", debounce(() => syncRecognitionUI(), 120));
+
+    if (D.coverFees) {
+      on(D.coverFees, "change", () => {
+        S.ui.coverFees = !!D.coverFees.checked;
+        updateSummaryUI();
+      });
+      if (!S.fundraiser.fees?.enabledCoverFees) {
+        D.coverFees.checked = false;
+        D.coverFees.disabled = true;
+        S.ui.coverFees = false;
+      } else {
+        S.ui.coverFees = !!D.coverFees.checked;
+      }
+    }
+
+    if (D.clearAmountBtn) {
+      on(D.clearAmountBtn, "click", () => {
+        S.ui.amountCents = 0;
+        if (D.amount) D.amount.value = "";
+        updateSummaryUI();
+        toast("Amount cleared.", "info");
+      });
+    }
+
+    for (const btn of D.quickAmountBtns) {
+      on(btn, "click", () => {
+        const dollars = toInt(btn.getAttribute("data-ff-quick-amount") || btn.getAttribute("data-quick-amount"), 0);
+        setPrefill({ amountCents: dollars * 100, purpose: "donation" }, { silent: true });
+        updateSummaryUI();
+        toast("Amount selected.", "success");
+      });
+    }
+
+    for (const btn of D.recognitionBtns) {
+      on(btn, "click", () => {
+        const mode = btn.getAttribute("data-ff-recognition") || "public";
+        const isAnon = mode === "anonymous";
+        if (D.anonymous) D.anonymous.checked = isAnon;
+        S.ui.recognition = isAnon ? "anonymous" : "public";
+        syncRecognitionUI();
+        updateSummaryUI();
+      });
+    }
+    if (D.anonymous)
+      on(D.anonymous, "change", () => {
+        syncRecognitionUI();
+        updateSummaryUI();
+      });
+
+    for (const btn of D.prefills) {
+      if (btn.__ffBoundPrefill) continue;
+      btn.__ffBoundPrefill = true;
+      on(btn, "click", () => {
+        const dollars = toInt(btn.getAttribute("data-ff-prefill-amount"), 0);
+        const purpose = btn.getAttribute("data-ff-prefill-purpose") || "donation";
+        const sku = btn.getAttribute("data-ff-prefill-sku") || "";
+        setPrefill({ amountCents: dollars * 100, purpose, sku }, { silent: true });
+        scrollToDonate();
+        toast("Checkout prefilled.", "success");
+      });
+    }
+
+    bindSponsorPrefills(document);
+
+    for (const btn of D.refreshBtns) {
+      on(btn, "click", () => {
+        renderRecentGifts();
+        toast("Refreshed.", "success");
+      });
+    }
+
+    for (const btn of D.downloadQrBtns) {
+      on(btn, "click", () => {
+        const url = buildShareUrl();
+        const qr = buildQrSrc(url, 500);
+        try {
+          const a = document.createElement("a");
+          a.href = qr;
+          a.download = `fundraiser-qr.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          toast("QR download started.", "success");
+        } catch {
+          toast("Download failed. Long-press the QR image and save.", "error");
+        }
+      });
+    }
+  };
+
+  /* ---------------------------------------------
+   * Recent gifts
+   * -------------------------------------------*/
+  const normalizeGifts = () => {
+    const raw = Array.isArray(S.fundraiser.recentGifts) ? S.fundraiser.recentGifts : [];
+    return raw
+      .map((g) => ({
+        name: safeText(g.name || "Supporter"),
+        anon: !!g.anon || !!g.anonymous,
+        amountCents: toInt(g.amountCents ?? (toInt(g.amount, 0) * 100), 0),
+        ts: parseISO(g.tsISO || g.timestamp || "")?.getTime() || 0,
+      }))
+      .filter((x) => x.amountCents > 0)
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .slice(0, 8);
+  };
+
+  const renderRecentGifts = () => {
+    if (!D.recentGiftsHost) return;
+    const gifts = normalizeGifts();
+    if (!gifts.length) {
+      D.recentGiftsHost.innerHTML = `<div class="ff-help ff-muted">No public gifts yet.</div>`;
+      return;
+    }
+    D.recentGiftsHost.innerHTML = gifts
+      .map((g) => {
+        const name = g.anon ? "Anonymous" : g.name;
+        const amt = formatCurrency(g.amountCents, currency, locale);
+        return `<div class="ff-slimitem"><span class="ff-help">${escapeHTML(name)}</span><strong class="ff-help ff-num">${escapeHTML(
+          amt
+        )}</strong></div>`;
+      })
+      .join("");
+  };
+
+  /* ---------------------------------------------
+   * Scroll / anchor helpers
+   * -------------------------------------------*/
+  const scrollToDonate = () => {
+    const el = qs("#donate");
+    if (!el) return;
+    el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+  };
+
+  const bindAnchors = () => {
+    const handle = (a) => {
+      const href = a.getAttribute("href") || "";
+      if (!href.startsWith("#") || href === "#") return;
+      on(a, "click", (e) => {
+        const id = href.slice(1);
+        const target = qs(`#${CSS.escape(id)}`);
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+      });
+    };
+    D.anchorLinks.forEach(handle);
+    D.tabLinks.forEach(handle);
+
+    if (D.backToTopBtn) {
+      on(D.backToTopBtn, "click", (e) => {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+      });
+    }
+  };
+
+  const bindScrollProgress = () => {
+    if (!D.scrollProgressBar) return;
+    const tick = () => {
+      const doc = document.documentElement;
+      const max = Math.max(1, doc.scrollHeight - doc.clientHeight);
+      const y = doc.scrollTop || window.scrollY || 0;
+      const p = clamp((y / max) * 100, 0, 100);
+      D.scrollProgressBar.style.width = `${p.toFixed(2)}%`;
+    };
+    const run = debounce(tick, 24);
+    window.addEventListener("scroll", run, { passive: true });
+    window.addEventListener("resize", run, { passive: true });
+    tick();
+  };
+
+  /* ---------------------------------------------
+   * Motion reveal (optional, driven by html[data-ff-motion="true"])
+   * CSS expects .is-inview on .ff-reveal/.ff-stagger
+   * -------------------------------------------*/
+  const initInview = () => {
+    const motion = document.documentElement.getAttribute("data-ff-motion") === "true";
+    if (!motion) return;
+
+    const els = qsa(".ff-reveal, .ff-stagger");
+    if (!els.length) return;
+
+    if (prefersReducedMotion()) {
+      els.forEach((el) => el.classList.add("is-inview"));
+      return;
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      els.forEach((el) => el.classList.add("is-inview"));
+      return;
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-inview");
+            e.target.setAttribute("data-ff-inview", "true");
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+    );
+
+    els.forEach((el) => io.observe(el));
+  };
+
+  /* ---------------------------------------------
+   * Frequency toggle placeholder (monthly)
+   * -------------------------------------------*/
+  const injectFrequencyToggle = () => {
+    if (!C?.flagship?.features?.monthlyGivingPlaceholder) return;
+    if (!D.amount) return;
+    if (qs("[data-ff-frequency-toggle]")) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "ff-seg";
+    wrap.setAttribute("data-ff-frequency-toggle", "true");
+    wrap.setAttribute("role", "group");
+    wrap.setAttribute("aria-label", "Gift frequency");
+
+    const one = document.createElement("button");
+    one.type = "button";
+    one.className = "ff-chip is-selected";
+    one.textContent = "One-time";
+    one.setAttribute("aria-pressed", "true");
+    one.dataset.ffFreq = "one-time";
+
+    const monthly = document.createElement("button");
+    monthly.type = "button";
+    monthly.className = "ff-chip";
+    monthly.textContent = "Monthly";
+    monthly.setAttribute("aria-pressed", "false");
+    monthly.dataset.ffFreq = "monthly";
+
+    wrap.appendChild(one);
+    wrap.appendChild(monthly);
+
+    const fieldset = D.amount.closest("fieldset") || D.amount.parentElement;
+    if (fieldset) fieldset.insertBefore(wrap, fieldset.firstChild);
+
+    const setFreq = (v) => {
+      S.ui.giftType = v;
+      const isMonthly = v === "monthly";
+      one.classList.toggle("is-selected", !isMonthly);
+      monthly.classList.toggle("is-selected", isMonthly);
+      setAriaPressed(one, !isMonthly);
+      setAriaPressed(monthly, isMonthly);
+
+      if (D.payBtn) D.payBtn.textContent = isMonthly ? "Continue (monthly)" : "Continue";
+      toast(isMonthly ? "Monthly selected (premium option)." : "One-time selected.", "info");
+    };
+
+    on(one, "click", () => setFreq("one-time"));
+    on(monthly, "click", () => setFreq("monthly"));
+  };
+
+  /* ---------------------------------------------
+   * Payments payload builder (contract-safe)
+   * -------------------------------------------*/
+  const getBaseCheckoutFacts = () => {
+    const donation = Math.max(0, S.ui.amountCents);
+    const cover = !!S.ui.coverFees;
+    const fees = cover ? estimateFeesCents(donation) : 0;
+    const total = donation + fees;
+
+    const donorName = safeText(D.fullName?.value || "").trim();
+    const donorEmail = safeText(D.email?.value || "").trim();
+    const donorMessage = safeText(D.message?.value || "").trim();
+    const donorAnonymous = !!D.anonymous?.checked;
+
+    return {
+      donation_cents: donation,
+      fees_cents: fees,
+      amount_cents: total,
+      currency,
+      locale,
+      org_id: shellEnv.orgId,
+      campaign_id: shellEnv.campaignId,
+      gift_type: S.ui.giftType,
+      purpose: S.ui.purpose,
+      sku: S.ui.sku,
+      impact_id: S.ui.impactId,
+      team_id: S.ui.selectedTeamId,
+      cover_fees: cover,
+      donor_name: donorName,
+      donor_email: donorEmail,
+      donor_message: donorMessage,
+      anonymous: donorAnonymous,
+      utm: S.utm || {},
+      version: shellEnv.version,
+      tier: shellEnv.tier,
+      env: shellEnv.env,
+    };
+  };
+
+  const buildPaymentsPayload = () => {
+    const base = getBaseCheckoutFacts();
+
+    let payload = {};
+    if (payloadShape === "flat_donor_v1") {
+      payload = {
+        amount_cents: base.amount_cents,
+        donation_cents: base.donation_cents,
+        fees_cents: base.fees_cents,
+        currency: base.currency,
+        locale: base.locale,
+        org_id: base.org_id,
+        campaign_id: base.campaign_id,
+        gift_type: base.gift_type,
+        purpose: base.purpose,
+        sku: base.sku,
+        impact_id: base.impact_id,
+        team_id: base.team_id,
+        cover_fees: base.cover_fees,
+        donor_name: base.donor_name,
+        donor_email: base.donor_email,
+        donor_message: base.donor_message,
+        anonymous: base.anonymous,
+        utm: base.utm,
+        version: base.version,
+        tier: base.tier,
+        env: base.env,
+      };
+    } else {
+      // nested_donor_v1 (default)
+      payload = {
+        amount_cents: base.amount_cents,
+        donation_cents: base.donation_cents,
+        fees_cents: base.fees_cents,
+        currency: base.currency,
+        locale: base.locale,
+        org_id: base.org_id,
+        campaign_id: base.campaign_id,
+        gift_type: base.gift_type,
+        purpose: base.purpose,
+        sku: base.sku,
+        impact_id: base.impact_id,
+        team_id: base.team_id,
+        cover_fees: base.cover_fees,
+        donor: {
+          name: base.donor_name,
+          email: base.donor_email,
+          message: base.donor_message,
+          anonymous: base.anonymous,
+        },
+        utm: base.utm,
+        version: base.version,
+        tier: base.tier,
+        env: base.env,
+      };
+    }
+
+    return deepMerge(payload, payloadExtra || {});
+  };
+
+  /* ---------------------------------------------
+   * Payments: Stripe (Payment Element)
+   * - Two-step UX:
+   *    1) First submit mounts element (creates intent)
+   *    2) Second submit confirms payment
+   * -------------------------------------------*/
+  const loadScriptOnce = (src, id) =>
+    new Promise((resolve) => {
+      try {
+        if (id && document.getElementById(id)) return resolve(true);
+        const s = document.createElement("script");
+        if (id) s.id = id;
+        s.src = src;
+        s.async = true;
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      } catch {
+        resolve(false);
+      }
+    });
+
+  const stripeAppearance = () => {
+    const forced = meta("ff-stripe-theme") || "";
+    if (forced === "stripe" || forced === "night") return { theme: forced };
+    const theme = document.documentElement.getAttribute("data-theme") || "";
+    return { theme: theme === "light" ? "stripe" : "night" };
+  };
+
+  const setCheckoutError = (msg) => {
+    if (D.payError && D.payErrorText) {
+      D.payErrorText.textContent = msg || "Something went wrong. Please try again.";
+      setHidden(D.payError, false);
+      try {
+        D.payError.focus();
+      } catch {}
+    }
+    setHidden(D.paySuccess, true);
+  };
+
+  const setCheckoutSuccess = (msg) => {
+    if (D.paySuccess && D.paySuccessText) {
+      D.paySuccessText.textContent = msg || "Thank you! Your receipt has been emailed.";
+      setHidden(D.paySuccess, false);
+      try {
+        D.paySuccess.focus();
+      } catch {}
+    }
+    setHidden(D.payError, true);
+  };
+
+  const setCheckoutBusy = (busy) => {
+    S.ui.stripeBusy = !!busy;
+    if (D.payBtn) D.payBtn.disabled = !!busy;
+    if (D.checkoutStatusText) D.checkoutStatusText.textContent = busy ? "Processing…" : "Ready";
+  };
+
+  const ensureStripe = async () => {
+    if (!stripePk) return false;
+    if (captureMode) return false;
+
+    if (!window.Stripe) {
+      const ok = await loadScriptOnce(stripeJsSrc, "ffStripeJs");
+      if (!ok || !window.Stripe) return false;
+    }
+
+    if (!S.ui.stripe) {
+      try {
+        S.ui.stripe = window.Stripe(stripePk);
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const createStripeIntent = async (payload) => {
+    const headers = { "Content-Type": "application/json" };
+    if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+    const data = await fetchJson(stripeIntentEndpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      credentials: "same-origin",
+    });
+
+    const cs = data.client_secret || data.clientSecret || "";
+    if (!cs) throw new Error("Missing client_secret");
+    return cs;
+  };
+
+  const unmountStripe = () => {
+    try {
+      if (S.ui.paymentElement) S.ui.paymentElement.unmount();
+    } catch {}
+    S.ui.paymentElement = null;
+    S.ui.elements = null;
+    S.ui.clientSecret = "";
+    S.ui.stripeMounted = false;
+    S.ui.stripeReadyToPay = false;
+  };
+
+  const mountStripeElement = async (clientSecret) => {
+    if (!D.paymentElementHost) return false;
+
+    const ok = await ensureStripe();
+    if (!ok) return false;
+
+    if (S.ui.stripeMounted && S.ui.clientSecret === clientSecret) return true;
+    if (S.ui.stripeMounted && S.ui.clientSecret !== clientSecret) unmountStripe();
+
+    S.ui.clientSecret = clientSecret;
+
+    try {
+      S.ui.elements = S.ui.stripe.elements({ clientSecret, appearance: stripeAppearance() });
+      S.ui.paymentElement = S.ui.elements.create("payment");
+      S.ui.paymentElement.on("change", (evt) => {
+        S.ui.stripeReadyToPay = !!evt.complete;
+        updateSummaryUI();
+        if (D.payBtn) D.payBtn.textContent = evt.complete ? "Pay now" : "Pay now";
+      });
+      S.ui.paymentElement.mount(D.paymentElementHost);
+
+      S.ui.stripeMounted = true;
+      S.ui.stripeReadyToPay = false;
+
+      if (D.stripeMount) setHidden(D.stripeMount, false);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
+  const ensureStripeMountedForCurrentAmount = async () => {
+    const payload = buildPaymentsPayload();
+    const nextKey = `${payload.amount_cents || 0}:${payload.currency || ""}:${payload.org_id || ""}:${payload.campaign_id || ""}:${payload.team_id || ""}:${payload.impact_id || ""}:${payload.gift_type || ""}`;
+    const prevKey = S.ui.__stripeKey || "";
+
+    if (S.ui.stripeMounted && prevKey === nextKey) return true;
+
+    const clientSecret = await createStripeIntent(payload);
+    const mounted = await mountStripeElement(clientSecret);
+    if (!mounted) return false;
+
+    S.ui.__stripeKey = nextKey;
+    return true;
+  };
+
+  const handleStripeSubmit = async (e) => {
+    e.preventDefault();
+
+    setHidden(D.payError, true);
+    setHidden(D.paySuccess, true);
+
+    const donation = Math.max(0, S.ui.amountCents);
+    const email = safeText(D.email?.value || "").trim();
+
+    if (donation <= 0) return setCheckoutError("Enter an amount.");
+    if (!emailOk(email)) return setCheckoutError("Enter a valid email for your receipt.");
+    if (!stripePk) return setCheckoutError("Stripe is not configured yet.");
+
+    try {
+      setCheckoutBusy(true);
+
+      // Step 1: mount payment element (create intent). Do NOT confirm yet.
+      if (!S.ui.stripeMounted) {
+        const ok = await ensureStripeMountedForCurrentAmount();
+        if (!ok) throw new Error("Unable to load payment form.");
+
+        setCheckoutBusy(false);
+        updateSummaryUI();
+        toast("Enter payment details, then click Pay now.", "info");
+        try {
+          D.paymentElementHost?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center" });
+        } catch {}
+        return;
+      }
+
+      // If mounted but amount/team/need changed, remount with new intent and ask for confirmation again.
+      const ok2 = await ensureStripeMountedForCurrentAmount();
+      if (!ok2) throw new Error("Unable to update payment form.");
+
+      // Step 2: confirm payment
+      const { error } = await S.ui.stripe.confirmPayment({
+        elements: S.ui.elements,
+        confirmParams: { return_url: stripeReturnUrl },
+        redirect: "if_required",
+      });
+
+      if (error) throw new Error(error.message || "Payment failed.");
+
+      setCheckoutSuccess("Thank you! Your receipt has been emailed.");
+      toast("Payment successful.", "success");
+
+      // display-only bump (server remains source of truth)
+      S.fundraiser.raisedCents += donation;
+      setProgressUI();
+    } catch (err) {
+      console.error(err);
+      setCheckoutError(err?.message || "Payment failed. Please try again.");
+      toast("Payment error.", "error");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
+  /* ---------------------------------------------
+   * Payments: PayPal
+   * Uses your existing window.ffLoadPayPal() loader if present.
+   * -------------------------------------------*/
+  const ensurePayPal = async () => {
+    if (!paypalClientId) return false;
+    if (captureMode) return false;
+    if (window.paypal && window.paypal.Buttons) return true;
+
+    if (typeof window.ffLoadPayPal === "function") {
+      try {
+        const ok = await window.ffLoadPayPal();
+        return !!(ok && window.paypal && window.paypal.Buttons);
+      } catch {
+        return false;
+      }
+    }
+
+    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(paypalClientId)}&currency=${encodeURIComponent(
+      paypalCurrency
+    )}&intent=${encodeURIComponent(paypalIntent)}`;
+    const ok = await loadScriptOnce(src, "ffPayPalJs");
+    return !!(ok && window.paypal && window.paypal.Buttons);
+  };
+
+  const initPayPal = async () => {
+    if (!paypalClientId || !D.paypalMount || !D.paypalButtonsHost) return;
+
+    try {
+      setHidden(D.paypalMount, false);
+
+      const ok = await ensurePayPal();
+      if (!ok) {
+        setHidden(D.paypalMount, true);
+        return;
+      }
+
+      window.paypal
+        .Buttons({
+          style: { layout: "vertical" },
+          createOrder: async () => {
+            const donation = Math.max(0, S.ui.amountCents);
+            const email = safeText(D.email?.value || "").trim();
+            if (donation <= 0) throw new Error("Enter an amount.");
+            if (!emailOk(email)) throw new Error("Enter a valid email.");
+
+            const payload = buildPaymentsPayload();
+
+            const headers = { "Content-Type": "application/json" };
+            if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+            const data = await fetchJson(paypalCreateEndpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ ...payload, paypal: { currency: paypalCurrency, intent: paypalIntent } }),
+              credentials: "same-origin",
+            });
+
+            return data.order_id || data.id;
+          },
+          onApprove: async (data) => {
+            const headers = { "Content-Type": "application/json" };
+            if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+            await fetchJson(paypalCaptureEndpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ order_id: data.orderID }),
+              credentials: "same-origin",
+            });
+
+            setCheckoutSuccess("Thank you! Your receipt has been emailed.");
+            toast("Payment successful.", "success");
+
+            S.fundraiser.raisedCents += Math.max(0, S.ui.amountCents);
+            setProgressUI();
+          },
+          onError: (err) => {
+            console.error(err);
+            setCheckoutError("PayPal error. Please try Stripe or refresh.");
+          },
+        })
+        .render(D.paypalButtonsHost);
+
+      S.ui.paypalReady = true;
+    } catch (e) {
+      console.error(e);
+      setHidden(D.paypalMount, true);
+    }
+  };
+
+  /* ---------------------------------------------
+   * Share controls (copy + native)
+   * -------------------------------------------*/
+  const bindShareControls = () => {
+    for (const btn of D.shareCopyBtns) {
+      on(btn, "click", async () => {
+        const url = buildShareUrl();
+        const ok = await copyToClipboard(url);
+        toast(ok ? "Share link copied." : "Copy failed.", ok ? "success" : "error");
+      });
+    }
+
+    for (const btn of D.shareNativeBtns) {
+      on(btn, "click", async () => {
+        const url = buildShareUrl();
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: document.title, text: "Support this fundraiser.", url });
+            toast("Shared.", "success");
+            return;
+          } catch {}
+        }
+        const ok = await copyToClipboard(url);
+        toast(ok ? "Share link copied." : "Copy failed.", ok ? "success" : "error");
+      });
+    }
+
+    if (D.shareLink) {
+      on(D.shareLink, "focus", () => {
+        try {
+          D.shareLink.select();
+        } catch {}
+      });
+    }
+  };
+
+  /* ---------------------------------------------
+   * Init
+   * -------------------------------------------*/
+  const init = async () => {
+    S.fundraiser.raisedCents = deriveRaisedCents();
+
+    applyBrand();
+    applyAnnouncement();
+
+    renderAllocation();
+    bindImpactControls();
+    renderImpact();
+
+    renderSponsorTiers();
+    bindSponsorControls();
+    renderSponsorBoard();
+
+    bindTeamControls();
+    renderTeams();
+
+    setProgressUI();
+    applyUpdated();
+    startDeadlineLoop();
+    applyMatch();
+
+    readUtm();
+    setShareFields();
+    bindShareControls();
+
+    applyPopularAmount();
+    syncRecognitionUI();
+    updateSummaryUI();
+    bindDonateControls();
+    renderRecentGifts();
+
+    injectFrequencyToggle();
+    bindAnchors();
+    bindScrollProgress();
+    initInview();
+
+    if (D.donationForm) on(D.donationForm, "submit", handleStripeSubmit);
+
+    // Stripe redirect success hint (server should verify)
+    try {
+      const u = new URL(window.location.href);
+      const rs = u.searchParams.get("redirect_status") || "";
+      if (rs === "succeeded") setCheckoutSuccess("Payment successful. Your receipt has been emailed.");
+    } catch {}
+
+    if (paypalClientId) initPayPal();
+
+    // Expose minimal API
+    window.FF = window.FF || {};
+    window.FF.toast = window.FF.toast || toast;
+    window.FF.buildShareUrl = window.FF.buildShareUrl || buildShareUrl;
+    window.FF.setShareFields = window.FF.setShareFields || setShareFields;
+    window.FF.scrollToDonate = window.FF.scrollToDonate || scrollToDonate;
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+
+  /* __FF_V14_GALLERY_PATCH__ */
+  function safeJsonParse(txt, fallback) {
+    try { return JSON.parse(txt); } catch (e) { return fallback; }
+  }
+
+  function normalizeGalleryItems(items) {
+    if (!Array.isArray(items)) return [];
+    return items.map((it) => {
+      if (!it) return null;
+      if (typeof it === "string") return { src: it, alt: "", caption: "" };
+      if (typeof it === "object") {
+        return {
+          src: it.src || it.url || it.image || "",
+          alt: it.alt || "",
+          caption: it.caption || it.title || ""
+        };
+      }
+      return null;
+    }).filter(x => x && x.src);
+  }
+
+  function ensureGallerySectionVisibility(items) {
+    const section = document.querySelector("[data-ff-gallery-grid]")?.closest("section");
+    if (!section) return;
+    // If no items, keep section but visually minimal (or hide entirely).
+    if (!items || !items.length) {
+      // Hide gallery preview list if empty
+      const grid = document.querySelector("[data-ff-gallery-grid]");
+      if (grid) grid.innerHTML = "";
+      // Optionally hide the whole section:
+      // section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+  }
+
+  function renderGallery(items) {
+    const grid = document.querySelector("[data-ff-gallery-grid]");
+    const all  = document.querySelector("[data-ff-gallery-all]");
+    if (!grid && !all) return;
+
+    // Preview (first 6)
+    if (grid) {
+      const preview = items.slice(0, 6);
+      grid.innerHTML = preview.map((it, idx) => `
+        <button type="button" class="ff-mini ff-glass" data-ff-gallery-open data-ff-gallery-idx="${idx}" aria-label="Open gallery image">
+          <img src="${it.src}" alt="${(it.alt||"").replace(/"/g,"&quot;")}" loading="lazy" decoding="async" style="width:100%;height:auto;border-radius:14px;display:block;" />
+          ${it.caption ? `<div class="ff-help ff-mt-1">${it.caption}</div>` : ``}
+        </button>
+      `).join("");
+    }
+
+    // Modal (all items)
+    if (all) {
+      all.innerHTML = items.map((it, idx) => `
+        <button type="button" class="ff-mini ff-glass" data-ff-gallery-idx="${idx}" aria-label="View image">
+          <img src="${it.src}" alt="${(it.alt||"").replace(/"/g,"&quot;")}" loading="lazy" decoding="async" style="width:100%;height:auto;border-radius:14px;display:block;" />
+          ${it.caption ? `<div class="ff-help ff-mt-1">${it.caption}</div>` : ``}
+        </button>
+      `).join("");
+    }
+
+    // Wire clicks to open modal and focus corresponding item
+    document.querySelectorAll("[data-ff-gallery-idx]").forEach((btn) => {
+      if (btn.__ffBound_gallery) return;
+      btn.__ffBound_gallery = true;
+      btn.addEventListener("click", () => galleryLightbox(parseInt(btn.getAttribute("data-ff-gallery-idx") || "0", 10)));
+    });
+  }
+
+  function galleryLightbox(idx) {
+    // We reuse your existing gallery modal open button behavior:
+    // trigger any [data-ff-gallery-open] button if present.
+    const openBtn = document.querySelector("[data-ff-gallery-open]");
+    if (openBtn) openBtn.click();
+
+    // After modal opens, try to scroll item into view
+    setTimeout(() => {
+      const target = document.querySelector(`[data-ff-gallery-all] [data-ff-gallery-idx="${idx}"]`);
+      if (target) target.scrollIntoView({ block: "center", behavior: "smooth" });
+      try { target?.focus?.(); } catch (e) {}
+    }, 60);
+  }
+
+  function bootstrapGalleryFromDomOrConfig(cfg) {
+    // Priority: cfg.gallery.items → #ffGalleryData
+    let items = normalizeGalleryItems(cfg?.gallery?.items || []);
+    if (!items.length) {
+      const el = document.getElementById("ffGalleryData");
+      if (el) items = normalizeGalleryItems(safeJsonParse(el.textContent || "[]", []));
+    }
+    const enabled = cfg?.gallery?.enabled === true || items.length > 0;
+    if (!enabled) { ensureGallerySectionVisibility([]); return; }
+    ensureGallerySectionVisibility(items);
+    renderGallery(items);
+  }
+
+})();
+

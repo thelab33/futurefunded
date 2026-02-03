@@ -1,0 +1,201 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!doctype html>
+<html lang="en"
+      class="h-full antialiased selection:bg-yellow-300/25"
+      data-theme="dark" data-brand="{{ _brand_slug }}" data-route="{{ _route|default('') }}">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="color-scheme" content="dark light"/>
+  <meta name="theme-color" content="#0b0b0c" id="meta-theme-color"/>
+  <meta name="referrer" content="strict-origin-when-cross-origin"/>
+  <meta name="robots" content="index,follow,max-image-preview:large"/>
+
+  {# --- CSRF & CSP --- #}
+  {% if csrf_token is defined %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
+  <meta name="csp-nonce" content="{{ NONCE }}"/>
+  <script {{ nonce_attr() }}>window.__CSP_NONCE="{{ NONCE }}";</script>
+
+  {# --- Meta, SEO, OG --- #}
+  <title>{% block title %}{{ _page_title }}{% endblock %}</title>
+  <meta name="description" content="{{ _page_desc }}"/>
+  {% if request is defined %}<link rel="canonical" href="{{ request.base_url }}"/>{% endif %}
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="{{ _brand_name }}"/>
+  <meta property="og:title" content="{{ _page_title }}"/>
+  <meta property="og:description" content="{{ _page_desc }}"/>
+  {% set _og_path = (_og_img if '://' in _og_img else (url_for('static', filename=_og_img, v=_ver) if (url_for is defined and _ver) else (url_for('static', filename=_og_img) if url_for is defined else '/static/' ~ _og_img))) %}
+  <meta property="og:image" content="{{ _og_path }}"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="{{ _page_title }}"/>
+  <meta name="twitter:description" content="{{ _page_desc }}"/>
+  <meta name="twitter:image" content="{{ _og_path }}"/>
+  <meta name="twitter:image:alt" content="{{ _brand_name }} fundraiser"/>
+  <link rel="icon" href="{{ _og_path }}"/>
+
+  {# --- LCP hero hint (best effort) --- #}
+  {% set _hero_path = (_hero_img if '://' in _hero_img else (url_for('static', filename=_hero_img) if url_for is defined else '/static/' ~ _hero_img)) %}
+  <link rel="preload" as="image" href="{{ _hero_path }}" imagesizes="(max-width:980px) 100vw, 60vw"/>
+
+  {# --- Optional PWA manifest --- #}
+  {% if _has_manifest %}
+    {% set _manifest_path = (url_for('static', filename=_manifest, v=_ver) if (url_for is defined and _ver) else (url_for('static', filename=_manifest) if url_for is defined else '/static/' ~ _manifest) %}
+    <link rel="manifest" href="{{ _manifest_path }}"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  {% endif %}
+
+  {# --- Core CSS (tokens + page scopes) --- #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css', v=_ver) if url_for is defined else '/static/css/tailwind.min.css' }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fc-tokens.css', v=_ver) if url_for is defined else '/static/css/fc-tokens.css' }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fc-widgets.css', v=_ver) if url_for is defined else '/static/css/fc-widgets.css' }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fc-tiers.scoped.css', v=_ver) if url_for is defined else '/static/css/fc-tiers.scoped.css' }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fc-impact.scoped.css', v=_ver) if url_for is defined else '/static/css/fc-impact.scoped.css' }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fc-about.scoped.css', v=_ver) if url_for is defined else '/static/css/fc-about.scoped.css' }}"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fc.final-polish.css', v=_ver) if url_for is defined else '/static/css/fc.final-polish.css' }}"/>
+
+  {# --- Brand + layout tokens --- #}
+  <style {{ nonce_attr() }}>
+    #site-main[data-page="fundraiser"]{
+      --fc-accent: {{ _brand_hex }};
+      --fc-brand:  var(--fc-accent);
+      --fc-ring: color-mix(in srgb, var(--fc-brand) 65%, transparent);
+      --fcx-shell-max: none;            /* child pages can override */
+      --fcx-gutter: clamp(14px, 5vw, 36px);
+    }
+    #site-main[data-page="fundraiser"] {scroll-behavior:smooth}
+    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;-webkit-font-smoothing:antialiased;}
+    .fcx-section, .fcx-section--hero, .fcx-section--tiers{
+      max-width: var(--fcx-shell-max); width:100%; margin-inline:auto; margin-bottom:3rem; padding-inline: var(--fcx-gutter);
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:0.001ms!important; animation-iteration-count:1!important; transition-duration:0.001ms!important}
+    }
+  </style>
+
+  {# --- JSON-LD (Organization + DonateAction) --- #}
+  <script {{ nonce_attr() }} type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@graph":[
+      { "@type":"Organization", "name":"{{ _brand_name }}", "url":"{{ request.base_url if request is defined else '' }}",
+        "logo":"{{ url_for('static', filename=_og_img) if url_for is defined else '/static/' ~ _og_img }}" },
+      { "@type":"DonateAction","name":"Donate to {{ _brand_name }}",
+        "target":{"@type":"EntryPoint","urlTemplate":"{{ HREF_DONATE }}",
+          "actionPlatform":["http://schema.org/DesktopWebPlatform","http://schema.org/MobileWebPlatform"]},
+        "result":{"@type":"MonetaryAmount","currency":"USD"} }
+    ]
+  }
+  </script>
+
+  {% block extra_head %}{% endblock %}
+  {% block extra_css %}{% endblock %}
+  {% block head %}{% endblock %}
+</head>
+
+<body
+
+<!-- FF: Accessibility Skip Link -->
+<a href="#main" class="ff-skiplink">Skip to main content</a>
+ class="min-h-full bg-zinc-950 text-zinc-100">
+  <a id="skip-to-content" href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 z-[1000]">Skip to content</a>
+  <div id="site-header-sentinel" aria-hidden="true" class="h-0 w-full"></div>
+
+  {# --- Header v5 (ticker/ribbon/qr slots) --- #}
+  {% include "partials/header_elitemax_v5.html" ignore missing with context %}
+  {% include "partials/widgets/qr_modal.html" ignore missing with context %}
+  {% include "partials/widgets/command_palette.html" ignore missing with context %}
+
+  {# --- Main content --- #}
+  <main id="main" role="main" class="relative">
+    <h1 class="sr-only">{% block h1 %}{{ _brand_name }}{% endblock %}</h1>
+    {% block content %}{% endblock %}
+  </main>
+
+  {# --- Footer & modules --- #}
+  {% include "partials/footer.html"         ignore missing with context %}
+  {% include "partials/donation_modal.html" ignore missing %}
+  {% include "partials/newsletter.html"     ignore missing %}
+
+  {# --- Core JS bundles (deferred, nonced) --- #}
+  <script {{ nonce_attr() }} src="{{ url_for('static', filename='js/bundle.min.js', v=_ver) if url_for is defined else '/static/js/bundle.min.js' }}" defer></script>
+  {% if _is_donate %}
+    <script {{ nonce_attr() }} src="{{ url_for('static', filename='js/donate.min.js', v=_ver) if url_for is defined else '/static/js/donate.min.js' }}" defer></script>
+  {% endif %}
+  {% if USE_SOCKETIO %}
+    <script {{ nonce_attr() }} src="/socket.io/socket.io.js" defer></script>
+  {% endif %}
+  <script {{ nonce_attr() }} src="{{ url_for('static', filename='js/fc-ui.js', v=_ver) if url_for is defined else '/static/js/fc-ui.js' }}" defer></script>
+  <script {{ nonce_attr() }} src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" defer></script>
+
+  {# --- AutoEnhance config (perf + a11y + UX) --- #}
+  <script {{ nonce_attr() }}>
+    window.FC_ENHANCE_CFG = {
+      donateSelector: "[data-donate-cta], a[href*='/donate']",
+      sponsorSelector: "a[data-tier], a[href*='/sponsor']",
+      headerSelector: "#site-header",
+      sentinelSelector: "#site-header-sentinel",
+      floatingCtaSelector: "#floating-donate-cta",
+      stickyDonateMinWidth: 861,
+      enrichUTM: true,
+      addLazyToImages: true,
+      enforceNoopener: false,
+      hotkeys: true,
+      ariaAutofix: true,
+      reportToWindow: true
+    };
+  </script>
+  <script {{ nonce_attr() }} type="module"
+          src="{{ url_for('static', filename='js/fundchamps.autoEnhance.v1.mjs', v=_ver) if url_for is defined else '/static/js/fundchamps.autoEnhance.v1.mjs' }}"
+          defer></script>
+
+  {# --- FinalUX tenant toggle (class hooks + analytics bridge + safety) --- #}
+  <script {{ nonce_attr() }}>
+    window.FC_UX_CFG = {
+      features: {
+        classToggle: true,
+        analyticsBridge: true,
+        liveRegion: true,
+        preconnectStripe: true,
+        heroFallback: true,
+        enforceNoopener: true,
+        devAxeHotkey: {{ 'true' if (ENV is defined and ENV in ['dev','development','staging']) else 'false' }}
+      },
+      tenants: { "{{ _brand_slug }}": { features: {} } }
+    };
+  </script>
+  <script {{ nonce_attr() }} src="{{ url_for('static', filename='js/fc.final-ux.js', v=_ver) if url_for is defined else '/static/js/fc.final-ux.js' }}"
+          defer></script>
+
+  {# --- Floating Donate CTA --- #}
+  <div class="fc-float-cta" id="floating-donate-cta"
+       style="display:none; position:fixed; bottom:1.7rem; right:1.7rem; z-index:1999;">
+    <a class="fcx-btn fcx-btn-accent fc-pro-cta" href="{{ HREF_DONATE }}" target="_blank" rel="noopener"
+       data-cta="donate" aria-label="Donate now — floating">Donate Now →</a>
+  </div>
+
+  {% block extra_js %}{% endblock %}
+
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</body>
+</html>

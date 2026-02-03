@@ -1,0 +1,323 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# ============================== FUNDCHAMPS SPONSOR WALL WIDGET ============================== #}
+{% from "macros/sponsor_card.html"import sponsor_card %}
+
+<section
+  id="sponsor-wall-widget"
+  class="pointer-events-none fixed bottom-8 right-8 z-50 max-h-[85vh] w-full max-w-md translate-y-8 scale-95 transform rounded-3xl bg-gradient-to-br from-zinc-900/95 via-zinc-900/90 to-yellow-900/90 opacity-0 shadow-[0_6px_40px_0_rgba(251,191,36,0.12)] ring-2 ring-yellow-400/60 backdrop-blur-lg transition-all duration-500 ease-out"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="sponsor-wall-title"
+  aria-describedby="sponsor-wall-desc"
+  tabindex="-1"
+  aria-hidden="true"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  <!-- ===== 1. Header ===== -->
+  <header
+    class="flex items-center justify-between rounded-t-3xl border-b border-yellow-400/30 bg-gradient-to-r from-yellow-400/10 to-yellow-400/0 px-6 py-4"
+  >
+    <h2
+      id="sponsor-wall-title"
+      class="flex items-center gap-2 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 bg-clip-text text-2xl font-black tracking-tight text-transparent drop-shadow-lg"
+    >
+      <span class="animate-wiggle text-3xl">🙌</span> Meet Our Champions
+    </h2>
+    <button
+      id="sponsor-wall-close"
+      aria-label="Close sponsor wall"
+      class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800/60 text-2xl font-bold text-yellow-400 backdrop-blur-sm transition"
+    >
+      ✕
+    </button>
+  </header>
+
+  <!-- ===== 2. Live Donation Ticker ===== -->
+  <div
+    id="donation-ticker-card"
+    class="w-full overflow-x-auto whitespace-nowrap border-b border-yellow-400/15 bg-yellow-400/10 px-4 py-1 font-mono text-xs tracking-wide text-yellow-300"
+  >
+    <span id="ticker-inner">
+      {% for donation in recent_donations %} 💸
+      <strong>{{ donation.sponsor_name }}</strong> just donated ${{ donation.amount|int|comma }}!
+      &nbsp;&nbsp; {% endfor %}
+    </span>
+  </div>
+
+  <!-- ===== 3. Description / Impact ===== -->
+  <div
+    id="sponsor-wall-desc"
+    class="flex flex-wrap items-center gap-2 border-b border-yellow-400/20 px-6 py-3 text-[1rem] font-semibold text-yellow-300"
+  >
+    <span>
+      <span
+        class="animate-pop inline-block rounded-lg bg-yellow-500/20 px-2 py-0.5 font-bold tracking-wide text-yellow-200"
+      >
+        {{ sponsors_sorted|length or 0 }} supporters
+      </span>
+      &mdash;
+      <span
+        class="animate-pop-slow inline-block rounded-lg bg-yellow-500/10 px-2 py-0.5 font-bold tracking-wide text-yellow-100"
+      >
+        ${{ sponsors_total|int|comma|default(0) }} raised
+      </span>
+    </span>
+    <span class="ml-2 hidden text-yellow-400/80">🚀</span>
+    <span class="ml-auto animate-pulse text-xs text-yellow-200/70"
+      >Directly funds local youth programs!</span
+    >
+  </div>
+
+  <!-- ===== 4. Leaderboard Toggle ===== -->
+  <div class="flex items-center justify-end gap-2 px-6 pt-2">
+    <button
+      type="button"
+      class="leaderboard-toggle rounded bg-yellow-400/20 px-3 py-1 text-xs font-bold transition"
+      data-type="all"
+    >
+      All-Time
+    </button>
+    <button
+      type="button"
+      class="leaderboard-toggle rounded bg-yellow-400/20 px-3 py-1 text-xs font-bold transition"
+      data-type="month"
+    >
+      This Month
+    </button>
+  </div>
+
+  <!-- ===== 5. VIP Row (Top 3 Sponsors, sticky, confetti) ===== -->
+  <div
+    class="sticky top-0 z-10 mb-2 flex flex-row items-center justify-center gap-2 rounded-t-2xl bg-gradient-to-b from-zinc-900/95 to-transparent py-2 shadow-md"
+  >
+    {% for sponsor in sponsors_sorted[:3] %} {{ sponsor_card(sponsor, loop.index, true) }} {% endfor
+    %}
+  </div>
+
+  <!-- ===== 6. Sponsor Grid (Card Macro) ===== -->
+  <div
+    id="sponsor-wall-list"
+    class="relative grid max-h-[calc(85vh-240px)] gap-5 overflow-y-auto p-6"
+    role="list"
+    tabindex="0"
+    aria-label="Sponsor List"
+  >
+    {% for sponsor in sponsors_sorted[3:] %} {{ sponsor_card(sponsor, loop.index + 3, false) }} {%
+    endfor %} {# Fill empty slots (up to 12) — Upsell! #} {% set slots = (12 -
+    sponsors_sorted|length) if sponsors_sorted|length < 12 else 0 %} {% for _ in range(slots) %}
+    <div
+      class="animate-pop group flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-yellow-400/30 bg-zinc-800/70 p-4 text-yellow-200/70 shadow-inner transition"
+      role="listitem"
+      aria-label="Available sponsorship spot"
+      tabindex="0"
+      onclick="openSponsorModal()"
+      onkeydown="if(event.key==='Enter' || event.key===' ') { event.preventDefault(); openSponsorModal(); }"
+    >
+      <span class="mb-1 animate-bounce select-none text-3xl" aria-hidden="true">✨</span>
+      <span class="mb-1 select-none text-center font-extrabold">Your Logo Here</span>
+      <span class="mb-2 select-none text-xs text-zinc-400 transition"
+        >Limited premium slots left!</span
+      >
+      <button
+        type="button"
+        class="rounded-full bg-yellow-400 px-5 py-2 text-xs font-black text-black shadow-md transition"
+        aria-label="Become a Sponsor"
+        tabindex="-1"
+      >
+        🌟 Become a Sponsor
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ===== 7. Footer CTA + Social Share ===== -->
+  <footer class="rounded-b-3xl border-t border-yellow-400/20 bg-zinc-900/80 px-6 py-4 text-center">
+    <button
+      type="button"
+      onclick="openSponsorModal()"
+      class="animate-pop inline-block rounded-full bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 px-8 py-3 text-lg font-black tracking-tight text-black shadow-xl transition"
+      aria-label="Become a Sponsor"
+    >
+      Become a Sponsor &rarr;
+    </button>
+    <div class="mt-1 text-xs italic text-yellow-300/60">
+      Brand your business, inspire kids, make an impact.
+    </div>
+    <div class="mt-3 flex justify-center gap-2">
+      <button
+        onclick="shareSponsorWall('x')"
+        aria-label="Share on X"
+        class="rounded-full bg-zinc-800 p-2 text-yellow-400"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20"><!-- X icon --></svg>
+      </button>
+      <button
+        onclick="shareSponsorWall('fb')"
+        aria-label="Share on Facebook"
+        class="rounded-full bg-zinc-800 p-2 text-blue-500"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20"><!-- FB icon --></svg>
+      </button>
+      <button
+        onclick="shareSponsorWall('ln')"
+        aria-label="Share on LinkedIn"
+        class="rounded-full bg-zinc-800 p-2 text-blue-700"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <!-- LinkedIn icon -->
+        </svg>
+      </button>
+    </div>
+  </footer>
+</section>
+
+<!-- ===== 8. Floating Toggle Button + Nudge ===== -->
+<button
+  id="sponsor-wall-toggle"
+  aria-expanded="false"
+  aria-controls="sponsor-wall-widget"
+  aria-label="Open Sponsor Wall"
+  class="animate-pop fixed bottom-8 right-8 z-50 transform rounded-full bg-yellow-400 p-4 font-extrabold text-black shadow-2xl drop-shadow-lg transition-all"
+>
+  🙌 <span class="hidden">Sponsors</span>
+  <span
+    id="sponsor-nudge-dot"
+    class="absolute right-2 top-2 hidden h-2 w-2 animate-pulse rounded-full bg-pink-500"
+  ></span>
+</button>
+
+<!-- ===== 9. Modal Placeholder (Load dynamically or slot your own) ===== -->
+<div id="sponsor-modal-root"></div>
+
+<!-- ===== 10. Styles & Script (paste in <style nonce="{{ NONCE }}"> and <script nonce="{{ NONCE }}"> tags) ===== -->
+
+<script nonce="{{ NONCE }}">
+  @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 70% { transform: scale(1.1); opacity: 1;} 100% { transform: scale(1); } }
+  .animate-pop { animation: pop 0.7s cubic-bezier(.2,1.7,.7,1) both; }
+  .animate-pop-slow { animation: pop 1.2s cubic-bezier(.2,1.7,.7,1) both; }
+  @keyframes wiggle { 0%,100% { transform: rotate(-8deg);} 50% { transform: rotate(8deg);} }
+  .animate-wiggle { animation: wiggle 1.4s infinite alternate; }
+  .animate-bounce { animation: bounce 1.2s infinite; }
+  @keyframes vip-glow { 0%,100% { box-shadow: 0 0 12px 4px #facc15bb, 0 0 0 0 transparent;} 50% { box-shadow: 0 0 32px 8px #facc15cc, 0 0 0 8px #fffbe7aa;} }
+  .animate-vip-glow { animation: vip-glow 2.5s infinite alternate; }
+  @keyframes vip-pop { 0%{ transform:scale(1.13); } 100%{ transform:scale(1); } }
+  .animate-vip-pop { animation: vip-pop 0.6s cubic-bezier(.17,2,.7,1.2) both; }
+  @keyframes confetti-burst { 0% { opacity:0; transform: scale(0.4) rotate(-40deg);} 60% { opacity:1; transform: scale(1.2) rotate(12deg);} 100% { opacity:0; transform: scale(0.2) rotate(60deg);} }
+  .animate-vip-confetti { animation: confetti-burst 1.2s cubic-bezier(.2,1.4,.7,1.2) 1; }
+  #sponsor-wall-widget[aria-hidden="false"] { opacity: 1 !important; pointer-events: auto !important; transform: translateY(0) scale(1) !important; }
+  #sponsor-wall-list::-webkit-scrollbar { width: 8px;}
+  #sponsor-wall-list::-webkit-scrollbar-thumb { background-color: rgba(250, 204, 21, 0.5); border-radius: 4px;}
+  #sponsor-wall-list.scroll-shadow::before { content: ""; position: sticky; top: 0; height: 8px; width: 100%; background: linear-gradient(to bottom, rgba(250,204,21,0.21), transparent); pointer-events: none; z-index: 10; }
+  @media (prefers-reduced-motion: reduce) { #sponsor-wall-widget, #sponsor-wall-toggle { transition: none !important; animation: none !important; } }
+</script>
+
+<script nonce="{{ NONCE }}">
+  (() => {
+    const toggleBtn = document.getElementById('sponsor-wall-toggle');
+    const widget = document.getElementById('sponsor-wall-widget');
+    const closeBtn = document.getElementById('sponsor-wall-close');
+    const sponsorList = document.getElementById('sponsor-wall-list');
+    const ticker = document.getElementById('ticker-inner');
+    const nudgeDot = document.getElementById('sponsor-nudge-dot');
+    // Modal/Share placeholders
+    window.openSponsorModal = () => alert('🚀 Replace with your Sponsorship Modal logic!');
+    window.shareSponsorWall = (network) => {
+      const shareUrl = window.location.href;
+      if (navigator.share) {
+        navigator.share({ title: 'Support Our Team!', url: shareUrl });
+      } else {
+        // Fallback open window to network (implement as needed)
+        alert('Social sharing for ' + network + ' coming soon!');
+      }
+    };
+    // Confetti effect (implement your own or use a lib)
+    window.launchConfetti = () => {};
+    // Welcome toast (replace with a lib like Toastify for best UX)
+    window.welcomeSponsor = (name) => {
+      launchConfetti();
+      alert(`🎉 Welcome, ${name}!`);
+    };
+    function focusTrap(e) {
+      const els = widget.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!els.length) return;
+      const first = els[0],
+        last = els[els.length - 1];
+      if (e.key === 'Tab') {
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+    function openWidget() {
+      widget.setAttribute('aria-hidden', 'false');
+      widget.focus();
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      checkScrollShadow();
+      document.body.style.overflow = 'hidden';
+      if (nudgeDot) nudgeDot.classList.add('hidden');
+    }
+    function closeWidget() {
+      widget.setAttribute('aria-hidden', 'true');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      toggleBtn.focus();
+      document.body.style.overflow = '';
+    }
+    toggleBtn.addEventListener('click', () => {
+      const isOpen = widget.getAttribute('aria-hidden') === 'false';
+      isOpen ? closeWidget() : openWidget();
+    });
+    closeBtn.addEventListener('click', closeWidget);
+    widget.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeWidget();
+      }
+      focusTrap(e);
+    });
+    document.addEventListener('click', (e) => {
+      if (!widget.contains(e.target) && e.target !== toggleBtn) closeWidget();
+    });
+    function checkScrollShadow() {
+      sponsorList.scrollTop > 5
+        ? sponsorList.classList.add('scroll-shadow')
+        : sponsorList.classList.remove('scroll-shadow');
+    }
+    sponsorList.addEventListener('scroll', checkScrollShadow);
+    // Leaderboard toggle logic (plug in HTMX/Socket.IO here)
+    document.querySelectorAll('.leaderboard-toggle').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        document
+          .querySelectorAll('.leaderboard-toggle')
+          .forEach((b) => b.classList.remove('bg-yellow-400/40'));
+        btn.classList.add('bg-yellow-400/40');
+        // TODO: Fetch and update sponsor list by leaderboard type (all/month)
+      });
+    });
+    // Live ticker update (plug in Socket.IO or HTMX swap here)
+    // TODO: ticker.innerHTML = newDonationFeed;
+    // Smart nudge — after 3min closed, pulse dot
+    setTimeout(() => {
+      if (widget.getAttribute('aria-hidden') === 'true' && nudgeDot) {
+        nudgeDot.classList.remove('hidden');
+      }
+    }, 180_000);
+    // Keyboard shortcut: 'S' toggles sponsor wall
+    document.addEventListener('keydown', (e) => {
+      if (
+        e.key.toLowerCase() === 's' &&
+        !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)
+      ) {
+        e.preventDefault();
+        const isOpen = widget.getAttribute('aria-hidden') === 'false';
+        isOpen ? closeWidget() : openWidget();
+      }
+    });
+  })();
+</script>

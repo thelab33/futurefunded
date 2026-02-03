@@ -1,0 +1,208 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# ======================================================================
+   FundChamps • Impact + Challenge & Coaches (Premium / SaaS-ready)
+   - Matches premium card/glow aesthetic (brand-aware)
+   - Pure Jinja2, CSP-safe vanilla JS (nonce or macros)
+   - Reduced-motion aware, accessible counters + semantics
+   ====================================================================== #}
+{% set __nonce = (csp_nonce() if csp_nonce is defined else (NONCE if NONCE is defined else '')) %}
+{% set asset_version = asset_version|default(None) %}
+{% set brand_color   = (team.theme_color if team and team.theme_color else '#facc15') %}
+{% set donate_href   = donate_href|default('/donate') %}
+
+{# --------- Safe fallbacks (only used if not provided by the view/context) --------- #}
+{% set impact = impact if impact is defined and impact else [
+  {'label': 'Players Enrolled',    'value': 16},
+  {'label': 'Honor Roll Scholars', 'value': 11},
+  {'label': 'Tournaments Played',  'value': 12},
+  {'label': 'Years Running',       'value': 3}
+] %}
+
+{% set challenge_text = (challenge.text if challenge is defined and challenge and challenge.text else
+"We’re working to secure consistent gym space and cover rising tournament travel costs so every kid gets a fair shot.") %}
+
+{% set impact_bullets = (challenge.impact if challenge is defined and challenge and challenge.impact else [
+  "Secure consistent gym space",
+  "Support tournament travel",
+  "Provide gear & team meals",
+  "Fund academic programs"
+]) %}
+
+{% set coaches = (about.coaches if about is defined and about and about.coaches else [
+  {'name':'Coach Rodriguez','role':'Assistant Coach','img':'images/coaches/rodriguez.jpg'},
+  {'name':'Coach Smith','role':'Assistant Coach','img':'images/coaches/smith.jpg'},
+  {'name':'Coach Taylor','role':'Assistant Coach','img':'images/coaches/taylor.jpg'}
+]) %}
+
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6" id="impact-challenge-coaches"
+         class="relative bg-zinc-950/95 py-12 text-white md:py-16"
+         aria-labelledby="impactcc-heading"
+         style="--fc-brand: {{ brand_color }};">
+
+  <style nonce="{{ NONCE }}">
+    /* ===== Scope: #impact-challenge-coaches ===== */
+    #impact-challenge-coaches::before{
+      content:""; position:absolute; inset:-28% -8% auto;
+      background: radial-gradient(900px 420px at 68% -12%, color-mix(in srgb, var(--fc-brand) 20%, transparent), transparent 60%);
+      pointer-events:none; z-index: 0;
+    }
+    #impact-challenge-coaches > *{ position:relative; z-index: 1; }
+
+    /* Premium card shell (shared look & feel) */
+    #impact-challenge-coaches .fc-card{
+      background: linear-gradient(120deg, rgba(255,255,255,.06), rgba(250,220,100,.08));
+      border: 1px solid color-mix(in srgb, var(--fc-brand) 18%, transparent);
+      border-radius: 1.25rem;
+      box-shadow: 0 10px 32px rgba(250,204,21,.16), 0 2px 10px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px) saturate(120%);
+      -webkit-backdrop-filter: blur(10px) saturate(120%);
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    #impact-challenge-coaches .fc-card:hover{
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 16px 42px rgba(250,204,21,.22);
+      border-color: color-mix(in srgb, var(--fc-brand) 32%, transparent);
+    }
+
+    #impact-challenge-coaches .chip{
+      background:rgba(250,204,21,.10);
+      border:1px solid rgba(250,204,21,.22);
+      border-radius:.75rem;
+      padding:.45rem .7rem;
+      font-size:.82rem;
+      color:#fde68a;
+    }
+
+    /* Impact counters */
+    #impact-challenge-coaches .count{ font-variant-numeric: tabular-nums; }
+
+    /* Progress pill style for bullets */
+    #impact-challenge-coaches .pill{
+      display:inline-flex; align-items:center; gap:.4rem;
+      border-radius:9999px; padding:.35rem .6rem;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+      font-size:.8rem; color:#ffe08a; font-weight:800;
+    }
+
+    @media (prefers-reduced-motion:no-preference){
+      #impact-challenge-coaches .fc-card{ animation: icc-pop .5s cubic-bezier(.4,1.6,.6,1) both; }
+      @keyframes icc-pop{ from{opacity:0; transform:scale(.96)} to{opacity:1; transform:scale(1)} }
+    }
+
+    /* Light mode tuning */
+    @media (prefers-color-scheme: light){
+      #impact-challenge-coaches .fc-card{ background: linear-gradient(120deg, rgba(255,255,255,.76), rgba(250,220,100,.14)); }
+      #impact-challenge-coaches .pill{ background:rgba(0,0,0,.05); color:#6b4f00; border-color: rgba(0,0,0,.12); }
+    }
+  </style>
+
+  <div class="relative z-10 mx-auto w-full max-w-6xl px-4 md:px-6">
+    <h2 id="impactcc-heading" class="sr-only">Program Impact, Challenge, and Coaches</h2>
+
+    {# ---------- Impact stats row ---------- #}
+    <ul class="grid grid-cols-2 gap-4 md:grid-cols-4" role="list" aria-label="Program impact statistics">
+      {% for s in impact %}
+      <li class="fc-card p-5 text-center" role="listitem" tabindex="0" aria-label="{{ s.value }} {{ s.label }}">
+        <div class="text-3xl font-extrabold text-yellow-400">
+          <span class="count" data-target="{{ (s.value or 0)|int }}">0</span>
+        </div>
+        <p class="mt-1 text-sm font-semibold text-zinc-300">{{ s.label }}</p>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {# ---------- Challenge + Coaches ---------- #}
+    <div class="mt-12 grid grid-cols-1 items-start gap-10 lg:grid-cols-2">
+      {# Challenge card #}
+      <section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 fc-card p-7 md:p-8"  aria-labelledby="challenge-heading" aria-describedby="challenge-desc">
+        <header class="mb-3">
+          <h3 id="challenge-heading" class="text-2xl font-bold text-yellow-300">The Challenge We Face</h3>
+          <p id="challenge-desc" class="mt-1 text-zinc-300 text-base sm:text-lg leading-relaxed">{{ challenge_text }}</p>
+        </header>
+
+        <h4 class="mt-5 text-xl font-semibold text-yellow-200">The Impact You Can Make</h4>
+        <ul class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2" role="list">
+          {% for item in impact_bullets %}
+          <li class="pill" role="listitem"><span aria-hidden="true">✅</span> <span>{{ item }}</span></li>
+          {% endfor %}
+        </ul>
+
+        <p class="mt-4 text-base sm:text-lg font-semibold text-zinc-100">
+          With your help, we give these young athletes the foundation to become confident leaders.
+        </p>
+
+        <div class="mt-6">
+          <a href="{{ donate_href }}"
+             class="inline-flex items-center justify-center rounded-full bg-yellow-400 px-5 py-2.5 font-bold text-black ring-2 ring-yellow-300/30 hover:bg-yellow-300 focus-visible:ring-4 focus-visible:ring-yellow-300"
+             data-open-donate-modal
+             aria-label="Open donation modal">
+            Donate Now
+          </a>
+        </div>
+      </section>
+
+      {# Coaches card #}
+      <section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 fc-card p-7 md:p-8"  aria-labelledby="coaches-heading">
+        <h3 id="coaches-heading" class="mb-4 text-2xl font-bold text-yellow-300">Coaches</h3>
+
+        <ul class="flex flex-wrap justify-start gap-5" role="list">
+          {% for c in coaches[:6] %}
+          {% set _img_raw = c.img if c.img else ('images/coaches/' ~ (c.name.split(' ')|last|lower) ~ '.jpg') %}
+          {% set _img_src = (_img_raw if '://' in _img_raw
+                             else (url_for('static', filename=_img_raw, v=asset_version) if url_for is defined
+                                   else '/static/' ~ _img_raw.lstrip('/'))) %}
+          <li class="group w-44 rounded-2xl bg-zinc-900/70 p-4 shadow-lg ring-1 ring-white/5 transition hover:ring-yellow-400/30 focus-within:ring-yellow-400/50"
+              itemscope itemtype="https://schema.org/Person" itemprop="coach" role="listitem" tabindex="0">
+            <img alt="{{ c.name }} headshot" decoding="async" loading="lazy"
+                 class="mb-3 h-32 w-32 rounded-full object-cover border border-yellow-400/20 shadow-inner"
+                 src="{{ _img_src }}" itemprop="image" width="128" height="128">
+            <span class="block text-lg font-semibold text-yellow-300" itemprop="name">{{ c.name }}</span>
+            <span class="text-sm text-zinc-400" itemprop="jobTitle">{{ c.role|default('Coach') }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+  </div>
+</section>
+
+{% if script_open is defined %}{{ script_open() }}{% else %}<script nonce="{{ NONCE }}">{% endif %}
+(() => {
+  const root = document.getElementById('impact-challenge-coaches'); if (!root || root.__init) return; root.__init = true;
+
+  // Impact counters (animate once on visibility, reduced-motion aware)
+  const counters = root.querySelectorAll('.count[data-target]');
+  if (counters.length) {
+    const reduced = (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) ||
+                    (navigator.connection && navigator.connection.saveData === true);
+    const io = new IntersectionObserver((entries, obs) => {
+      if (!entries.some(en => en.isIntersecting)) return;
+      counters.forEach(el => {
+        const target = Math.max(0, parseInt(el.dataset.target || '0', 10));
+        if (reduced) { el.textContent = String(target); return; }
+        let n = 0, step = Math.max(1, Math.ceil(target / 80));
+        const id = setInterval(() => {
+          n += step;
+          if (n >= target) { n = target; clearInterval(id); }
+          el.textContent = String(n);
+        }, 20);
+      });
+      obs.disconnect();
+    }, { threshold: .35 });
+    io.observe(root);
+  }
+
+  // Donation modal contract (no inline handlers)
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-open-donate-modal]'); if (!btn) return;
+    try {
+      if (typeof window.openDonationModal === 'function') {
+        e.preventDefault();
+        window.openDonationModal();
+        window.dispatchEvent(new CustomEvent('fc:donate:open'));
+      }
+    } catch(_) {}
+  });
+})();
+{% if script_close is defined %}{{ script_close() }}{% else %}</script>{% endif %}
+

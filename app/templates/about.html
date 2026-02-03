@@ -1,0 +1,49 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% extends "base.html" %} {% set NONCE = NONCE if NONCE is defined else
+(csp_nonce if csp_nonce is defined else '') %} {% block title %}About —
+Connect ATX Elite{% endblock %} {% block h1 %}About Connect ATX Elite{% endblock
+%} {% block hero %}
+<section
+  class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 relative border-b border-white/10 bg-gradient-to-b from-yellow-500/10 to-transparent">
+  <div class="mx-auto max-w-6xl px-6 py-10">
+    <h2 class="text-3xl md:text-4xl font-black tracking-tight">Our Mission</h2>
+    <p class="mt-2 text-zinc-300">
+      AAU Proud. Community Powered. Building leaders on and off the court.
+    </p>
+  </div>
+</section>
+{% endblock %} {% block content %} {% include "partials/about_section.html"
+ignore missing with context %}
+
+<section
+  class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 mx-auto max-w-6xl px-6 py-10">
+  <h2 class="sr-only">Quick Stats</h2>
+  {% include "partials/meter_strip.html" ignore missing with context %}
+</section>
+{% endblock %}

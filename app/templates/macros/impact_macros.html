@@ -1,0 +1,34 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% macro impact_tile_button(tile, popular_amount) %}
+  {% set is_pop = tile.amount == popular_amount %}
+  <button
+    type="button"
+    class="impact-tile"
+    role="listitem"
+    aria-pressed="false"
+    data-impact-amount="{{ tile.amount }}"
+    data-impact-label="{{ tile.label }}">
+    {% if is_pop %}
+      <span class="impact-pop">Most given</span>
+    {% endif %}
+    <span class="impact-emoji">{{ tile.emoji }}</span>
+    <span class="impact-amt tnums">${{ tile.amount }}</span>
+    <span class="impact-label">{{ tile.short }}</span>
+  </button>
+{% endmacro %}
+

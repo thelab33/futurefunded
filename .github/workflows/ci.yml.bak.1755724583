@@ -1,0 +1,10 @@
+- name: Audit partials
+  run: python scripts/polish_partials.py --scan --check-csp --a11y --strict --report-md=partials_report.md --json-report=scan.json
+- name: Upload report
+  uses: actions/upload-artifact@v4
+  with:
+    name: partials-audit
+    path: |
+      partials_report.md
+      scan.json
+

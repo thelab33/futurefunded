@@ -1,0 +1,97 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% extends "base.html" %}
+{% block title %}Thank You — {{ org.name }}{% endblock %}
+
+{% block content %}
+<main class="relative min-h-screen bg-slate-950 flex flex-col items-center justify-center text-center text-white">
+  <div class="max-w-lg mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold mb-4">Thank You! 🎉</h1>
+
+    <p class="text-slate-300 mb-6">
+      Your donation of
+      <span class="text-yellow-400">
+        ${{ amount }}
+      </span>
+      helps <strong>{{ org.name }}</strong> reach their season goal.
+    </p>
+
+    <p class="text-slate-400 mb-8">
+      Redirecting you back to the team page in a few seconds...
+    </p>
+
+    <a href="{{ return_url }}" class="btn btn-primary">
+  Return to Team Page
+</a>
+  </div>
+
+  <canvas id="confetti"
+          class="pointer-events-none absolute inset-0 w-full h-full"></canvas>
+</main>
+
+<script {{ nonce_attr() }}>
+  const params   = new URLSearchParams(window.location.search);
+  const orgSlug  = params.get('org') || '{{ org.slug }}';
+
+  setTimeout(function () {
+    window.location.href = "{{ return_url }}";
+  }, 5000);
+  
+  // Confetti setup
+  const canvas = document.getElementById('confetti');
+  const ctx    = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  let confetti = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    r: Math.random() * 4 + 1,
+    d: Math.random() * 0.5 + 0.5
+  }));
+
+  const colors = ["#facc15", "#ffffff", "#38bdf8", "#a78bfa"];
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    confetti.forEach(c => {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, 2 * Math.PI);
+      ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+      ctx.fill();
+
+      c.y += c.d;
+      if (c.y> canvas.height) {
+        c.y = -10;
+        c.x = Math.random() * canvas.width;
+      }
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+</script>
+{% endblock %}
+

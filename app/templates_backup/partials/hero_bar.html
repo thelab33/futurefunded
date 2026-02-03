@@ -1,0 +1,449 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% set _fz = fundraiser if fundraiser is defined and fundraiser else {} %} {%
+set _map = (_fz if _fz is mapping else (_fz.to_dict() if _fz.to_dict is defined
+else (_fz.__dict__ if _fz.__dict__ is defined else {}))) %} {% set _raised =
+(funds_raised if funds_raised is defined else _map.get('total_raised') or
+_map.get('funds_raised')) | default(0, true) | float %} {% set _goal =
+(fundraising_goal if fundraising_goal is defined else _map.get('goal') or
+_map.get('fundraising_goal')) | default(10000, true) | float %} {% set _pct =
+(100.0 * _raised / _goal) if _goal else 0 %} {% set _pct_i = (_pct | round(0,
+'floor')) | int %} {% set _pct_clamped = 0 if _pct_i < 0 else (100 if _pct_i >
+100 else _pct_i) %} {% set _deadline_iso = (deadline_iso if deadline_iso is
+defined and deadline_iso) | default('', true) %} {% set match_start_iso =
+(match_start if match_start is defined and match_start else None) and
+match_start.isoformat() or '' %} {% set match_end_iso = (match_end if match_end
+is defined and match_end else None) and match_end.isoformat() or '' %} {% if
+nonce_attr is not defined %} {% set NONCE = NONCE if NONCE is defined else
+(csp_nonce() if csp_nonce is defined else '') %} {% macro nonce_attr()
+-%}nonce="{{ NONCE }}"{%- endmacro %} {% endif %}
+
+<div
+  class="fc-hero-bar fc-hero-bar--prime"
+  aria-live="polite"
+  data-urgency-deadline="{{ _deadline_iso }}"
+  data-pct="{{ _pct_clamped }}"
+>
+  <!-- Progress (accessible) -->
+  <div
+    class="hb-rail"
+    role="progressbar"
+    aria-valuenow="{{ _pct_clamped }}"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-label="Progress toward goal"
+    aria-describedby="fc-hero-sr"
+  >
+    <i class="hb-fill" style="--p: {{ _pct|round(2) }}%"></i>
+    <i class="hb-ticks" aria-hidden="true"></i>
+  </div>
+
+  <!-- Statline -->
+  <div class="hb-row">
+    <span class="hb-stat">
+      <strong
+        id="fc-hero-raised"
+        class="hb-amount"
+        data-count="{{ _raised|round(0) }}"
+        data-raw="{{ _raised|round(0) }}"
+      >
+        ${{ _raised|round(0)|int }}
+      </strong>
+      <span class="hb-muted">of</span>
+      <strong
+        id="fc-hero-goal"
+        class="hb-amount"
+        data-raw="{{ _goal|round(0) }}"
+      >
+        ${{ _goal|round(0)|int }}
+      </strong>
+    </span>
+
+    <span class="hb-pill">
+      <span id="fc-hero-pct" class="hb-pct" data-count="{{ _pct_i }}"
+        >{{ _pct_clamped }}%</span
+      >
+    </span>
+
+    {% if _deadline_iso %}
+    <span
+      id="fc-hero-countdown"
+      class="hb-countdown"
+      aria-label="Countdown"
+    ></span>
+    {% endif %}
+    <span
+      id="match-chip"
+      class="hb-match hidden"
+      data-match-start="{{ match_start_iso }}"
+      data-match-end="{{ match_end_iso }}"
+      data-match-label="Match ×2 Active"
+    ></span>
+  </div>
+
+  <!-- CTA cluster -->
+  <div class="hb-ctas">
+    <a
+      href="{% if safe_url_for is defined and has_endpoint('main.donate') %}{{ safe_url_for('main.donate') }}{% else %}#donate{% endif %}"
+      class="hb-btn fc-hero-cta cta-pulse"
+      data-label-full="Donate Now"
+      data-label-compact="Donate"
+      {%
+      if
+      _deadline_iso
+      %}data-urgency-deadline="{{ _deadline_iso }}"
+      {%
+      endif
+      %}
+      data-tier-cta
+    >
+      <span class="cta-text">Donate Now</span>
+      <svg
+        class="hb-icon"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M13 5l7 7-7 7M20 12H4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </a>
+
+    <button
+      type="button"
+      id="fc-hero-share"
+      class="hb-share"
+      aria-label="Share this fundraiser"
+    >
+      <svg
+        class="hb-icon"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span class="hb-share-text">Share</span>
+    </button>
+
+    <a
+      class="hb-link"
+      href="{% if safe_url_for is defined and has_endpoint('main.sponsor_list') %}{{ safe_url_for('main.sponsor_list') }}{% else %}#tiers{% endif %}"
+    >
+      View Tiers
+    </a>
+  </div>
+
+  <!-- Screen-reader live summary (updated by hero JS) -->
+  <p id="fc-hero-sr" class="sr-only">
+    Raised ${{ _raised|round(0)|int }} of goal ${{ _goal|round(0)|int }}.
+  </p>
+</div>
+
+<style {{ nonce_attr() }}nonce="{{ NONCE }}">
+  /* =========================
+     HERO BAR — Prime Design
+     ========================= */
+  .fc-hero-bar--prime {
+    --accent: var(--accent, #facc15);
+    --ink: #e5e7eb;
+    --ink-strong: #f8fafc;
+    --ink-muted: #cbd5e1;
+    width: min(760px, 92%);
+    display: grid;
+    gap: 0.6rem;
+    justify-items: center;
+    font-weight: 800;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Rail */
+  .fc-hero-bar--prime .hb-rail {
+    position: relative;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.12);
+    outline: 1px solid rgba(255, 255, 255, 0.18);
+    -webkit-backdrop-filter: saturate(120%) blur(4px);
+    backdrop-filter: saturate(120%) blur(4px);
+  }
+  .fc-hero-bar--prime .hb-ticks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.25;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.28) 0,
+      rgba(255, 255, 255, 0.28) 1px,
+      transparent 1px,
+      transparent 5%
+    );
+  }
+  .fc-hero-bar--prime .hb-fill {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: var(--p, 0%);
+    background: linear-gradient(
+      90deg,
+      #e5e7eb,
+      color-mix(in srgb, var(--accent) 55%, #d1d5db 45%)
+    );
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+    transition: width 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .fc-hero-bar--prime .hb-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        120deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.22) 48%,
+        transparent 52%
+      );
+      background-size: 180% 100%;
+      animation: hbShimmer 2.6s ease-in-out infinite;
+      mix-blend-mode: screen;
+    }
+    @keyframes hbShimmer {
+      0% {
+        background-position: -60% 0;
+      }
+      100% {
+        background-position: 160% 0;
+      }
+    }
+  }
+  #fc-hero.save-data .hb-fill::after {
+    display: none !important;
+  }
+
+  /* Statline */
+  .fc-hero-bar--prime .hb-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    line-height: 1.05;
+    flex-wrap: wrap;
+  }
+  .fc-hero-bar--prime .hb-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    color: var(--ink-strong);
+  }
+  .fc-hero-bar--prime .hb-muted {
+    color: var(--ink-muted);
+    font-weight: 700;
+    opacity: 0.95;
+  }
+  .fc-hero-bar--prime .hb-pill {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 0.55rem;
+    min-width: 3.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(255, 255, 255, 0.06)
+    );
+    color: var(--ink);
+  }
+  .fc-hero-bar--prime .hb-countdown {
+    color: var(--ink-muted);
+    font-weight: 800;
+    margin-left: 0.55rem;
+  }
+  .fc-hero-bar--prime .hb-match {
+    color: var(--ink);
+    font-weight: 900;
+    margin-left: 0.4rem;
+  }
+
+  /* CTAs */
+  .fc-hero-bar--prime .hb-ctas {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .fc-hero-bar--prime .hb-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.72rem 1.08rem;
+    font-weight: 900;
+    text-decoration: none;
+    color: #0b0f15;
+    background: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, #000 65%);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+    transition:
+      transform 0.16s ease,
+      filter 0.16s ease,
+      box-shadow 0.16s ease;
+    white-space: nowrap;
+  }
+  .fc-hero-bar--prime .hb-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  }
+  .fc-hero-bar--prime .hb-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 60%, #fff 40%);
+    outline-offset: 3px;
+  }
+  .fc-hero-bar--prime .hb-share {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--ink);
+    font-weight: 800;
+  }
+  .fc-hero-bar--prime .hb-share:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 60%, #fff 40%);
+    outline-offset: 3px;
+  }
+  .fc-hero-bar--prime .hb-link {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    opacity: 0.95;
+  }
+  .fc-hero-bar--prime .hb-link:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 60%, #fff 40%);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  .fc-hero-bar--prime .hb-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Small screens & ultra-small copy lock */
+  @media (max-width: 420px) {
+    .fc-hero-bar--prime {
+      gap: 0.5rem;
+    }
+    .fc-hero-bar--prime .hb-row {
+      row-gap: 0.2rem;
+    }
+    .fc-hero-bar--prime .hb-countdown {
+      order: 3;
+      width: 100%;
+    }
+  }
+  @media (max-width: 360px) {
+    .fc-hero-bar--prime .hb-btn .cta-text {
+      white-space: nowrap;
+    }
+    .fc-hero-bar--prime .hb-btn {
+      padding-inline: 1rem;
+    }
+    .fc-hero-bar--prime .hb-share-text {
+      display: none;
+    }
+  }
+
+  /* Light theme adjustments */
+  .light .fc-hero-bar--prime .hb-rail {
+    background: rgba(17, 17, 17, 0.08);
+    outline-color: rgba(0, 0, 0, 0.12);
+  }
+  .light .fc-hero-bar--prime .hb-stat {
+    color: #0f1117;
+  }
+  .light .fc-hero-bar--prime .hb-muted {
+    color: #374151;
+  }
+  .light .fc-hero-bar--prime .hb-pill {
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.06),
+      rgba(0, 0, 0, 0.02)
+    );
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #111;
+  }
+  .light .fc-hero-bar--prime .hb-link {
+    color: #111;
+  }
+
+  /* Accessibility / forced colors */
+  @media (forced-colors: active) {
+    .fc-hero-bar--prime .hb-rail {
+      outline: 1px solid CanvasText;
+    }
+    .fc-hero-bar--prime .hb-fill {
+      box-shadow: none;
+    }
+    .fc-hero-bar--prime .hb-pill,
+    .fc-hero-bar--prime .hb-share {
+      color: CanvasText;
+      border: 1px solid CanvasText;
+    }
+    .fc-hero-bar--prime .hb-btn {
+      background: ButtonFace;
+      color: ButtonText;
+      border: 1px solid CanvasText;
+      box-shadow: none;
+    }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

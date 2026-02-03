@@ -1,0 +1,391 @@
+<!-- Starforge: duplicate id(s) detected:  | donor-name ×2 | donor-email ×2 | donation-amount ×2 -->
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# =============================================================================
+   app/templates/partials/sponsor_form.html
+   FundChamps — Sponsor Form (SV-Premium • CSP-safe • WTForms-friendly)
+   - Works with WTForms when `form` is provided; otherwise falls back to vanilla inputs
+   - Quick-pick amounts, monthly vs one-time toggle, impact helper
+   - Payment method choice (Stripe/PayPal) with containers to mount elements/buttons
+   - Honeypot anti-spam, URL param capture (utm/ref), basic client-side validation
+   ============================================================================= #}
+
+{% include "partials/ui_bootstrap.html" ignore missing with context %}
+
+{# ---- Nonce + safe fallbacks ---- #}
+{% set __nonce = (csp_nonce() if csp_nonce is defined else (NONCE if NONCE is defined else '')) %}
+{% set __name  = (name|replace('_','-') if name is defined else 'sponsor-form') %}
+
+{# ---- Action + CSRF ---- #}
+{% if safe_url_for is defined %}
+  {% set action_url = safe_url_for('main.become_sponsor', default='/become-sponsor') %}
+{% else %}
+  {% set action_url = '/become-sponsor' %}
+{% endif %}
+{% set csrf_val   = (csrf_token() if csrf_token is defined else '') %}
+
+{# ---- UX options ---- #}
+{% set quick_amts = quick_amts if quick_amts is defined else [25, 50, 100, 150, 250, 500] %}
+
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block" id="sponsor-form" data-ui="{{ __name }}" >
+
+  <form
+    id="sponsor-donation-form"
+    method="POST"
+    action="{{ action_url }}"
+    autocomplete="on"
+    aria-labelledby="sponsor-form-heading"
+    class="mx-auto w-full max-w-xl rounded-2xl border border-yellow-400/20 bg-zinc-950/90 p-6 text-zinc-100 shadow-2xl"
+    novalidate
+  >
+    {% if form is defined and form and form.hidden_tag is defined %}{{ form.hidden_tag() }}{% else %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_val }}">
+    {% endif %}
+
+    <h2 id="sponsor-form-heading" class="mb-4 text-2xl font-extrabold text-yellow-300">
+      🌟 Sponsor a Champion
+    </h2>
+
+    <!-- Flash-able server error area (optional) -->
+    <div id="server-errors" class="hidden mb-4 rounded-lg border border-red-400/40 bg-red-950/40 p-3 text-sm text-red-200" role="alert"></div>
+
+    <!-- Honeypot -->
+    <div class="absolute left-[-9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden="true">
+      <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+    </div>
+
+    <!-- Name or Company -->
+    <div class="mb-4">
+      <label for="sponsor-donor-name" class="mb-1 block text-sm font-semibold">Name or Company <span class="text-yellow-300">*</span></label>
+      {% if form is defined and form and form.name is defined %}
+        {{ form.name(
+          id="sponsor-donor-name",
+          class="w-full rounded-lg border border-yellow-400/20 bg-black/50 px-3 py-2 outline-none focus:ring-2 focus:ring-yellow-300",
+          placeholder="Your Name or Company",
+          required=True, aria_required="true"
+        ) }}
+      {% else %}
+        <input type="text" name="name" id="sponsor-donor-name" required aria-required="true"
+               placeholder="Your Name or Company"
+               class="w-full rounded-lg border border-yellow-400/20 bg-black/50 px-3 py-2 outline-none focus:ring-2 focus:ring-yellow-300" />
+      {% endif %}
+      <p id="err-name" class="min-h-[1rem] mt-1 text-xs text-red-300" role="alert" aria-live="assertive"></p>
+    </div>
+
+    <!-- Email -->
+    <div class="mb-4">
+      <label for="donor-email" class="mb-1 block text-sm font-semibold">Email <span class="text-yellow-300">*</span></label>
+      {% if form is defined and form and form.email is defined %}
+        {{ form.email(
+          id="donor-email",
+          type="email",
+          class="w-full rounded-lg border border-yellow-400/20 bg-black/50 px-3 py-2 outline-none focus:ring-2 focus:ring-yellow-300",
+          placeholder="you@example.com",
+          required=True, aria_required="true"
+        ) }}
+      {% else %}
+        <input type="email" name="email" id="donor-email" required aria-required="true"
+               placeholder="you@example.com"
+               class="w-full rounded-lg border border-yellow-400/20 bg-black/50 px-3 py-2 outline-none focus:ring-2 focus:ring-yellow-300" />
+      {% endif %}
+      <p id="err-email" class="min-h-[1rem] mt-1 text-xs text-red-300" role="alert" aria-live="assertive"></p>
+    </div>
+
+    <!-- Frequency -->
+    <fieldset class="mb-4">
+      <legend class="mb-1 block text-sm font-semibold">Frequency</legend>
+      <div class="flex items-center gap-4 rounded-lg border border-yellow-400/20 bg-black/40 p-3">
+        <label class="inline-flex items-center gap-2">
+          <input type="radio" name="frequency" value="once" id="freq-once" checked
+                 class="h-4 w-4 rounded border-yellow-400/40 bg-zinc-900/80" />
+          <span class="text-sm">One-time</span>
+        </label>
+        <label class="inline-flex items-center gap-2">
+          <input type="radio" name="frequency" value="monthly" id="freq-monthly"
+                 class="h-4 w-4 rounded border-yellow-400/40 bg-zinc-900/80" />
+          <span class="text-sm">Monthly</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <!-- Donation Amount + Quick-picks -->
+    <div class="mb-4">
+      <label for="sponsor-donation-amount" class="mb-1 block text-sm font-semibold">
+        Donation Amount (USD) <span class="text-yellow-300">*</span>
+      </label>
+      <div class="flex items-stretch rounded-lg border border-yellow-400/20 bg-black/50 focus-within:ring-2 focus-within:ring-yellow-300">
+        <span class="inline-flex select-none items-center px-3 text-yellow-200/80" aria-hidden="true">$</span>
+        {% if form is defined and form and form.amount is defined %}
+          {{ form.amount(
+            id="sponsor-donation-amount",
+            inputmode="decimal",
+            class="w-full bg-transparent px-3 py-2 outline-none",
+            placeholder="Amount", required=True, aria_required="true"
+          ) }}
+        {% else %}
+          <input id="sponsor-donation-amount" name="amount" type="number" inputmode="decimal" min="1" step="1"
+                 placeholder="Amount" required aria-required="true"
+                 class="w-full bg-transparent px-3 py-2 outline-none" />
+        {% endif %}
+      </div>
+
+      <div class="mt-2 flex flex-wrap gap-2">
+        {% for a in quick_amts %}
+        <button type="button"
+                class="rounded-full border border-yellow-400/30 bg-zinc-900/70 px-3 py-1.5 text-sm font-bold text-yellow-100 hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                data-amt="{{ a }}" aria-label="Donate ${{ a }}">${{ a }}</button>
+        {% endfor %}
+        <button type="button"
+                class="rounded-full border border-yellow-400/30 bg-yellow-400/20 px-3 py-1.5 text-sm font-bold text-yellow-200 hover:bg-yellow-400/30 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                data-amt="custom" aria-label="Custom amount">Custom…</button>
+      </div>
+
+      <p class="mt-2 text-xs text-yellow-100/90">
+        <span class="font-semibold">Tip:</span> $50 = a jersey • $150 = a week of practice • $500 = travel support.
+      </p>
+      <p id="err-amount" class="min-h-[1rem] mt-1 text-xs text-red-300" role="alert" aria-live="assertive"></p>
+    </div>
+
+    <!-- Optional extras -->
+    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div>
+        <label for="sponsor-url" class="mb-1 block text-sm font-semibold">Sponsor Website (optional)</label>
+        <input type="url" id="sponsor-url" name="sponsor_url" placeholder="https://yourbusiness.com"
+               class="w-full rounded-lg border border-yellow-400/20 bg-black/50 px-3 py-2 outline-none focus:ring-2 focus:ring-yellow-300" />
+      </div>
+      <div>
+        <label for="logo-url" class="mb-1 block text-sm font-semibold">Logo URL (optional)</label>
+        <input type="url" id="logo-url" name="logo_url" placeholder="https://…/logo.png"
+               class="w-full rounded-lg border border-yellow-400/20 bg-black/50 px-3 py-2 outline-none focus:ring-2 focus:ring-yellow-300" />
+      </div>
+    </div>
+
+    <div class="mb-4 flex flex-col gap-2">
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" name="public_ack" id="public-ack"
+               class="h-4 w-4 rounded border-yellow-400/40 bg-zinc-900/80" checked />
+        <span class="text-sm">Okay to display my/our name & logo on the site.</span>
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" name="contact_me" id="contact-me"
+               class="h-4 w-4 rounded border-yellow-400/40 bg-zinc-900/80" />
+        <span class="text-sm">Contact me about corporate tiers & VIP spotlight.</span>
+      </label>
+    </div>
+
+    <!-- Payment Method -->
+    <fieldset class="mb-5">
+      <legend class="mb-2 block text-sm font-semibold">Payment Method</legend>
+      {% set pay_choice = (form.payment_method.data if (form is defined and form and form.payment_method is defined and form.payment_method.data) else 'stripe') %}
+      <div class="flex items-center gap-4 rounded-lg border border-yellow-400/20 bg-black/40 p-3">
+        <label class="inline-flex items-center gap-2">
+          <input type="radio" id="pay-stripe" name="payment_method" value="stripe" {% if pay_choice=='stripe' %}checked{% endif %}
+                 class="h-4 w-4 rounded border-yellow-400/40 bg-zinc-900/80" />
+          <span class="text-sm">💳 Card / Apple Pay / Google Pay (Stripe)</span>
+        </label>
+        <label class="inline-flex items-center gap-2">
+          <input type="radio" id="sponsor-pay-paypal" name="payment_method" value="paypal" {% if pay_choice=='paypal' %}checked{% endif %}
+                 class="h-4 w-4 rounded border-yellow-400/40 bg-zinc-900/80" />
+          <span class="text-sm">🅿️ PayPal</span>
+        </label>
+      </div>
+
+      <!-- Mount points (optional JS integrations) -->
+      <div id="stripe-elements-wrap" class="mt-3 hidden rounded-lg border border-yellow-400/20 bg-black/30 p-3">
+        <div id="stripe-payment-element" class="min-h-10"></div>
+        <div id="stripe-prb" class="mt-2"></div> <!-- payment request button (Apple/Google Pay) -->
+      </div>
+      <div id="paypal-buttons-wrap" class="mt-3 hidden rounded-lg border border-yellow-400/20 bg-black/30 p-3">
+        <div id="paypal-buttons"></div>
+      </div>
+    </fieldset>
+
+    <!-- Hidden URL param capture -->
+    <input type="hidden" name="utm_source" id="utm_source" value="">
+    <input type="hidden" name="utm_medium" id="utm_medium" value="">
+    <input type="hidden" name="utm_campaign" id="utm_campaign" value="">
+    <input type="hidden" name="ref" id="ref" value="">
+
+    <!-- Submit -->
+    <div class="mt-4">
+      <button
+        id="sponsor-submit"
+        type="submit"
+        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-clip-text text-transparent" style="background: linear-gradient(90deg, hsl(var(--brand)), hsl(var(--brand) / .8))"
+        aria-label="Sponsor Now"
+      >
+        🌟 Sponsor Now
+      </button>
+
+      <p class="mt-3 text-xs text-zinc-300">
+        100% of your gift supports travel, equipment, and academic tutoring.
+      </p>
+
+      <p id="impact-message" class="mt-2 hidden text-sm font-semibold text-yellow-200" aria-live="polite"></p>
+    </div>
+  </form>
+
+  {# ---------- Inline JS (CSP nonce) ---------- #}
+  {% if script_open is defined %}{{ script_open() }}{% else %}<script nonce="{{ NONCE }}">{% endif %}
+  (() => {
+    const form   = document.getElementById('sponsor-donation-form');
+    if (!form || form.__init) return; form.__init = true;
+
+    // Fields
+    const nameEl  = document.getElementById('donor-name');
+    const emailEl = document.getElementById('donor-email');
+    const amtEl   = document.getElementById('donation-amount');
+    const msg     = document.getElementById('impact-message');
+
+    // Errors
+    const errName  = document.getElementById('err-name');
+    const errEmail = document.getElementById('err-email');
+    const errAmt   = document.getElementById('err-amount');
+    const serverErr= document.getElementById('server-errors');
+
+    // Payment containers
+    const wrapStripe = document.getElementById('stripe-elements-wrap');
+    const wrapPayPal = document.getElementById('paypal-buttons-wrap');
+
+    // Frequency toggle
+    const freqOnce    = document.getElementById('freq-once');
+    const freqMonthly = document.getElementById('freq-monthly');
+
+    // URL params → hidden fields
+    try {
+      const params = new URLSearchParams(location.search);
+      (document.getElementById('utm_source')||{}).value   = params.get('utm_source') || '';
+      (document.getElementById('utm_medium')||{}).value   = params.get('utm_medium') || '';
+      (document.getElementById('utm_campaign')||{}).value = params.get('utm_campaign') || '';
+      (document.getElementById('ref')||{}).value          = params.get('ref') || params.get('r') || '';
+    } catch(_) {}
+
+    // Helpers
+    const fmt0 = (n)=> (Math.round(+n||0)).toLocaleString();
+    const isEmail = (s)=> /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||'').trim());
+
+    // Payment method reveal
+    function revealPayment(method){
+      if (!wrapStripe || !wrapPayPal) return;
+      wrapStripe.classList.toggle('hidden', method!=='stripe');
+      wrapPayPal.classList.toggle('hidden', method!=='paypal');
+      // Lazy init Stripe PRB if available
+      if (method==='stripe' && window.Stripe && window.__STRIPE_PK && !wrapStripe.__mounted) {
+        try {
+          const stripe = Stripe(window.__STRIPE_PK);
+          const elements = stripe.elements({ appearance: { theme: 'night' }});
+          // (Optional) Payment Element if you run Payment Intents on server
+          const pe = elements.create('payment', { fields: { billingDetails: 'never' }});
+          pe.mount('#stripe-payment-element');
+          // (Optional) Apple/Google Pay PRB
+          const pr = stripe.paymentRequest({
+            country: 'US', currency: 'usd',
+            total: { label: 'FundChamps Sponsorship', amount: 0 }, // server will set final
+            requestPayerName: true, requestPayerEmail: true
+          });
+          pr.canMakePayment().then((res) => {
+            if (res) {
+              const prb = elements.create('paymentRequestButton', { paymentRequest: pr });
+              prb.mount('#stripe-prb');
+            }
+          });
+          wrapStripe.__mounted = true;
+        } catch(e) { /* no-op */ }
+      }
+      // PayPal buttons mounting left to your global init if using JS SDK.
+    }
+
+    document.getElementById('pay-stripe')?.addEventListener('change', ()=> revealPayment('stripe'));
+    document.getElementById('pay-paypal')?.addEventListener('change', ()=> revealPayment('paypal'));
+    // Initial:
+    revealPayment(document.querySelector('input[name="payment_method"]:checked')?.value || 'stripe');
+
+    // Quick-picks
+    form.querySelectorAll('[data-amt]').forEach(btn=>{
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-amt');
+        if (val === 'custom') { amtEl?.focus(); return; }
+        if (amtEl) { amtEl.value = String(val); amtEl.focus(); showImpact(+val || 0); }
+      });
+    });
+
+    // Impact messaging
+    amtEl?.addEventListener('input', () => {
+      const v = parseFloat(amtEl.value || '0') || 0;
+      if (v > 0) showImpact(v);
+      clearError(errAmt, amtEl);
+    });
+
+    function showImpact(amount){
+      if (!msg) return;
+      const monthly = freqMonthly?.checked;
+      let text = '👏 Every dollar counts. Thank you!';
+      if (amount >= 500) text = monthly
+        ? `🚌 Your $${fmt0(amount)}/mo = travel support each month!`
+        : `🚌 Your $${fmt0(amount)} = travel support for the team!`;
+      else if (amount >= 150) text = monthly
+        ? `🏟️ $${fmt0(amount)}/mo = weekly gym time!`
+        : `🏟️ $${fmt0(amount)} = a week of gym time!`;
+      else if (amount >= 100) text = `🏀 $${fmt0(amount)}${monthly?'/mo':''} = a full scholarship for a player!`;
+      else if (amount >= 50)  text = `👕 $${fmt0(amount)}${monthly?'/mo':''} = a new team jersey.`;
+      msg.textContent = text;
+      msg.classList.remove('hidden');
+      pulse(msg);
+    }
+
+    function pulse(el){
+      el.style.animation = 'fc-pulse 0.9s ease-out 1';
+      el.addEventListener('animationend', () => el.style.animation = '', { once:true });
+    }
+
+    // Validation
+    form.addEventListener('submit', (e) => {
+      let ok = true;
+
+      if (!nameEl || !nameEl.value.trim()) { setError(errName, nameEl, 'Please enter your name or company.'); ok = false; }
+      else clearError(errName, nameEl);
+
+      if (!emailEl || !isEmail(emailEl.value)) { setError(errEmail, emailEl, 'Please enter a valid email.'); ok = false; }
+      else clearError(errEmail, emailEl);
+
+      const amount = parseFloat(amtEl?.value || '0') || 0;
+      if (!amtEl || amount <= 0) { setError(errAmt, amtEl, 'Please enter a valid donation amount.'); ok = false; }
+      else clearError(errAmt, amtEl);
+
+      if (amount > 0) showImpact(amount);
+
+      if (!ok) {
+        e.preventDefault();
+        serverErr?.classList.add('hidden');
+        return;
+      }
+
+      // Analytics (optional)
+      try {
+        window.dataLayer = window.dataLayer || [];
+        const pm = (document.querySelector('input[name="payment_method"]:checked')||{}).value || 'stripe';
+        const fq = (document.querySelector('input[name="frequency"]:checked')||{}).value || 'once';
+        window.dataLayer.push({ event: 'donation_intent', amount, payment_method: pm, frequency: fq });
+      } catch(_) {}
+    });
+
+    // UX niceties
+    window.addEventListener('DOMContentLoaded', () => { setTimeout(() => nameEl?.focus(), 250); });
+
+    // Helpers for error UI
+    function setError(out, input, text){
+      if (out) out.textContent = text || 'This field is required.';
+      if (input){ input.setAttribute('aria-invalid','true'); input.classList.add('ring-2','ring-red-400'); }
+    }
+    function clearError(out, input){
+      if (out) out.textContent = '';
+      if (input){ input.setAttribute('aria-invalid','false'); input.classList.remove('ring-2','ring-red-400'); }
+    }
+  })();
+  {% if script_close is defined %}{{ script_close() }}{% else %}</script>{% endif %}
+
+  <style nonce="{{ NONCE }}">
+    @keyframes fc-pulse { 0%{transform:scale(.98);opacity:.6} 60%{transform:scale(1.02);opacity:1} 100%{transform:scale(1)} }
+  </style>
+
+</section>
+

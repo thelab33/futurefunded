@@ -1,0 +1,220 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<section
+  id="impact-shot"
+  class="impact-shot section container"
+  aria-label="Shot chart impact"
+>
+  <div class="court" role="tablist" aria-label="Impact zones">
+    {% set ZONES = [ {'id':'gear','label':'Gear','pct':34,'blurb':'Uniforms &
+    shoes','unit':'$75 = practice kit'},
+    {'id':'travel','label':'Travel','pct':31,'blurb':'Tournaments &
+    vans','unit':'$400 = hotel block'},
+    {'id':'tutor','label':'Tutoring','pct':22,'blurb':'Study hall &
+    prep','unit':'$100 = 1 wk'},
+    {'id':'well','label':'Wellness','pct':13,'blurb':'Trainers &
+    nutrition','unit':'$50 = recovery kit'} ] %} {% for z in ZONES %}
+    <button
+      id="tab-{{ z.id }}"
+      class="zone {{ z.id }}"
+      data-zone="{{ z.id }}"
+      role="tab"
+      aria-selected="false"
+      aria-controls="panel-{{ z.id }}"
+      tabindex="-1"
+    >
+      <span class="z-label">{{ z.label }}</span>
+      <span class="z-pct">{{ z.pct }}%</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <div class="zone-cards">
+    {% for z in ZONES %}
+    <article
+      id="panel-{{ z.id }}"
+      class="card"
+      role="tabpanel"
+      aria-labelledby="tab-{{ z.id }}"
+      hidden
+    >
+      <h3>{{ z.label }}</h3>
+      <p class="blurb">{{ z.blurb }}</p>
+      <p class="unit">{{ z.unit }}</p>
+      <a class="btn gold" href="{{ HREF_DONATE }}?tag={{ z.id }}"
+        >Fund {{ z.label }} →</a
+      >
+    </article>
+    {% endfor %}
+  </div>
+
+  <p
+    id="impact-shot-live"
+    class="sr-only"
+    aria-live="polite"
+    aria-atomic="true"
+  ></p>
+</section>
+
+<style {{ nonce_attr() }}>
+  /* Impact Shot — scoped */
+  .impact-shot{ --accent: {{ THEME_HEX }}; color:#e9eef9 }
+  .impact-shot .court{
+    position:relative; aspect-ratio:16/9; border-radius:18px; overflow:hidden;
+    background:
+      radial-gradient(120% 120% at 50% -10%, rgb(0 0 0 / .45) 0%, transparent 60%),
+      url("{{ asset('images/court-dark.svg') }}") center/cover, #0b0f15;
+    border:1px solid #ffffff24;
+  }
+  .impact-shot .zone{
+    position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:.2rem; padding:.46rem .7rem; background:rgb(255 255 255 / 8%);
+    border:1px solid #ffffff24; color:#eaf0fa; border-radius:.65rem; font-weight:900;
+    transition:transform .12s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .impact-shot .zone:hover{ transform:translateY(-1px); background:rgb(255 255 255 / 12%); }
+  .impact-shot .zone[aria-selected="true"]{
+    background:linear-gradient(180deg,#fffbe6,var(--accent)); color:#111;
+    box-shadow:0 10px 30px rgb(0 0 0 / .35);
+  }
+  .z-pct{ opacity:.9 }
+
+  /* Corner placements */
+  .zone.gear   { inset:auto auto 8% 8% }
+  .zone.travel { inset:8%  auto auto 8% }
+  .zone.tutor  { inset:8%  8%   auto auto }
+  .zone.well   { inset:auto 8%   8%   auto }
+
+  /* Cards */
+  .impact-shot .zone-cards{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.6rem; margin-top:.75rem }
+  @media (max-width:980px){ .impact-shot .zone-cards{ grid-template-columns:repeat(2,1fr) } }
+  @media (max-width:560px){ .impact-shot .zone-cards{ grid-template-columns:1fr } }
+  .impact-shot .card{
+    border:1px solid #ffffff24; background:linear-gradient(180deg, rgb(17 19 24 / .75), rgb(17 19 24 / .55));
+    border-radius:.9rem; padding:.85rem; color:#e9eef9
+  }
+  .impact-shot .card[hidden]{ display:none !important }
+  .impact-shot .btn.gold{
+    display:inline-flex; gap:.45rem; padding:.62rem .9rem; border-radius:999px;
+    background:linear-gradient(180deg,#fffbe6,var(--accent)); color:#111; border:1px solid #00000040; font-weight:900;
+  }
+
+  /* Motion-prudent */
+  @media (prefers-reduced-motion: reduce){
+    .impact-shot .zone{ transition:none }
+  }
+</style>
+
+<script {{ nonce_attr() }}>
+  (() => {
+    const root = document.getElementById("impact-shot");
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(root.querySelectorAll('[role="tabpanel"]'));
+    const live = root.querySelector("#impact-shot-live");
+    const storeKey = "impact_shot_selected";
+
+    const byId = (id) => root.querySelector("#" + id);
+    const select = (
+      id,
+      { scroll = false, announce = true, persist = true } = {},
+    ) => {
+      tabs.forEach((t) => {
+        t.setAttribute("aria-selected", "false");
+        t.tabIndex = -1;
+      });
+      panels.forEach((p) => (p.hidden = true));
+      const tab = byId("tab-" + id),
+        panel = byId("panel-" + id);
+      if (!tab || !panel) return;
+      tab.setAttribute("aria-selected", "true");
+      tab.tabIndex = 0;
+      panel.hidden = false;
+      if (scroll) {
+        try {
+          panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        } catch {}
+      }
+      if (announce && live) {
+        live.textContent = `Impact zone: ${tab.textContent.trim()}`;
+      }
+      if (persist) {
+        try {
+          sessionStorage.setItem(storeKey, id);
+        } catch {}
+      }
+      tab.focus({ preventScroll: true });
+    };
+
+    // Click to toggle (second click clears)
+    tabs.forEach((t) =>
+      t.addEventListener(
+        "click",
+        () => {
+          const id = t.dataset.zone;
+          const isSel = t.getAttribute("aria-selected") === "true";
+          if (isSel) {
+            t.setAttribute("aria-selected", "false");
+            const p = byId("panel-" + id);
+            if (p) p.hidden = true;
+            try {
+              sessionStorage.removeItem(storeKey);
+            } catch {}
+          } else {
+            select(id, { scroll: true });
+          }
+        },
+        { passive: true },
+      ),
+    );
+
+    // Roving focus + arrows / Home / End
+    root.addEventListener("keydown", (e) => {
+      const cur = document.activeElement;
+      if (!tabs.includes(cur)) return;
+      const i = tabs.indexOf(cur);
+      let j = i;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown")
+        j = (i + 1) % tabs.length;
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp")
+        j = (i - 1 + tabs.length) % tabs.length;
+      if (e.key === "Home") j = 0;
+      if (e.key === "End") j = tabs.length - 1;
+      if (j !== i) {
+        e.preventDefault();
+        tabs[j].focus();
+      }
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        select(cur.dataset.zone, { scroll: true });
+      }
+      if (e.key === "Escape") {
+        // clear
+        const id = cur.dataset.zone;
+        byId("panel-" + id)?.setAttribute("hidden", "");
+        cur.setAttribute("aria-selected", "false");
+        try {
+          sessionStorage.removeItem(storeKey);
+        } catch {}
+      }
+    });
+
+    // Default selection: ?tag=… → sessionStorage → first
+    const qs = new URLSearchParams(location.search);
+    let def = (qs.get("tag") || "").toLowerCase();
+    if (!def) {
+      try {
+        def = sessionStorage.getItem(storeKey) || "";
+      } catch {}
+    }
+    if (!def) def = tabs[0]?.dataset.zone || "";
+    if (def) select(def, { announce: false, persist: true });
+  })();
+</script>

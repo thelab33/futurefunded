@@ -1,0 +1,146 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce if csp_nonce is
+defined else '') %} {% set brand_color = (team.theme_color if team and
+team.theme_color else '#facc15') %}
+
+<h2 id="fc-bands-title" class="sr-only">Layout Bands</h2>
+<section
+  class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block"
+  data-ui="{{ (name|default('layout_bands'))|replace('_','-') }}">
+  <section
+    class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6"
+    id="__fc-bands"
+    aria-hidden="true"
+    hidden></section>
+
+  <style {{ nonce_attr() }}>
+    #site-main[data-page="fundraiser"]{
+      --fc-brand: {{ brand_color }};
+      --fc-surface-0: #0b0b0c;
+      --fc-surface-1: #121214;
+      --fc-surface-2: #16161a;
+      --fc-border: color-mix(in srgb, var(--fc-brand) 18%, transparent);
+      --fc-anchor-offset: 84px; /* Updated dynamically */
+    }
+
+    /* ==== Section “bands” =================================================== */
+    .fc-band{
+      position: relative;
+      isolation: isolate;       /* no bleed from effects/overlays */
+      contain: paint;           /* keep shadows/filters inside */
+      padding-block: clamp(40px, 6vw, 72px);
+      border-top: 1px solid var(--fc-border);
+      background: var(--fc-surface-0);
+    }
+    .fc-band--alt{ background: var(--fc-surface-1); }
+    .fc-band--plain{ background: var(--fc-surface-0); }
+    .fc-band--tint{
+      background: linear-gradient(180deg,
+                  color-mix(in srgb, var(--fc-brand) 6%, transparent), transparent);
+    }
+    .fc-band--brand{
+      background: radial-gradient(80% 120% at 50% -10%,
+                  color-mix(in srgb, var(--fc-brand) 10%, transparent), transparent 70%);
+    }
+    .fc-band--no-border{ border-top: 0; }
+    .fc-band--tight{ padding-block: clamp(28px, 4.5vw, 48px); }
+    .fc-band--loose{ padding-block: clamp(64px, 8vw, 96px); }
+
+    /* Optional subtle grid utility (add .fc-band--grid on a band) */
+    .fc-band--grid::before{
+      content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+      opacity:.06;
+      background-image:
+        linear-gradient(#fff 1px, transparent 1px),
+        linear-gradient(90deg, #fff 1px, transparent 1px);
+      background-size: 28px 28px, 28px 28px;
+      mix-blend-mode: soft-light;
+    }
+
+    /* Container */
+    .fc-container{
+      width: min(1180px, 100%);
+      margin-inline: auto;
+      padding-inline: clamp(16px, 3vw, 32px);
+    }
+    .fc-container--narrow{ width: min(880px, 100%); }
+    .fc-container--wide{ width: min(1380px, 100%); }
+
+    /* Vertical rhythm */
+    .fc-stack> * + *{ margin-top: clamp(12px, 1.5vw, 18px); }
+
+    /* ===== Headings ========================================================= */
+    .fc-eyebrow{
+      font-size:.75rem; letter-spacing:.12em; text-transform:uppercase; color:#a3a3a3;
+    }
+    .fc-h1{ font-weight:900; font-size:clamp(26px,3.2vw,40px); color:#fde68a; letter-spacing:.2px; }
+    .fc-h2{ font-weight:800; font-size:clamp(22px,2.6vw,32px); color:#fde68a; letter-spacing:.2px; }
+    .fc-sub{ color:#d4d4d8; margin-top:.35rem; }
+
+    /* Linkable heading anchor (auto-injected) */
+    .fc-heading-anchor{
+      opacity:0; margin-left:.5rem; font-size:.9em; text-decoration:none;
+      color:#f5e7a4; border-radius:.4rem; padding:.1rem .35rem; border:1px solid transparent;
+    }
+    .fc-heading-anchor:focus{ outline:none; border-color:color-mix(in srgb, var(--fc-brand) 30%, transparent); }
+    .fc-band :is(h1,h2,h3)[id]:hover .fc-heading-anchor{ opacity:1; }
+    @media (hover:none){ .fc-heading-anchor{ opacity:1; } }
+
+    /* Anchor offset so in-page links don't sit under sticky UI */
+    [id]{ scroll-margin-top: var(--fc-anchor-offset, 84px); }
+
+    /* Kill accidental large outer margins from nested partials */
+    .fc-band> *:first-child{ margin-top:0; }
+    .fc-band> *:last-child{ margin-bottom:0; }
+
+    /* Target highlight (when navigating to #id) */
+    :target{
+      scroll-margin-top: calc(var(--fc-anchor-offset, 84px) + 6px);
+    }
+    :target[data-highlight], :is(h1,h2,h3):target{
+      outline:2px solid color-mix(in srgb, var(--fc-brand) 35%, transparent);
+      outline-offset:.25rem; border-radius:.4rem;
+      animation: fc-target-pop .9s ease;
+    }
+    @keyframes fc-target-pop{
+      0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--fc-brand) 30%, transparent); }
+      100%{ box-shadow:0 0 0 10px transparent; }
+    }
+
+    /* Print */
+    @media print{
+      .fc-band{ padding-block:16px; border:0; background:#fff; }
+      .fc-container{ padding-inline:0; }
+    }
+  </style>
+
+  {% if script_open is defined %}{{ script_open() }}{% else %}
+  <script {{ nonce_attr() }} type="module" src="{{ url_for('static', filename='js/extracted/partials__layout_bands.html__1.js', v='1.0.0') }}"></script>
+  {% endif %}
+</section>

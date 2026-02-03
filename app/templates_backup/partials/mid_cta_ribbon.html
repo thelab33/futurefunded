@@ -1,0 +1,61 @@
+{# Mid-page CTA Ribbon — SV Elite (live KPI) #}
+{% set _brand = (team.theme_color if team and team.theme_color else '#facc15') %}
+{% set _cid = (campaign.id if campaign and campaign.id else (campaign_id if campaign_id is defined else None)) %}
+
+<div class="relative overflow-hidden rounded-2xl ring-1 ring-white/10 bg-gradient-to-r from-zinc-900 to-zinc-800 p-6 sm:p-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <p class="text-sm uppercase tracking-wider text-white/70">Fuel the Season</p>
+      <h3 class="mt-1 text-2xl font-semibold leading-tight">
+        Your support keeps our kids in the gym—practices, tournaments, travel.
+      </h3>
+      <p class="mt-2 text-white/70 max-w-prose">
+        Every donation powers court time, academics, and the mentorship that changes lives.
+      </p>
+
+      {# --- KPI strip (ARIA live, HTMX + Socket.IO) --- #}
+      <div
+        id="kpi-fragment-{{ _cid or 'default' }}"
+        class="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/80"
+        aria-live="polite"
+        data-kpi-campaign-id="{{ _cid or '' }}"
+        {% if _cid %}
+          hx-get="{{ url_for('api.kpi_fragment', campaign_id=_cid) }}"
+          hx-trigger="load, revealed, every 10s"
+          hx-swap="outerHTML"
+        {% endif %}
+      >
+        {# Fallback skeleton if no campaign or while loading #}
+        <span class="opacity-80" id="kpi-raised">—</span>
+        <span aria-hidden="true">•</span>
+        <span class="opacity-80" id="kpi-donors">—</span>
+        <span aria-hidden="true">•</span>
+        <span class="opacity-80" id="kpi-progress">—</span>
+      </div>
+    </div>
+
+    <div class="shrink-0 flex flex-col sm:flex-row items-stretch gap-3">
+      <a href="{{ url_for('main.donate') if url_for is defined else '/donate' }}"
+         class="fc-btn-primary px-5 py-3 rounded-xl font-semibold"
+         style="--btn-bg: {{ _brand }};"
+         data-cta="Fuel the Season"
+         data-track="cta-mid-ribbon"
+         data-confetti="true"
+         onclick="window.plausible?.('Donate Click', {props:{placement:'mid-ribbon'}})">
+        💛 Donate Now
+      </a>
+
+      <button type="button"
+              class="px-5 py-3 rounded-xl font-semibold bg-white/5 hover:bg-white/10 transition"
+              data-cta="Share"
+              onclick="try{ navigator.share?.({title: document.title, url: location.href}); }catch{}">
+        🔗 Share
+      </button>
+    </div>
+  </div>
+
+  <div aria-hidden="true"
+       class="pointer-events-none absolute -right-1/4 -top-1/2 h-[160%] w-1/2 rotate-12"
+       style="background: radial-gradient(closest-side, rgba(255,255,255,.14), transparent 70%);"></div>
+</div>
+

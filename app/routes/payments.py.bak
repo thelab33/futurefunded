@@ -1,0 +1,471 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+"""
+Payments Blueprint (FutureFunded)
+
+Expected mount: url_prefix="/payments"
+
+Routes:
+- POST /payments/stripe/intent
+- POST /payments/stripe/checkout
+- POST /payments/stripe/webhook
+- POST /payments/api/checkout/session   (legacy alias)
+- GET  /payments/health
+- GET  /payments/config
+"""
+
+import json
+import os
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, Set
+
+from flask import Blueprint, current_app, jsonify, request
+
+try:
+    import stripe  # type: ignore
+except Exception:  # pragma: no cover
+    stripe = None  # type: ignore
+
+bp = Blueprint("payments", __name__)
+
+# --- Optional CSRF exemption (works whether you use flask-wtf or not) ---
+try:
+    from flask_wtf.csrf import csrf_exempt  # type: ignore
+except Exception:  # pragma: no cover
+    def csrf_exempt(f):  # type: ignore
+        return f
+
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _jerr(message: str, status: int = 400, **extra: Any):
+    payload: Dict[str, Any] = {"ok": False, "error": {"message": message}}
+    if extra:
+        payload["error"].update(extra)
+    return jsonify(payload), status
+
+
+def _truthy(v: object) -> bool:
+    return str(v).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _stripe_secret() -> str:
+    return (
+        str(current_app.config.get("STRIPE_SECRET_KEY") or "")
+        or os.getenv("STRIPE_SECRET_KEY", "")
+        or os.getenv("STRIPE_API_KEY", "")
+    ).strip()
+
+
+def _stripe_publishable() -> str:
+    return (
+        str(current_app.config.get("STRIPE_PUBLISHABLE_KEY") or "")
+        or str(current_app.config.get("STRIPE_PUBLIC_KEY") or "")
+        or os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+        or os.getenv("STRIPE_PUBLIC_KEY", "")
+    ).strip()
+
+
+def _webhook_secret() -> str:
+    return (
+        str(current_app.config.get("STRIPE_WEBHOOK_SECRET") or "")
+        or os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    ).strip()
+
+
+def _normalize_amount_to_cents(value: Any) -> int:
+    """
+    Tolerant amount parsing:
+    - If numeric value >= 100: treat as cents (5000 => $50.00)
+    - If numeric value < 100: treat as dollars (50 => $50.00)
+    """
+    try:
+        amt = float(value)
+    except Exception:
+        return 0
+    if amt <= 0:
+        return 0
+    whole = int(round(amt))
+    return whole if whole >= 100 else whole * 100
+
+
+# --- Optional bearer guard (handy for locking payments endpoints down) ---
+REQUIRE_BEARER = _truthy(os.getenv("PAYMENTS_REQUIRE_BEARER", "0"))
+API_TOKENS: Set[str] = {t.strip() for t in str(os.getenv("API_TOKENS", "")).split(",") if t.strip()}
+
+
+def _bearer_ok() -> bool:
+    if not REQUIRE_BEARER:
+        return True
+    h = (request.headers.get("Authorization") or "").strip()
+    if not h.lower().startswith("bearer "):
+        return False
+    tok = h.split(" ", 1)[1].strip()
+    return bool(tok and tok in API_TOKENS)
+
+
+def _emit(event: str, payload: dict[str, Any]) -> None:
+    """
+    Optional Socket.IO fanout; safe no-op if not configured.
+    """
+    try:
+        from app.extensions import socketio as sio  # local import avoids circulars
+        ns = "/donations" if event == "donation" else "/sponsors"
+        sio.emit(event, payload, namespace=ns)
+    except Exception:
+        return
+
+
+@dataclass
+class DonorMeta:
+    donor_name: str = ""
+    donor_email: str = ""
+    note: str = ""
+    team: str = ""
+    tier: str = ""
+    campaign: str = ""
+    source: str = "web"
+
+    @classmethod
+    def from_payload(cls, data: Dict[str, Any]) -> "DonorMeta":
+        md = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+        md = md or {}
+
+        def get(k: str, alt: str = "") -> str:
+            return str(md.get(k) or data.get(k) or alt)
+
+        team_slug = str(current_app.config.get("TEAM_SLUG") or "").strip()
+
+        return cls(
+            donor_name=get("donor_name", get("name", ""))[:120],
+            donor_email=get("donor_email", get("email", ""))[:200],
+            note=get("note", "")[:500],
+            team=get("team", team_slug)[:120],
+            tier=get("tier", "")[:120],
+            campaign=get("campaign", "")[:120],
+            source=get("source", "web")[:60],
+        )
+
+
+def _ensure_stripe_ready() -> bool:
+    if not stripe:
+        return False
+    secret = _stripe_secret()
+    if not secret.startswith("sk_"):
+        return False
+    stripe.api_key = secret
+    return True
+    
+    @bp.get("/config")
+def payments_config():
+    org = request.args.get("org", "default")
+
+    ORGS = {
+        "cyberboyz": {
+            "enabled": True,
+            "provider": "stripe_embedded_checkout",  # or "stripe_checkout"
+            "currency": "USD",
+            "checkout_session_endpoint": "/payments/checkout/session",
+        }
+    }
+
+    cfg = ORGS.get(org)
+    if not cfg:
+        return jsonify(
+            {
+                "enabled": False,
+                "org": org,
+                "message": "Payments not enabled for this organization.",
+            }
+        ), 404
+
+    return jsonify(
+        {
+            "enabled": True,
+            "org": org,
+            "provider": cfg["provider"],
+            "currency": cfg["currency"],
+            "publishable_key": _stripe_publishable(),
+            "checkout_session_endpoint": cfg["checkout_session_endpoint"],
+        }
+    )
+
+
+# -----------------------------------------------------------------------------
+# POST /payments/stripe/intent  (Stripe Elements / PaymentIntent)
+# -----------------------------------------------------------------------------
+@bp.post("/stripe/intent")
+@csrf_exempt
+def stripe_intent():
+    if not _bearer_ok():
+        return _jerr("Missing or invalid bearer token", 401)
+
+    if not _ensure_stripe_ready():
+        return _jerr("Server misconfigured: STRIPE_SECRET_KEY missing", 500)
+
+    data = request.get_json(silent=True) or {}
+    amount_cents = _normalize_amount_to_cents(data.get("amount", 0))
+    if amount_cents < 50:
+        return _jerr("Amount too small (minimum $0.50)", 400)
+
+    currency = str(data.get("currency") or "usd").lower()
+    meta = DonorMeta.from_payload(data)
+
+    team_name = str(
+        current_app.config.get("TEAM_NAME")
+        or os.getenv("BRAND_NAME")
+        or "FutureFunded"
+    ).strip()
+    description = str(data.get("description") or f"Donation to {team_name}")[:250]
+
+    idem = request.headers.get("Idempotency-Key") or None
+
+    try:
+        pi = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency=currency,
+            description=description,
+            metadata=asdict(meta),
+            automatic_payment_methods={"enabled": True},
+            receipt_email=meta.donor_email or None,
+            idempotency_key=idem,
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "id": pi.id,
+                "status": pi.status,
+                "client_secret": pi.client_secret,
+                "publishable_key": _stripe_publishable(),
+            }
+        )
+    except stripe.StripeError as e:
+        msg = getattr(e, "user_message", None) or str(e)
+        return _jerr(msg, 400, type=e.__class__.__name__)
+    except Exception:
+        current_app.logger.exception("Unexpected Stripe intent error")
+        return _jerr("Internal error creating intent", 500)
+
+
+# -----------------------------------------------------------------------------
+# POST /payments/stripe/checkout  (Stripe Checkout Session / redirect)
+# -----------------------------------------------------------------------------
+@bp.post("/stripe/checkout")
+@csrf_exempt
+def stripe_checkout():
+    if not _bearer_ok():
+        return _jerr("Missing or invalid bearer token", 401)
+
+    if not _ensure_stripe_ready():
+        return _jerr("Server misconfigured: STRIPE_SECRET_KEY missing", 500)
+
+    data = request.get_json(silent=True) or {}
+    amount_cents = _normalize_amount_to_cents(data.get("amount", 0))
+    if amount_cents < 100:
+        return _jerr("Amount must be at least $1.00", 400)
+
+    frequency = str(data.get("frequency") or "once").strip().lower()
+    is_monthly = frequency == "monthly"
+
+    # Backwards-compatible URL construction
+    base = str(current_app.config.get("PRIMARY_ORIGIN") or request.host_url.rstrip("/")).rstrip("/")
+
+    fundraiser_path = str(data.get("fundraiser_path") or "").strip()
+    cancel_path = str(data.get("cancel_path") or (fundraiser_path + "#donate") or "/#donate").strip() or "/#donate"
+    success_path = str(data.get("success_path") or "/thank-you").strip() or "/thank-you"
+
+    cancel_url = f"{base}{cancel_path}"
+    success_url = f"{base}{success_path}?session_id={{CHECKOUT_SESSION_ID}}"
+
+    meta = DonorMeta.from_payload(data)
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription" if is_monthly else "payment",
+            customer_email=meta.donor_email or None,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            payment_method_types=["card"],
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "usd",
+                        "unit_amount": amount_cents,
+                        "product_data": {
+                            "name": "Monthly Donation" if is_monthly else "Donation",
+                            "description": "FutureFunded fundraiser donation",
+                        },
+                        **({"recurring": {"interval": "month"}} if is_monthly else {}),
+                    },
+                    "quantity": 1,
+                }
+            ],
+            metadata=asdict(meta),
+            billing_address_collection="auto",
+        )
+        return jsonify({"ok": True, "sessionId": session["id"], "url": session.get("url")})
+    except stripe.StripeError as e:
+        msg = getattr(e, "user_message", None) or str(e)
+        return _jerr(msg, 400, type=e.__class__.__name__)
+    except Exception:
+        current_app.logger.exception("Unexpected Stripe checkout error")
+        return _jerr("Internal error creating checkout session", 500)
+
+
+# -----------------------------------------------------------------------------
+# POST /payments/api/checkout/session  (legacy alias: returns {url})
+# -----------------------------------------------------------------------------
+@bp.post("/api/checkout/session")
+@csrf_exempt
+def api_checkout_session():
+    if not _bearer_ok():
+        return _jerr("Missing or invalid bearer token", 401)
+
+    if not _ensure_stripe_ready():
+        return _jerr("Server misconfigured: STRIPE_SECRET_KEY missing", 500)
+
+    data = request.get_json(silent=True) or {}
+    # Legacy expects dollars in float form -> convert directly to cents
+    try:
+        amount_cents = int(round(float(data.get("amount", 0)) * 100))
+    except Exception:
+        amount_cents = 0
+
+    if amount_cents < 100:
+        return _jerr("Amount must be at least $1.00", 400)
+
+    donor_email = (data.get("email") or "").strip() or None
+    name = (data.get("name") or "Donation").strip()[:120]
+
+    base = str(current_app.config.get("PRIMARY_ORIGIN") or request.host_url.rstrip("/")).rstrip("/")
+    success_url = f"{base}/thank-you?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{base}/#donate"
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            customer_email=donor_email,
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": "FutureFunded Donation"},
+                        "unit_amount": amount_cents,
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={"donor_name": name, "program": "futurefunded"},
+        )
+        return jsonify({"ok": True, "url": session.get("url"), "sessionId": session.get("id")})
+    except stripe.StripeError as e:
+        msg = getattr(e, "user_message", None) or str(e)
+        return _jerr(msg, 400, type=e.__class__.__name__)
+    except Exception:
+        current_app.logger.exception("Legacy checkout session error")
+        return _jerr("Internal error creating checkout session", 500)
+
+
+# -----------------------------------------------------------------------------
+# POST /payments/stripe/webhook
+# -----------------------------------------------------------------------------
+@bp.post("/stripe/webhook")
+@csrf_exempt
+def stripe_webhook():
+    if not stripe:
+        return ("", 500)
+
+    payload: bytes = request.get_data(cache=False)
+    sig = request.headers.get("Stripe-Signature", "")
+    secret = _webhook_secret()
+
+    try:
+        if secret:
+            event = stripe.Webhook.construct_event(payload=payload, sig_header=sig, secret=secret)
+        else:
+            # Allow unsigned parsing ONLY in debug/local.
+            if not current_app.debug:
+                current_app.logger.error("STRIPE_WEBHOOK_SECRET missing in non-debug environment.")
+                return ("", 500)
+            event = json.loads(payload.decode("utf-8") or "{}")
+    except Exception as e:
+        current_app.logger.warning("Webhook signature/parse error: %s", e)
+        return ("", 400)
+
+    etype = str(event.get("type", "")).lower()
+    obj = (event.get("data", {}) or {}).get("object", {}) or {}
+
+    def _extract_amount_and_name(o: dict) -> tuple[float, str]:
+        md = o.get("metadata", {}) or {}
+        who = md.get("donor_name") or md.get("name") or "Supporter"
+        if "amount_received" in o:
+            return float(o["amount_received"] or 0) / 100.0, str(who)
+        if "amount" in o:
+            return float(o["amount"] or 0) / 100.0, str(who)
+        return 0.0, str(who)
+
+    if etype in {"payment_intent.succeeded", "charge.succeeded", "checkout.session.completed"}:
+        amt, who = _extract_amount_and_name(obj)
+
+        tier = "Community"
+        if amt >= 2500:
+            tier = "Platinum"
+        elif amt >= 1000:
+            tier = "Gold"
+        elif amt >= 500:
+            tier = "Silver"
+        elif amt >= 250:
+            tier = "Bronze"
+
+        payload_out = {"name": who, "amount": amt, "tier": tier, "ts": _now_iso()}
+        _emit("donation", payload_out)
+        if amt >= 250:
+            _emit("sponsor", payload_out)
+
+    return ("", 200)
+
+# -----------------------------------------------------------------------------
+# GET /payments/config
+# -----------------------------------------------------------------------------
+@bp.get("/config")
+def payments_config():
+    org = request.args.get("org", "default")
+
+    ORGS = {
+        "cyberboyz": {
+            "enabled": True,
+            "provider": "stripe_checkout",
+            "currency": "USD",
+            "checkout_session_endpoint": "/payments/stripe/checkout",
+        }
+    }
+
+    cfg = ORGS.get(org)
+
+    if not cfg:
+        return jsonify({
+            "enabled": False,
+            "org": org,
+            "message": "Payments not enabled for this organization."
+        }), 404
+
+    return jsonify({
+        "enabled": True,
+        "org": org,
+        "provider": cfg["provider"],
+        "currency": cfg["currency"],
+        "publishable_key": _stripe_publishable_key(),
+        "checkout_session_endpoint": cfg["checkout_session_endpoint"],
+    })
+

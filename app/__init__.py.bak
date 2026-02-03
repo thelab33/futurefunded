@@ -1,0 +1,778 @@
+# app/__init__.py
+# Elite, deterministic, Stripe-safe Flask app factory (drop-in replacement)
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import logging
+import os
+import sys
+import time
+from datetime import datetime, timezone
+from importlib import import_module
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union
+from uuid import uuid4
+
+from dotenv import load_dotenv
+from flask import Blueprint, Flask, g, jsonify, request, url_for
+from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.routing import BuildError
+
+# -----------------------------------------------------------------------------
+# CLI
+# -----------------------------------------------------------------------------
+from app.cli.seed_orgs import seed_orgs
+
+# -----------------------------------------------------------------------------
+# Core extensions (initialized elsewhere)
+# -----------------------------------------------------------------------------
+from app.extensions import babel, cors, csrf, db, login_manager, mail, migrate, socketio
+
+# -----------------------------------------------------------------------------
+# Optional / graceful extras
+# -----------------------------------------------------------------------------
+try:
+    from flask_compress import Compress  # type: ignore
+except Exception:
+    Compress = None  # type: ignore
+
+try:
+    from flask_talisman import Talisman  # type: ignore
+except Exception:
+    Talisman = None  # type: ignore
+
+try:
+    from flask_wtf.csrf import generate_csrf  # type: ignore
+except Exception:
+    generate_csrf = None  # type: ignore
+
+# -----------------------------------------------------------------------------
+# Optional Sentry
+# -----------------------------------------------------------------------------
+try:
+    import sentry_sdk  # type: ignore
+    from sentry_sdk.integrations.flask import FlaskIntegration  # type: ignore
+    from sentry_sdk.integrations.logging import LoggingIntegration  # type: ignore
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration  # type: ignore
+except Exception:
+    sentry_sdk = None  # type: ignore
+
+# -----------------------------------------------------------------------------
+# Environment
+# -----------------------------------------------------------------------------
+# IMPORTANT: never override real env vars in prod
+load_dotenv(override=False)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+ConfigLike = Union[str, Type[Any]]
+
+
+# -----------------------------------------------------------------------------
+# Small helpers
+# -----------------------------------------------------------------------------
+def _resolve_config(target: Optional[ConfigLike]) -> ConfigLike:
+    if target is None:
+        target = os.getenv("FLASK_CONFIG", "app.config.DevelopmentConfig")
+
+    # legacy typo normalization
+    if isinstance(target, str) and target == "app.config.config.DevelopmentConfig":
+        return "app.config.DevelopmentConfig"
+
+    return target
+
+
+def _mtime_or_zero(path: Path) -> int:
+    try:
+        return int(path.stat().st_mtime)
+    except Exception:
+        return 0
+
+
+def _json_error(message: str, status: int, **extra: Any):
+    payload: Dict[str, Any] = {"ok": False, "error": {"code": status, "message": message}}
+    rid = extra.pop("request_id", None)
+    if rid:
+        payload["error"]["request_id"] = rid
+    if extra:
+        payload["error"].update(extra)
+
+    resp = jsonify(payload)
+    resp.status_code = status
+    return resp
+
+
+def _parse_cors_origins(env: str) -> Union[str, List[str]]:
+    """
+    Dev: allow all
+    Prod: restrict to PRIMARY_ORIGIN unless explicitly overridden by CORS_ORIGINS
+    """
+    default_prod = os.getenv("PRIMARY_ORIGIN", "https://getfuturefunded.com").strip()
+    raw = (os.getenv("CORS_ORIGINS") or ("*" if env != "production" else default_prod)).strip()
+
+    if raw in {"", "*"}:
+        return raw
+    if "," in raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    return raw
+
+
+def _iter_candidates(x: Union[str, Iterable[str]]) -> List[str]:
+    if isinstance(x, str) and "|" in x:
+        return [p.strip() for p in x.split("|") if p.strip()]
+    if isinstance(x, str):
+        return [x]
+    return list(x)
+
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+class _RequestIDFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
+        try:
+            record.request_id = getattr(g, "request_id", "-")
+        except Exception:
+            record.request_id = "-"
+        return True
+
+
+def _configure_logging(app: Flask) -> None:
+    fmt = "%(asctime)s [%(levelname)s] %(name)s [rid=%(request_id)s]: %(message)s"
+    root = logging.getLogger()
+
+    if not root.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(fmt))
+        handler.addFilter(_RequestIDFilter())
+        root.addHandler(handler)
+    else:
+        for h in root.handlers:
+            h.addFilter(_RequestIDFilter())
+            if not getattr(h, "formatter", None) or "%(request_id)s" not in getattr(h.formatter, "_fmt", ""):
+                h.setFormatter(logging.Formatter(fmt))
+
+    root.setLevel(app.config.get("LOG_LEVEL", "INFO"))
+    logging.getLogger("werkzeug").setLevel(app.config.get("WERKZEUG_LOG_LEVEL", "WARNING"))
+
+    app.logger.info("Loaded config: ENV=%s DEBUG=%s", app.config.get("ENV", "?"), app.debug)
+
+
+# -----------------------------------------------------------------------------
+# Static assets + Jinja (one-pager safe)
+# -----------------------------------------------------------------------------
+def static_url(path: str) -> str:
+    if not path:
+        return "/static/"
+    if "://" in path or path.startswith("//"):
+        return path
+    try:
+        return url_for("static", filename=path.lstrip("/"))
+    except Exception:
+        return f"/static/{path.lstrip('/')}"
+
+
+def _load_asset_manifest(app: Flask) -> None:
+    """
+    Optional: supports app/static/asset-manifest.json if present.
+    Safe for one-pager deployments (no manifest required).
+    """
+    manifest = Path(app.root_path) / "static" / "asset-manifest.json"
+    if not manifest.exists():
+        app.jinja_env.globals.setdefault("SRI", {})
+        # Stable versioning for one-pager deployments:
+        app.jinja_env.globals.setdefault("ASSET_VER", os.getenv("GIT_COMMIT", "") or "")
+        return
+
+    try:
+        data = json.loads(manifest.read_text(errors="ignore"))
+        app.jinja_env.globals["SRI"] = data.get("sri") or {}
+        app.jinja_env.globals["ASSET_VER"] = (
+            (data.get("version") or {}).get("git")
+            or (data.get("version") or {}).get("builtAt")
+            or (os.getenv("GIT_COMMIT", "") or "")
+        )
+    except Exception as e:
+        app.logger.warning("Asset manifest ignored: %s", e)
+        app.jinja_env.globals.setdefault("SRI", {})
+        app.jinja_env.globals.setdefault("ASSET_VER", os.getenv("GIT_COMMIT", "") or "")
+
+
+def _register_jinja_helpers(app: Flask) -> None:
+    def money(v: Any) -> str:
+        try:
+            return "${:,.0f}".format(float(v))
+        except Exception:
+            return "$0"
+
+    app.jinja_env.filters["usd"] = money
+    app.jinja_env.globals.setdefault("money", money)
+    app.jinja_env.globals.setdefault("static_url", static_url)
+
+    def sri_attr(path: str) -> str:
+        sri = (app.jinja_env.globals.get("SRI") or {}).get(path)
+        return f' integrity="{sri}" crossorigin="anonymous"' if sri else ""
+
+    app.jinja_env.globals.setdefault("sri_attr", sri_attr)
+
+
+# -----------------------------------------------------------------------------
+# Blueprint registration (flagship / deterministic)
+# -----------------------------------------------------------------------------
+def _safe_register(app: Flask, dotted: str, attr: Union[str, Iterable[str]], url_prefix: Optional[str]) -> bool:
+    """
+    Import a module and register a blueprint by attribute name(s).
+    Honors DISABLE_BPS=admin,newsletter to skip modules at runtime.
+    """
+    disabled = {p.strip().lower() for p in (os.getenv("DISABLE_BPS", "")).split(",") if p.strip()}
+    mod_key = dotted.split(".")[-1].lower()
+    if mod_key in disabled:
+        app.logger.info("Disabled module: %s", dotted)
+        return False
+
+    try:
+        mod = import_module(dotted)
+    except Exception as e:
+        app.logger.warning("Import failed: %s → %s", dotted, e)
+        return False
+
+    candidates = _iter_candidates(attr) + ["bp", "api_bp", "main_bp", "admin_bp", "sms_bp"]
+    blueprint: Optional[Blueprint] = None
+    for name in candidates:
+        cand = getattr(mod, name, None)
+        if isinstance(cand, Blueprint):
+            blueprint = cand
+            break
+
+    if not blueprint:
+        app.logger.warning("No blueprint found in %s (tried %s)", dotted, ", ".join(candidates))
+        return False
+
+    if blueprint.name in app.blueprints:
+        app.logger.info("Already registered: %s", blueprint.name)
+        return False
+
+    try:
+        app.register_blueprint(blueprint, url_prefix=url_prefix or getattr(blueprint, "url_prefix", None))
+        app.logger.info("Registered blueprint: %-18s → %s", blueprint.name, url_prefix or "/")
+        return True
+    except Exception as exc:
+        app.logger.error("Failed to register %s:%s: %s", dotted, blueprint.name, exc, exc_info=True)
+        return False
+
+
+def _module_exists(dotted: str) -> bool:
+    try:
+        return importlib.util.find_spec(dotted) is not None
+    except Exception:
+        return False
+
+
+def _register_blueprints(app: Flask) -> None:
+    """
+    Registers all application blueprints.
+    Payments is STRICT: exactly one canonical module is allowed.
+    """
+    core: List[Tuple[str, str, Optional[str]]] = [
+        ("app.diag", "bp", "/"),
+        ("app.routes.main", "main_bp|bp", "/"),
+        ("app.routes.api", "bp|api_bp", "/api"),
+        ("app.admin.routes", "bp|admin_bp", "/admin"),
+        ("app.blueprints.fc_metrics", "bp", "/metrics"),
+        ("app.routes.newsletter", "bp", "/newsletter"),
+        ("app.routes.sms", "sms_bp|bp", "/sms"),
+    ]
+
+    for dotted, attr, prefix in core:
+        _safe_register(app, dotted, attr, prefix)
+
+    # 🔒 PAYMENTS (canonical, no fallbacks)
+    payments_module = "app.blueprints.payments"
+
+    # Guardrail: fail fast if legacy payments modules are present in the codebase
+    # (prevents “wrong file loaded” bugs forever).
+    legacy = ["app.routes.payments", "app.blueprints.fc_payments"]
+    legacy_found = [m for m in legacy if _module_exists(m)]
+    if legacy_found:
+        raise RuntimeError(
+            "❌ Duplicate/legacy payments modules detected:\n"
+            f"  - " + "\n  - ".join(legacy_found) + "\n\n"
+            "Delete/rename duplicates so ONLY this exists:\n"
+            "  app/blueprints/payments.py\n"
+        )
+
+    if not _safe_register(app, payments_module, "bp", "/payments"):
+        raise RuntimeError(
+            "❌ Payments blueprint failed to register.\n"
+            "Ensure app/blueprints/payments.py exists and defines:\n"
+            "  bp = Blueprint('payments', __name__)\n"
+        )
+
+    # Optional / non-critical add-ons
+    try:
+        from app.routes import shoutouts as _shoutouts  # type: ignore
+        if "shoutouts" not in app.blueprints:
+            app.register_blueprint(_shoutouts.bp)
+            app.logger.info("Registered optional blueprint: shoutouts")
+    except Exception:
+        app.logger.debug("Optional blueprint 'shoutouts' not loaded")
+
+
+# -----------------------------------------------------------------------------
+# Optional integrations
+# -----------------------------------------------------------------------------
+def _init_sentry(app: Flask) -> None:
+    dsn = (os.getenv("SENTRY_DSN") or "").strip()
+    if not dsn or not sentry_sdk:
+        return
+    try:
+        sentry_sdk.init(
+            dsn=dsn,
+            integrations=[
+                FlaskIntegration(),
+                LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+                SqlalchemyIntegration(),
+            ],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
+            profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+            send_default_pii=False,
+            environment=app.config.get("ENV", "development"),
+            release=os.getenv("GIT_COMMIT"),
+        )
+        app.logger.info("Sentry initialized")
+    except Exception as e:
+        app.logger.warning("Sentry init failed: %s", e)
+
+
+def _init_talisman(app: Flask) -> None:
+    env = (app.config.get("ENV") or os.getenv("FLASK_ENV") or "development").lower()
+    if env != "production" or not Talisman:
+        return
+    Talisman(app, content_security_policy=None)
+
+
+def _init_cors(app: Flask, cors_origins: Union[str, List[str]]) -> None:
+    if not cors:
+        return
+
+    supports_credentials = (os.getenv("CORS_SUPPORTS_CREDENTIALS", "")).strip().lower() in {"1", "true", "yes", "on"}
+    if cors_origins == "*":
+        supports_credentials = False
+
+    cors.init_app(
+        app,
+        supports_credentials=supports_credentials,
+        resources={
+            r"/api/*": {"origins": cors_origins},
+            r"/payments/*": {"origins": cors_origins},
+            r"/sms/*": {"origins": cors_origins},
+        },
+        expose_headers=["X-Request-ID"],
+        allow_headers=["Content-Type", "Authorization", "Stripe-Signature", "Idempotency-Key", "X-Request-ID"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
+
+
+def _init_socketio(app: Flask, cors_origins: Union[str, List[str]]) -> None:
+    if not socketio:
+        return
+    app.socketio = socketio  # type: ignore[attr-defined]
+    socketio.init_app(app, cors_allowed_origins=cors_origins if cors_origins else "*")
+
+
+def _init_rate_limiter(app: Flask) -> None:
+    try:
+        from flask_limiter import Limiter  # type: ignore
+        from flask_limiter.util import get_remote_address  # type: ignore
+    except Exception:
+        app.logger.info("flask-limiter not installed; skipping rate limiting")
+        return
+
+    storage_uri = app.config.get("RATELIMIT_STORAGE_URI") or "memory://"
+    default_limits = app.config.get("RATELIMIT_DEFAULTS") or ["200 per day", "50 per hour"]
+
+    try:
+        limiter = Limiter(key_func=get_remote_address, storage_uri=storage_uri, default_limits=default_limits)
+        limiter.init_app(app)
+        app.limiter = limiter  # type: ignore[attr-defined]
+        app.logger.info("Rate limiting enabled")
+        return
+    except TypeError:
+        pass
+
+    try:
+        limiter = Limiter(get_remote_address, app=app, storage_uri=storage_uri, default_limits=default_limits)
+        app.limiter = limiter  # type: ignore[attr-defined]
+        app.logger.info("Rate limiting enabled (legacy init)")
+    except Exception:
+        app.logger.exception("flask-limiter init failed")
+
+
+def _maybe_create_sqlite_tables(app: Flask) -> None:
+    uri = (app.config.get("SQLALCHEMY_DATABASE_URI") or "").strip()
+    if not uri.startswith("sqlite"):
+        return
+    if app.config.get("AUTO_CREATE_SQLITE", True) is not True:
+        return
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception:
+        app.logger.exception("SQLite create_all failed (continuing)")
+
+
+# -----------------------------------------------------------------------------
+# Request lifecycle + errors + context
+# -----------------------------------------------------------------------------
+def _get_request_id() -> str:
+    return getattr(g, "request_id", "-")
+
+
+def _set_sentry_tags(**tags: str) -> None:
+    if not sentry_sdk:
+        return
+    try:
+        with sentry_sdk.configure_scope() as scope:
+            for k, v in tags.items():
+                scope.set_tag(k, v)
+    except Exception:
+        pass
+
+
+def _wants_json_response() -> bool:
+    """
+    Treat API-class routes as JSON-first regardless of headers.
+    Critical for payments + webhooks.
+    """
+    path = request.path or ""
+    if path.startswith(("/api/", "/payments/", "/metrics/")):
+        return True
+    accept = (request.headers.get("Accept") or "").lower()
+    return "application/json" in accept or request.is_json
+
+
+def _register_request_lifecycle(app: Flask) -> None:
+    @app.before_request
+    def _bootstrap_request():
+        g.request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        g._start_ts = time.perf_counter()
+        _set_sentry_tags(request_id=g.request_id, endpoint=request.endpoint or "", path=request.path or "")
+
+    @app.after_request
+    def _attach_request_headers(resp):
+        resp.headers["X-Request-ID"] = _get_request_id()
+        start = getattr(g, "_start_ts", None)
+        if start:
+            resp.headers["X-Response-Time-ms"] = str(int((time.perf_counter() - start) * 1000))
+        return resp
+
+
+def _register_error_handlers(app: Flask) -> None:
+    @app.errorhandler(HTTPException)
+    def _http_err(err: HTTPException):
+        if _wants_json_response():
+            return _json_error(err.description or err.name, err.code or 500, request_id=_get_request_id())
+        return err
+
+    @app.errorhandler(Exception)
+    def _uncaught(err: Exception):
+        app.logger.exception("Unhandled error")
+
+        # Stripe should retry webhooks; do not swallow unknown failures.
+        if (request.path or "").startswith("/payments/stripe/webhook"):
+            return ("", 500)
+
+        if _wants_json_response():
+            return _json_error("Internal Server Error", 500, request_id=_get_request_id())
+        return InternalServerError()
+
+
+def _register_context_processors(app: Flask) -> None:
+    @app.context_processor
+    def _base_ctx():
+        def has_endpoint(name: str) -> bool:
+            return name in app.view_functions
+
+        def safe_url_for(endpoint: str, **values: Any) -> str:
+            try:
+                return url_for(endpoint, **values)
+            except (BuildError, Exception):
+                return ""
+
+        # One-pager safe: if files don’t exist, we don’t churn versions.
+        static_root = Path(app.static_folder)
+        css = static_root / "css" / "app.min.css"
+        js = static_root / "js" / "bundle.min.js"
+        computed_ver = max(_mtime_or_zero(css), _mtime_or_zero(js))
+        asset_ver = app.jinja_env.globals.get("ASSET_VER") or (str(computed_ver) if computed_ver else "")
+
+        class _Obj(dict):
+            __getattr__ = dict.get
+
+        team_default = _Obj(team_name=app.config.get("BRAND_NAME", "FutureFunded"), theme_color="#0ea5e9")
+
+        return {
+            "app_env": app.config.get("ENV"),
+            "app_config": app.config,
+            "now": lambda: datetime.now(timezone.utc),
+            "has_endpoint": has_endpoint,
+            "safe_url_for": safe_url_for,
+            "ASSET_VER": asset_ver,
+            "SRI": app.jinja_env.globals.get("SRI", {}),
+            "team": team_default,
+            "PLATFORM_BRAND": app.config.get("BRAND_NAME", "FutureFunded"),
+            "PLATFORM_URL": app.config.get("PRIMARY_ORIGIN", "https://getfuturefunded.com"),
+        }
+
+
+# -----------------------------------------------------------------------------
+# Health + CSRF
+# -----------------------------------------------------------------------------
+def _register_health_endpoints(app: Flask) -> None:
+    @app.get("/healthz")
+    def _healthz():
+        return {
+            "status": "ok",
+            "message": f"{app.config.get('BRAND_NAME', 'FutureFunded')} platform live!",
+            "request_id": _get_request_id(),
+        }
+
+    @app.get("/version")
+    def _version():
+        return {
+            "version": os.getenv("GIT_COMMIT", "dev"),
+            "env": app.config.get("ENV"),
+            "brand": app.config.get("BRAND_NAME", "FutureFunded"),
+            "domain": app.config.get("PRIMARY_ORIGIN", "https://getfuturefunded.com"),
+        }
+
+
+def _register_csrf_cookie(app: Flask) -> None:
+    if not csrf or not generate_csrf:
+        return
+
+    skip_prefixes = ("/payments/", "/api/", "/metrics/", "/healthz", "/version")
+
+    @app.after_request
+    def _inject_csrf_cookie(resp):
+        try:
+            path = request.path or ""
+            if not path.startswith(skip_prefixes) and request.method == "GET":
+                resp.set_cookie(
+                    "csrf_token",
+                    generate_csrf(),
+                    samesite="Lax",
+                    secure=(app.config.get("ENV") == "production"),
+                    httponly=False,
+                )
+        except Exception:
+            app.logger.exception("CSRF cookie injection failed")
+        return resp
+
+
+# -----------------------------------------------------------------------------
+# CLI + Startup banner
+# -----------------------------------------------------------------------------
+def _register_cli(app: Flask) -> None:
+    try:
+        app.cli.add_command(seed_orgs)
+        app.logger.info("CLI command 'seed-orgs' registered")
+    except Exception as e:
+        app.logger.warning("Failed to register seed_orgs CLI: %s", e)
+
+
+def _startup_banner(app: Flask) -> None:
+    stripe_secret = (app.config.get("STRIPE_SECRET_KEY") or "").strip()
+    stripe_pk = (app.config.get("STRIPE_PUBLISHABLE_KEY") or "").strip()
+    webhook_ok = bool((app.config.get("STRIPE_WEBHOOK_SECRET") or "").strip())
+
+    stripe_mode = "live" if stripe_secret.startswith("sk_live") else "test" if stripe_secret.startswith("sk_test") else "unknown"
+
+    # Extra: highlight the *actual* cause of your 401 issues (bearer lock)
+    require_bearer = (os.getenv("PAYMENTS_REQUIRE_BEARER") or "").strip().lower() in {"1", "true", "yes", "on"}
+    api_tokens_set = bool((os.getenv("API_TOKENS") or "").strip())
+
+    app.logger.info(
+        "%s ready | ENV=%s DEBUG=%s Stripe=%s(%s) Webhook=%s Bearer=%s Tokens=%s Blueprints=%s",
+        app.config.get("BRAND_NAME", "FutureFunded"),
+        app.config.get("ENV", "unknown"),
+        app.debug,
+        "ON" if stripe_secret else "OFF",
+        stripe_mode,
+        "ON" if webhook_ok else "OFF",
+        "ON" if require_bearer else "OFF",
+        "SET" if api_tokens_set else "MISSING",
+        len(app.blueprints),
+    )
+
+    if app.config.get("ENV") == "production" and stripe_mode != "live":
+        app.logger.critical("PRODUCTION IS NOT USING LIVE STRIPE KEYS")
+
+    # Only expose publishable key (never secret)
+    app.jinja_env.globals.setdefault("STRIPE_PUBLISHABLE_KEY", stripe_pk)
+    app.jinja_env.globals.setdefault("FF_STRIPE_PUBLISHABLE_KEY", stripe_pk)
+
+
+# -----------------------------------------------------------------------------
+# App Factory
+# -----------------------------------------------------------------------------
+def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
+    """
+    FutureFunded Flask Platform App Factory
+    Production-grade, Stripe-safe, SaaS-ready.
+    """
+    static_root = BASE_DIR / "app" / "static"
+    template_root = BASE_DIR / "app" / "templates"
+
+    app = Flask(
+        __name__,
+        static_folder=str(static_root),
+        template_folder=str(template_root),
+        static_url_path="/static",
+    )
+
+    # ---- Config loading
+    cfg = _resolve_config(config_class)
+    try:
+        app.config.from_object(cfg)
+    except Exception as exc:
+        fallback = "app.config.DevelopmentConfig"
+        if isinstance(cfg, str) and cfg != fallback:
+            app.config.from_object(fallback)
+        else:
+            raise RuntimeError(f"Invalid FLASK_CONFIG '{cfg}': {exc}")
+
+    env = (app.config.get("ENV") or "development").lower()
+
+    # ---- Brand defaults
+    app.config.setdefault("BRAND_NAME", os.getenv("BRAND_NAME", "FutureFunded"))
+    app.config.setdefault("PRIMARY_ORIGIN", os.getenv("PRIMARY_ORIGIN", "https://getfuturefunded.com"))
+
+    # ---- Session cookie normalization (legacy-safe)
+    cookie_name = (app.config.get("SESSION_COOKIE_NAME") or "").strip().lower()
+    if cookie_name in {"", "fundchamps"}:
+        app.config["SESSION_COOKIE_NAME"] = (os.getenv("SESSION_COOKIE_NAME") or "futurefunded").strip()
+
+    # ---- Stripe env normalization (single source of truth)
+    stripe_sk = (
+        os.getenv("STRIPE_SECRET_KEY")
+        or os.getenv("STRIPE_API_KEY")
+        or os.getenv("FF_STRIPE_SECRET_KEY")
+        or ""
+    ).strip()
+
+    stripe_pk = (
+        os.getenv("STRIPE_PUBLISHABLE_KEY")
+        or os.getenv("STRIPE_PUBLIC_KEY")
+        or os.getenv("FF_STRIPE_PUBLISHABLE_KEY")
+        or os.getenv("FF_STRIPE_PUBLIC_KEY")
+        or ""
+    ).strip()
+
+    stripe_wh = (
+        os.getenv("STRIPE_WEBHOOK_SECRET")
+        or os.getenv("FF_STRIPE_WEBHOOK_SECRET")
+        or ""
+    ).strip()
+
+    if stripe_sk:
+        app.config.setdefault("STRIPE_SECRET_KEY", stripe_sk)
+    if stripe_pk:
+        app.config.setdefault("STRIPE_PUBLISHABLE_KEY", stripe_pk)
+    if stripe_wh:
+        app.config.setdefault("STRIPE_WEBHOOK_SECRET", stripe_wh)
+
+    app.config["FF_STRIPE_PUBLISHABLE_KEY"] = app.config.get("STRIPE_PUBLISHABLE_KEY", "")
+
+    # ---- Production guardrails (fail fast)
+    if env == "production":
+        if not stripe_sk.startswith("sk_live"):
+            raise RuntimeError("Production requires LIVE Stripe secret key (sk_live...)")
+        if not stripe_pk.startswith("pk_live"):
+            raise RuntimeError("Production requires LIVE Stripe publishable key (pk_live...)")
+
+    # ---- Flask defaults
+    app.url_map.strict_slashes = False
+    app.config.setdefault("JSON_SORT_KEYS", False)
+    app.config.setdefault("JSON_AS_ASCII", False)
+    app.config.setdefault("PROPAGATE_EXCEPTIONS", False)
+
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+    app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
+    app.config.setdefault("SESSION_COOKIE_SECURE", env == "production")
+    app.config.setdefault("PREFERRED_URL_SCHEME", "https" if env == "production" else "http")
+    app.config.setdefault("AUTO_CREATE_SQLITE", True)
+
+    # ---- Proxy handling (Cloudflare / reverse proxy)
+    use_proxyfix = (os.getenv("USE_PROXYFIX") or ("1" if env == "production" else "0")).lower() in {"1", "true", "yes", "on"}
+    if use_proxyfix:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+    # ---- Logging / assets / templates
+    _configure_logging(app)
+    _load_asset_manifest(app)
+    _register_jinja_helpers(app)
+
+    # ---- Optional integrations
+    _init_sentry(app)
+
+    cors_origins = _parse_cors_origins(env)
+    _init_cors(app, cors_origins)
+    _init_talisman(app)
+
+    # ---- Core extensions
+    if csrf:
+        csrf.init_app(app)
+
+    db.init_app(app)
+    _maybe_create_sqlite_tables(app)
+
+    migrate.init_app(app, db, compare_type=True, render_as_batch=True)
+    mail.init_app(app)
+
+    if Compress:
+        Compress(app)
+
+    _init_socketio(app, cors_origins)
+    _init_rate_limiter(app)
+
+    # ---- Request lifecycle / errors / context
+    _register_request_lifecycle(app)
+    _register_error_handlers(app)
+    _register_context_processors(app)
+    _register_csrf_cookie(app)
+
+    # ---- Auth + i18n
+    if login_manager:
+        login_manager.init_app(app)
+        login_manager.login_view = "main.home"
+
+        try:
+            from app.models.user import User  # type: ignore
+        except Exception:
+            User = None  # type: ignore
+
+        @login_manager.user_loader
+        def load_user(uid: str):
+            return User.query.get(int(uid)) if User else None
+
+    if babel:
+        babel.init_app(app)
+
+    # ---- Routes / blueprints / health
+    _register_blueprints(app)
+    _register_health_endpoints(app)
+
+    # ---- Bot/scanner mitigation
+    @app.get("/.git/<path:_any>")
+    def _block_git(_any: str):
+        return ("Not Found", 404)
+
+    # ---- CLI / banner
+    _register_cli(app)
+    _startup_banner(app)
+
+    return app
+

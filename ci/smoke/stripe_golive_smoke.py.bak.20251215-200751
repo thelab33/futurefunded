@@ -1,0 +1,74 @@
+import os, json, sys, time
+import requests
+
+BASE = os.getenv("BASE", "http://localhost:5000").rstrip("/")
+EXPECT_MODE = os.getenv("EXPECT_STRIPE_MODE", "test")  # set to "live" in prod smoke
+
+def die(msg):
+  print("❌", msg)
+  sys.exit(1)
+
+def ok(msg):
+  print("✅", msg)
+
+def get(path):
+  r = requests.get(BASE + path, timeout=10)
+  return r.status_code, r.text
+
+def post_json(path, payload):
+  r = requests.post(BASE + path, json=payload, timeout=15)
+  return r.status_code, r.text
+
+def prefix_mode(k: str) -> str:
+  if k.startswith(("sk_live_", "pk_live_", "rk_live_")): return "live"
+  if k.startswith(("sk_test_", "pk_test_", "rk_test_")): return "test"
+  return "unknown"
+
+# --- env sanity (don’t print secrets) ---
+sk = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or ""
+pk = os.getenv("STRIPE_PUBLISHABLE_KEY") or os.getenv("STRIPE_PUBLIC_KEY") or ""
+if not sk or not pk:
+  die("Missing STRIPE_SECRET_KEY/STRIPE_API_KEY or STRIPE_PUBLISHABLE_KEY/STRIPE_PUBLIC_KEY")
+
+if EXPECT_MODE in ("live", "test"):
+  if prefix_mode(sk) != EXPECT_MODE:
+    die(f"Stripe secret key mode mismatch: expected {EXPECT_MODE}, got {prefix_mode(sk)}")
+  if prefix_mode(pk) != EXPECT_MODE:
+    die(f"Stripe publishable key mode mismatch: expected {EXPECT_MODE}, got {prefix_mode(pk)}")
+ok(f"Stripe keys look like {EXPECT_MODE} mode")
+
+# --- required pages ---
+for path in ["/", "/api/totals", "/payments/health"]:
+  code, _ = get(path)
+  if code != 200:
+    die(f"{path} expected 200, got {code}")
+ok("Required GET routes OK")
+
+# --- create a payment intent (does NOT charge) ---
+payload = {
+  "amount": 1,             # dollars (or change to cents depending on your backend)
+  "currency": "usd",
+  "frequency": "once",
+  "name": "Smoke Test",
+  "email": "smoke@example.com",
+  "team_focus": "all",
+}
+code, body = post_json("/payments/stripe/intent", payload)
+if code != 200:
+  die(f"/payments/stripe/intent expected 200, got {code}: {body[:200]}")
+try:
+  j = json.loads(body)
+except:
+  die("Stripe intent did not return JSON")
+if not any(k in j for k in ("client_secret", "clientSecret")):
+  die("Stripe intent JSON missing client_secret")
+ok("Stripe intent creation OK")
+
+# --- thank-you route must work (critical for live redirect) ---
+code, _ = get("/thank-you?org=default&amount=1")
+if code != 200:
+  die(f"/thank-you expected 200, got {code} (fix this before live!)")
+ok("Thank-you route OK")
+
+print("\n🎉 GO-LIVE SMOKE PASSED")
+

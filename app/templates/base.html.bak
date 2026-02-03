@@ -1,0 +1,628 @@
+{# ============================================================================
+   FundChamps • Elite Base Layout (v7 • Black × Gold × Red)
+   - Tokens: --accent, --gap, --container-max, --ring
+   - Strict CSP (single nonce); Apple/Nike chrome surfaces
+   - LCP preloads (hero/logo); imagesrcset + fetchpriority hints
+   - Idempotent base module: UTM propagation, last-visit delta, reveal, theme sync
+   - A11y: roles, aria, :focus-visible rings, reduced motion
+   - One-pager shell of truth: no content partials included here
+   ============================================================================ #}
+
+{% from 'partials/_core_helpers.html' import nonce_attr %}
+
+{# ---- Safe CSP Nonce Resolver ---- #}
+{% if csp_nonce is defined %}
+  {% if csp_nonce is string %}
+    {% set NONCE = csp_nonce %}
+  {% else %}
+    {% set NONCE = csp_nonce() %}
+  {% endif %}
+{% elif NONCE is defined %}
+  {% set NONCE = NONCE %}
+{% else %}
+  {% set NONCE = '' %}
+{% endif %}
+
+{# ----- PAGE CONTEXT (robust fallbacks) ----- #}
+{% set TEAM        = team or {} %}
+{% set BRAND_NAME  = TEAM.team_name or 'FundChamps' %}
+{% set BRAND_COLOR = TEAM.theme_color or '#facc15' %}
+{% set PAGE_TITLE  = fundraiser_title or (BRAND_NAME ~ ' Fundraiser') %}
+{% set PAGE_DESC   = TEAM.og_description or 'Fuel the Season. Fund the Future.' %}
+{% set VER         = ASSET_VER or VERSION or '' %}
+{% set HREF_DONATE = HREF_DONATE or stripe_payment_link or '/donate' %}
+
+{# Hero sources (used by hero partials; keep lean) #}
+{% set HERO_IMG      = TEAM.hero_image or TEAM.hero_bg or '/static/images/connect-atx-team.jpg' %}
+{% set HERO_IMG_AVIF = TEAM.hero_image_avif or '' %}
+{% set HERO_IMG_WEBP = TEAM.hero_image_webp or '' %}
+{% set LOGO_SRC      = TEAM.logo_url or (url_for('static', filename='images/fundchamps-logo.svg') if url_for is defined else '/static/images/fundchamps-logo.svg') %}
+{% set OG_IMG        = TEAM.og_image or 'images/og_default.jpg' %}
+
+{# DRY helper for static assets (handles Flask / pure-Jinja) #}
+{% macro static_url(path) -%}
+  {{ url_for('static', filename=path, v=VER) if url_for is defined else '/static/' ~ path }}
+{%- endmacro %}
+
+<!doctype html>
+<html lang="en"
+      class="antialiased selection:bg-yellow-300/25"
+      data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0a0f19" id="meta-theme-color">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="index,follow">
+  <meta name="csp-nonce" content="{{ NONCE }}">
+
+  <title>{% block title %}{{ PAGE_TITLE }}{% endblock %}</title>
+  <meta name="description" content="{{ PAGE_DESC }}">
+
+  {# Social (OG / Twitter) #}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ BRAND_NAME }}">
+  <meta property="og:title" content="{{ PAGE_TITLE }}">
+  <meta property="og:description" content="{{ PAGE_DESC }}">
+  <meta property="og:image" content="{{ static_url(OG_IMG) }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ PAGE_TITLE }}">
+  <meta name="twitter:description" content="{{ PAGE_DESC }}">
+  <meta name="twitter:image" content="{{ static_url(OG_IMG) }}">
+
+  <script {{ nonce_attr() }}>
+    // Expose CSP nonce for any inline modules that need it
+    window.__CSP_NONCE = {{ NONCE|tojson }};
+  </script>
+
+  {# ---- Early theme bootstrap (prevents flash, syncs with system / local choice) ---- #}
+  <script {{ nonce_attr() }}>
+    (function () {
+      try {
+        var root   = document.documentElement;
+        var stored = localStorage.getItem('fc:theme');
+        var prefersLight = window.matchMedia &&
+                           window.matchMedia('(prefers-color-scheme: light)').matches;
+        var theme = stored || (prefersLight ? 'light' : 'dark');
+
+        root.dataset.theme = theme;
+        // Optional: keep a .dark class for Tailwind dark mode utilities
+        if (theme === 'dark') {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      } catch (e) {
+        // If anything fails, fallback to server-rendered data-theme
+      }
+    })();
+  </script>
+
+  {# ---- LCP-first image preloads ---- #}
+  <link rel="preload"
+        as="image"
+        href="{{ HERO_IMG }}"
+        {% if HERO_IMG_AVIF or HERO_IMG_WEBP %}
+          imagesrcset="{% if HERO_IMG_AVIF %}{{ HERO_IMG_AVIF }} type(image/avif){% endif %}{% if HERO_IMG_AVIF and HERO_IMG_WEBP %}, {% endif %}{% if HERO_IMG_WEBP %}{{ HERO_IMG_WEBP }} type(image/webp){% endif %}"
+        {% endif %}
+        imagesizes="(max-width: 980px) 100vw, 52vw"
+        fetchpriority="high">
+
+  <link rel="preload"
+        as="image"
+        href="{{ LOGO_SRC }}"
+        fetchpriority="high">
+
+  <link rel="preload"
+        as="font"
+        href="{{ static_url('fonts/Inter-roman.var.woff2') }}"
+        type="font/woff2"
+        crossorigin>
+
+  {# Perf hints for Stripe #}
+  <link rel="preconnect" href="https://js.stripe.com" crossorigin>
+  <link rel="dns-prefetch" href="https://js.stripe.com">
+
+  <link rel="icon" type="image/png" href="{{ static_url('favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ static_url('apple-touch-icon.png') }}">
+
+  <link rel="stylesheet" href="{{ static_url('css/tailwind.min.css') }}">
+
+  {# ---- Core tokens + base styles (single, nonce’d, deduped) ---- #}
+  <style {{ nonce_attr() }}>
+    :root{
+      /* brand/tokens */
+      --accent: {{ BRAND_COLOR|default('#facc15') }};
+      --gap: clamp(1rem, 1.8vw, 2.5rem);
+      --container-max: 1280px;
+      --ring: color-mix(in srgb, var(--accent) 55%, #ffffff);
+
+      /* surfaces */
+      --bg: #0a0f19;
+      --surface: #121723;
+      --surface-2:#1a2030;
+
+      /* text/meta */
+      --fg: #f8fafc;
+      --muted: #9aa3b2;
+
+      /* effects */
+      --glass: rgba(255,255,255,.06);
+      --hair:  #ffffff14;
+
+      /* radii */
+      --radius-xl: 1.75rem;
+      --radius-lg: 1.25rem;
+      --radius-md: .875rem;
+
+      /* stack */
+      --z-base: 0; --z-sticky: 60; --z-float: 70; --z-modal: 100; --z-overlay: 120;
+    }
+
+    html, body {
+      background: linear-gradient(145deg, var(--bg), #0b1220);
+      color: var(--fg);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    main, .band, .shell {
+      background: transparent;
+    }
+
+    .shell{
+      max-inline-size: var(--container-max);
+      margin-inline:auto;
+      padding-inline: var(--gap);
+      padding-block: clamp(1.25rem, 2.4vw, 2rem);
+      container-type:inline-size;
+    }
+
+    .band,
+    .band--hero{
+      max-width: var(--container-max);
+      margin-inline:auto;
+      padding-inline: var(--gap);
+    }
+
+    /* Chrome surfaces */
+    .hero-card,
+    .card,
+    .shell.cardlike,
+    .cta-banner,
+    .impact-body{
+      background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--hair);
+      box-shadow: 0 12px 48px rgba(0,0,0,.35);
+    }
+
+    /* Headings */
+    .headline,
+    .hd,
+    .cta-hd{
+      color: var(--fg);
+      font-weight:900;
+      letter-spacing:-.01em;
+    }
+
+    .headline .accent{
+      color: var(--accent);
+      text-shadow:0 0 12px color-mix(in srgb, var(--accent), transparent 60%);
+    }
+
+    /* Buttons & chips */
+    .btn,
+    .chip{
+      background: var(--glass);
+      color: var(--fg);
+      border: 1px solid var(--hair);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:.55em;
+      font-weight:900;
+      border-radius:999px;
+      padding:.78rem 1.35rem;
+      transition:
+        transform .2s cubic-bezier(.4,0,.2,1),
+        box-shadow .2s,
+        background .2s,
+        color .2s;
+    }
+
+    .btn:hover{
+      transform: translateY(-2px);
+    }
+
+    .btn.primary,
+    .btn--accent{
+      background: linear-gradient(
+        92deg,
+        var(--accent),
+        color-mix(in srgb, var(--accent) 78%, #fff) 95%
+      );
+      color:#131317;
+      border:none;
+      box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .btn.ghost,
+    .btn--ghost{
+      background: transparent;
+      border:2px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .btn.lite{
+      background: var(--glass);
+      color: var(--fg);
+    }
+
+    /* Quick donate chips */
+    .quick-donate .chip{
+      background: var(--surface-2);
+      color: var(--fg);
+    }
+
+    .quick-donate .chip:hover{
+      background: var(--accent);
+      color:#111;
+      border-color:var(--accent);
+    }
+
+    /* Typographic helpers */
+    .kpi-list strong{ color: var(--accent); }
+    .kpi-list span,
+    .sub,
+    .cta-sub,
+    .muted{ color: var(--muted); }
+
+    /* Section header / CTA band */
+    .section-head{
+      display:grid;
+      gap:.5rem;
+      text-align:left;
+      margin-block: clamp(.75rem, 1.6vw, 1rem);
+    }
+
+    .section-head .hd,
+    .section-head .cta-hd,
+    .band--cta .cta-hd {
+      color: var(--fg);
+      font-weight:900;
+      letter-spacing:-.01em;
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+      margin: 0 0 .35em 0;
+    }
+
+    .section-head .sub,
+    .band--cta .cta-sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+      max-width: 56ch;
+      margin: 0;
+    }
+
+    .band--cta .cta-banner{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      align-items:center;
+      gap: clamp(.75rem, 2vw, 1rem);
+      background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border: 1px solid var(--hair);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 12px 48px rgba(0,0,0,.35);
+      padding: clamp(1rem, 3vw, 1.6rem);
+    }
+
+    @media (max-width: 720px){
+      .band--cta .cta-banner{
+        grid-template-columns:1fr;
+        text-align:center;
+      }
+    }
+
+    /* Floating CTA (CSS only; keep HTML inline display control in your views) */
+    .fc-float-cta{
+      position: fixed;
+      right: clamp(.75rem, 2vw, 1.2rem);
+      bottom: calc(1rem + env(safe-area-inset-bottom));
+      z-index: var(--z-float);
+    }
+
+    /* Global guardrails (no layout explosions) */
+    .grid> *,
+    .flex> *,
+    #fc-hero .hero-inner> * {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* A11y: sr-only utility + focus rings */
+    .u-sr-only{
+      position:absolute !important;
+      width:1px;
+      height:1px;
+      padding:0;
+      margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
+    :where(a,button,.btn,.chip,[role="button"]):focus-visible{
+      outline:3px solid color-mix(in oklab, var(--ring), transparent 35%);
+      outline-offset:3px;
+    }
+
+    /* Motion prefs */
+    @media (prefers-reduced-motion: reduce){
+      *{
+        transition:none !important;
+        animation:none !important;
+      }
+    }
+
+    /* Cookie banner */
+    .cookie-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface, #11191f);
+      color: var(--fg);
+      padding: 1rem 2rem;
+      text-align: center;
+      z-index: var(--z-sticky);
+      box-shadow: 0 -2px 16px #0005;
+    }
+
+    .cookie-banner a{
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* Tiny helpers for topbar/ticker */
+    @media (max-width: 600px) {
+      .fc-topbar strong,
+      .fc-topbar .badge,
+      .fc-topbar .ml-1 {
+        font-size: .92rem;
+      }
+      #donorTicker { font-size: .85rem; }
+      .fc-topbar .w-[2px] { display: none; }
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="min-h-screen scroll-smooth"
+      style="--accent: {{ BRAND_COLOR }}">
+  <a class="u-sr-only focus-visible:not-sr-only skip-link"
+     href="#main"
+     tabindex="0">
+    Skip to content
+  </a>
+
+  <div id="sr-announcer" class="u-sr-only" aria-live="polite"></div>
+
+  {# Intentionally empty: one-pager owns header/announcement #}
+
+  <main id="main" role="main" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  {# Intentionally empty: one-pager owns modals and footer #}
+
+  {% if USE_SOCKETIO and WS_URL %}
+  <script {{ nonce_attr() }}>
+    (function () {
+      "use strict";
+      try {
+        if (window.io) {
+          var s = window.io("{{ WS_URL }}");
+          s.on("donation:update", function (p) {
+            window.dispatchEvent(
+              new CustomEvent("fcx:progress", { detail: p })
+            );
+          });
+        }
+      } catch (e) {
+        // Fail quietly; real-time updates are gravy, not core.
+      }
+    })();
+  </script>
+  {% endif %}
+
+  <script {{ nonce_attr() }} defer src="{{ static_url('js/bundle.min.js') }}"></script>
+  <script {{ nonce_attr() }} defer src="{{ static_url('js/fc-ui.js') }}"></script>
+
+  {% block extra_js %}{% endblock %}
+
+  <noscript>
+    <div style="background:#111;color:#fff;padding:1rem;text-align:center;position:fixed;bottom:0;width:100%;">
+      JavaScript is disabled. You can still
+      <a href="{{ HREF_DONATE }}" style="color:var(--accent);font-weight:700;text-decoration:underline">
+        donate here
+      </a>.
+    </div>
+  </noscript>
+
+  <!-- Cookie banner -->
+  <div id="cookie-banner"
+       class="cookie-banner"
+       role="region"
+       aria-label="Cookie notice"
+       hidden>
+    We use cookies to improve your experience.
+    <a href="/privacy">Learn more</a>.
+    <button id="cookie-accept"
+            class="btn btn--ghost"
+            type="button"
+            aria-label="Accept cookies">
+      Accept
+    </button>
+  </div>
+
+  <script {{ nonce_attr() }}>
+    (function () {
+      "use strict";
+      var banner = document.getElementById("cookie-banner");
+      if (!banner) return;
+
+      var accept = document.getElementById("cookie-accept");
+
+      try {
+        var key = "fc:cookiesAccepted";
+        var ls  = window.localStorage;
+
+        if (!ls || typeof ls.getItem !== "function") {
+          banner.hidden = false;
+          return;
+        }
+
+        if (!ls.getItem(key)) {
+          banner.hidden = false;
+        }
+
+        if (accept) {
+          accept.addEventListener("click", function () {
+            try { ls.setItem(key, "1"); } catch (e) {}
+            banner.hidden = true;
+          });
+        }
+      } catch (e) {
+        banner.hidden = false;
+      }
+    })();
+  </script>
+
+  {# Base micro-module: UTM propagation, last-visit delta, reveal, theme sync, scroll reset #}
+  <script {{ nonce_attr() }}>
+    (function () {
+      "use strict";
+      if (window.__fcBaseWired) return;
+      window.__fcBaseWired = true;
+
+      var DOC = document;
+      var UTM_KEYS = [
+        "utm_source","utm_medium","utm_campaign",
+        "utm_content","utm_term","gclid","fbclid"
+      ];
+
+      var inbound = new URL(location.href).searchParams;
+      var utm = new URLSearchParams();
+
+      for (var i = 0; i < UTM_KEYS.length; i++) {
+        var k = UTM_KEYS[i];
+        if (inbound.has(k)) utm.set(k, inbound.get(k));
+      }
+
+      // Last-visit delta (minutes since previous visit)
+      try {
+        var key  = "fc:lastVisit";
+        var now  = Date.now();
+        var prev = Number(localStorage.getItem(key) || 0);
+        if (prev) {
+          var mins = Math.floor((now - prev) / 60000);
+          DOC.body.dataset.lastVisitMins = String(mins);
+        }
+        localStorage.setItem(key, String(now));
+      } catch (e) {
+        // ignore storage issues
+      }
+
+      // UTM propagation (donate links + external)
+      function attachUtm () {
+        if (!utm.toString()) return;
+
+        DOC.querySelectorAll("a[href]").forEach(function (a) {
+          try {
+            var h = a.getAttribute("href");
+            if (!h ||
+                h.startsWith("#") ||
+                h.startsWith("mailto:") ||
+                h.startsWith("tel:")) return;
+
+            var u = new URL(h, location.origin);
+            var isDonate  = /\/donate(\b|\/|\?)/.test(u.pathname);
+            var isExternal = u.origin !== location.origin;
+
+            if (!isDonate && !isExternal) return;
+
+            utm.forEach(function (v, k) {
+              u.searchParams.set(k, v);
+            });
+
+            a.setAttribute("href", u.toString());
+          } catch (e) {
+            // ignore bad hrefs
+          }
+        });
+      }
+      attachUtm();
+
+      // Reveal animations (IO-based)
+      var io = ("IntersectionObserver" in window)
+        ? new IntersectionObserver(function (ents) {
+            if (DOC.hidden) return;
+            ents.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("in");
+                io.unobserve(e.target);
+              }
+            });
+          }, { threshold: 0.15 })
+        : null;
+
+      function hydrate () {
+        if (!io) return;
+        DOC.querySelectorAll("[data-animate]:not(.in)")
+           .forEach(function (el) { io.observe(el); });
+      }
+      hydrate();
+
+      // Sync <meta name="theme-color"> to CSS token (helps mobile UI bars)
+      try {
+        var meta = DOC.getElementById("meta-theme-color");
+        var bg   = getComputedStyle(DOC.documentElement)
+                    .getPropertyValue("--bg").trim() || "#0a0f19";
+        if (meta) meta.setAttribute("content", bg);
+      } catch (e) {}
+
+      // Scroll reset: always land at top on reload / bfcache restore
+      try {
+        // For regular reloads
+        if (window.performance && performance.getEntriesByType) {
+          var nav = performance.getEntriesByType("navigation")[0];
+          if (nav && nav.type === "reload") {
+            window.scrollTo(0, 0);
+          }
+        }
+        // For back/forward cache restores
+        window.addEventListener("pageshow", function (evt) {
+          if (evt.persisted) {
+            window.scrollTo(0, 0);
+          }
+        });
+      } catch (e) {
+        // Non-fatal if scroll reset fails
+      }
+
+      // Tiny public API (for your frontend JS to hook into)
+      window.fcBase = {
+        attachUtm: attachUtm,
+        hydrate: hydrate
+      };
+    })();
+  </script>
+</body>
+</html>
+

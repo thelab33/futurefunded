@@ -1,0 +1,381 @@
+{# =============================================================================
+  flash_and_onboarding.html — SV-Premium Toaster + Onboarding (Hardened)
+  - Toaster always mounted (even with no server flashes) → window.fcFlash API
+  - CSP-safe (NONCE / csp_nonce), a11y-first, reduced-motion friendly
+  - Cross-tab sync via BroadcastChannel('fc_ui')
+  - HTMX-aware actions (optional hx-post on toast button)
+  ============================================================================= #}
+
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block" data-ui="flash-and-onboarding" >
+  {# ---------- Safe helpers & routes ---------- #}
+  {% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+  {% set _csrf = (csrf_token() if csrf_token is defined else '') %}
+  {% set _team_id = (team.id if team and team.id is defined else 'global') %}
+  {% set brand_color = (team.theme_color if team and team.theme_color is defined else '#facc15') %}
+
+  {% set _has = (has_endpoint is defined) %}
+  {% set _sf  = (safe_url_for is defined) %}
+
+  {% set _has_dismiss = _has and has_endpoint('main.dismiss_onboarding') %}
+  {% set _has_sponsor = _has and has_endpoint('main.become_sponsor') %}
+
+  {% set dismiss_url  = (_sf and _has_dismiss and safe_url_for('main.dismiss_onboarding')) or '/dismiss-onboarding' %}
+  {% set sponsor_href = (_sf and _has_sponsor and safe_url_for('main.become_sponsor'))     or '/sponsor' %}
+
+  {# ---------- Controls (override from view if needed) ---------- #}
+  {% set show_onboarding          = (show_onboarding is not defined) or show_onboarding %}
+  {% set onboarding_delay_ms      = onboarding_delay_ms|default(1200) %}
+  {% set onboarding_cooldown_days = onboarding_cooldown_days|default(14) %}
+  {% set onboarding_max_views     = onboarding_max_views|default(3) %}
+  {% set onboarding_exclude       = onboarding_exclude|default(['/donate','/checkout','/privacy']) %}
+  {% set onboarding_utm_allow     = onboarding_utm_allow|default(['newsletter','welcome','sponsor']) %}
+
+  {# =================================== FLASH MESSAGES =================================== #}
+  {% set _messages = (get_flashed_messages(with_categories=True) if get_flashed_messages is defined else []) %}
+
+  <div id="fc-flash"
+       class="pointer-events-none fixed left-1/2 top-5 z-[1100] w-[min(92vw,44rem)] -translate-x-1/2 space-y-2"
+       role="region" aria-live="polite" aria-atomic="true"
+       data-autoclose-default="4500"
+       data-max-visible="4"
+       style="--fc-brand: {{ brand_color }};">
+
+    <style nonce="{{ NONCE }}">
+      #fc-flash .card{
+        position:relative;
+        background:linear-gradient(180deg, rgba(15,15,15,.86), rgba(15,15,15,.78));
+        border:1px solid color-mix(in srgb, var(--fc-brand) 18%, transparent);
+        border-radius:1rem;
+        box-shadow:0 14px 40px rgba(250,204,21,.15);
+        backdrop-filter: blur(10px);
+      }
+      #fc-flash .in{animation:fc-in .42s cubic-bezier(.4,0,.2,1) both}
+      #fc-flash .out{animation:fc-out .5s cubic-bezier(.4,0,.2,1) both}
+      #fc-flash .timer{position:absolute;left:0;bottom:0;height:3px;background:linear-gradient(90deg, var(--fc-brand), #fde68a);width:100%}
+      @keyframes fc-in{from{opacity:0;transform:translateY(-14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes fc-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:translateY(-12px) scale(.97)}}
+
+      @media (prefers-color-scheme: light){
+        #fc-flash .card{ background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.88)); }
+        #fc-flash .timer{ background:linear-gradient(90deg, var(--fc-brand), #eab308); }
+      }
+      @media (prefers-reduced-motion: reduce){
+        #fc-flash .in,#fc-flash .out{animation:none!important}
+        #fc-flash .timer{display:none}
+      }
+    </style>
+
+    {# Server-provided flashes (optional) #}
+    {% if _messages and _messages|length %}
+      {% set styles = {
+        'success': 'ring-emerald-400/50 text-emerald-50',
+        'danger' : 'ring-red-400/60 text-red-50',
+        'error'  : 'ring-red-400/60 text-red-50',
+        'warning': 'ring-amber-400/60 text-amber-50',
+        'info'   : 'ring-sky-400/60 text-sky-50',
+        'default': 'ring-yellow-300/40 text-yellow-50'
+      } %}
+      {% set icons = { 'success':'✔️','danger':'✖️','error':'✖️','warning':'⚠️','info':'ℹ️','default':'💡' } %}
+
+      {% for category, raw in _messages %}
+        {% if raw is mapping %}
+          {% set msg = raw.get('text','') %}
+          {% set action = raw.get('action') %}
+        {% else %}
+          {% set msg = raw %}
+          {% set action = None %}
+        {% endif %}
+        {% set cat = (category or 'default')|lower %}
+        {% set cls = styles.get(cat, styles['default']) %}
+        {% set ico = icons.get(cat, icons['default']) %}
+        {% set ms  = 0 if cat in ['danger','error'] else (5200 if cat in ['info','warning'] else 3800) %}
+
+        <div class="card in pointer-events-auto flex items-start gap-3 px-5 py-3 ring-2 {{ cls }}"
+             role="{{ 'alert' if cat in ['danger','error'] else 'status' }}"
+             data-flash data-category="{{ cat }}" data-autoclose-ms="{{ ms }}" tabindex="0">
+          <span class="text-xl leading-none" aria-hidden="true">{{ ico }}</span>
+          <span class="sr-only">{{ cat|title }}:</span>
+          <div class="flex-1 text-sm">{{ msg }}</div>
+
+          {% if action and (action.href or action.hx_post) %}
+            <a
+              {% if action.href %} href="{{ action.href }}"{% endif %}
+              {% if action.hx_post %} hx-post="{{ action.hx_post }}" hx-swap="none"{% endif %}
+              class="ml-2 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-yellow-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+              {{ action.label or 'View' }}
+            </a>
+          {% endif %}
+
+          <button type="button"
+                  class="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-yellow-200 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  aria-label="Dismiss message" data-close>×</button>
+          <div class="timer" aria-hidden="true"></div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <script nonce="{{ NONCE }}">
+  (() => {
+    const host = document.getElementById('fc-flash'); if (!host) return;
+    const DEF = parseInt(host.dataset.autocloseDefault || '4500', 10);
+    const MAX = parseInt(host.dataset.maxVisible || '4', 10);
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timers = new WeakMap();
+
+    const liveForCat = (cat) => {
+      cat = (cat||'default').toLowerCase();
+      if (cat === 'danger' || cat === 'error') return 0;
+      if (cat === 'warning' || cat === 'info') return 5200;
+      if (cat === 'success') return 3800;
+      return DEF;
+    };
+
+    function enforceCap(){
+      const cards = [...host.querySelectorAll('[data-flash]')];
+      if (cards.length <= MAX) return;
+      const extra = cards.length - MAX;
+      for (let i=0;i<extra;i++){ stop(cards[i]); hide(cards[i]); }
+    }
+
+    const start = (el, ms) => {
+      if (!ms || ms<=0) return;
+      const bar = el.querySelector('.timer');
+      if (bar && !reduced) {
+        bar.style.transition = `width ${ms}ms linear`;
+        requestAnimationFrame(()=> bar.style.width = '0%');
+      }
+      const id=setTimeout(()=>hide(el), ms);
+      timers.set(el,id);
+    };
+    const stop  = (el) => { const id=timers.get(el); if (id){ clearTimeout(id); timers.delete(el); } };
+    const hide  = (el) => { if (el.__closing) return; el.__closing=true; if (!reduced) el.classList.add('out'); setTimeout(()=>el.remove(), reduced?0:480); };
+
+    // Initialize any server-rendered toasts
+    host.querySelectorAll('[data-flash]').forEach(card => {
+      const msAttr = parseInt(card.getAttribute('data-autoclose-ms') || '', 10);
+      const ms = Number.isFinite(msAttr) ? msAttr : liveForCat(card.getAttribute('data-category'));
+      start(card, ms);
+    });
+    enforceCap();
+
+    // Dismiss / swipe
+    host.addEventListener('click', e => {
+      const btn = e.target.closest('[data-close]'); if (!btn) return;
+      const card = btn.closest('[data-flash]'); stop(card); hide(card);
+    });
+    host.addEventListener('touchstart', onTouchStart, {passive:true});
+    host.addEventListener('touchmove', onTouchMove, {passive:false});
+    host.addEventListener('touchend', onTouchEnd);
+    let touchStartX=0, activeCard=null;
+    function onTouchStart(e){ const card = e.target.closest?.('[data-flash]'); if (!card) return; activeCard = card; touchStartX = e.touches[0].clientX; stop(card); }
+    function onTouchMove(e){
+      if (!activeCard) return;
+      const dx = e.touches[0].clientX - touchStartX;
+      activeCard.style.transform = `translateX(${dx}px)`; activeCard.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx)/200));
+      if (Math.abs(dx) > 48) e.preventDefault();
+    }
+    function onTouchEnd(){
+      if (!activeCard) return;
+      const dx = parseFloat(activeCard.style.transform.replace(/[^\-0-9.]/g,'')) || 0;
+      if (Math.abs(dx) > 80){ hide(activeCard); }
+      else { activeCard.style.transform=''; activeCard.style.opacity=''; start(activeCard, 1800); }
+      activeCard=null;
+    }
+
+    // Pause/resume on hover/focus
+    const pause = () => host.querySelectorAll('[data-flash]').forEach(stop);
+    const resume= () => host.querySelectorAll('[data-flash]').forEach(el=>{
+      const ms = liveForCat(el.getAttribute('data-category')); if (ms>0) start(el, Math.min(ms, 1800));
+    });
+    host.addEventListener('mouseenter', pause); host.addEventListener('mouseleave', resume);
+    host.addEventListener('focusin', pause); host.addEventListener('focusout', resume);
+
+    // ESC clears all
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      host.querySelectorAll('[data-flash]').forEach(hide);
+      if (!reduced) host.classList.add('out'); setTimeout(()=>host.remove(), reduced?0:480);
+    });
+
+    // Public API + cross-tab sync
+    const bc = (function(){ try { return new BroadcastChannel('fc_ui'); } catch { return null; }})();
+    function emit(type, detail){ try { window.dispatchEvent(new CustomEvent(type,{detail})); bc?.postMessage({type,detail}); } catch{} }
+
+    window.fcFlash = function({ message='', category='default', timeout, action } = {}){
+      const clsMap = { success:'ring-emerald-400/50 text-emerald-50', danger:'ring-red-400/60 text-red-50',
+                       error:'ring-red-400/60 text-red-50', warning:'ring-amber-400/60 text-amber-50',
+                       info:'ring-sky-400/60 text-sky-50', default:'ring-yellow-300/40 text-yellow-50' };
+      const icoMap = { success:'✔️', danger:'✖️', error:'✖️', warning:'⚠️', info:'ℹ️', default:'💡' };
+      const cat = (category||'default').toLowerCase();
+
+      const card = document.createElement('div');
+      card.className = `card in pointer-events-auto flex items-start gap-3 px-5 py-3 ring-2 ${clsMap[cat]||clsMap.default}`;
+      card.setAttribute('data-flash',''); card.setAttribute('data-category', cat);
+      card.setAttribute('role', cat==='danger' || cat==='error' ? 'alert' : 'status');
+      card.tabIndex = 0;
+
+      const close = document.createElement('button'); close.type='button'; close.setAttribute('aria-label','Dismiss message');
+      close.className='ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-yellow-200 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-yellow-400';
+      close.textContent='×'; close.setAttribute('data-close','');
+
+      const icon = document.createElement('span'); icon.className='text-xl leading-none'; icon.textContent=icoMap[cat]||icoMap.default; icon.setAttribute('aria-hidden','true');
+      const sr = document.createElement('span'); sr.className='sr-only'; sr.textContent=cat[0].toUpperCase()+cat.slice(1)+':';
+      const body = document.createElement('div'); body.className='flex-1 text-sm'; body.textContent=String(message||'');
+      const timer = document.createElement('div'); timer.className='timer'; timer.setAttribute('aria-hidden','true');
+
+      card.append(icon,sr,body);
+
+      if (action && (action.href || action.hx_post)){
+        const a = document.createElement('a');
+        if (action.href) a.href = action.href;
+        if (action.hx_post) { a.setAttribute('hx-post', action.hx_post); a.setAttribute('hx-swap','none'); }
+        a.className='ml-2 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-yellow-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400';
+        a.textContent=String(action.label||'View'); card.appendChild(a);
+      }
+
+      card.append(close,timer); host.append(card);
+      enforceCap();
+      const ms = Number.isFinite(timeout) ? timeout : liveForCat(cat);
+      start(card, ms);
+      emit('fc:flash:shown', { category: cat });
+      try { card.focus({preventScroll:true}); } catch {}
+    };
+
+    // Event bridge + cross-tab
+    window.addEventListener('fc:flash', e => window.fcFlash(e.detail||{}));
+    bc?.addEventListener?.('message', (ev)=>{ if (ev?.data?.type==='fc:flash') window.fcFlash(ev.data.detail); });
+
+    // Optional: show VIP callout if another module dispatches it
+    window.addEventListener('fc:vip:hit', (e) => {
+      const d = e.detail||{};
+      const who = d.name || 'VIP Sponsor';
+      window.fcFlash({ message:`🎉 ${who} joined! Thank you for your support.`, category:'success', timeout:3600 });
+    });
+  })();
+  </script>
+
+  {# =================================== ONBOARDING POPOVER =================================== #}
+  {% if show_onboarding and not session.get('onboarded') %}
+    <div id="fc-onboarding"
+         class="fixed bottom-6 right-6 z-[1050] w-[min(92vw,26rem)] rounded-2xl
+                bg-gradient-to-br from-zinc-900/95 via-zinc-900/90 to-yellow-900/80
+                ring-2 ring-yellow-400/50 shadow-[0_10px_40px_rgba(251,191,36,.18)] backdrop-blur-xl
+                px-5 py-5 text-yellow-50 opacity-0 translate-y-3 scale-[.98]"
+         role="dialog" aria-modal="true"
+         aria-labelledby="fc-ob-title" aria-describedby="fc-ob-desc" tabindex="-1"
+         style="--fc-brand: {{ brand_color }};"
+         data-storage-key="onboarded:{{ _team_id }}"
+         data-dismiss-url="{{ dismiss_url }}"
+         data-csrf="{{ _csrf }}"
+         data-delay="{{ onboarding_delay_ms }}"
+         data-cooldown-days="{{ onboarding_cooldown_days }}"
+         data-max-views="{{ onboarding_max_views }}"
+         data-exclude='{{ onboarding_exclude|tojson if tojson is defined else ("[" ~ onboarding_exclude|join(",") ~ "]") }}'
+         data-utm-allow='{{ onboarding_utm_allow|tojson if tojson is defined else ("[" ~ onboarding_utm_allow|join(",") ~ "]") }}'>
+
+      <h2 id="fc-ob-title" class="flex items-center gap-2 text-lg font-extrabold text-yellow-300">
+        <span aria-hidden="true">🙌</span> Welcome!
+      </h2>
+      <p id="fc-ob-desc" class="mt-2 text-sm text-yellow-100/90">
+        Explore our mission, meet the squad, and see how you can make a real impact in Austin youth sports.
+        <span class="font-semibold text-yellow-200">Become a Champion Sponsor today.</span>
+      </p>
+
+      <div class="mt-4 flex gap-2">
+        <button type="button"
+                class="inline-flex items-center justify-center rounded-full border border-yellow-400/50 bg-yellow-300/10 px-4 py-2 text-sm font-bold text-yellow-100 hover:bg-yellow-300/20 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                id="fc-ob-dismiss">
+          Got it
+        </button>
+        <a href="{{ sponsor_href }}"
+           class="inline-flex items-center justify-center rounded-full bg-yellow-400 px-4 py-2 text-sm font-extrabold text-black hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+           data-track="onboarding_sponsor_cta">
+          Become a Sponsor
+        </a>
+      </div>
+    </div>
+
+    <script nonce="{{ NONCE }}">
+    (() => {
+      const pop = document.getElementById('fc-onboarding'); if (!pop) return;
+      const key = pop.getAttribute('data-storage-key') || 'onboarded:global';
+      const delay = parseInt(pop.getAttribute('data-delay')||'1200',10);
+      const cooldownDays = parseInt(pop.getAttribute('data-cooldown-days')||'14',10);
+      const maxViews = parseInt(pop.getAttribute('data-max-views')||'3',10);
+      const exclude = (()=>{ try { return JSON.parse(pop.getAttribute('data-exclude')||'[]'); } catch { return []; } })();
+      const utmAllow = (()=>{ try { return JSON.parse(pop.getAttribute('data-utm-allow')||'[]'); } catch { return []; } })();
+      const bc = (function(){ try { return new BroadcastChannel('fc_ui'); } catch { return null; }})();
+
+      // Frequency capping + route/utm gating
+      try {
+        const cap = JSON.parse(localStorage.getItem(key) || '{}'); // {seen:number, ts:number, closed:0/1}
+        const now = Date.now();
+        const okCooldown = !cap.ts || (now - cap.ts) > cooldownDays*86400000;
+        const viewsLeft = maxViews - (cap.seen||0);
+        const path = location.pathname || '';
+        const blockedRoute = exclude.some(p => path.startsWith(p));
+        const url = new URL(location.href);
+        const utm = url.searchParams.get('utm_source');
+        const allowUtm = !utm || utmAllow.includes(utm);
+        if (cap.closed === 1 || !okCooldown || viewsLeft <= 0 || blockedRoute || !allowUtm) { pop.remove(); return; }
+      } catch {}
+
+      // Show after delay (less intrusive)
+      setTimeout(()=>{ pop.style.opacity='1'; pop.style.transform='translateY(0) scale(1)'; try{ pop.focus({preventScroll:true}); }catch{}
+        window.dispatchEvent(new CustomEvent('fc:onboarding:open')); bc?.postMessage({type:'fc:onboarding:open'});
+        try { const cap = JSON.parse(localStorage.getItem(key) || '{}'); cap.seen = (cap.seen||0)+1; cap.ts = Date.now(); localStorage.setItem(key, JSON.stringify(cap)); } catch {}
+      }, Math.max(0,delay));
+
+      // Minimal focus trap
+      function trap(container){
+        function onKey(e){
+          if (e.key !== 'Tab') return;
+          const qs = 'a,button,[tabindex]:not([tabindex="-1"])';
+          const list = [...container.querySelectorAll(qs)].filter(el=>!el.disabled);
+          if (!list.length) return;
+          const first=list[0], last=list[list.length-1];
+          if (e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+        }
+        container.addEventListener('keydown', onKey);
+        return () => container.removeEventListener('keydown', onKey);
+      }
+      const untrap = trap(pop);
+
+      // Close helpers
+      const dismiss = document.getElementById('fc-ob-dismiss');
+      const persistCap = () => { try { const cap = JSON.parse(localStorage.getItem(key) || '{}'); cap.closed = 1; cap.ts = Date.now(); localStorage.setItem(key, JSON.stringify(cap)); } catch {} };
+      const serverDismiss = async () => {
+        const url = pop.getAttribute('data-dismiss-url') || '/dismiss-onboarding';
+        const csrf = pop.getAttribute('data-csrf') || '';
+        try {
+          if (window.htmx) { await htmx.ajax('POST', url, { headers:{'X-CSRFToken': csrf}, swap:'none' }); }
+          else { await fetch(url, { method:'POST', headers:{ 'X-CSRFToken': csrf }, credentials:'same-origin' }); }
+        } catch {}
+      };
+      const close = async (persist) => {
+        pop.style.opacity='0'; pop.style.transform='translateY(6px) scale(.98)';
+        setTimeout(()=>pop.remove(), 240);
+        untrap?.();
+        if (persist){ persistCap(); serverDismiss(); }
+        window.dispatchEvent(new CustomEvent('fc:onboarding:dismiss', { detail:{ persist } }));
+        bc?.postMessage({type:'fc:onboarding:dismiss', detail:{persist}});
+      };
+
+      dismiss?.addEventListener('click', ()=> close(true));
+      document.addEventListener('keydown', (e)=>{ if (e.key==='Escape') close(true); });
+      // Soft close when clicking outside
+      document.addEventListener('click', (e)=>{ if (!pop.contains(e.target)) close(false); }, { capture:true });
+
+      // Track CTA
+      pop.querySelector('[data-track="onboarding_sponsor_cta"]')?.addEventListener('click', ()=>{
+        window.dispatchEvent(new CustomEvent('fc:onboarding:cta'));
+        try { window.fcFlash?.({ message:'Thanks for supporting!', category:'success', timeout:2800 }); } catch {}
+        bc?.postMessage({type:'fc:flash', detail:{ message:'Thanks for supporting!', category:'success', timeout:2800 }});
+      });
+    })();
+    </script>
+  {% endif %}
+</section>
+

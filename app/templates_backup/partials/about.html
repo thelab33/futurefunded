@@ -1,0 +1,60 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# templates/partials/about.html — uses the reusable component with slots #}
+{% set TEAM_NAME = team.team_name if team and team.team_name else 'Connect ATX Elite' %}
+{% set BRAND = team.theme_color if team and team.theme_color else '#facc15' %}
+{% set PLAYERS = (about.players if about and about.players else None) %}
+
+{% from 'shared/components/about_section.html' import about_section %}
+
+{% call(slot) about_section(
+  team_name=TEAM_NAME,
+  brand=BRAND,
+  players=PLAYERS,
+  cta_href='#fundraiser',
+  cta_label='Become a Champion for Austin Youth →',
+  tagline='Your support today creates opportunities for a lifetime.',
+  founding_date='2023',
+  area_served=('Austin, TX','Texas'),
+  show_decors=True,
+  show_schema=True,
+  section_id='about'
+) %}
+  {# ── Named slots (all optional) ──────────────────────────────────────────── #}
+  {% if slot == 'lede' %}
+    <p class="text-xl font-semibold text-white/90 sm:text-2xl leading-relaxed">
+      <span class="text-yellow-400">{{ TEAM_NAME }}</span> is more than a team—it’s a movement built by families, for families.
+      <span class="hidden sm:inline"><br/></span>
+      <b>We give Austin and Texas communities—kids and parents—a second home</b> where teamwork,
+      respect, and championship character are built for life.
+    </p>
+
+  {% elif slot == 'story' %}
+    <p class="text-white/80 sm:text-xl mt-4 leading-relaxed">
+      Founded by the Smith family, our AAU program grew from a father’s dream into a thriving
+      community where <b>every player is known, valued, and supported</b>.
+      <span class="block mt-2">
+        From early practices to late-night training, our volunteers and coaches pour their hearts into each journey—
+        <span class="font-bold text-amber-300">because every child matters here.</span>
+      </span>
+    </p>
+
+  {% elif slot == 'quote' %}
+    <blockquote class="mt-6 text-lg italic text-yellow-200/90">
+      “Family means showing up, believing in each other, and making sure no one is left behind.
+      That’s what we do—on the court, and off.”
+      <footer class="mt-2 text-amber-300">&mdash; Coach Angel Rodriguez</footer>
+    </blockquote>
+
+  {% elif slot == 'after-cta' %}
+    {# Example: small trust badges #}
+    <div class="flex flex-wrap items-center justify-center gap-3 text-sm text-white/70">
+      <span class="chip">Non-profit partner supported</span>
+      <span class="chip">Travel • Tutoring • Gym time</span>
+    </div>
+
+  {% elif slot == 'schema-extra' %}
+    "additionalType": "http://www.productontology.org/id/Amateur_Athletic_Union",
+    "coach": { "@type": "Person", "name": "Angel Rodriguez" }
+  {% endif %}
+{% endcall %}
+

@@ -1,0 +1,33 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+<div class="mt-4 flex flex-wrap items-center gap-2"
+     role="group" aria-label="Share this page">
+  <button type="button" class="fc-btn fc-btn-ghost" data-share>
+    🔗 Share
+  </button>
+  <a class="fc-btn fc-btn-ghost" target="_blank" rel="noopener"
+     href="https://twitter.com/intent/tweet?text={{ (_TEAM.team_name ~ ' — Support our season!')|urlencode }}&url={{ (request.base_url if request is defined else '')|urlencode }}">
+    X / Twitter
+  </a>
+  <a class="fc-btn fc-btn-ghost" target="_blank" rel="noopener"
+     href="https://www.facebook.com/sharer/sharer.php?u={{ (request.base_url if request is defined else '')|urlencode }}">
+    Facebook
+  </a>
+</div>
+<script nonce="{{ NONCE }}">
+(() => {
+  const btn = document.currentScript?.previousElementSibling?.querySelector?.('[data-share]');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const url = location.href;
+    const title = document.title;
+    const text = 'Support our season 💛';
+    try {
+      if (navigator.share) { await navigator.share({ title, text, url }); return; }
+      await navigator.clipboard.writeText(url);
+      btn.textContent = '✅ Link copied';
+      setTimeout(()=> btn.textContent = '🔗 Share', 1400);
+    } catch {}
+  }, { passive: true });
+})();
+</script>
+

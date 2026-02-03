@@ -1,0 +1,70 @@
+{# ================= Base — SV-Elite (direct CSS/JS links) ================== #}
+{% from 'partials/_core_helpers.html' import nonce_attr %}
+{% import 'partials/_fmt.html' as fmt %}
+
+{# ───── Context ─────────────────────────────────────────────────────────── #}
+{% set TEAM         = team | default(_team | default({})) %}
+{% set BRAND_HEX    = TEAM.theme_color | default('#f2c94c') %}
+{% set BRAND_NAME   = TEAM.team_name   | default('Connect ATX Elite') %}
+{% set BRAND_SLUG   = (TEAM.team_slug or BRAND_NAME) | string | lower
+                      | replace(' ', '-') | replace('_', '-') | replace('--', '-') | trim('-') %}
+
+{% set ROUTE        = request.endpoint if request is defined else '' %}
+{% set IS_DONATE    = ROUTE == 'main.donate' %}
+{% set NONCE        = NONCE | default(csp_nonce() if csp_nonce is defined else '') %}
+{% set LOCALE       = LOCALE | default('en_US') %}
+
+{% set SPL          = (stripe_payment_link if stripe_payment_link is defined and stripe_payment_link) or '' %}
+{% set HREF_DONATE  = SPL or (safe_url_for('main.donate') if (safe_url_for is defined and has_endpoint is defined and has_endpoint('main.donate')) else '/donate') %}
+
+<!doctype html>
+<html lang="{{ LOCALE|replace('_','-') }}"
+      class="h-full antialiased selection:bg-white/20"
+      data-theme="dark"
+      data-brand="{{ BRAND_SLUG }}"
+      data-route="{{ ROUTE|default('') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="robots" content="index,follow">
+
+  <title>{% block title %}{{ fundraiser_title or BRAND_NAME ~ ' — Fundraiser' }}{% endblock %}</title>
+  <meta name="description" content="{{ TEAM.og_description | default('Fuel the season. Fund the future.') }}">
+
+  {# Social OG tags #}
+  <meta property="og:site_name" content="{{ BRAND_NAME }}">
+  <meta property="og:title" content="{{ fundraiser_title or BRAND_NAME }}">
+  <meta property="og:description" content="{{ TEAM.og_description | default('Fuel the season. Fund the future.') }}">
+  <meta property="og:image" content="{{ TEAM.og_image | default('images/og_default.jpg') }}">
+
+  {# --- Direct CSS bundle (do not touch) --- #}
+  <link rel="stylesheet" href="/static/css/app.min.css">
+
+  <style {{ nonce_attr(NONCE) }}>
+    :root { --brand-color: {{ BRAND_HEX }}; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-full bg-[color:var(--fc-ink)] text-zinc-100">
+  {% block header %}{% include 'partials/header_and_announcement.html' ignore missing with context %}{% endblock %}
+
+  <main id="main" role="main" class="relative" tabindex="-1">
+    <h1 class="sr-only">{% block h1 %}{{ BRAND_NAME }}{% endblock %}</h1>
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}{% include 'partials/footer.html' ignore missing with context %}{% endblock %}
+
+  {# --- Direct JS bundle (do not touch) --- #}
+  <script src="/static/js/app.min.js" defer></script>
+  <script {{ nonce_attr(NONCE) }} type="module" src="/static/js/main.js"></script>
+  {% if IS_DONATE %}
+    <script {{ nonce_attr(NONCE) }} src="/static/js/donate.min.js" defer></script>
+  {% endif %}
+
+  {% include 'partials/_base_inline_scripts.html' ignore missing with context %}
+</body>
+</html>
+

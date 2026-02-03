@@ -1,0 +1,115 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Thank you · {{ org_name }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style { { nonce_attr() } } { { nonce_attr() } }>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: radial-gradient(900px 380px at -10% -20%, rgba(148,163,184,0.18), transparent 70%),
+                  #020617;
+      color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell {
+      max-width: 520px;
+      margin: 40px auto;
+      padding: 0 16px;
+      text-align: center;
+    }
+    .card {
+      border-radius: 20px;
+      background: #020617;
+      border: 1px solid rgba(51,65,85,0.9);
+      padding: 22px 18px 20px;
+      box-shadow: 0 22px 60px rgba(0,0,0,0.85);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+      letter-spacing: -0.03em;
+    }
+    p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #cbd5f5;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f97316, #facc15);
+      color: #111827;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .pill span {
+      font-size: 1.1rem;
+    }
+    .back-link {
+      margin-top: 14px;
+      font-size: 0.86rem;
+      color: #9ca3af;
+    }
+    .back-link a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+  </style>
+</head>
+<body
+
+<!-- FF: Accessibility Skip Link -->
+<a href="#main" class="ff-skiplink">Skip to main content</a>
+>
+  <div class="shell">
+    <div class="card">
+      <div class="pill">
+        <span>🎉</span> <span>Thank you</span>
+      </div>
+      <h1>Gift received, {{ name or "friend" }}.</h1>
+      <p>
+        Your {{ "%.2f"|format(amount) }} USD
+        {% if frequency == "monthly" %}monthly{% else %}one-time{% endif %}
+        gift helps keep {{ org_name }} affordable and accessible.
+      </p>
+      <p class="back-link">
+        You can close this tab, or
+        <a href="{{ url_for('hero.home') }}">head back to the campaign page</a>.
+      </p>
+    </div>
+  </div>
+
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</body>
+</html>
+

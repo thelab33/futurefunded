@@ -1,0 +1,295 @@
+{# ================================
+   about_section.html — SV-ELITE (v5)
+   - Centered card, motion-safe counters, CSP-safe video modal
+   - + Impact badges, Share, Trust ribbon, Live stats API, SEO JSON-LD
+   ================================ #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set _team = team if team is defined and team else none %}
+
+{% set TEAM_NAME   = _team.team_name if _team and _team.team_name else "Connect ATX Elite" %}
+{% set REGION      = _team.region     if _team and _team.region     else "Austin, TX" %}
+{% set MISSION_TXT = _team.mission    if _team and _team.mission    else
+"Beyond basketball—we’re shaping leaders, scholars, and role models for our community." %}
+
+{# Optional trust/impact data (strings only; auto-hidden if empty) #}
+{% set EIN         = _team.ein if _team and _team.ein else "" %}
+{% set IS_501C3    = _team.is_501c3 if _team is defined and _team is not none and _team.is_501c3 else true %}
+{% set IMPACT_BADGES = IMPACT_BADGES if IMPACT_BADGES is defined and IMPACT_BADGES else [
+  "Need-based scholarships", "Tutoring & mentoring", "Travel assistance"
+] %}
+
+{% set SHOW_VIDEO  = SHOW_VIDEO if SHOW_VIDEO is defined else True %}
+{% set VIDEO_URL   = VIDEO_URL if VIDEO_URL is defined and VIDEO_URL
+  else (_team.video_url if _team and _team.video_url else 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1') %}
+
+{# Stats (numbers preferred; strings allowed and won’t animate) #}
+{% set STATS = STATS if STATS is defined and STATS else [
+  {"icon":"🏀","label":"Regionals record","value": (_team.regionals_record if _team and _team.regionals_record else "15")},
+  {"icon":"🏆","label":"Championships","value": (_team.championships    if _team and _team.championships    else "3")},
+  {"icon":"🎓","label":"Top academic athletes","value": (_team.top_academic if _team and _team.top_academic else "12")}
+] %}
+
+{# Optional partner/press logos (urls) #}
+{% set TRUST_LOGOS = TRUST_LOGOS if TRUST_LOGOS is defined and TRUST_LOGOS else [] %}
+{% set default_logo = (url_for('static', filename='images/logo.webp') if url_for is defined else '/static/images/logo.webp') %}
+
+<div id="fc-about" role="region" aria-labelledby="fc-about-title"
+     data-share-url="{{ share_url|default(request.url if request is defined else '') }}">
+  <style nonce="{{ NONCE }}">
+    /* ── Scoped to #fc-about ───────────────────────────────────────────── */
+    #fc-about{ scroll-margin-top: var(--fc-sticky-offset, 80px); }
+
+    #fc-about .about-card{
+      --about-max: 60rem;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: clamp(18px, 16px + 1vw, 28px);
+      max-width: var(--about-max);
+      margin-inline:auto;
+      padding: clamp(1rem, 1rem + 1.4vw, 2rem);
+      box-shadow: 0 22px 70px rgba(0,0,0,.35);
+      content-visibility:auto; contain-intrinsic-size: 800px; /* perf hint */
+    }
+    @media (min-width:1024px){ #fc-about .about-card{ padding: 2.25rem 2.5rem; } }
+
+    /* Headline sheen */
+    #fc-about .shine-text{
+      background-image: linear-gradient(90deg, #f5d04c, #facc15, #f5d04c);
+      background-size: 200% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: about-shine 6s linear infinite; letter-spacing:-.01em;
+    }
+    @keyframes about-shine { to { background-position: 200% 0 } }
+    @media (prefers-reduced-motion: reduce){ #fc-about .shine-text{ animation:none } }
+
+    /* Stats row */
+    #fc-about .stats-grid{ display:grid; gap:.6rem; grid-template-columns: repeat(3, minmax(0,1fr)); }
+    @media (max-width:520px){ #fc-about .stats-grid{ grid-template-columns: 1fr 1fr 1fr; } }
+    #fc-about .stat{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:.25rem;
+      padding:.85rem .9rem; border-radius:.9rem; background: color-mix(in srgb, #fff 6%, transparent);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    #fc-about .stat .v{ font-variant-numeric:tabular-nums; font-weight:900; font-size:clamp(1.1rem,.9rem + .8vw,1.6rem) }
+    #fc-about .stat .k{ font-size:.8rem; color:#d4d4d8 }
+
+    /* Impact badges row */
+    #fc-about .impact{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem }
+    #fc-about .impact .chip{ border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06);
+      padding:.3rem .6rem; border-radius:999px; font-weight:800; color:#e5e7eb; font-size:.85rem }
+
+    /* CTA row */
+    #fc-about .cta-row{ display:flex; flex-wrap:wrap; gap:.65rem; align-items:center }
+    #fc-about .fc-btn{ border-radius:.85rem; padding:.6rem .9rem; font-weight:900; }
+    #fc-about .fc-btn-primary{ background:linear-gradient(180deg,#fde047,#facc15); color:#111827; }
+    #fc-about .fc-btn-ghost{ background:#0b0b0c; color:#e5e7eb; border:1px solid rgba(255,255,255,.14) }
+
+    /* Trust ribbon */
+    #fc-about .trust{ margin-top:1rem }
+    #fc-about .ribbon{ display:flex; gap:.6rem; overflow:auto hidden; padding:.35rem 0 }
+    #fc-about .slogo{ height:28px; width:auto; border-radius:.4rem; background:#fff; padding:.18rem .35rem;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.06) }
+
+    /* Small helpers */
+    #fc-about .note{ color:#d4d4d8; font-size:.8rem }
+  </style>
+
+  <div class="about-card" itemscope itemtype="https://schema.org/SportsTeam">
+    <meta itemprop="name" content="{{ TEAM_NAME }}"/>
+    <h2 id="fc-about-title" class="text-fluid-h1 font-extrabold shine-text mb-2">
+      More Than Basketball — We’re Family
+    </h2>
+
+    <p class="text-base sm:text-lg text-white/90">
+      <span class="text-yellow-400" itemprop="name">{{ TEAM_NAME }}</span> (<span itemprop="areaServed">{{ REGION }}</span>) is more than a team—it’s a movement built by families, for families.
+      We give kids a second home where teamwork, respect, and championship character are built for life.
+    </p>
+
+    <p class="mt-3 text-base sm:text-lg text-white/85" itemprop="mission">{{ MISSION_TXT }}</p>
+
+    <p class="mt-2 text-sm text-yellow-200/90 italic">
+      “Family means showing up, believing in each other, and making sure no one is left behind.
+      That’s what we do—on the court, and off.” <span class="text-amber-300">&mdash; Coach Angel Rodriguez</span>
+    </p>
+
+    {# Impact badges (auto-hidden if all empty) #}
+    {% set show_impact = (IMPACT_BADGES and IMPACT_BADGES|length > 0) or IS_501C3 or EIN %}
+    {% if show_impact %}
+    <div class="impact" role="list" aria-label="Impact highlights">
+      {% if IS_501C3 %}<span class="chip" role="listitem">✅ 501(c)(3)</span>{% endif %}
+      {% if EIN %}<span class="chip" role="listitem">EIN: {{ EIN }}</span>{% endif %}
+      {% for b in IMPACT_BADGES %}<span class="chip" role="listitem">{{ b }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Stats -->
+    <div class="mt-5 stats-grid">
+      {% for s in STATS %}
+      <div class="stat">
+        <div class="text-lg" aria-hidden="true">{{ s.icon }}</div>
+        <div class="v fc-counter" data-target="{{ (s.value|string)|replace('–','-') }}">{{ s.value }}</div>
+        <div class="k">{{ s.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- CTAs -->
+    <div class="mt-5 cta-row">
+      <a href="{{ tiers_url|default('#tiers') }}" class="fc-btn fc-btn-primary" data-cta="about:become-champion">💛 Become a Champion</a>
+      {% if SHOW_VIDEO %}
+      <button id="fc-video-open" class="fc-btn fc-btn-ghost" type="button" data-video-src="{{ VIDEO_URL }}"
+              aria-haspopup="dialog" aria-expanded="false">▶ Watch Our Story</button>
+      {% endif %}
+      <button id="fc-share" class="fc-btn fc-btn-ghost" type="button" aria-label="Share this program">🔗 Share</button>
+    </div>
+
+    <p class="mt-2 note">
+      Every sponsorship fuels gym time, tutoring, travel, and more. Keep our kids dreaming big.
+    </p>
+
+    {% if TRUST_LOGOS and TRUST_LOGOS|length > 0 %}
+    <div class="trust">
+      <div class="note mb-1">Trusted by partners &amp; featured in:</div>
+      <div class="ribbon" id="about-ribbon" aria-label="Partners and press">
+        {% for src in TRUST_LOGOS[:12] %}
+          <img class="slogo" src="{{ src or default_logo }}" alt="Partner logo" loading="lazy" decoding="async" />
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if SHOW_VIDEO %}
+  <!-- Accessible modal (CSP-safe) -->
+  <div id="fc-video-modal" class="fixed inset-0 z-[80] hidden" role="dialog" aria-modal="true" aria-labelledby="fc-video-title">
+    <div data-modal-overlay class="absolute inset-0 bg-black/70"></div>
+    <div class="relative mx-auto my-10 w-[min(100vw-2rem,960px)] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-black shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <h4 id="fc-video-title" class="font-bold">Program Highlights</h4>
+        <button type="button" class="fc-btn fc-btn-ghost px-3 py-1.5" data-modal-close aria-label="Close video">✕</button>
+      </div>
+      <div class="relative aspect-video">
+        <iframe class="absolute inset-0 w-full h-full" src="" title="Team highlight video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{# --- JS: counters + modal + share + trust ribbon (IO-gated) --- #}
+<script nonce="{{ NONCE }}">
+(() => {
+  const root = document.getElementById('fc-about'); if (!root || root.__init) return; root.__init = true;
+  const prefersReduce = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  // Counter animation
+  function anim(el){
+    const raw = (el.getAttribute('data-target') || el.textContent || '').trim();
+    if(!/^\d+(\.\d+)?$/.test(raw)){ el.textContent = raw; return; }
+    const target = parseFloat(raw);
+    if (prefersReduce){ el.textContent = target.toLocaleString(); return; }
+    let t0=null, dur=900;
+    const step=(ts)=>{ if(!t0) t0=ts; const p=Math.min(1,(ts-t0)/dur);
+      el.textContent = Math.floor(target*p).toLocaleString();
+      if(p<1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  function bootCounters(){ root.querySelectorAll('.fc-counter').forEach(anim); }
+
+  // IO gate for counters + ribbon scroll
+  const ribbon = document.getElementById('about-ribbon');
+  const io = ('IntersectionObserver' in window) ? new IntersectionObserver((ents)=>{
+    if (ents.some(e=>e.isIntersecting)) {
+      bootCounters(); io.disconnect();
+      if (ribbon && !prefersReduce) startRibbon();
+    }
+  },{threshold:0.2}) : null;
+  io ? io.observe(root) : bootCounters();
+
+  // Trust ribbon gentle auto-scroll + dedupe
+  function startRibbon(){
+    const imgs = ribbon.querySelectorAll('img[src]');
+    const seen = new Set();
+    imgs.forEach(img => { try{ const key=new URL(img.src, location.href).href; if(seen.has(key)) img.remove(); else seen.add(key); }catch{} });
+    let t=0,last=0, sp=28;
+    const step = (ts)=>{ const dt=(last?ts-last:16)/1000; last=ts; t+=sp*dt;
+      ribbon.scrollLeft = (ribbon.scrollLeft + t/10);
+      if (ribbon.scrollLeft + ribbon.clientWidth + 2 >= ribbon.scrollWidth) ribbon.scrollLeft = 0;
+      requestAnimationFrame(step);
+    }; requestAnimationFrame(step);
+  }
+
+  // Video modal (optional)
+  const modal = document.getElementById('fc-video-modal');
+  const trigger = document.getElementById('fc-video-open');
+  if (modal && trigger){
+    const iframe  = modal.querySelector('iframe');
+    const overlay = modal.querySelector('[data-modal-overlay]');
+    const closeBtn= modal.querySelector('[data-modal-close]');
+    let last=null;
+    const focusables = (root) => Array.from(root.querySelectorAll('a[href],button,[tabindex]:not([tabindex="-1"])')).filter(el=>!el.disabled && !el.getAttribute('aria-hidden'));
+    function lock(){ document.documentElement.style.overflow='hidden'; }
+    function unlock(){ document.documentElement.style.overflow=''; }
+    function trap(e){ if(e.key!=='Tab') return; const f=focusables(modal); if(!f.length) return; const [first,lastEl]=[f[0],f[f.length-1]];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); lastEl.focus(); }
+      else if(!e.shiftKey && document.activeElement===lastEl){ e.preventDefault(); first.focus(); } }
+    function esc(e){ if(e.key==='Escape') close(); }
+    function open(){ last=document.activeElement; modal.classList.remove('hidden'); iframe && (iframe.src = trigger.getAttribute('data-video-src') || ''); lock();
+      (focusables(modal)[0]||modal).focus(); document.addEventListener('keydown',trap); document.addEventListener('keydown',esc); }
+    function close(){ modal.classList.add('hidden'); if(iframe) iframe.src=''; unlock(); document.removeEventListener('keydown',trap); document.removeEventListener('keydown',esc); last&&last.focus?.(); }
+    trigger.addEventListener('click', open, {passive:true});
+    (closeBtn||modal).addEventListener('click', (e)=>{ if(e.target===overlay || e.currentTarget===closeBtn) close(); });
+  }
+
+  // Share button (Web Share API + clipboard fallback)
+  const shareBtn = document.getElementById('fc-share');
+  if (shareBtn){
+    const url = root.dataset.shareUrl || location.href;
+    shareBtn.addEventListener('click', async () => {
+      try{
+        if (navigator.share) {
+          await navigator.share({ title: document.title || 'FundChamps', text: 'Support our program!', url });
+        } else if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+          shareBtn.textContent = '✅ Copied link'; setTimeout(()=> shareBtn.textContent='🔗 Share', 1400);
+        }
+      }catch{}
+    }, {passive:true});
+  }
+
+  // Live stats update API
+  window.addEventListener('fc:stats:update', (e)=>{
+    const items = (e.detail?.stats)||[]; // [{label, value, icon?}]
+    if (!items.length) return;
+    const grid = root.querySelector('.stats-grid'); if(!grid) return;
+    grid.innerHTML = '';
+    for (const s of items.slice(0,6)){
+      const card = document.createElement('div'); card.className='stat';
+      card.innerHTML = `<div class="text-lg" aria-hidden="true">${s.icon||'📊'}</div>
+                        <div class="v fc-counter" data-target="${String(s.value||'').replace('–','-')}">${s.value||''}</div>
+                        <div class="k">${s.label||''}</div>`;
+      grid.appendChild(card);
+    }
+    bootCounters();
+  });
+})();
+</script>
+
+{# --- SEO JSON-LD (scoped) --- #}
+<script type="application/ld+json" nonce="{{ NONCE }}">
+{
+  "@context": "https://schema.org",
+  "@type": "SportsTeam",
+  "name": "{{ TEAM_NAME | e }}",
+  "areaServed": "{{ REGION | e }}",
+  "memberOf": {
+    "@type": "Organization",
+    "name": "FundChamps"
+  },
+  "description": {{ MISSION_TXT | tojson }},
+  "url": {{ (share_url if share_url is defined else (request.url if request is defined else '/')) | tojson }}
+}
+</script>
+

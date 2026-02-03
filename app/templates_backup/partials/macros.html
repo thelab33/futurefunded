@@ -1,0 +1,118 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# =============================================================================
+   templates/partials/_macros.html
+   Elite, CSP-safe macro kit (aria, tokens, and helpers)
+============================================================================= #}
+
+{# ───────── small utilities ───────── #}
+{% macro sr(text) %}
+  <span class="sr-only">{{ text }}</span>
+{% endmacro %}
+
+{# Safe attribute renderer: accepts a dict of attributes
+   - boolean True → just the key (e.g. disabled)
+   - falsy/None → skipped
+   - string/number → key="escaped value"
+#}
+{% macro _attrs(props) -%}
+  {%- if props and props is mapping -%}
+    {%- for k, v in props.items() -%}
+      {%- if v is sameas true -%} {{- " " ~ k -}}
+      {%- elif v not in (none, false) -%} {{- " " ~ k ~ '="' ~ v|e ~ '"' -}}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+{%- endmacro %}
+
+{# Flexible currency (input in cents). Returns "1,234.56" (no $).
+   Tolerates int/str/None; negative values handled sensibly. #}
+{% macro currency(cents) -%}
+  {%- set _c = cents if cents is not none else 0 -%}
+  {%- set _n = (_c|string)|float if _c is string else _c -%}
+  {%- set _dollars = (_n or 0) / 100.0 -%}
+  {{- '{:,.2f}'.format(_dollars) -}}
+{%- endmacro %}
+
+{# ───────── button macro ─────────
+  label: visible text
+  href: if truthy → <a>; else → <button type="button">
+  size: sm | md | lg
+  kind: primary | ghost | surface | success
+  icon: optional icon class (rendered as <i class="...">) — legacy support
+  icon_html: optional raw SVG/HTML (already safe/escaped by caller)
+  disabled: bool
+  attrs: dict of extra attributes (preferred); string supported for legacy calls
+  target / rel: optional for links
+#}
+{% macro render_button(label, href='#', size='md', kind='primary', icon=None, icon_html=None, disabled=False, attrs=None, target=None, rel=None, btn_type='button') %}
+  {%- set base = 'inline-flex items-center justify-center font-semibold rounded-2xl transition focus-ring focus:outline-none gap-2' -%}
+  {%- set sizes = {'sm':'px-3 py-2 text-sm','md':'px-4 py-2.5','lg':'px-5 py-3 text-lg'} -%}
+  {%- set kinds = {
+      'primary':'bg-[var(--fc-brand)] text-black hover:brightness-110 shadow',
+      'ghost':'bg-transparent border border-[var(--fc-brand-200)] text-white/90 hover:border-[var(--fc-brand)]',
+      'surface':'bg-[var(--fc-brand-100)] text-white/90 border border-[var(--fc-brand-200)] hover:border-[var(--fc-brand)]',
+      'success':'bg-emerald-400 text-black hover:brightness-110'
+    } -%}
+  {%- set cls = base ~ ' ' ~ (sizes.get(size, sizes['md'])) ~ ' ' ~ (kinds.get(kind, kinds['primary'])) -%}
+
+  {# normalize attrs: allow legacy string or new dict #}
+  {%- set extra = {} -%}
+  {%- if attrs and attrs is string -%}
+    {# legacy passthrough — still allowed #}
+  {%- elif attrs and attrs is mapping -%}
+    {%- set extra = attrs -%}
+  {%- endif -%}
+
+  {%- if href -%}
+    <a
+      href="{{ href }}"
+      class="{{ cls }}{% if disabled %} pointer-events-none opacity-60{% endif %}"
+      {%- if target %} target="{{ target }}"{% endif -%}
+      {%- if rel %} rel="{{ rel }}"{% endif -%}
+      {{ _self._attrs(extra) }}
+      {%- if attrs and attrs is string %} {{ attrs|safe }}{% endif -%}
+    >
+      {%- if icon_html %}{{ icon_html|safe }}{% elif icon %}<i class="{{ icon }}" aria-hidden="true"></i>{% endif -%}
+      <span>{{ label }}</span>
+    </a>
+  {%- else -%}
+    <button
+      type="{{ btn_type }}"
+      class="{{ cls }}{% if disabled %} opacity-60{% endif %}"
+      {%- if disabled %} disabled{% endif -%}
+      {{ _self._attrs(extra) }}
+      {%- if attrs and attrs is string %} {{ attrs|safe }}{% endif -%}
+    >
+      {%- if icon_html %}{{ icon_html|safe }}{% elif icon %}<i class="{{ icon }}" aria-hidden="true"></i>{% endif -%}
+      <span>{{ label }}</span>
+    </button>
+  {%- endif -%}
+{% endmacro %}
+
+{# ───────── meter macro ─────────
+  goal_cents / raised_cents: ints in cents
+  Accessible progressbar with clamped width and readable labels
+#}
+{% macro render_meter(goal_cents, raised_cents, id=None) %}
+  {%- set _goal = (goal_cents or 0)|int -%}
+  {%- set _raised = (raised_cents or 0)|int -%}
+  {%- set _goal_safe = (_goal if _goal > 0 else 1) -%}
+  {%- set _pct_raw = (_raised / _goal_safe * 100.0) -%}
+  {%- set _pct = 0 if _pct_raw < 0 else (100 if _pct_raw > 100 else _pct_raw) -%}
+  {%- set label_id = (id ~ '-meter-label') if id else none -%}
+
+  <div class="w-full">
+    {# Optional visible label region for screen readers to anchor to #}
+    <div class="flex items-center justify-between text-sm text-white/70 mb-1">
+      <div {% if label_id %}id="{{ label_id }}"{% endif %}>
+        <span class="text-white font-semibold">${{ currency(_raised) }}</span> raised
+      </div>
+      <div>Goal: ${{ currency(_goal) }}</div>
+    </div>
+
+    <div class="h-3 w-full rounded-full bg-[#1A1C27] border border-[var(--fc-brand-200)] overflow-hidden"
+         role="progressbar"
+         aria-valuemin="0"
+         aria-valuemax="{{ (_goal_safe / 100)|int }}"
+         aria-valuenow="{{ (_raised / 100)|int }}"
+         aria-valuetext="{{ '{:,.0f}'.format(_pct) }}% complete"

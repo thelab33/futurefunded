@@ -1,0 +1,142 @@
+/* =============================================================
+   FundChamps • Core Site Styles  —  v1.0 (refactored)
+   -------------------------------------------------------------
+   • Consolidates previous `pro.css` globals
+   • Removes blanket <section> padding overrides → uses helpers
+   • Introduces CSS vars + utility-style helpers to avoid bleed
+   • No selector conflicts with `fundchamps-hero.css`
+   ============================================================ */
+
+/******************************
+ 1. Design Tokens (CSS Vars)
+******************************/
+:root {
+  /* palettes */
+  --bg-start: #18181b;
+  --bg-end:   #232127;
+  --gold-100: #ffe066;
+  --gold-500: #facc15;
+  --ink:      #fff;
+
+  /* radii & shadows */
+  --radius-xl: 1.25rem;    /* 20px */
+  --shadow-card: 0 2px 32px #0007;
+  --shadow-card-hover: 0 12px 40px #b91c1c44,
+                       0 1.5px 0 var(--gold-500);
+}
+
+/******************************
+ 2. Global Layout & Typography
+******************************/
+html { scroll-behavior: smooth; }
+body {
+  background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  color: var(--ink);
+  font-family: Inter, sans-serif;
+}
+h1, .h1          { font-size: 2.75rem; font-weight: 900; letter-spacing: -0.02em; }
+h2, .h2          { font-size: 2rem;   font-weight: 800; letter-spacing: -0.01em; }
+h3, .h3          { font-size: 1.4rem; font-weight: 700; }
+
+/******************************
+ 3. Section Helpers
+   (replace old generic <section> rules)
+******************************/
+
+/* Zero-margin/zero-padding baseline */
+.site-section { margin: 0; padding: 0; }
+
+/* Consistent vertical rhythm */
+.section-pad { padding: 4rem 0; }
+
+@media (width <= 900px) {
+  .section-pad { padding: 2rem 0; }
+}
+
+/******************************
+ 4. Card Components
+******************************/
+.card-base,
+.fc-card,
+.tiers .card,
+article {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  background: rgb(35, 33, 39, 0.92);
+  border: 1.5px solid color-mix(in srgb, var(--gold-500) 30%, transparent);
+  transition: box-shadow 0.3s, transform 0.2s;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-6px) scale(1.025);
+}
+
+/* Staggered tier layout support */
+.staggered-tiers .card-pop { z-index: 2; box-shadow: 0 8px 40px #0008; transform: scale(1.08) translateY(-12px); }
+.staggered-tiers .card-edge { opacity: 0.95; filter: blur(0.5px); }
+
+@media (width <= 900px) {
+  .staggered-tiers .card-pop,
+  .staggered-tiers .card-edge { transform: none !important; box-shadow: none; filter: none; }
+}
+
+/******************************
+ 5. Buttons & Text Utilities
+******************************/
+.text-gold,
+.accent,
+.btn-gold {
+  color: var(--gold-500) !important;
+  text-shadow: 0 1.5px 0 var(--bg-start);
+}
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  background: linear-gradient(90deg, var(--gold-100) 0%, var(--gold-500) 100%);
+  color: var(--bg-start);
+  border: 2px solid var(--gold-500);
+  font-weight: 800;
+  border-radius: 9999px;
+  transition: box-shadow 0.2s, background 0.2s;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--gold-500) 30%, transparent);
+}
+.btn-gold:focus,
+.btn-gold:hover {
+  background: linear-gradient(90deg, var(--gold-500) 0%, var(--gold-100) 100%);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--gold-500) 40%, transparent);
+  outline: 2.5px solid var(--gold-500);
+}
+
+/* Pulse animation utility */
+.btn-gold.animate-pulse { animation: pulseGold 1.6s infinite alternate; }
+
+@keyframes pulseGold {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold-500) 40%, transparent); }
+  100% { box-shadow: 0 0 16px 2px color-mix(in srgb, var(--gold-500) 40%, transparent); }
+}
+
+/******************************
+ 6. Decorative Elements
+******************************/
+.swoosh-divider {
+  background: linear-gradient(120deg, #b91c1c 60%, var(--gold-500) 85%, transparent 100%);
+  clip-path: polygon(0 100%, 100% 80%, 100% 100%, 0 100%);
+  height: 54px;
+  width: 100vw;
+  margin-top: -48px;
+  z-index: 5;
+  position: relative;
+  opacity: 0.92;
+  transition: opacity 0.2s;
+}
+
+/******************************
+ 7. Utility Mix (optional Tailwind purge safelist)
+******************************/
+
+/* Add these to your tailwind.config.js safelist to prevent purge removal */
+
+/* safelist: [ /^section-pad$/, /^card-base$/, /^card-hover$/, /^btn-gold$/, /^text-gold$/ ] */
+
+/* End of Core Site Styles */

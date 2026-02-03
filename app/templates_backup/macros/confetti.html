@@ -1,0 +1,57 @@
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{# =============================================================================
+   macros/confetti.html — FundChamps Confetti & Celebration Macro
+   - Encapsulates canvas-confetti + optional cheer audio
+   - CSP-safe: nonce is injected
+   - Accessible: screen-reader hidden heading landmark
+   ============================================================================= #}
+
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 sr-only" aria-label="Celebration macros" >
+  <h2>Confetti</h2>
+</section>
+
+{% macro launch_confetti(
+  sound="yes",
+  particle_count=120,
+  spread=80,
+  duration=3,
+  audio_file="cheer.mp3"
+) %}
+  <script nonce="{{ NONCE }}">
+    window.launchConfetti = function() {
+      // Confetti.js (canvas-confetti) integration
+      if (window.confetti) {
+        confetti({
+          particleCount: {{ particle_count }},
+          spread: {{ spread }},
+          origin: { y: 0.6 },
+          angle: 90,              // Spread direction
+          scalar: 1.2,            // Size multiplier
+          colors: [
+            '#FBBF24', '#FACC15', '#FFD700',
+            '#FFC107', '#FFEB3B'
+          ]
+        });
+      }
+
+      // Optional cheer sound
+      {% if sound == "yes" %}
+      try {
+        const audio = new Audio("{{ url_for('static', filename='audio/' ~ audio_file) }}");
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+      } catch(e) {
+        console.error("Confetti audio failed:", e);
+      }
+      {% endif %}
+
+      // Stop confetti after given duration (seconds)
+      setTimeout(() => {
+        if (window.confetti && typeof window.confetti.reset === 'function') {
+          window.confetti.reset();
+        }
+      }, {{ duration }} * 1000);
+    };
+  </script>
+{% endmacro %}
+

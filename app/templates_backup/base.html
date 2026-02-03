@@ -1,0 +1,148 @@
+{# ============================================================================
+   base.html · FundChamps Ultra SaaS 2025+
+   --------------------------------------------------------------------------
+   - Agency-ready, minimal, blazing fast. All pages extend this.
+   ========================================================================== #}
+{% from "partials/_core_helpers.html" import nonce_attr %}
+
+{# --- Smart defaults for safety --- #}
+{% set TEAM        = team | default(_team | default({})) %}
+{% set BRAND_NAME  = TEAM.team_name   | default("Connect ATX Elite") %}
+{% set BRAND_HEX   = TEAM.theme_color | default("#facc15") %}
+{% set BRAND_SLUG  = (TEAM.team_slug or BRAND_NAME)|string|lower
+                     |replace(" ","-")|replace("_","-")|replace("--","-")|trim("-") %}
+{% set NONCE       = NONCE | default(csp_nonce() if csp_nonce is defined else "") %}
+{% set ROUTE       = request.endpoint if request is defined else "" %}
+
+<!doctype html>
+<html lang="{{ (LOCALE or 'en_US')|replace('_','-') }}"
+      class="h-full antialiased selection:bg-white/20"
+      data-theme="dark"
+      data-brand="{{ BRAND_SLUG }}"
+      data-route="{{ ROUTE }}">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="{{ BRAND_HEX }}">
+  <meta name="robots" content="index,follow">
+
+  <title>{% block title %}{{ fundraiser_title or BRAND_NAME }}{% endblock %}</title>
+  <meta name="description" content="{{ TEAM.og_description | default('Fuel the season. Fund the future.') }}">
+
+  <!-- OG / Social -->
+  <meta property="og:site_name" content="{{ BRAND_NAME }}">
+  <meta property="og:title" content="{{ fundraiser_title or BRAND_NAME }}">
+  <meta property="og:description" content="{{ TEAM.og_description | default('Fuel the season. Fund the future.') }}">
+  <meta property="og:image" content="{{ TEAM.og_image | default('/static/brand/og_default.jpg') }}">
+
+  <!-- Fonts (Inter + Poppins) -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Core CSS -->
+  <link rel="stylesheet" href="/static/css/app.min.css">
+  <link rel="stylesheet" href="/static/css/pro.css"> {# Agency polish layer #}
+
+  <style {{ nonce_attr(NONCE) }}>
+    :root { --brand-color: {{ BRAND_HEX }}; }
+    body  { font-family:"Inter",sans-serif; background:#0f0f12; color:#e5e7eb; }
+    h1,h2,h3,h4,h5,h6 { font-family:"Poppins",sans-serif; font-weight:800; }
+    html[data-theme="light"] body { background:#f9fafb; color:#1e293b; }
+    html[data-theme="light"] .fc-app-bg { background:linear-gradient(120deg,#fffbe6 0%,#f8fafc 100%); }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+</head>
+
+<body class="min-h-full bg-neutral-950 text-zinc-100 selection:bg-brand/25">
+
+  {# ---------------- Header ---------------- #}
+  {% block header %}
+    {% include "partials/header_and_announcement.html" ignore missing with context %}
+    {% include "partials/_sponsor_ticker.html" ignore missing with context %}
+  {% endblock %}
+
+  {# ---------------- Main ------------------ #}
+  <main id="main" role="main" tabindex="-1">
+    <h1 class="sr-only">{% block h1 %}{{ BRAND_NAME }}{% endblock %}</h1>
+    {% block content %}{% endblock %}
+  </main>
+
+  {# ---------------- Footer ---------------- #}
+  {% block footer %}
+    {% include "partials/footer.html" ignore missing with context %}
+  {% endblock %}
+
+  <!-- Back-to-top -->
+  <button id="back-to-top"
+          class="fixed bottom-16 right-4 p-3 bg-[var(--brand-color)]
+                 rounded-full shadow-lg z-50 hidden
+                 transition hover:-translate-y-1 hover:shadow-xl"
+          aria-label="Back to Top">↑</button>
+
+  <!-- JS -->
+  <script src="/static/js/app.min.js" defer {{ nonce_attr(NONCE) }}></script>
+  <script src="/static/js/main.js" type="module" {{ nonce_attr(NONCE) }}></script>
+  {% block extra_scripts %}{% endblock %}
+
+  <script {{ nonce_attr(NONCE) }}>
+  document.addEventListener("DOMContentLoaded", () => {
+    /* Back-to-top */
+    const btt = document.getElementById("back-to-top");
+    addEventListener("scroll", () =>
+      btt.classList.toggle("hidden", scrollY < 300),
+      { passive:true }
+    );
+    btt.addEventListener("click", () =>
+      scrollTo({ top:0, behavior:"smooth" })
+    );
+
+    /* Theme toggle */
+    const tog = document.getElementById("theme-toggle");
+    tog?.addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", cur);
+      document.getElementById("icon-sun")?.classList.toggle("hidden");
+      document.getElementById("icon-moon")?.classList.toggle("hidden");
+    });
+  });
+  </script>
+
+<!-- Floating Donate CTA -->
+<div class="fc-float-cta" id="floating-donate-cta" style="display:none; position:fixed;bottom:1.7rem;right:1.7rem;z-index:1999;">
+  <a class="fcx-btn fcx-btn-accent fc-pro-cta" href="{{ HREF_DONATE }}" target="_blank" rel="noopener noreferrer" data-cta="donate">
+    Donate Now →
+  </a>
+</div>
+<script>
+(() => {
+  const float = document.getElementById("floating-donate-cta");
+  const donateBtns = document.querySelectorAll("[data-cta='donate']");
+  const check = () => {
+    let donateVisible = false;
+    donateBtns.forEach(btn => {
+      const rect = btn.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) donateVisible = true;
+    });
+    float.style.display = donateVisible ? "none" : "grid";
+  };
+  window.addEventListener("scroll", check, { passive: true });
+  window.addEventListener("resize", check);
+  check();
+})();
+</script>
+
+</body>
+</html>
+

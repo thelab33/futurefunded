@@ -1,0 +1,277 @@
+{# =========================
+   CSP Nonce helper (variable or function)
+   ========================= #}
+{% if NONCE is defined and NONCE %}
+  {% set __nonce_raw = NONCE %}
+{% elif csp_nonce is defined %}
+  {% set __nonce_raw = csp_nonce() if csp_nonce is callable else csp_nonce %}
+{% else %}
+  {% set __nonce_raw = '' %}
+{% endif %}
+{% set __NONCE = __nonce_raw or '' %}
+{% macro nonce_attr() -%}{% if __NONCE %} nonce="{{ __NONCE }}"{% endif %}{%- endmacro %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stripe Smoke Test • SV‑Elite</title>
+
+  {# --- CSS: move most rules to a static file; leave only tiny critical overrides here --- #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/stripe_smoke.css', v='1.0.0') }}" {{ nonce_attr() }}>
+
+  <style {{ nonce_attr() }}>
+    /* Critical page-scope variables only (fast first paint). */
+    #site-main[data-page="fundraiser"]{
+      --fc-bg:#0b0b0c; --fc-panel:#121316; --fc-ink:#e6e7eb; --fc-muted:#98a1b3;
+      --fc-edge:#1c1f26; --fc-gold:#f5b942; --ok:#10b981; --err:#ef4444; --warn:#f59e0b;
+      --rad:14px; --shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    .fcx-section, .fcx-section--hero, .fcx-section--tiers { max-width:1100px; margin-inline:auto; margin-bottom:3rem; padding-inline:clamp(14px,5vw,36px) }
+  </style>
+
+  <link rel="preconnect" href="https://js.stripe.com" crossorigin>
+</head>
+
+<body>
+  <main id="site-main" data-page="fundraiser">
+    <div class="shell">
+      <section class="card" role="region" aria-labelledby="title">
+        <header class="card__header">
+          <h1 id="title">Stripe Smoke Test</h1>
+          <span class="badge" aria-label="Dev only">DEV</span>
+        </header>
+
+        <div class="card__body">
+          <p class="muted" id="desc">Dev-only page to verify PaymentIntent creation and confirmation.</p>
+
+          <form id="smoke-form" class="grid" aria-describedby="desc" novalidate>
+            <!-- Amount + presets -->
+            <div>
+              <div class="inline" style="justify-content:space-between">
+                <label for="amount">Amount (USD)</label>
+                <div class="inline" aria-label="presets">
+                  {% for a in [25,50,100] %}
+                  <button class="preset" data-amt="{{ a }}" type="button">${{ a }}</button>
+                  {% endfor %}
+                </div>
+              </div>
+              <input id="amount" name="amount" type="number" min="1" step="1" value="50" inputmode="numeric" required />
+            </div>
+
+            <!-- Mode + 3DS -->
+            <div>
+              <label for="mode">Mode</label>
+              <select id="mode" name="mode" aria-label="Confirmation mode">
+                <option value="elements">Elements (card UI)</option>
+                <option value="headless">Headless (pm_card_visa)</option>
+              </select>
+              <div class="inline" style="margin-top:8px">
+                <input type="checkbox" id="threeDS" name="threeDS" />
+                <label for="threeDS" class="muted" style="margin:0">Simulate 3‑D Secure challenge</label>
+              </div>
+            </div>
+
+            <!-- Elements container (hidden until Elements mode) -->
+            <div id="card-wrap" class="col-span-2" hidden>
+              <label for="card-element">Card details</label>
+              <div id="card-element" role="group" aria-label="Card input"></div>
+              <div class="hint" style="margin-top:6px">
+                Use test card <span class="kbd">4242 4242 4242 4242</span> ·
+                <span class="kbd">12/34</span> · <span class="kbd">123</span> · any ZIP
+                <span class="muted">— for 3‑D Secure, try <span class="kbd">4000 0025 0000 3155</span></span>
+              </div>
+            </div>
+
+            <!-- Bearer token -->
+            <div>
+              <label for="token">Bearer (optional)</label>
+              <div class="row">
+                <input id="token" name="token" placeholder="devtoken (if your server requires it)" autocomplete="off" />
+                <button class="btn btn-ghost" type="button" id="save-token" aria-label="Save token">Save</button>
+              </div>
+              <div class="hint">Stored in <span class="kbd">localStorage</span> for this page only.</div>
+            </div>
+
+            <!-- Idempotency key -->
+            <div>
+              <label for="idem">Idempotency‑Key (optional)</label>
+              <div class="row">
+                <input id="idem" name="idem" placeholder="e.g. smoke-001" autocomplete="off" />
+                <button class="btn btn-ghost" type="button" id="gen-idem">Generate</button>
+              </div>
+              <div class="hint">Adds <span class="kbd">Idempotency-Key</span> header on PI creation.</div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="col-span-2">
+              <label for="note">Metadata (optional)</label>
+              <input id="note" name="note" placeholder="source=web_smoke" />
+            </div>
+          </form>
+
+          <div class="actions" style="margin-top:14px">
+            <button class="btn btn-primary" id="pay" type="button">
+              Pay $<span id="amt-label">50</span> (Test)
+            </button>
+            <button class="btn btn-ghost" type="button" id="toggle-log" aria-expanded="false" aria-controls="log">
+              Show raw log
+            </button>
+          </div>
+
+          <div id="status" class="status muted" role="status" aria-live="polite"></div>
+          <pre id="log" hidden></pre>
+        </div>
+
+        <footer class="card__footer">
+          <div class="hint">Server enforces <span class="kbd">allow_redirects: "never"</span> for APM.</div>
+          <div class="pill" aria-live="polite">
+            <span aria-hidden="true">⚡</span><span id="pubkey">pk: —</span>
+            <span class="pill" id="ready" style="margin-left:8px">stripe: …</span>
+          </div>
+        </footer>
+      </section>
+    </div>
+
+    <!-- Stripe.js -->
+    <script {{ nonce_attr() }} src="https://js.stripe.com/v3/"></script>
+
+    <!-- App modules (versioned) -->
+    <link rel="modulepreload" href="{{ url_for('static', filename='js/extracted/dev__stripe_smoke.html__2.js', v='1.0.0') }}" {{ nonce_attr() }}>
+    <script {{ nonce_attr() }} type="module" src="{{ url_for('static', filename='js/extracted/dev__stripe_smoke.html__2.js', v='1.0.0') }}"></script>
+
+    <!-- Floating Donate CTA -->
+    <div class="fc-float-cta" id="floating-donate-cta" hidden style="position:fixed;bottom:1.7rem;right:1.7rem;z-index:1999;">
+      <a class="fcx-btn fcx-btn-accent fc-pro-cta" href="{{ HREF_DONATE }}" target="_blank" rel="noopener noreferrer" data-cta="donate">Donate Now →</a>
+    </div>
+
+    <script src="https://js.stripe.com/v3/" {{ nonce_attr() }}></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{ config['PAYPAL_CLIENT_ID'] }}&currency=USD" {{ nonce_attr() }}></script>
+
+<script {{ nonce_attr() }}>
+(function () {
+  // Hit a JSON endpoint instead of re-posting to the HTML page
+  const CHECKOUT_URL = "/api/donate/{{ org.slug if org is defined else 'default' }}";
+
+  const form = document.getElementById('donation-form');
+  const stripeStep = document.getElementById('stripe-step');
+  const stripeContainer = document.getElementById('stripe-element');
+  const stripePayBtn = document.getElementById('stripe-pay-button');
+  const paypalContainer = document.getElementById('paypal-button-container');
+  const msg = document.getElementById('donation-message');
+
+  let stripe, elements, paymentElement;
+  let clientSecret, publishableKey;
+  let lastPayload = null;
+
+  function showMessage(t) {
+    msg.textContent = t || '';
+  }
+
+  async function postJson(payload) {
+    const res = await fetch(CHECKOUT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('Server did not return JSON (got ' + contentType + ').');
+    }
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      throw new Error(json.error || 'Server error starting checkout.');
+    }
+    return json;
+  }
+
+  // STEP 1 – basic info
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showMessage('Preparing payment…');
+
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const method = payload.method || 'stripe';
+    lastPayload = payload;
+
+    try {
+      const json = await postJson(payload);
+
+      if (method === 'stripe') {
+        // Expect { clientSecret, publishableKey }
+        clientSecret = json.clientSecret;
+        publishableKey = json.publishableKey;
+
+        if (!clientSecret || !publishableKey) {
+          throw new Error('Stripe keys missing from server response.');
+        }
+
+        stripe = Stripe(publishableKey);
+        elements = stripe.elements({ clientSecret });
+        paymentElement = elements.create('payment');
+        paymentElement.mount('#stripe-element');
+
+        form.classList.add('hidden');
+        stripeStep.classList.remove('hidden');
+        showMessage('');
+      } else if (method === 'paypal') {
+        form.classList.add('hidden');
+        paypalContainer.classList.remove('hidden');
+
+        paypal.Buttons({
+          createOrder: () =>
+            // backend should return { orderId: "..." }
+            json.orderId
+              ? json.orderId
+              : fetch(CHECKOUT_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                }).then(r => r.json()).then(order => order.orderId || order.id),
+          onApprove: () => {
+            const amt = payload.amount || '';
+            window.location.href =
+              `/thank-you?amount=${encodeURIComponent(amt)}&org={{ org.slug if org is defined else 'default' }}`;
+          },
+          onError: (err) => {
+            console.error(err);
+            showMessage('PayPal error. Please try again.');
+          }
+        }).render('#paypal-button-container');
+
+        showMessage('');
+      }
+    } catch (err) {
+      console.error(err);
+      showMessage(err.message || 'Error starting checkout.');
+    }
+  });
+
+  // STEP 2 – Stripe confirm
+  stripePayBtn.addEventListener('click', async () => {
+    if (!stripe || !elements) return;
+    showMessage('Processing payment…');
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/thank-you?amount=${encodeURIComponent(lastPayload?.amount || '')}&org={{ org.slug if org is defined else 'default' }}`
+      }
+    });
+
+    if (error) {
+      console.error(error);
+      showMessage(error.message || 'There was a problem confirming your payment.');
+    }
+  });
+})();
+</script>
+
+  </main>
+</body>
+</html>
+

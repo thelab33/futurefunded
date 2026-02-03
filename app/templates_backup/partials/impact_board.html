@@ -1,0 +1,217 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% import 'partials/_fmt.html' as fmt %} {# Impact — Scoreboard Wall (refined)
+#}
+<section
+  id="impact"
+  class="impact-board section container"
+  aria-labelledby="impact-h"
+>
+  <header class="head">
+    <h2 id="impact-h">Your <span class="accent">Impact</span></h2>
+    <p class="sub">Where every dollar goes — live.</p>
+  </header>
+
+  <!-- 1) KPIs -->
+  <ul class="kpis" role="list">
+    <li>
+      <span class="num" data-kpi="families">500+</span
+      ><span class="lab">Families</span>
+    </li>
+    <li>
+      <span class="num" data-kpi="gpa">3.5</span
+      ><span class="lab">Team GPA</span>
+    </li>
+    <li>
+      <span class="num" data-kpi="college">92%</span
+      ><span class="lab">College-track</span>
+    </li>
+    <li>
+      <span class="num" data-kpi="turned-away">$0</span
+      ><span class="lab">Turned Away</span>
+    </li>
+  </ul>
+
+  <!-- 2) Overall meter -->
+  <div
+    class="meter"
+    role="meter"
+    aria-label="Progress toward goal"
+    aria-valuemin="0"
+    aria-valuemax="{{ GOAL|int }}"
+    aria-valuenow="{{ RAISED|int }}"
+    aria-describedby="impact-meter-desc"
+    aria-valuetext="{{ fmt.roll_pct(PCT_CLAMP) }}% of goal"
+  >
+    <div class="track"><div class="fill" style="--p: 0%"></div></div>
+    <div class="line tabular">
+      <b data-raised>{{ fmt.roll_money(RAISED) }}</b>
+      /
+      <b data-goal>{{ fmt.roll_money(GOAL) }}</b>
+      <span class="pct">• {{ fmt.roll_pct(PCT_CLAMP) }}%</span>
+    </div>
+    <p id="impact-meter-desc" class="sr-only">
+      Funds raised out of total goal.
+    </p>
+  </div>
+
+  <!-- 3) Ladder (safe default if LADDER missing) -->
+  {% set LADDER = LADDER|default([ {'amt': 1000, 'label':'Gym Week'}, {'amt':
+  5000, 'label':'Travel Slot'}, {'amt': 10000, 'label':'Tutor Block'} ]) %}
+  <div class="ladder" role="group" aria-label="Impact ladder">
+    {% for rung in LADDER %}
+    <div class="rung" data-th="{{ rung.amt }}">
+      <div class="bar" aria-hidden="true"></div>
+      <div class="lbl">
+        <span class="amt">${{ '{:,.0f}'.format(rung.amt) }}</span
+        ><span class="what">{{ rung.label }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 4) Breakdown -->
+  <div class="breakdown" aria-label="Allocation breakdown">
+    <div class="seg gear" style="--pc: 34%">Gear</div>
+    <div class="seg travel" style="--pc: 31%">Travel</div>
+    <div class="seg tutoring" style="--pc: 22%">Tutoring</div>
+    <div class="seg wellness" style="--pc: 13%">Wellness</div>
+  </div>
+
+  <div class="cta-row">
+    <a class="btn gold" href="{{ HREF_DONATE }}">Boost the Score →</a>
+    <a class="btn ghost" href="{{ HREF_SPONSOR }}">Become a Sponsor</a>
+  </div>
+</section>
+
+<style {{ nonce_attr() }}>
+  .impact-board{ --accent: {{ THEME_HEX }}; color:#e9eef9 }
+  .impact-board .head{ display:grid; gap:.35rem; margin-bottom:.6rem }
+  .impact-board .accent{ color:var(--accent) }
+  .impact-board .sub{ color:#cbd5e1 }
+
+  .impact-board .kpis{
+    display:grid; gap:.6rem; grid-template-columns:repeat(4,minmax(0,1fr));
+    list-style:none; padding:0; margin:0 0 .8rem;
+  }
+  @media (max-width:860px){ .impact-board .kpis{ grid-template-columns:repeat(2,1fr) } }
+  .impact-board .kpis li{
+    display:grid; place-items:center; gap:.15rem;
+    border:1px solid #ffffff24; background:#ffffff12; border-radius:.9rem; padding:.7rem;
+  }
+  .impact-board .num{ font-weight:1000; font-size:1.2rem; color:#fff }
+  .impact-board .lab{ font-size:.86rem; color:#d6deea }
+
+  .impact-board .meter .track{
+    height:12px; border:1px solid #ffffff24; background:#ffffff14;
+    border-radius:999px; overflow:hidden;
+  }
+  .impact-board .meter .fill{
+    width:var(--p,0%); height:100%;
+    background:linear-gradient(90deg,#fffbe6,var(--accent));
+    transition:width .9s cubic-bezier(.22,.9,.27,1);
+  }
+  .impact-board .line{ display:flex; gap:.4rem; align-items:center; margin-top:.45rem; font-variant-numeric:tabular-nums }
+  .impact-board .pct{ opacity:.9; font-weight:800 }
+
+  .impact-board .ladder{ display:flex; flex-direction:column; gap:.55rem; margin-top:.7rem }
+  .impact-board .rung{ display:flex; align-items:center; gap:.6rem }
+  .impact-board .rung .bar{
+    width:180px; max-width:40vw; height:10px; border-radius:999px;
+    background:#ffffff14; border:1px solid #ffffff24; position:relative; overflow:hidden;
+  }
+  .impact-board .rung .bar::after{
+    content:""; position:absolute; inset:0; transform:scaleX(var(--hit,0)); transform-origin:left;
+    background:linear-gradient(90deg,#fffbe6,var(--accent)); transition:transform .5s ease;
+  }
+  .impact-board .rung .lbl{ font-weight:900; display:flex; gap:.35rem }
+
+  .impact-board .breakdown{
+    display:flex; gap:2px; margin:.8rem 0; border:1px solid #ffffff24; border-radius:.7rem; overflow:hidden;
+  }
+  .impact-board .breakdown .seg{
+    flex:var(--pc); padding:.45rem .6rem; font-weight:900; font-size:.85rem; white-space:nowrap;
+    background:#ffffff10; border-right:1px solid #0004;
+  }
+  .impact-board .breakdown .seg:last-child{ border-right:0 }
+
+  .impact-board .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:.45rem;
+    border-radius:999px; padding:.8rem 1rem; font-weight:1000; text-decoration:none;
+  }
+  .impact-board .btn.gold{ background:linear-gradient(180deg,#fffbe6,var(--accent)); color:#111; border:1px solid #00000040 }
+  .impact-board .btn.ghost{ background:#ffffff12; border:1px solid #ffffff24; color:#e9eef9 }
+
+  /* a11y helpers */
+  .sr-only{ position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0 }
+</style>
+
+<script {{ nonce_attr() }}>
+  (() => {
+    const root = document.getElementById('impact'); if (!root) return;
+    const fill = root.querySelector('.meter .fill');
+    const rungs = Array.from(root.querySelectorAll('.rung'));
+    const raisedEl = root.querySelector('[data-raised]');
+    const goalEl = root.querySelector('[data-goal]');
+
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+    function animateWhenVisible(target, run){
+      const go = () => run();
+      if (!('IntersectionObserver' in window)) return go();
+      const io = new IntersectionObserver((ents) => {
+        ents.forEach(e => { if (e.isIntersecting) { run(); io.disconnect(); } });
+      }, {threshold: .35});
+      io.observe(target);
+    }
+
+    function paintMeter(pct){
+      if (!fill) return;
+      fill.style.setProperty('--p', clamp(pct, 0, 100) + '%');
+    }
+
+    function lightRungs(raised){
+      rungs.forEach(r => {
+        const th = Number(r.dataset.th) || 0;
+        const hit = th ? clamp(raised / th, 0, 1) : 0;
+        r.style.setProperty('--hit', hit);
+      });
+    }
+
+    // Initial animation from server-side numbers
+    const svrRaised = Number({{ RAISED|int }});
+    const svrGoal   = Math.max(1, Number({{ GOAL|int }}));
+    const svrPct    = clamp((svrRaised / svrGoal) * 100, 0, 100);
+
+    animateWhenVisible(fill || root, () => {
+      paintMeter(svrPct);
+      lightRungs(svrRaised);
+    });
+
+    // Optional hydration from /api/totals (safe no-op if missing)
+    (async () => {
+      try{
+        const r = await fetch('/api/totals', {headers:{Accept:'application/json'}});
+        if (!r.ok) return;
+        const j = await r.json();
+        const raised = Number(j.raised || 0);
+        const goal   = Math.max(1, Number(j.goal || 0));
+        const pct    = clamp((raised / goal) * 100, 0, 100);
+
+        const fmtUSD = (n) => new Intl.NumberFormat(undefined, {style:'currency', currency:'USD', maximumFractionDigits:0}).format(n);
+        if (raisedEl) raisedEl.textContent = fmtUSD(raised);
+        if (goalEl)   goalEl.textContent   = fmtUSD(goal);
+
+        paintMeter(pct);
+        lightRungs(raised);
+      }catch{/* ignore */ }
+    })();
+  })();
+</script>

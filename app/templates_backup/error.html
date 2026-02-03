@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+
+{% block content %}
+<div class="container text-center py-10">
+    <h1 class="text-2xl font-bold text-red-600">Oops! Something went wrong.</h1>
+    <p>{{ message or "An unexpected error occurred." }}</p>
+    <a href="/" class="text-blue-500 underline">Go back home</a>
+</div>
+{% endblock %}

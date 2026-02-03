@@ -1,0 +1,242 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<section
+  class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 block"
+  data-ui="flash-and-onboarding">
+  {% set NONCE = NONCE if NONCE is defined else (csp_nonce if csp_nonce is
+  defined else '') %} {% set _csrf = (csrf_token() if csrf_token is defined else
+  '') %} {% set _team_id = (team.id if team and team.id is defined else
+  'global') %} {% set brand_color = (team.theme_color if team and
+  team.theme_color is defined else '#facc15') %} {% set _has = (has_endpoint is
+  defined) %} {% set _sf = (safe_url_for is defined) %} {% set _has_dismiss =
+  _has and has_endpoint('main.dismiss_onboarding') %} {% set _has_sponsor = _has
+  and has_endpoint('main.become_sponsor') %} {% set dismiss_url = (_sf and
+  _has_dismiss and safe_url_for('main.dismiss_onboarding')) or
+  '/dismiss-onboarding' %} {% set sponsor_href = (_sf and _has_sponsor and
+  safe_url_for('main.become_sponsor')) or '/sponsor' %} {% set show_onboarding =
+  (show_onboarding is not defined) or show_onboarding %} {% set
+  onboarding_delay_ms = onboarding_delay_ms|default(1200) %} {% set
+  onboarding_cooldown_days = onboarding_cooldown_days|default(14) %} {% set
+  onboarding_max_views = onboarding_max_views|default(3) %} {% set
+  onboarding_exclude =
+  onboarding_exclude|default(['/donate','/checkout','/privacy']) %} {% set
+  onboarding_utm_allow =
+  onboarding_utm_allow|default(['newsletter','welcome','sponsor']) %} {% set
+  _messages = (get_flashed_messages(with_categories=True) if
+  get_flashed_messages is defined else []) %}
+
+  <div
+    id="fc-flash"
+    class="pointer-events-none fixed left-1/2 top-5 z-[1100] w-[min(92vw,44rem)] -translate-x-1/2 space-y-2"
+    role="region"
+    aria-live="polite"
+    aria-atomic="true"
+    data-autoclose-default="4500"
+    data-max-visible="4"
+    style="--fc-brand: {{ brand_color }};">
+    <style {{ nonce_attr() }}>
+      #fc-flash .card {
+        position: relative;
+        background: linear-gradient(
+          180deg,
+          rgba(15, 15, 15, 0.86),
+          rgba(15, 15, 15, 0.78)
+        );
+        border: 1px solid color-mix(in srgb, var(--fc-brand) 18%, transparent);
+        border-radius: 1rem;
+        box-shadow: 0 14px 40px rgba(250, 204, 21, 0.15);
+        backdrop-filter: blur(10px);
+      }
+      #fc-flash .in {
+        animation: fc-in 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+      }
+      #fc-flash .out {
+        animation: fc-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+      }
+      #fc-flash .timer {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--fc-brand), #fde68a);
+        width: 100%;
+      }
+      @keyframes fc-in {
+        from {
+          opacity: 0;
+          transform: translateY(-14px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      @keyframes fc-out {
+        from {
+          opacity: 1;
+          transform: scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-12px) scale(0.97);
+        }
+      }
+
+      @media (prefers-color-scheme: light) {
+        #fc-flash .card {
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.92),
+            rgba(255, 255, 255, 0.88)
+          );
+        }
+        #fc-flash .timer {
+          background: linear-gradient(90deg, var(--fc-brand), #eab308);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #fc-flash .in,
+        #fc-flash .out {
+          animation: none !important;
+        }
+        #fc-flash .timer {
+          display: none;
+        }
+      }
+    </style>
+
+    {% if _messages and _messages|length %} {% set styles = { 'success':
+    'ring-emerald-400/50 text-emerald-50', 'danger' : 'ring-red-400/60
+    text-red-50', 'error' : 'ring-red-400/60 text-red-50', 'warning':
+    'ring-amber-400/60 text-amber-50', 'info' : 'ring-sky-400/60 text-sky-50',
+    'default': 'ring-yellow-300/40 text-yellow-50' } %} {% set icons = {
+    'success':'✔️','danger':'✖️','error':'✖️','warning':'⚠️','info':'ℹ️','default':'💡'
+    } %} {% for category, raw in _messages %} {% if raw is mapping %} {% set msg
+    = raw.get('text','') %} {% set action = raw.get('action') %} {% else %} {%
+    set msg = raw %} {% set action = None %} {% endif %} {% set cat = (category
+    or 'default')|lower %} {% set cls = styles.get(cat, styles['default']) %} {%
+    set ico = icons.get(cat, icons['default']) %} {% set ms = 0 if cat in
+    ['danger','error'] else (5200 if cat in ['info','warning'] else 3800) %}
+
+    <div
+      class="card in pointer-events-auto flex items-start gap-3 px-5 py-3 ring-2 {{ cls }}"
+      role="{{ 'alert' if cat in ['danger','error'] else 'status' }}"
+      data-flash
+      data-category="{{ cat }}"
+      data-autoclose-ms="{{ ms }}"
+      tabindex="0">
+      <span class="text-xl leading-none" aria-hidden="true">{{ ico }}</span>
+      <span class="sr-only">{{ cat|title }}:</span>
+      <div class="flex-1 text-sm">{{ msg }}</div>
+
+      {% if action and (action.href or action.hx_post) %}
+      <a
+        {%
+        if
+        action.href
+        %}
+        href="{{ action.href }}"
+        {%
+        endif
+        %}
+        {%
+        if
+        action.hx_post
+        %}
+        hx-post="{{ action.hx_post }}"
+        hx-swap="none"
+        {%
+        endif
+        %}
+        class="ml-2 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-yellow-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        {{ action.label or 'View' }}
+      </a>
+      {% endif %}
+
+      <button
+        type="button"
+        class="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-yellow-200 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        aria-label="Dismiss message"
+        data-close>
+        ×
+      </button>
+      <div class="timer" aria-hidden="true"></div>
+    </div>
+    {% endfor %} {% endif %}
+  </div>
+
+  <script {{ nonce_attr() }} type="module" src="{{ url_for('static', filename='js/extracted/partials__flash_and_onboarding_premium.html__1.js', v='1.0.0') }}"></script>
+
+  {% if show_onboarding and not session.get('onboarded') %}
+  <div
+    id="fc-onboarding"
+    class="fixed bottom-6 right-6 z-[1050] w-[min(92vw,26rem)] rounded-2xl bg-gradient-to-br from-zinc-900/95 via-zinc-900/90 to-yellow-900/80 ring-2 ring-yellow-400/50 shadow-[0_10px_40px_rgba(251,191,36,.18)] backdrop-blur-xl px-5 py-5 text-yellow-50 opacity-0 translate-y-3 scale-[.98]"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="fc-ob-title"
+    aria-describedby="fc-ob-desc"
+    tabindex="-1"
+    style="--fc-brand: {{ brand_color }};"
+    data-storage-key="onboarded:{{ _team_id }}"
+    data-dismiss-url="{{ dismiss_url }}"
+    data-csrf="{{ _csrf }}"
+    data-delay="{{ onboarding_delay_ms }}"
+    data-cooldown-days="{{ onboarding_cooldown_days }}"
+    data-max-views="{{ onboarding_max_views }}"
+    data-exclude='{{ onboarding_exclude|tojson if tojson is defined else ("[" ~ onboarding_exclude|join(",") ~ "]") }}'
+    data-utm-allow='{{ onboarding_utm_allow|tojson if tojson is defined else ("[" ~ onboarding_utm_allow|join(",") ~ "]") }}'>
+    <h2
+      id="fc-ob-title"
+      class="flex items-center gap-2 text-lg font-extrabold text-yellow-300">
+      <span aria-hidden="true">🙌</span> Welcome!
+    </h2>
+    <p id="fc-ob-desc" class="mt-2 text-sm text-yellow-100/90">
+      Explore our mission, meet the squad, and see how you can make a real
+      impact in Austin youth sports.
+      <span class="font-semibold text-yellow-200">Become a Champion Sponsor today.</span>
+    </p>
+
+    <div class="mt-4 flex gap-2">
+      <button
+        type="button"
+        class="inline-flex items-center justify-center rounded-full border border-yellow-400/50 bg-yellow-300/10 px-4 py-2 text-sm font-bold text-yellow-100 hover:bg-yellow-300/20 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        id="fc-ob-dismiss">
+        Got it
+      </button>
+      <a
+        href="{{ sponsor_href }}"
+        class="inline-flex items-center justify-center rounded-full bg-yellow-400 px-4 py-2 text-sm font-extrabold text-black hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+        data-track="onboarding_sponsor_cta">
+        Become a Sponsor
+      </a>
+    </div>
+  </div>
+
+  <script {{ nonce_attr() }} type="module" src="{{ url_for('static', filename='js/extracted/partials__flash_and_onboarding_premium.html__2.js', v='1.0.0') }}"></script>
+  {% endif %}
+</section>

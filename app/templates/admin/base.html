@@ -1,0 +1,69 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+<h2 class="sr-only">Base</h2>
+{% extends "base.html" %} {% set NONCE = NONCE if NONCE is defined else
+(csp_nonce if csp_nonce is defined else '') %} {% block title %}Admin | {{
+super() }}{% endblock %} {% block hero %}
+<!-- Optional Admin Hero -->
+{% endblock %} {% block content %}
+<div class="mx-auto w-full max-w-7xl flex-1 p-6">
+  {% with messages = get_flashed_messages(with_categories=true) %} {% if
+  messages %}
+  <ul class="mb-6 space-y-2" role="alert" aria-live="polite">
+    {% for category, msg in messages %}
+    <li
+      class="animate-pulse rounded-lg px-4 py-2 font-bold shadow {% if category in ['success','ok'] %}bg-green-200 text-green-900 {% elif category in ['error','danger'] %}bg-red-200 text-red-900 {% elif category == 'warning' %}bg-yellow-200 text-yellow-900 {% else %}bg-yellow-100 text-zinc-900{% endif %}">
+      {{ msg }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %} {% endwith %} {% block admin_content %}{% endblock %}
+</div>
+{% endblock %} {% block footer %}
+<footer
+  class="border-t border-gold/10 mt-10 py-8 text-center text-xs text-zinc-500">
+  <div class="mb-1">
+    Built with <span class="animate-sparkle">💛</span> by
+    <b class="text-gold">Angel Rodriguez Jr</b>
+    for the <span class="text-gold">Connect ATX Elite</span> / Starforge Team.
+  </div>
+  <div class="text-[10px] tracking-wide opacity-80">
+    FundChamps Admin — Championship Protocol &copy; {{ now().year }}
+  </div>
+
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+{% endblock %} {% block pre_scripts %}
+<!-- Admin-specific head scripts (optional) -->
+{% endblock %} {% block post_scripts %}
+<!-- Admin-specific JS here -->
+{% endblock %}

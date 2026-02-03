@@ -1,0 +1,143 @@
+<h2 class="sr-only">Back To Top</h2>
+{# =================== Back to Top — Basketball Edition (CSP/A11y/Progress Ring) =================== #}
+{% set NONCE        = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set brand_color  = (team.theme_color if team and team.theme_color else '#fde047') %}
+
+<a id="back-to-top"
+   href="#top"
+   aria-label="Back to top"
+   class="fixed left-4 md:left-6 z-[55] hidden md:inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-2 text-sm font-semibold text-yellow-200
+          border border-white/15 shadow-2xl transition-opacity duration-200"
+   style="bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); --ring-color: {{ brand_color }};"
+   data-sticky-cta>
+  <span class="ring-wrap" aria-hidden="true">
+    <span class="ball"></span>
+  </span>
+  <span class="sr-only">Back to top</span>
+  <span id="btt-sr" class="sr-only" aria-live="polite"></span>
+</a>
+
+<script nonce="{{ NONCE }}">
+(() => {
+  const btn  = document.getElementById('back-to-top'); if (!btn || btn.__init) return; btn.__init = true;
+  const sr   = document.getElementById('btt-sr');
+  const ring = btn.querySelector('.ring-wrap');
+  const mqMd = window.matchMedia?.('(min-width: 768px)');
+
+  const SHOW_AT = 320;       // px scrolled before showing
+  const STEP    = 1;         // announce every N% (kept small for precision)
+  let lastAnnounced = -1;
+  let shown = false;
+  let raf = null;
+
+  // Ensure a #top anchor exists for the href target (improves a11y/back/forward)
+  if (!document.getElementById('top')) {
+    const top = document.createElement('div');
+    top.id = 'top'; top.setAttribute('aria-hidden','true');
+    top.style.position = 'absolute'; top.style.inset = '0 auto auto 0'; top.style.width='1px'; top.style.height='1px'; top.style.overflow='hidden';
+    document.body.prepend(top);
+  }
+
+  const docEl = document.documentElement;
+
+  function pctScrolled(){
+    const sTop = (window.pageYOffset || docEl.scrollTop || 0);
+    const max  = Math.max(1, docEl.scrollHeight - docEl.clientHeight);
+    return Math.max(0, Math.min(100, (sTop / max) * 100));
+  }
+
+  function visibleOnViewport(){ return mqMd ? mqMd.matches : (window.innerWidth >= 768); }
+
+  function setVisible(on){
+    if (on === shown) return;
+    shown = on;
+    // Respect Tailwind hidden/md:inline-flex by only toggling inline style when md+
+    btn.style.display = on ? 'inline-flex' : 'none';
+    // Let the sticky manager recalc stack/reserve
+    try {
+      window.dispatchEvent(new CustomEvent('fc:sticky:measure'));
+    } catch {}
+  }
+
+  function sync(){
+    const y = window.pageYOffset || docEl.scrollTop || 0;
+    setVisible(visibleOnViewport() && y > SHOW_AT);
+
+    const p = pctScrolled();
+    if (ring) ring.style.setProperty('--p', Math.round(p) + '%');
+
+    const pInt = Math.round(p);
+    if (sr && pInt !== lastAnnounced && Math.abs(pInt - lastAnnounced) >= STEP) {
+      lastAnnounced = pInt;
+      // Short, informative; avoids flooding AT
+      sr.textContent = `You are ${pInt}% down the page.`;
+    }
+  }
+
+  // Smooth scroll (respects reduced motion)
+  btn.addEventListener('click', (e) => {
+    const prefersReduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (prefersReduce) return; // allow instant anchor jump
+    e.preventDefault();
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { location.hash = '#top'; }
+  });
+
+  // Lightweight RAF scroll handler
+  function onScroll(){ if (raf) return; raf = requestAnimationFrame(() => { raf = null; sync(); }); }
+
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll, { passive: true });  // piggyback same RAF
+  mqMd?.addEventListener?.('change', onScroll);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); }, { passive: true });
+
+  // First paint
+  sync();
+})();
+</script>
+
+<style nonce="{{ NONCE }}">/* small, truly local rules */
+  #back-to-top { will-change: opacity, transform; }
+  #back-to-top:active { transform: scale(.97); }
+  @media (prefers-reduced-motion: reduce){ #back-to-top{ transition: none !important; } }
+
+  /* ===== Basketball ball + progress ring ===== */
+  #back-to-top .ring-wrap{
+    --p: 0%;
+    --ring-thickness: 3px;
+    --ring-color: var(--ring-color, #fde047);
+    position: relative;
+    width: 34px; height: 34px; border-radius: 9999px;
+    display: inline-grid; place-items: center;
+    background: conic-gradient(var(--ring-color) var(--p), transparent 0);
+    /* cut out center to make a ring */
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring-thickness)), #000 calc(100% - var(--ring-thickness)));
+            mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring-thickness)), #000 calc(100% - var(--ring-thickness)));
+  }
+
+  #back-to-top .ball{
+    position: relative; z-index: 1;
+    width: 26px; height: 26px; border-radius: 9999px;
+    background: radial-gradient(120% 120% at 30% 30%, #ffd166 0 25%, #f59e0b 58%, #ea580c 100%);
+    box-shadow: inset 0 0 0 1.25px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.35);
+    transition: transform .15s ease;
+  }
+  #back-to-top .ball::before,
+  #back-to-top .ball::after{
+    content:""; position:absolute; inset:0; border-radius:9999px; pointer-events:none;
+  }
+  #back-to-top .ball::before{
+    background:
+      linear-gradient(#7c2d12,#7c2d12) 50% 0 / 2px 100% no-repeat,
+      linear-gradient(#7c2d12,#7c2d12) 0 50% / 100% 2px no-repeat;
+  }
+  #back-to-top .ball::after{
+    background:
+      radial-gradient(120% 90% at 20% 20%, transparent 60%, #7c2d12 60.8% 62%, transparent 62.8%) no-repeat,
+      radial-gradient(120% 90% at 80% 80%, transparent 60%, #7c2d12 60.8% 62%, transparent 62.8%) no-repeat;
+  }
+
+  @media (pointer:fine){
+    #back-to-top:hover .ball{ transform: translateY(-1px); }
+  }
+</style>
+

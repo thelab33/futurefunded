@@ -1,0 +1,391 @@
+{# ============================================================
+   HERO — SV-Elite 7.3 “Sidekick+ Fullbleed” (Starforge polish)
+   Faces-safe banding • QR (peer-aware) • CSP/a11y • smooth reveal
+   ============================================================ #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}nonce="{{ NONCE }}"{%- endmacro %}
+
+{# ---------- Inputs / theme ---------- #}
+{% set THEME_HEX    = theme_hex|default('#facc15') %}
+{% set TEAM_NAME    = (team.name if team and team.name else team.team_name if team and team.team_name else 'Connect ATX Elite') %}
+{% set TITLE        = fundraiser_title if fundraiser_title is defined and fundraiser_title else 'Fuel the Season.' %}
+{% set TITLE_2      = fundraiser_title_2 if fundraiser_title_2 is defined and fundraiser_title_2 else 'Fund the Future.' %}
+{% set SUBTITLE     = meta_description if meta_description is defined and meta_description else 'Direct support for gear, travel, and tutoring—every dollar moves a kid forward.' %}
+{% set CTA_LABEL    = cta_label if cta_label is defined and cta_label else 'Donate' %}
+{% set SPL          = (stripe_payment_link if (stripe_payment_link is defined and stripe_payment_link) else '') %}
+{% set HREF_DONATE  = SPL or (safe_url_for('main.donate') if (safe_url_for is defined and has_endpoint is defined and has_endpoint('main.donate')) else '/donate') %}
+
+{# ---------- Fundraising context ---------- #}
+{% set RAISED = (funds_raised or 0) | round(0) %}
+{% set GOAL   = (fundraising_goal or 10000) | round(0) %}
+{% set PCT    = (100.0 * (RAISED if GOAL>0 else 0) / (GOAL if GOAL>0 else 1)) | round(1) %}
+{% set METER_TEXT = ('$' ~ (RAISED|int)|string ~ ' raised of $' ~ (GOAL|int)|string ~ ' (' ~ PCT|string ~ '%)') %}
+
+{# ---------- Images (robust) ---------- #}
+{% set _hero_src = (
+  (hero_image_url if hero_image_url is defined and hero_image_url) or
+  (team.hero_bg if team and team.hero_bg) or
+  (team.hero_image if team and team.hero_image) or
+  (team.team_photo if team and team.team_photo) or
+  (team.photo_url if team and team.photo_url) or
+  'images/hero/hero-1920.avif'
+) %}
+{% set _hero_mobile = (hero_image_mobile_url if hero_image_mobile_url is defined and hero_image_mobile_url else _hero_src) %}
+{% set hero_src        = (_hero_src if '://' in _hero_src else (url_for('static', filename=_hero_src.lstrip('/')) if url_for is defined else '/static/' ~ _hero_src.lstrip('/'))) %}
+{% set hero_src_mobile = (_hero_mobile if '://' in _hero_mobile else (url_for('static', filename=_hero_mobile.lstrip('/')) if url_for is defined else '/static/' ~ _hero_mobile.lstrip('/'))) %}
+{% set hero_alt        = (hero_alt if hero_alt is defined and hero_alt) or (TEAM_NAME ~ ' team photo') %}
+
+<section id="fc-hero"
+         class="fc-hero v7 compact"
+         aria-label="Hero"
+         style="--accent: {{ THEME_HEX }};"
+         data-focal-x="50%" data-focal-y="28%">
+  <i class="hero-vignette" aria-hidden="true"></i>
+
+  <div class="hero-shell tilt-3d" data-tilt-max="8" data-tilt-perspective="1000" data-tilt-glare="1">
+    <!-- Media -->
+    <picture class="hero-media tilt-layer" style="--z:20px">
+      <source srcset="{{ hero_src_mobile }}" media="(max-width: 640px)">
+      <img id="fc-hero-img" src="{{ hero_src }}" alt="{{ hero_alt }}"
+           width="1920" height="1080" sizes="100vw"
+           class="hero-img" decoding="async" fetchpriority="high" loading="eager" draggable="false">
+    </picture>
+
+    <!-- Readability overlays -->
+    <div class="face-belt" aria-hidden="true"></div>
+    <div class="bottom-fade" aria-hidden="true"></div>
+
+    <!-- Content -->
+    <div class="hero-grid tilt-layer" style="--z:36px">
+      <header class="title-block" aria-labelledby="hero-title" aria-describedby="hero-desc hero-meter-desc">
+        <div class="hero-badge" role="note" aria-label="{{ TEAM_NAME }}">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="badge-text">{{ TEAM_NAME }}</span>
+        </div>
+
+        <h1 id="hero-title" class="hero-title" data-anim>
+          <span>{{ TITLE }}</span>
+          <span class="accent">{{ TITLE_2 }}</span>
+        </h1>
+
+        <p id="hero-desc" class="hero-sub" data-anim data-anim-delay="60">{{ SUBTITLE }}</p>
+
+        <ul class="hero-chips" role="list" aria-label="Areas your gift supports" data-anim data-anim-delay="120">
+          <li class="chip" role="listitem">🎒 Gear</li>
+          <li class="chip" role="listitem">🚌 Travel</li>
+          <li class="chip" role="listitem">📚 Tutoring</li>
+        </ul>
+
+        <div class="hero-cta" role="group" aria-label="Primary actions" data-anim data-anim-delay="180">
+          <a href="{{ HREF_DONATE }}" class="btn btn-gold sheen"
+             data-p2p-propagate="1" data-payment-link
+             data-analytics="cta_click"
+             data-analytics-meta='{{ {"where":"hero"}|tojson }}'
+             aria-label="{{ CTA_LABEL }} to {{ TEAM_NAME }}">
+            {{ CTA_LABEL }} <span aria-hidden="true">→</span>
+          </a>
+          <button id="hero-share" type="button" class="btn btn-ghost"
+                  aria-label="Share this fundraiser"
+                  data-analytics="share_click"
+                  data-analytics-meta='{{ {"where":"hero"}|tojson }}'
+                  data-share='{{ {"title":"Support " ~ TEAM_NAME, "text":"Every dollar moves a kid forward — join us!", "url": (request.base_url if request is defined else "/")} | tojson }}'>
+            Share
+          </button>
+        </div>
+      </header>
+
+      <!-- Sidecard -->
+      <aside class="sidecard" role="complementary" aria-label="Progress and quick donate" data-anim data-anim-delay="240">
+        <div class="meter" role="meter"
+             aria-valuemin="0" aria-valuemax="{{ GOAL|int }}" aria-valuenow="{{ RAISED|int }}"
+             aria-valuetext="{{ METER_TEXT }}" aria-label="Fundraising progress">
+          <div class="hm-track" aria-hidden="true"><div class="hm-fill" style="--p: {{ PCT }}%"></div></div>
+          <div class="hm-stats tabular" aria-hidden="true" id="hero-meter-desc">
+            <span class="hm-raised">${{ RAISED|int }}</span><span class="hm-sep">/</span>
+            <span class="hm-goal">${{ GOAL|int }}</span><span class="hm-pct">{{ PCT }}%</span>
+          </div>
+        </div>
+
+        <div class="qr-wrap" id="hero-qr" role="region" aria-label="Scan to donate">
+          <span class="qr-title">Scan to Give</span>
+          <div id="qr-box" role="img" aria-label="Donation QR"></div>
+          <a id="qr-fallback-link" class="sr-only" href="{{ HREF_DONATE }}">Open donate link</a>
+        </div>
+
+        <ul class="hero-pills" role="list" aria-label="Program highlights">
+          <li role="listitem"><span class="pill">🏅 500+ Families</span></li>
+          <li role="listitem"><span class="pill">📚 3.5 Team GPA</span></li>
+          <li role="listitem"><span class="pill">🏀 AAU Gold Certified</span></li>
+        </ul>
+      </aside>
+    </div>
+
+    <div class="holo-glare" aria-hidden="true"></div>
+
+    <button id="hero-cue" class="scroll-cue" type="button" aria-label="Scroll for impact">
+      <span class="dot" aria-hidden="true"></span> Scroll
+    </button>
+  </div>
+</section>
+
+<style {{ nonce_attr() }}>
+/* ===== Layout & ambient ===== */
+#fc-hero.v7{ --edge: clamp(14px, 2.6vw, 28px); --hero-h: clamp(520px, 66vh, 880px); --glass: rgba(255,255,255,.08); --ink:#0b0c10; --img-x:50%; --img-y:28% }
+#fc-hero.v7{ position:relative; isolation:isolate; scroll-margin-top: calc(var(--fc-header-h,72px) + 10px) }
+#fc-hero.v7 .hero-shell{ position:relative; min-height:var(--hero-h); max-width:min(1380px,98vw); margin-inline:auto; border-radius:1.25rem; overflow:hidden;
+  border:1px solid rgba(255,255,255,.10); box-shadow:0 22px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06) }
+#fc-hero.v7 .hero-vignette{ position:absolute; inset:0; z-index:-1;
+  background:radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--accent,#facc15) 22%, transparent) 0%, transparent 60%),
+             linear-gradient(180deg, #0a0b0d 0%, #0b0c0f 40%, #0a0b0d 100%) }
+#fc-hero.v7.fullbleed .hero-shell{ max-width:100vw; border-radius:0; border-left:0; border-right:0 }
+#fc-hero.v7.fullbleed{ --hero-h: clamp(560px, 76vh, 980px) }
+
+/* Media (focal via vars) */
+#fc-hero.v7 .hero-img{ width:100%; height:100%; aspect-ratio:16/9; object-fit:cover; object-position:var(--img-x) var(--img-y);
+  filter:saturate(1.03) contrast(1.04) brightness(.92); -webkit-user-drag:none; user-select:none }
+
+/* Readability belts */
+#fc-hero.v7 .face-belt{ position:absolute; inset-inline:0; top:42%; height:24%;
+  background:linear-gradient(180deg, transparent, rgba(0,0,0,.20) 40%, rgba(0,0,0,.28) 60%, transparent) }
+#fc-hero.v7 .bottom-fade{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.36) 46%, rgba(0,0,0,.88)) }
+
+/* Grid */
+#fc-hero.v7 .hero-grid{ position:absolute; inset:0; display:grid; align-items:end; grid-template-columns:1fr; gap:1rem;
+  padding: var(--edge) var(--edge) calc(var(--edge) + 6px) var(--edge) }
+@media (min-width:960px){ #fc-hero.v7 .hero-grid{ grid-template-columns: 1.1fr minmax(280px,360px) } }
+
+/* Title & chips */
+#fc-hero.v7 .hero-badge{ display:inline-flex; align-items:center; gap:.5rem; font-weight:900; margin-bottom:.35rem;
+  padding:.28rem .64rem; border-radius:.75rem; -webkit-backdrop-filter:saturate(120%) blur(4px); backdrop-filter:saturate(120%) blur(4px);
+  background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.06)); border:1px solid rgba(255,255,255,.22) }
+#fc-hero.v7 .hero-badge .dot{ width:.6rem; height:.6rem; border-radius:999px; background:var(--accent,#facc15); box-shadow:0 0 0 2px rgba(0,0,0,.45) }
+#fc-hero.v7 .title-block{ color:#e6ebf5; text-shadow:0 1px 0 rgba(0,0,0,.5) }
+#fc-hero.v7 .hero-title{ margin:.1rem 0 .5rem; font-weight:1000; line-height:1.02; text-wrap:balance; font-size:clamp(2rem,1.1rem + 4.2vw,3.7rem) }
+#fc-hero.v7 .hero-title .accent{ color:var(--accent,#facc15) }
+#fc-hero.v7 .hero-sub{ max-width:70ch; color:#eaf0fa; opacity:.95 }
+#fc-hero.v7 .hero-chips{ display:flex; gap:.5rem; flex-wrap:wrap; margin:.75rem 0 .95rem; list-style:none; padding:0 }
+#fc-hero.v7 .chip{ font-size:.95rem; padding:.48rem .85rem; border-radius:.9rem; font-weight:800; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); color:#eef2f8 }
+
+/* CTAs + sheen */
+#fc-hero.v7 .hero-cta{ display:flex; gap:.6rem; flex-wrap:wrap }
+#fc-hero.v7 .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:999px; font-weight:900; padding:.92rem 1.28rem; position:relative; overflow:hidden }
+#fc-hero.v7 .btn-gold{ background:linear-gradient(180deg,#fffbe6,var(--accent,#facc15)); color:#0b0f15; border:1px solid rgba(0,0,0,.22); box-shadow:0 10px 24px rgba(234,179,8,.22) }
+#fc-hero.v7 .btn-ghost{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:#e5e7eb }
+#fc-hero.v7 .sheen::before{ content:""; position:absolute; inset:-2px; border-radius:inherit; pointer-events:none;
+  background:conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--accent) 75%, #fff 25%) 30%, transparent 60%); filter:blur(14px); opacity:.35; transform:rotate(0deg); transition:transform .9s ease }
+@media (hover:hover){ #fc-hero.v7 .btn-gold:hover{ transform:translateY(-1px) } #fc-hero.v7 .sheen:hover::before{ transform:rotate(190deg) } }
+
+/* Sidecard */
+#fc-hero.v7 .sidecard{ place-self:end; display:grid; gap:.7rem; align-content:end;
+  background:linear-gradient(180deg, rgba(17,17,17,.62), rgba(17,17,17,.48));
+  -webkit-backdrop-filter: blur(14px) saturate(120%); backdrop-filter: blur(14px) saturate(120%);
+  border:1px solid color-mix(in srgb, var(--accent) 24%, transparent); box-shadow:0 12px 36px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+  border-radius:1rem; padding:.85rem .9rem }
+@media (max-width:959.98px){ #fc-hero.v7 .sidecard{ background:transparent; border:0; box-shadow:none; padding:0 } }
+
+.tabular{ font-variant-numeric: tabular-nums }
+#fc-hero.v7 .meter{ display:grid; gap:.45rem }
+#fc-hero.v7 .hm-track{ width:100%; height:14px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.10) }
+#fc-hero.v7 .hm-fill{ height:100%; width:var(--p,0%); background:linear-gradient(90deg,#e5e7eb, color-mix(in srgb, var(--accent,#facc15) 55%, #d1d5db 45%)) }
+#fc-hero.v7 .hm-stats{ display:flex; gap:.5rem; justify-content:flex-end; align-items:baseline; font-weight:900; color:#e9eef9 }
+#fc-hero.v7 .hm-pct{ opacity:.9 } #fc-hero.v7 .hm-sep{ opacity:.7 }
+
+/* QR */
+#fc-hero.v7 .qr-wrap{ display:inline-flex; flex-direction:column; align-items:center; gap:.35rem; align-self:center;
+  padding:.55rem .75rem; border-radius:.75rem; background:var(--glass); border:1px solid rgba(255,255,255,.16) }
+#fc-hero.v7 .qr-title{ font-size:.8rem; font-weight:900; opacity:.9 }
+#fc-hero.v7 #qr-box canvas, #fc-hero.v7 #qr-box img{ width:100px; height:100px; image-rendering:pixelated; border-radius:.5rem; box-shadow:0 6px 16px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.08) }
+@media (max-width:420px){ #fc-hero.v7 .qr-wrap{ display:none } }
+
+/* Pills */
+#fc-hero.v7 .hero-pills{ display:flex; gap:.5rem; flex-wrap:wrap; list-style:none; padding:0; justify-content:flex-end }
+#fc-hero.v7 .pill{ display:inline-flex; align-items:center; gap:.45rem; padding:.40rem .68rem; border-radius:999px; font-weight:900; font-size:.84rem; color:#111; background:linear-gradient(180deg,#fff3c4,#fde68a); box-shadow:inset 0 0 0 1px rgba(0,0,0,.06) }
+
+/* Effects */
+#fc-hero.v7 .holo-glare{ position:absolute; inset:-18%; pointer-events:none; opacity:0; mix-blend-mode:screen;
+  background:radial-gradient(120% 60% at var(--gx,50%) var(--gy,30%), rgba(255,255,255,.26), transparent 45%); transition:opacity .18s ease }
+.tilt-3d{ transform-style:preserve-3d; perspective:var(--tilt-persp,900px); will-change:transform }
+.tilt-layer{ transform: translateZ(var(--z,0)) }
+
+/* Scroll cue */
+#fc-hero.v7 .scroll-cue{
+  position:absolute; left:50%; translate:-50% 0; bottom:12px; z-index:3;
+  display:inline-flex; align-items:center; gap:.45rem; padding:.35rem .7rem; border-radius:999px;
+  font-weight:900; font-size:.82rem; color:#0b0c10; background:linear-gradient(180deg,#fff3c4,#fde68a);
+  border:1px solid rgba(0,0,0,.18); box-shadow:0 8px 24px rgba(0,0,0,.28); cursor:pointer; opacity:.96;
+  transition:opacity .2s ease, transform .2s ease;
+}
+#fc-hero.v7 .scroll-cue .dot{ width:6px; height:6px; border-radius:999px; background:var(--accent) }
+#fc-hero.v7 .scroll-cue.hide{ opacity:0; pointer-events:none }
+
+/* Reveal */
+#fc-hero.v7 [data-anim]{ opacity:0; transform:translateY(8px); transition:opacity .38s ease, transform .38s ease }
+#fc-hero.v7 [data-anim].in{ opacity:1; transform:none }
+#fc-hero.v7 [data-anim][data-anim-delay="60"]{  transition-delay:.06s }
+#fc-hero.v7 [data-anim][data-anim-delay="120"]{ transition-delay:.12s }
+#fc-hero.v7 [data-anim][data-anim-delay="180"]{ transition-delay:.18s }
+#fc-hero.v7 [data-anim][data-anim-delay="240"]{ transition-delay:.24s }
+
+/* Compact density for full-bleed hero */
+#fc-hero.v7.compact{ --hero-h: clamp(500px, 62vh, 860px); --edge: clamp(16px, 2vw, 24px) }
+
+/* tighten type & spacing */
+#fc-hero.v7.compact .hero-title{
+  font-size: clamp(1.8rem, .95rem + 3.0vw, 3.2rem);
+}
+#fc-hero.v7.compact .hero-sub{ font-size: .95rem }
+#fc-hero.v7.compact .chip{ font-size: .9rem; padding: .4rem .7rem }
+#fc-hero.v7.compact .hero-cta .btn{ padding: .78rem 1.05rem }
+#fc-hero.v7.compact .sidecard{ padding: .7rem .75rem; max-width: 320px }
+#fc-hero.v7.compact .hm-track{ height: 12px }
+#fc-hero.v7.compact #qr-box canvas,
+#fc-hero.v7.compact #qr-box img{ width: 90px; height: 90px }
+#fc-hero.v7.compact .scroll-cue{ transform: translateY(0); bottom: 10px }
+
+/* Smarter focal crop */
+@media (max-width:960px){ #fc-hero.v7{ --img-y:34% } }
+@media (min-width:960px){ #fc-hero.v7 .face-belt{ top:40%; height:22% } }
+
+/* Prefs / HCM */
+@media (prefers-reduced-motion: reduce){
+  .tilt-3d, .tilt-layer, .holo-glare, #fc-hero.v7 [data-anim]{ transition:none!important; transform:none!important; opacity:1!important }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more){ #fc-hero.v7 .btn-ghost{ background:rgba(255,255,255,.14) } }
+@media (forced-colors: active){ #fc-hero.v7 .sidecard{ background:Canvas; border:1px solid CanvasText } }
+</style>
+
+<!-- Local QR lib (constructor API; davidshimjs) -->
+<script {{ nonce_attr() }} defer src="{{ url_for('static', filename='js/qrcode.min.js') if url_for is defined else '/static/js/qrcode.min.js' }}"></script>
+
+<script {{ nonce_attr() }} type="module">
+(() => {
+  const reduce = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try { window.fcTiltInit && window.fcTiltInit(document); } catch {}
+
+  /* Focal crop from data-* */
+  try{
+    const hero = document.getElementById('fc-hero');
+    hero?.style.setProperty('--img-x', hero?.getAttribute('data-focal-x') || '50%');
+    hero?.style.setProperty('--img-y', hero?.getAttribute('data-focal-y') || '28%');
+  }catch{}
+
+  /* Reveal */
+  if (!reduce){
+    try{
+      const io = new IntersectionObserver((ents)=>{
+        for (const ent of ents) if (ent.isIntersecting) { ent.target.classList.add('in'); io.unobserve(ent.target); }
+      }, { rootMargin: '-10% 0px', threshold: .2 });
+      document.querySelectorAll('#fc-hero [data-anim]').forEach(el=>io.observe(el));
+      addEventListener('pagehide', ()=>io.disconnect(), { once:true });
+    }catch{}
+  } else {
+    document.querySelectorAll('#fc-hero [data-anim]').forEach(el=>el.classList.add('in'));
+  }
+
+  /* Share */
+  const shareBtn = document.getElementById('hero-share');
+  shareBtn?.addEventListener('click', async () => {
+    try{
+      const payload = JSON.parse(shareBtn.getAttribute('data-share') || '{}');
+      try{ if (window.fc?.makeTrackedUrl) payload.url = window.fc.makeTrackedUrl(payload.url || location.href, { from:'hero' }); }catch{}
+      if (navigator.share){ await navigator.share(payload); return; }
+      await navigator.clipboard.writeText(payload.url || location.href);
+      const t=shareBtn.textContent; shareBtn.textContent='Copied!'; setTimeout(()=>shareBtn.textContent=t,1100);
+    }catch{}
+  }, { passive:true });
+
+  /* Meter sync */
+  const fill = document.querySelector('#fc-hero .hm-fill');
+  const raisedEl = document.querySelector('#fc-hero .hm-raised');
+  const goalEl   = document.querySelector('#fc-hero .hm-goal');
+  const pctEl    = document.querySelector('#fc-hero .hm-pct');
+  const meter    = document.querySelector('#fc-hero .meter');
+  const fmt = (n)=>{ try{ return '$'+Number(n||0).toLocaleString(); }catch{ return '$'+n; } };
+  function setProgress(raised, goal){
+    goal=Math.max(1,Number(goal||0)); raised=Math.max(0,Number(raised||0));
+    const pct=Math.min(100,(raised/goal)*100);
+    fill?.style.setProperty('--p', pct+'%');
+    if (raisedEl) raisedEl.textContent = fmt(raised);
+    if (goalEl)   goalEl.textContent   = fmt(goal);
+    if (pctEl)    pctEl.textContent    = (Math.round(pct*10)/10)+'%';
+    meter?.setAttribute('aria-valuenow', String(Math.round(raised)));
+    meter?.setAttribute('aria-valuetext', `${fmt(raised)} raised of ${fmt(goal)} (${(Math.round(pct*10)/10)}%)`);
+  }
+  setProgress({{ RAISED|int }}, {{ GOAL|int }});
+  addEventListener('fc:meter:update', e=>{ try{ const d=e.detail||{}; setProgress(d.raised,d.goal); }catch{} }, { passive:true });
+
+  /* Image fallback */
+  const img = document.getElementById('fc-hero-img');
+  img?.addEventListener('error', () => {
+    const fallback = '{{ url_for("static", filename="images/og_default.jpg") if url_for is defined else "/static/images/og_default.jpg" }}';
+    if (img.src !== fallback) img.src = fallback;
+  }, { passive:true });
+
+  /* Holo glare */
+  if (!reduce){
+    const frame = document.querySelector('#fc-hero .hero-shell');
+    const glare = document.querySelector('#fc-hero .holo-glare');
+    frame?.addEventListener('pointermove', (e) => {
+      const b = frame.getBoundingClientRect(); const x=((e.clientX-b.left)/b.width)*100; const y=((e.clientY-b.top)/b.height)*100;
+      glare?.style.setProperty('--gx', x+'%'); glare?.style.setProperty('--gy', y+'%'); if (glare) glare.style.opacity='.28';
+    }, { passive:true });
+    frame?.addEventListener('pointerleave', ()=>{ if (glare) glare.style.opacity='0'; }, { passive:true });
+  }
+
+  /* QR — peer-aware; graceful fallback if lib missing */
+  const qrEl   = document.getElementById('qr-box');
+  const linkEl = document.getElementById('qr-fallback-link');
+  if (qrEl && linkEl){
+    const BASE = "{{ HREF_DONATE }}";
+    function getPeer(){
+      try{
+        const qs=new URLSearchParams(location.search);
+        if (qs.get('peer')) return qs.get('peer');
+        const raw=localStorage.getItem('fc_ref_ctx'); if(!raw) return null;
+        const ctx=JSON.parse(raw)||{}; return ctx.data?.peer_slug || ctx.data?.peer || null;
+      }catch{ return null; }
+    }
+    function decorate(url, extra){
+      try{
+        const u=new URL(url, location.origin);
+        u.searchParams.set('utm_source','qr');
+        u.searchParams.set('utm_medium','hero');
+        u.searchParams.set('utm_campaign','fundraiser');
+        Object.entries(extra||{}).forEach(([k,v])=>{ if(v!=null&&v!=='') u.searchParams.set(k,v); });
+        return u.toString();
+      }catch{ return url; }
+    }
+    function renderQR(){
+      const href=decorate(BASE,{ peer:getPeer() });
+      linkEl.href=href;
+
+      if (window.QRCode){ // davidshimjs constructor
+        qrEl.innerHTML='';
+        try { new QRCode(qrEl,{ text:href, width:128, height:128, correctLevel:QRCode.CorrectLevel.M }); return; } catch {}
+      }
+      // Fallback: accessible link + copy
+      qrEl.innerHTML='';
+      const open = Object.assign(document.createElement('a'), { className:'btn btn-gold sheen', href:href, target:'_blank', rel:'noopener', textContent:'Open Donate' });
+      const copy = Object.assign(document.createElement('button'), { className:'btn btn-ghost', textContent:'Copy Link' });
+      copy.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(href); copy.textContent='Copied!'; setTimeout(()=>copy.textContent='Copy Link',900); }catch{} }, { passive:true });
+      const wrap = Object.create(document.createElement('div').constructor.prototype);
+      const d = document.createElement('div'); d.style.display='grid'; d.style.gap='.4rem'; d.append(open, copy);
+      qrEl.append(d);
+    }
+    if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', renderQR); else renderQR();
+    addEventListener('hashchange', renderQR, { passive:true });
+    addEventListener('popstate',  renderQR, { passive:true });
+    addEventListener('fc:refctx:update', renderQR, { passive:true });
+  }
+
+  /* Scroll cue */
+  const cue = document.getElementById('hero-cue');
+  const hideCue = ()=> cue?.classList.add('hide');
+  cue?.addEventListener('click', ()=>{
+    try{ const next = document.querySelector('#fc-hero')?.nextElementSibling; next?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); }catch{}
+    hideCue();
+  }, { passive:true });
+  addEventListener('scroll', ()=>{ if ((scrollY||document.documentElement.scrollTop||0) > 20) hideCue(); }, { passive:true });
+})();
+</script>
+

@@ -1,0 +1,57 @@
+
+/* app/static/css/fc_prestige.css — Progressive enhancement, Tailwind-agnostic */
+:root {
+  --fc-amber: #facc15;
+  --fc-amber-600: #d1a90d;
+  --fc-bg-900: #0b0b0c;
+  --fc-bg-800: #111113;
+  --fc-card: rgba(255,255,255,0.04);
+  --fc-ring: rgba(250, 204, 21, 0.65);
+}
+
+html { scroll-behavior: smooth; }
+body { background: radial-gradient(80% 60% at 50% 0%, #1a1a1a 0%, #0b0b0c 60%) fixed; }
+
+/* Card glow */
+.fc-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)) padding-box,
+              radial-gradient(120% 120% at 0% 0%, rgba(250, 204, 21, 0.35), rgba(250, 204, 21, 0)) border-box;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgba(250, 204, 21, 0.08);
+}
+
+/* Focus ring & accessibility */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--fc-ring);
+  border-radius: 12px;
+}
+
+/* Sticky header shadow */
+.fc-sticky-shadow {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+/* Progress meter enhancements */
+.fc-meter-track{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.fc-meter-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--fc-amber),#fffbe6)}
+
+/* Small badges */
+.fc-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.15rem .5rem;border-radius:999px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.35);font-weight:600;font-size:.75rem}
+
+/* Reveal animation */
+.fc-reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.fc-reveal.is-visible{opacity:1;transform:none}
+
+/* Buttons */
+.fc-btn{position:relative;display:inline-flex;align-items:center;gap:.55rem;border-radius:999px;padding:.7rem 1.1rem;font-weight:700}
+.fc-btn-primary{background:linear-gradient(180deg,var(--fc-amber),var(--fc-amber-600));color:#0b0b0c}
+.fc-btn-primary:hover{filter:brightness(1.08)}
+.fc-btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff}
+.fc-btn-ghost:hover{background:rgba(255,255,255,.12)}
+
+/* Mini header meter */
+#hdr-meter{display:flex;align-items:center;gap:.55rem}
+#hdr-meter .track{width:160px}
+#hdr-meter .sr{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}

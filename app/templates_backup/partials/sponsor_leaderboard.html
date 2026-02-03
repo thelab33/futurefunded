@@ -1,0 +1,194 @@
+{# ============================================================================
+   Sponsor Leaderboard — SV SaaS ELITE (CSP-safe • A11y • Motion/Contrast-safe)
+   - Sticky, glassy bar with brand gradient heat + edge-fade mask
+   - Seamless marquee (duplicates once; hover/pause; user pause control)
+   - ARIA live region; robust XSS-escape for dynamic inserts
+   - Seeds from server, then hydrate via /api/shoutouts and Socket.IO 'new_shoutout'
+   - Respects prefers-reduced-motion & Save-Data; forced-colors guard
+   ============================================================================ #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set _seed = (shoutouts if shoutouts is defined and shoutouts else []) %}
+
+<section id="sponsor-leaderboard"
+  class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 sticky w-full z-40 print:hidden"
+  aria-live="polite" aria-label="Live sponsor shoutouts"
+  style="top: var(--fc-header-h, 0px); --fc-brand: {{ (team.theme_color if team and team.theme_color else '#facc15') }};">
+  <style nonce="{{ NONCE }}">
+    #sponsor-leaderboard{
+      background:
+        linear-gradient(180deg, rgb(6 7 10 / .84), rgb(6 7 10 / .64)),
+        radial-gradient(140% 120% at 50% -20%, color-mix(in oklch, var(--fc-brand) 18%, transparent) 0%, transparent 60%);
+      -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%);
+      border-bottom:1px solid rgb(255 255 255 / .10);
+      contain: content;
+    }
+    #sponsor-leaderboard .fc-ticker__viewport{
+      overflow:hidden; position:relative;
+      /* Edge fade (guarded) */
+      --fade: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    }
+    @supports (mask-image: linear-gradient(black, white)){
+      #sponsor-leaderboard .fc-ticker__viewport{ mask-image: var(--fade); -webkit-mask-image: var(--fade); }
+    }
+
+    #sponsor-leaderboard .fc-row{
+      display:flex; align-items:center; gap:.6rem;
+      padding:.55rem .75rem; font-weight:700; letter-spacing:-.01em;
+    }
+    #sponsor-leaderboard .pill{
+      display:inline-flex; align-items:center; gap:.45rem;
+      padding:.35rem .6rem; border-radius:999px;
+      background:rgb(255 255 255 / .06); border:1px solid rgb(255 255 255 / .10);
+      white-space:nowrap;
+    }
+    #sponsor-leaderboard .headline{ color:#fde68a; text-shadow:0 0 10px rgb(250 204 21 / .35) }
+
+    /* Rail + marquee */
+    #sponsor-leaderboard .fc-ticker__rail{ display:flex; gap:1.25rem; padding:.35rem .75rem; will-change:transform; }
+    @keyframes fc-marquee { from{ transform:translateX(0) } to{ transform:translateX(-50%) } }
+    #sponsor-leaderboard .fc-marquee{ animation: fc-marquee var(--speed, 24s) linear infinite; }
+    #sponsor-leaderboard:hover .fc-marquee{ animation-play-state: paused; }
+
+    /* Tier accents */
+    #sponsor-leaderboard [data-tier="Platinum"]{ color:#e0e7ff; font-weight:900; text-shadow:0 0 12px #a78bfa }
+    #sponsor-leaderboard [data-tier="Gold"]    { color:#fde68a; text-shadow:0 0 8px  #facc15 }
+    #sponsor-leaderboard [data-tier="Silver"]  { color:#d1d5db }
+    #sponsor-leaderboard [data-tier="Bronze"]  { color:#fbbf24 }
+
+    /* Controls */
+    #sponsor-leaderboard .ctrl{
+      margin-left:auto; display:inline-flex; align-items:center; gap:.4rem;
+      font-weight:700; font-size:.9rem;
+      background:rgb(255 255 255 / .06); border:1px solid rgb(255 255 255 / .10);
+      padding:.35rem .6rem; border-radius:999px;
+    }
+    #sponsor-leaderboard .ctrl[aria-pressed="true"]{ background:rgb(255 255 255 / .14); }
+
+    /* Motion/contrast guards */
+    @media (prefers-reduced-motion: reduce){ #sponsor-leaderboard .fc-marquee{ animation:none !important } }
+    @media (forced-colors: active){
+      #sponsor-leaderboard{ background:Canvas; border-bottom:1px solid CanvasText; }
+      #sponsor-leaderboard .pill{ background:Canvas; border:1px solid CanvasText; }
+      #sponsor-leaderboard .headline{ color:CanvasText; text-shadow:none; }
+    }
+  </style>
+
+  <!-- Visually hidden polite region for screen readers -->
+  <p class="sr-only" aria-live="polite" id="sr-shout">{{ _seed[0].sponsor ~ ' ' ~ _seed[0].msg if _seed and _seed[0] else 'Shoutouts ready.' }}</p>
+  <div class="fc-ticker__viewport">
+    <div class="fc-ticker__rail fc-marquee" role="list" id="ticker-rail">
+      {# Seed from server (optional) #}
+      {% for s in _seed %}
+        {% set t = (s.tier or 'General')|string %}
+        {% set badge = '✨' if t|lower=='platinum' else '🏅' if t|lower=='gold' else '🎉' if t|lower=='silver' else '🥉' if t|lower=='bronze' else '🔥' %}
+        <span role="listitem" class="pill" data-tier="{{ t }}">
+          {{ badge }} <span class="text-white">{{ s.sponsor }}</span> {{ s.msg }}
+        </span>
+      {% endfor %}
+      <!-- Duplicate headline to avoid initial gap -->
+      <span aria-hidden="true" class="pill headline">🏆 Sponsor leaderboard is live — real-time shoutouts!</span>
+      <button type="button" class="ctrl" id="ticker-ctrl" aria-pressed="false" aria-label="Pause live ticker">
+      ⏯ Pause
+    </button>
+    </div>
+  </div>
+    </div>
+
+  <script nonce="{{ NONCE }}">
+    (() => {
+      if (window.__fcTickerElite) return; window.__fcTickerElite = true;
+
+      const doc = document.documentElement;
+      const reduced = matchMedia?.('(prefers-reduced-motion: reduce)').matches ||
+                      !!(navigator.connection && navigator.connection.saveData);
+      if (reduced) doc.classList.add('fc-reduced');
+
+      const rail = document.getElementById('ticker-rail');
+      const ctrl = document.getElementById('ticker-ctrl');
+      const sr   = document.getElementById('sr-shout');
+      if (!rail) return;
+
+      // Pause/Play control (accessible)
+      function setPaused(paused){
+        ctrl.setAttribute('aria-pressed', paused ? 'true' : 'false');
+        ctrl.textContent = paused ? '▶ Play' : '⏸ Pause';
+        rail.style.animationPlayState = paused ? 'paused' : 'running';
+        ctrl.setAttribute('aria-label', paused ? 'Play live ticker' : 'Pause live ticker');
+      }
+      ctrl?.addEventListener('click', () => {
+        const nowPaused = ctrl.getAttribute('aria-pressed') !== 'true' ;
+        setPaused(nowPaused);
+      });
+
+      // Ensure seamless loop: clone once
+      function cloneOnce(){
+        if (rail.__clonedOnce) return;
+        rail.__clonedOnce = true;
+        const kids = [...rail.children];
+        kids.forEach(k => rail.appendChild(k.cloneNode(true)));
+      }
+
+      // Speed tuning if many items
+      function tuneSpeed(){
+        const items = rail.querySelectorAll('.pill').length;
+        rail.style.setProperty('--speed', (items > 12 ? 32 : items > 6 ? 26 : 22) + 's');
+      }
+
+      // Add item (XSS-safe)
+      function addItem(data){
+        try{
+          const tier = String(data?.tier || 'General');
+          const el = document.createElement('span');
+          el.className = 'pill';
+          el.setAttribute('role','listitem');
+          el.dataset.tier = tier;
+          const badge = (tier.toLowerCase()==='platinum') ? '✨'
+                     : (tier.toLowerCase()==='gold')     ? '🏅'
+                     : (tier.toLowerCase()==='silver')   ? '🎉'
+                     : (tier.toLowerCase()==='bronze')   ? '🥉' : '🔥';
+          const sponsor = esc(data?.sponsor ?? 'Anonymous');
+          const msg = esc(data?.msg ?? 'supported the team!');
+          el.innerHTML = `${badge} <span class="text-white">${sponsor}</span> ${msg}`;
+          rail.prepend(el);
+          sr && (sr.textContent = `${sponsor} ${msg}`);
+          // Celebration hook (if VIP/confetti present)
+          try { window.confetti?.({ particleCount: 40, spread: 70, origin: { y: 0.25 } }); } catch {}
+          tuneSpeed();
+        }catch{}
+      }
+
+      // Simple HTML escaper
+      function esc(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+      // Initial hydration from API (if server didn't seed)
+      (async () => {
+        try{
+          const r = await fetch('/api/shoutouts', { headers:{'accept':'application/json'} });
+          if (!r.ok) return;
+          const list = await r.json();
+          if (Array.isArray(list) && list.length){
+            list.slice().reverse().forEach(addItem);  // newest first
+          }
+          cloneOnce(); tuneSpeed();
+        }catch{}
+      })();
+
+      // Socket.IO live updates
+      try{
+        if (window.io && !window.__fcTickerSocketBound){
+          window.__fcTickerSocketBound = true;
+          const socket = io(); // default namespace
+          socket.on('new_shoutout', addItem);
+        }
+      }catch{}
+
+      // HTMX swap support (optional): listen for custom events
+      window.addEventListener('fc:shoutout', (e)=> addItem(e.detail||{}), { passive:true });
+
+      // Auto-start marquee unless reduced motion or user paused
+      if (reduced) setPaused(true);
+      cloneOnce(); tuneSpeed();
+    })();
+  </script>
+</section>
+

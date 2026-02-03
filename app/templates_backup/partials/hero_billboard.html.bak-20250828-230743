@@ -1,0 +1,88 @@
+{# Hero Billboard — full-bleed with gradient overlay and glass card #}
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set _hero_url = url_for('static', filename=_hero_img, v=_ver) if _ver else url_for('static', filename=_hero_img) %}
+{% set funds_raised     = (funds_raised if funds_raised is defined else 0) | float %}
+{% set fundraising_goal = (fundraising_goal if fundraising_goal is defined and fundraising_goal else 10000) | float %}
+{% set _raw_pct = (funds_raised / (fundraising_goal if fundraising_goal else 1) * 100) %}
+{% set pct = 0 if _raw_pct < 0 else (100 if _raw_pct > 100 else _raw_pct) %}
+{% set hero_title = hero_title if hero_title is defined else (_TEAM.hero_title if _TEAM and _TEAM.hero_title else 'Fuel the Season, Fund the Future') %}
+{% set hero_sub   = hero_sub   if hero_sub   is defined else (_TEAM.hero_sub   if _TEAM and _TEAM.hero_sub   else 'Your sponsorship powers gym time, travel, and opportunities for every athlete.') %}
+{% set stripe_payment_link = (stripe_payment_link if stripe_payment_link is defined and stripe_payment_link else '') %}
+
+<section class="mx-auto w-[min(92rem,96vw)] px-3 sm:px-6 relative fc-section"  aria-labelledby="hero-title" style="isolation:isolate">
+  <style nonce="{{ NONCE }}">
+    #hero-bg {
+      position:absolute; inset:0; z-index:-2; overflow:hidden;
+    }
+    #hero-bg .img {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center;
+      filter:saturate(1.05) contrast(1.03);
+      transform:scale(1.02);
+    }
+    #hero-bg::after {
+      content:""; position:absolute; inset:0; z-index:1;
+      background: linear-gradient(180deg, rgba(5,6,9,.60), rgba(5,6,9,.35) 40%, rgba(5,6,9,.70));
+    }
+    .milestones { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .milestones .chip {
+      padding:.35rem .6rem; border-radius:999px; font-weight:800; font-size:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    }
+    .milestones .hit {
+      border-color: color-mix(in srgb, var(--fc-brand) 70%, white 10%);
+      background: linear-gradient(180deg, #fffbe6, var(--fc-brand));
+      color:#0b0b0c;
+      box-shadow: 0 6px 18px rgba(250,204,21,.35);
+    }
+  </style>
+
+  <!-- Background image (LCP-optimized) -->
+  <div id="hero-bg" aria-hidden="true">
+    <img class="img" src="{{ _hero_url }}" alt="" width="2400" height="1400" decoding="async" fetchpriority="high" />
+  </div>
+
+  <div class="fc-container relative z-10">
+    <div class="fc-glass p-6 sm:p-8 lg:p-10 fc-stack reveal-up">
+      <header class="fc-stack">
+        <h2 id="hero-title" class="fc-h1">{{ hero_title }}</h2>
+        <p class="text-[var(--fc-fs-lg)] text-[color:var(--fc-muted)] max-w-2xl">{{ hero_sub }}</p>
+      </header>
+
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="fc-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct|round(1) }}" aria-label="Fundraising progress" aria-live="polite">
+          <div class="track"><div class="fill" style="inline-size:{{ pct|round(1) }}%"></div></div>
+          <span class="pct" aria-hidden="true">{{ pct|round(0) }}%</span>
+          <span class="sr-only">Raised {{ funds_raised|round(0) }} of {{ fundraising_goal|round(0) }} ({{ pct|round(0) }} percent)</span>
+        </div>
+
+        <a {% if stripe_payment_link %} href="{{ stripe_payment_link }}" rel="noopener" {% else %} href="#donate" data-open-donate-modal {% endif %}
+           class="fc-btn fc-btn-primary" data-cta="hero-sponsor">
+          💛 Sponsor Gym Time
+        </a>
+
+        <a href="#impact" class="fc-btn" data-cta="hero-learn">Learn more</a>
+      </div>
+
+      {# Milestones chips #}
+      {% set _milestones = [25,50,75,100] %}
+      <div class="milestones" aria-hidden="true">
+        {% for m in _milestones %}
+          <span class="chip {{ 'hit' if pct >= m else '' }}">{{ m }}%</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <script nonce="{{ NONCE }}">
+    // Highlight next milestone when meter updates
+    (function(){
+      const root = document.currentScript.closest('section');
+      const chips = root.querySelectorAll('.milestones .chip');
+      function mark(p){
+        chips.forEach(ch => ch.classList.toggle('hit', parseInt(ch.textContent,10) <= p));
+      }
+      document.addEventListener('fc:meter:update',(e)=>{ const d=e.detail||{}; const p=Math.max(0,Math.min(100,(+d.goal? (+d.raised/+d.goal*100):0))); mark(p); },{passive:true});
+    })();
+  </script>
+</section>

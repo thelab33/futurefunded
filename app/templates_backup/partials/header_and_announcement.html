@@ -1,0 +1,316 @@
+{# ======================================================================
+   Header — SV Elite v3.8 (Apple-clean)
+   - Logo-only (decorative alt="", SR fallback, CSP-safe text fallback)
+   - Minimal pills: Donate →  |  ★ Sponsor  |  VIP ✦  |  ◐ theme
+   - No “Mission / Tiers / Schedule” in the top bar (sub-nav can live below)
+   - Keeps +10 micro-upgrades (UTM, quick-amounts, confetti, UTM propagate, etc.)
+   ====================================================================== #}
+{% set NONCE    = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else '') %}
+{% set _hdr_id  = header_id if header_id is defined and header_id else 'site-header' %}
+{% set _team    = team if team is defined and team else none %}
+
+{% set platform_name  = platform_name if platform_name is defined and platform_name else 'FundChamps' %}
+{% set platform_url   = platform_url if platform_url is defined and platform_url else '/' %}
+{% set _p_logo_svg    = 'images/fundchamps-logo.svg' %}
+{% set platform_logo_svg = (url_for('static', filename=_p_logo_svg) if url_for is defined else '/static/' ~ _p_logo_svg) %}
+
+{% set team_name   = _team.team_name if _team and _team.team_name is defined else 'Connect ATX Elite' %}
+{% set brand_color = (_team.theme_color if _team and _team.theme_color is defined and _team.theme_color else '#facc15') %}
+{% set stripe_payment_link = (stripe_payment_link if stripe_payment_link is defined and stripe_payment_link else '') %}
+
+{% set funds_raised     = (funds_raised if funds_raised is defined else 0) | float %}
+{% set fundraising_goal = (fundraising_goal if fundraising_goal is defined and fundraising_goal else 10000) | float %}
+{% set _raw_pct = (funds_raised / (fundraising_goal if fundraising_goal else 1) * 100) %}
+{% set pct = 0 if _raw_pct < 0 else (100 if _raw_pct > 100 else _raw_pct) %}
+
+{% set _logo = (_team.logo if _team and _team.logo else 'images/logo.webp') %}
+{% set logoSrc = (_logo if _logo.startswith('http') else (url_for('static', filename=_logo.lstrip('/')) if url_for is defined else '/static/' ~ _logo.lstrip('/'))) %}
+
+{# URLs #}
+{% set _donate_url_base = (stripe_payment_link if stripe_payment_link else (url_for('main.donate') if url_for is defined else '/donate')) %}
+{% set donate_url = _donate_url_base ~ ('?' if '?' not in _donate_url_base else '&') ~ 'utm_source=header&utm_medium=cta&utm_campaign=' ~ (team_name|replace(' ','%20')) %}
+{% set vip_url    = (url_for('main.home') if url_for is defined else '/vip') %}
+{% set sponsor_slots_left = sponsor_slots_left if sponsor_slots_left is defined else 3 %}
+
+{% set TICKER = (
+  ticker_items if ticker_items is defined and ticker_items
+  else ['Shoutout: The Jackson Family — $250 🙌','Shoutout: Austin Realty — $500 🏠','Shoutout: Coach Rivera — $100 💪','Shoutout: Anonymous — $50 💛']
+) %}
+
+{% if stripe_payment_link %}<link rel="preconnect" href="https://js.stripe.com" crossorigin>{% endif %}
+
+<header id="{{ _hdr_id }}" role="banner"
+  class="sticky top-0 z-50 print:hidden"
+  style="--fc-brand: {{ brand_color }};"
+  data-confetti="25,50,75,100" data-propagate-utm="1">
+
+  <style nonce="{{ NONCE }}">
+    #{{ _hdr_id }}{
+      isolation:isolate;
+      background:linear-gradient(180deg,rgb(8 9 12/.86),rgb(8 9 12/.7));
+      -webkit-backdrop-filter:blur(14px) saturate(150%); backdrop-filter:blur(14px) saturate(150%);
+      border-bottom:1px solid rgba(255,255,255,.08);
+      padding-top:max(0px, env(safe-area-inset-top));
+      padding-inline:max(0px, env(safe-area-inset-left)) max(0px, env(safe-area-inset-right));
+      contain:content;
+    }
+    #{{ _hdr_id }} .fc-container{ width:min(88rem,96vw); margin-inline:auto; padding-inline:clamp(.75rem,2vw,1.25rem); }
+
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+    /* Row */
+    .hdr-row{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.75rem; padding:.55rem 0; min-height:60px; }
+
+    /* Brand — logo only (text is SR-only) */
+    .fc-brand{ display:inline-flex; align-items:center; gap:.6rem; text-decoration:none; }
+    .fc-brand .logo{ height:clamp(32px,3.8vw,44px); width:auto; }
+
+    /* Meter */
+    .hdr-center{ display:flex; align-items:center; justify-content:center; }
+    .hdr-meter{ display:flex; align-items:center; gap:.5rem; }
+    .hdr-meter .track{ position:relative; width: clamp(140px, 22vw, 220px); height: 10px; border-radius:9999px; overflow:hidden; background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 1px rgba(255,255,255,.1); }
+    .hdr-meter .ticks{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0, rgba(255,255,255,.22) 1px, transparent 1px, transparent 5%); opacity:.25; }
+    .hdr-meter .fill{ position:absolute; inset-block:0; left:0; width:{{ pct|round(1) }}%; background:linear-gradient(90deg,#e5e7eb,#d1d5db); transition:width .6s cubic-bezier(.2,.8,.2,1); }
+    .hdr-meter .pct{ font-variant-numeric:tabular-nums; min-width:3ch; font-size:.85rem; color:#e5e7eb; opacity:.85; }
+
+    /* Sponsor rail */
+    .hdr-rail{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.5rem; padding:.45rem .25rem .6rem; border-top:1px solid rgba(255,255,255,.08); }
+    .rail-btn{ --b: rgba(255,255,255,.16); display:inline-flex; align-items:center; gap:.45rem; font-weight:700; font-size:.85rem; padding:.35rem .65rem; border-radius:.6rem; border:1px solid var(--b); background:rgba(255,255,255,.06); color:#e5e7eb; }
+    .rail-track{ position:relative; overflow:hidden; height:30px; }
+    .rail-marquee{ display:flex; align-items:center; gap:1.25rem; white-space:nowrap; will-change:transform; }
+    .rail-item{ display:inline-flex; align-items:center; gap:.45rem; padding:.28rem .55rem; border-radius:999px; background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04)); border:1px solid rgba(255,255,255,.18); color:#e5e7eb; font-weight:700; font-size:.9rem; text-shadow:0 1px 0 rgba(0,0,0,.35); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+    .rail-cta{ color:#0b0b0c; background:linear-gradient(90deg,#e5e7eb,#d9d9d9); border:1px solid rgba(0,0,0,.16); border-radius:999px; padding:.35rem .7rem; font-weight:800; font-size:.85rem; text-decoration:none; }
+
+    /* Apple-clean buttons */
+    .btn{ display:inline-flex; align-items:center; gap:.55rem; border-radius:999px; padding:.56rem 1rem; font-weight:700; line-height:1; border:1px solid transparent; }
+    .btn-primary{ background:#111; color:#fff; border-color:#000; }
+    .btn-primary:hover{ filter:brightness(1.08); }
+    .btn-ghost{ background:rgba(255,255,255,.06); color:#e5e7eb; border-color:rgba(255,255,255,.18); }
+    .btn-ghost:hover{ background:rgba(255,255,255,.1); }
+    .btn-vip{ background:rgba(255,255,255,.12); color:#f3f4f6; border-color:rgba(255,255,255,.28); }
+
+    /* Scroll/compact */
+    #{{ _hdr_id }}.is-compact .hdr-meter{ display:none; }
+
+    @media (max-width:980px){ .hdr-row{ grid-template-columns:auto 1fr auto; } }
+    @media (prefers-reduced-motion: reduce){ .rail-marquee{ animation:none !Important; transform:none !important; } }
+    @media (forced-colors: active){
+      #{{ _hdr_id }}{ background:Canvas; border-bottom:1px solid CanvasText; }
+      .rail-item{ background:Canvas; color:CanvasText; border:1px solid CanvasText; }
+      .rail-cta{ background:CanvasText; color:Canvas; border:1px solid CanvasText; }
+      .hdr-meter .track{ background:Canvas; border:1px solid CanvasText; }
+    }
+  </style>
+
+  <div class="fc-container">
+    <div class="hdr-row">
+      <!-- Brand: logo only + SR fallback -->
+      <a href="{{ platform_url }}" class="fc-brand" aria-label="{{ platform_name }} home" data-cta="nav:home" data-track="nav:home">
+        <img src="{{ platform_logo_svg }}" alt="" class="logo" loading="eager" decoding="async" fetchpriority="high" />
+        <span class="sr-only">{{ platform_name }}</span>
+      </a>
+
+      <!-- Center: meter only (no section links) -->
+      <div class="hdr-center">
+        <div class="hidden md:flex flex-col items-end gap-2 min-w-[16rem]" role="region" aria-label="Fundraising progress">
+          <div class="flex items-baseline gap-2 text-sm">
+            <span class="font-semibold text-neutral-200">{{ '${:,.0f}'.format(funds_raised) }}</span>
+            <span class="opacity-50">/</span>
+            <span class="opacity-70">{{ '${:,.0f}'.format(fundraising_goal) }}</span>
+            <span class="ml-2 text-xs font-semibold text-neutral-300"><span id="hdr-pct">{{ pct|round(1) }}</span>%</span>
+          </div>
+          <div class="hdr-meter w-full" aria-hidden="true">
+            <div class="track"><div class="ticks"></div><div class="fill"></div></div>
+          </div>
+          <div id="hdr-sr" class="sr-only" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <!-- CTAs: Apple-clean pills -->
+      <div class="flex items-center gap-3">
+        <a href="{{ donate_url }}"
+           class="btn btn-primary"
+           {% if not stripe_payment_link %}data-open-donate-modal{% endif %}
+           aria-label="Donate to {{ team_name }}"
+           data-cta="nav:donate" data-track="nav:donate"
+           data-amounts="25,50,100,150,250"
+           data-vip-threshold="500"
+           data-share="1" data-share-text="{{ team_name }} — Fuel the Season" data-share-url="{{ platform_url }}"
+           data-pay-badges="applepay,googlepay,card"
+           {{ ' target="_blank" rel="noopener"' if stripe_payment_link else '' }}>Donate →</a>
+
+        <a href="#tiers" class="btn btn-ghost"
+           aria-label="View sponsorship tiers"
+           data-cta="nav:sponsor" data-track="nav:sponsor"
+           data-slots-left="{{ sponsor_slots_left }}">★ Sponsor</a>
+
+        <a href="{{ vip_url }}" class="btn btn-vip"
+           aria-label="VIP membership"
+           data-cta="nav:vip" data-track="nav:vip">VIP ✦</a>
+
+        <button id="theme-toggle" class="ml-1 text-xl text-neutral-200 px-2 py-1 rounded hover:bg-white/5"
+                aria-label="Toggle theme" type="button" data-cta="nav:theme" data-track="nav:theme">◐</button>
+
+        <button id="mobile-toggle" class="md:hidden ml-1 text-neutral-200 text-2xl"
+                aria-expanded="false" aria-controls="mobile-menu" aria-label="Open mobile menu"
+                type="button" data-cta="nav:menu" data-track="nav:menu">☰</button>
+      </div>
+    </div>
+
+    <!-- Sponsor Rail -->
+    <div class="hdr-rail" role="region" aria-label="Live sponsor shoutouts">
+      <button class="rail-btn" type="button" id="rail-toggle" aria-pressed="false"
+              aria-label="Pause sponsor shoutouts" data-cta="rail:toggle" data-track="rail:toggle">
+        ⏯️ <span class="lbl">Pause</span>
+      </button>
+
+      <div class="rail-track" aria-live="polite"
+           data-src="/api/sponsors/ticker?team={{ team_name|replace(' ','%20') }}&limit=30">
+        <div id="hdr-rail-mq" class="rail-marquee">
+          {% for it in TICKER %}<span class="rail-item">🏆 {{ it }}</span>{% endfor %}
+        </div>
+      </div>
+
+      <a href="#sponsors" class="rail-cta" aria-label="View all sponsors" data-cta="rail:view-sponsors" data-track="rail:view-sponsors">View Sponsors</a>
+    </div>
+  </div>
+
+  <script nonce="{{ NONCE }}">
+  (() => {
+    if (window.__hdrV38) return; window.__hdrV38 = true;
+    const root = document.getElementById('{{ _hdr_id }}');
+
+    /* Compact on scroll */
+    let lastY = 0;
+    const onScroll = () => {
+      const y = scrollY || document.documentElement.scrollTop;
+      root.classList.toggle('is-compact', y - lastY > 12 && y > 80);
+      lastY = y;
+    };
+    addEventListener('scroll', onScroll, { passive:true }); onScroll();
+
+    /* Brand logo fallback (no onerror attribute) */
+    (() => {
+      const logo = root?.querySelector('.fc-brand .logo');
+      if (!logo) return;
+      const onError = () => {
+        const span = document.createElement('span');
+        span.className = 'brand-fallback';
+        span.textContent = '{{ platform_name }}';
+        logo.replaceWith(span);
+      };
+      if (logo.complete && logo.naturalWidth === 0) onError();
+      logo.addEventListener('error', onError, { once:true });
+    })();
+
+    /* Meter updates + confetti milestones */
+    const fill = root?.querySelector('.hdr-meter .fill');
+    const pctEl = document.getElementById('hdr-pct');
+    const sr = document.getElementById('hdr-sr');
+    const milestones = (root.dataset.confetti||'').split(',').map(s=>+s.trim()).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+    let lastHit = -1;
+    const setPct = (p) => {
+      const P = Math.max(0, Math.min(100, +p||0));
+      if (fill) fill.style.width = P.toFixed(1) + '%';
+      if (pctEl) pctEl.textContent = P.toFixed(1);
+      if (sr) sr.textContent = `Fundraiser is ${P.toFixed(1)}% to goal.`;
+      const hit = milestones.find(m => P >= m && m > lastHit);
+      if (typeof hit !== 'undefined'){ lastHit = hit; root.dispatchEvent(new CustomEvent('fc:confetti', { bubbles:true, detail:{ milestone: hit, pct: P }})); }
+    };
+    addEventListener('fc:meter:update', ev => {
+      const d = ev.detail||{}; const R = Math.max(0, +d.raised||0), G = Math.max(1, +d.goal||1);
+      setPct((R/G)*100);
+    }, { passive:true });
+    if (pctEl && sr && pctEl.textContent) sr.textContent = `Fundraiser is ${pctEl.textContent}% to goal.`;
+
+    /* Rail: fetch & accessible duplication (clones are aria-hidden) */
+    const mq = document.getElementById('hdr-rail-mq');
+    const track = mq?.parentElement;
+    const btn = document.getElementById('rail-toggle');
+    let w = 0, t = 0, speed = 60;
+    function seedMarquee(){
+      if (!mq) return;
+      // clear data-dup clones
+      mq.querySelectorAll('[data-dup]').forEach(n => n.remove());
+      const need = mq.parentElement.clientWidth * 2;
+      while (mq.scrollWidth < need){
+        mq.querySelectorAll('.rail-item').forEach(orig => {
+          const clone = orig.cloneNode(true);
+          clone.setAttribute('aria-hidden','true');
+          clone.setAttribute('data-dup','');
+          mq.appendChild(clone);
+        });
+      }
+      w = mq.scrollWidth; t = 0; mq.style.transform = 'translateX(0)';
+    }
+    function loop(ts){
+      const dt = (loop.lastTs? (ts - loop.lastTs) : 16) / 1000; loop.lastTs = ts;
+      if (!btn?.dataset.paused){ t = (t + speed*dt) % w; mq.style.transform = `translateX(${-t}px)`; }
+      requestAnimationFrame(loop);
+    }
+
+    const KEY = 'fc:railPaused';
+    if (localStorage.getItem(KEY)==='1'){ btn.dataset.paused='1'; btn.setAttribute('aria-pressed','true'); btn.querySelector('.lbl').textContent='Resume'; }
+    btn?.addEventListener('click', () => {
+      const paused = !!btn.dataset.paused;
+      if (paused){ delete btn.dataset.paused; btn.setAttribute('aria-pressed','false'); btn.querySelector('.lbl').textContent='Pause'; localStorage.removeItem(KEY); }
+      else{ btn.dataset.paused='1'; btn.setAttribute('aria-pressed','true'); btn.querySelector('.lbl').textContent='Resume'; localStorage.setItem(KEY,'1'); }
+    }, { passive:true });
+
+    const src = track?.dataset.src;
+    if (src){
+      fetch(src, { credentials:'same-origin' })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data || !mq) return;
+          const items = (data.items || data.ticker || data).slice?.(0, 50) || [];
+          if (Array.isArray(items) && items.length){
+            mq.innerHTML = items.map(txt => `<span class="rail-item">🏆 ${txt}</span>`).join('');
+            seedMarquee();
+          }
+        })
+        .catch(()=>{ /* silent */ });
+    } else {
+      seedMarquee();
+    }
+    requestAnimationFrame(loop);
+
+    /* Propagate UTM across internal links */
+    if (root.dataset.propagateUtm === '1'){
+      const cur = new URL(location.href);
+      const keys = ['utm_source','utm_medium','utm_campaign'];
+      if (keys.every(k => cur.searchParams.has(k))){
+        root.querySelectorAll('a[href]').forEach(a => {
+          try{
+            const url = new URL(a.getAttribute('href'), location.origin);
+            if (url.origin === location.origin && !/[?&]utm_/.test(url.search)){
+              keys.forEach(k => url.searchParams.set(k, cur.searchParams.get(k)));
+              a.setAttribute('href', url.pathname + url.search + url.hash);
+            }
+          }catch(e){}
+        });
+      }
+    }
+
+    /* Web Share on Alt+Click (keeps normal click behavior) */
+    const donateBtn = root.querySelector('[data-share="1"][data-cta="nav:donate"]');
+    donateBtn?.addEventListener('click', async (e) => {
+      if (!e.altKey) return;
+      if (navigator.share){
+        e.preventDefault();
+        const text = donateBtn.dataset.shareText || document.title;
+        const url  = donateBtn.dataset.shareUrl || location.href;
+        try{ await navigator.share({ title: text, text, url }); }catch{}
+      }
+    }, { passive:false });
+
+    /* Sponsor slots badge */
+    const sponsorBtn = root.querySelector('[data-cta="nav:sponsor"][data-slots-left]');
+    if (sponsorBtn){
+      const left = parseInt(sponsorBtn.dataset.slotsLeft, 10);
+      if (!isNaN(left) && left > 0){ sponsorBtn.textContent = `★ Sponsor (${left} left)`; }
+    }
+  })();
+  </script>
+</header>
+

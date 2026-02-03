@@ -1,0 +1,161 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<!DOCTYPE html>
+<html lang="en" style="margin:0;padding:0;background:#f7f7fb;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Thank You for Your Donation</title>
+
+    <style { { nonce_attr() } }>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f7f7fb;
+        margin: 0;
+        padding: 0;
+        color: #333;
+      }
+
+      .email-wrapper {
+        max-width: 640px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 32px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+      }
+
+      .brand-header {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      .brand-header img {
+        max-width: 180px;
+        height: auto;
+      }
+
+      .title {
+        font-size: 26px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        text-align: center;
+      }
+
+      .amount-box {
+        background: #f0f6ff;
+        padding: 18px;
+        border-radius: 10px;
+        text-align: center;
+        font-size: 22px;
+        margin: 24px 0;
+        color: #0252cc;
+      }
+
+      .content {
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      .note-box {
+        background: #fafafa;
+        border-left: 4px solid #198cff;
+        padding: 14px;
+        border-radius: 4px;
+        margin-top: 16px;
+        font-style: italic;
+      }
+
+      .footer {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 13px;
+        color: #777;
+      }
+
+      .footer a {
+        color: #555;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+
+  <body
+
+<!-- FF: Accessibility Skip Link -->
+<a href="#main" class="ff-skiplink">Skip to main content</a>
+>
+    <div class="email-wrapper">
+
+      <div class="brand-header">
+        {% if team_logo %}
+        <img src="{{ team_logo }}" alt="{{ team_name }} Logo" />
+        {% else %}
+        <img src="{{ asset_abs('images/fundchamps_logo.png') }}" alt="FundChamps" />
+        {% endif %}
+      </div>
+
+      <div class="title">
+        Thank You, {{ donor_name | default("Supporter") }}!
+      </div>
+
+      <p class="content">
+        Your generosity means the world to our {{ team_name }} community.  
+        Your contribution helps fuel our athletes, strengthen our program,  
+        and make an impact that lasts far beyond this season.
+      </p>
+
+      <div class="amount-box">
+        You donated <strong>${{ amount }}</strong>
+      </div>
+
+      {% if note %}
+      <div class="note-box">
+        “{{ note }}”
+      </div>
+      {% endif %}
+
+      <p class="content">
+        We appreciate your support and belief in our mission.  
+        You’ll receive an official Stripe receipt shortly.
+      </p>
+
+      {% if sponsor_tier %}
+      <p class="content">
+        You’ve been added to our <strong>{{ sponsor_tier }} Sponsor Tier</strong>!  
+        Look for your name on our live sponsor board:
+        <br>
+        <a href="{{ sponsor_url }}" target="_blank">{{ sponsor_url }}</a>
+      </p>
+      {% endif %}
+
+      <div class="footer">
+        {{ brand_name }} Fundraising Platform · Powered by FundChamps  
+        <br />
+        <a href="{{ public_base_url }}">{{ public_base_url }}</a>
+      </div>
+
+    </div>
+  
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</body>
+</html>
+

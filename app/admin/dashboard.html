@@ -1,0 +1,84 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{# --------------------------------------------------------------------- Admin
+Dashboard – Starforge SaaS Elite Edition KPI summary • Latest sponsors • Latest
+transactions • CSV export
+---------------------------------------------------------------------- #} {%
+extends "admin/base.html" %} {% block title %}Dashboard – Sponsor Admin{%
+endblock %} {% block content %}
+<h2 class="text-3xl font-extrabold mb-8 flex items-center gap-3">
+  <span>🏆</span> Admin Dashboard
+</h2>
+
+{# ─── KPI MACRO ────────────────────────────────────────────── #} {% macro
+kpi_card(value, label, gradient) %}
+<div
+  class="{{ gradient }} text-zinc-900 p-6 rounded-xl shadow-xl flex flex-col items-center"
+>
+  <div class="text-3xl font-black animate-pulse">{{ value }}</div>
+  <div class="text-lg font-semibold">{{ label }}</div>
+</div>
+{% endmacro %}
+
+<!-- ───────────────────── KPI GRID ───────────────────── -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+  {{ kpi_card('$' ~ (stats.total_raised|default(0)|int|comma), 'Total Raised',
+  'bg-gradient-to-br from-yellow-300 via-yellow-100 to-white') }} {{
+  kpi_card(stats.sponsor_count|default(0), 'Sponsors', 'bg-gradient-to-br
+  from-yellow-400 via-yellow-200 to-white') }} {{ kpi_card('$' ~
+  (stats.goal_amount|default(0)|int|comma), 'Goal', 'bg-gradient-to-br
+  from-zinc-900 via-zinc-700 to-yellow-100') }} {{
+  kpi_card(stats.pending_sponsors|default(0), 'Pending', 'bg-gradient-to-br
+  from-red-300 via-red-100 to-white') }}
+</div>
+
+<!-- ───────────────────── PROGRESS BAR ───────────────────── -->
+{% set pct = ((stats.total_raised|default(0) / (stats.goal_amount or 1)) *
+100)|round(1) %}
+<div class="mb-10">
+  <div class="flex justify-between items-center mb-1">
+    <span class="text-sm font-medium text-gold">Progress</span>
+    <span class="text-sm font-bold text-yellow-200">{{ pct }}%</span>
+  </div>
+  <div class="w-full bg-zinc-900 rounded-full h-4 shadow-inner overflow-hidden">
+    <div
+      class="bg-gradient-to-r from-yellow-400 to-gold h-4 rounded-full transition-all duration-700"
+      style="width: {{ pct }}%"
+    ></div>
+  </div>
+</div>
+
+<!-- ───────────────────── LATEST SPONSORS ───────────────────── -->
+<section class="mb-10">
+  <h3 class="font-semibold mb-3">Latest Sponsors</h3>
+  {% include "admin/partials/sponsor_table.html" %}
+</section>
+
+<!-- ───────────────────── LATEST TRANSACTIONS ───────────────────── -->
+<section>
+  <h3 class="font-semibold mb-3">Latest Transactions</h3>
+  {% include "admin/partials/transaction_table.html" %}
+</section>
+
+<!-- ───────────────────── EXPORT CSV BUTTON ───────────────────── -->
+<div class="mt-8 flex justify-end">
+  <a
+    href="{{ url_for('admin.export_payouts') }}"
+    class="bg-yellow-400 text-zinc-900 px-6 py-2 rounded-lg font-bold shadow hover:bg-gold transition"
+  >
+    ⬇ Export Approved Payouts (CSV)
+  </a>
+</div>
+
+<p class="mt-4 text-xs text-zinc-500 text-center">
+  ⭐️ Pro tip: Get real-time sponsor alerts in Slack — enable
+  <code>send_slack_alert()</code> in <code>app/admin/routes.py</code>!
+</p>
+{% endblock %}

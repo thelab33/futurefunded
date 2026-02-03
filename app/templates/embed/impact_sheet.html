@@ -1,0 +1,604 @@
+
+{# FF: Logo fallback helper #}
+{% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
+
+
+<!--
+💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
+
+1. LOGO wired from Flask context (_org_logo)
+2. Accessibility: skiplinks, focus rings, ARIA
+3. Responsive test on mobile/tablet/desktop
+4. Powered by FutureFunded badge present
+5. PWA icons + manifest verified
+6. No overflow / no bleed / theme verified
+-->
+
+<style {{ nonce_attr() }}>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{# ─────────────────────────────────────────────────────────────
+   Impact Live (Agency Elite) — Polished v3.5
+   - injects --accent from TEAM.theme_color
+   - animated counters, live updates (EventSource), CTA shine
+   - accessible live region, reduced-motion aware
+   ───────────────────────────────────────────────────────────── #}
+
+{% include "partials/_nonce.html" %}
+
+{% set NONCE = NONCE if NONCE is defined else (csp_nonce if csp_nonce is defined else '') %}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+
+{# Context defaults (unchanged) #}
+{% set TEAM        = team or {} %}
+{% set TEAM_NAME   = TEAM.team_name or TEAM.name or 'Your Club/Org' %}
+{% set CURRENCY    = CURRENCY or 'USD' %}
+{% set stats       = stats or {} %}
+{% set metrics     = metrics or {
+  'raised': (stats.raised or 0),
+  'goal':   (stats.goal   or 50000),
+  'donors': (stats.donors or 0),
+  'kids':   (stats.kids   or 0),
+  'trips':  (stats.trips  or 0),
+  'tutor_hours': (stats.tutor_hours or 0)
+} %}
+{% set updates = updates or [
+  {'emoji':'✈️','title':'Travel booked','timeago':'2d','text':'Two away-game trips covered by sponsors.'},
+  {'emoji':'📦','title':'Gear delivered','timeago':'5d','text':'20 practice balls + 12 warm-ups for the team.'},
+  {'emoji':'📚','title':'Tutoring funded','timeago':'1w','text':'36 hours of academic support this month.'},
+] %}
+
+{% set raised = (metrics.raised or 0)|int %}
+{% set goal   = (metrics.goal   or 1)|int %}
+{% set pct    = (100.0 * raised / (goal if goal>0 else 1))|round(1) %}
+
+{# ---- root injects team accent for CSS tokens ---- #}
+<div class="fc-impact" 
+     style="--accent: {{ (TEAM.theme_color if (TEAM and TEAM.theme_color) else '#facc15') }};"
+     data-raised="{{ raised }}" data-goal="{{ goal }}" data-currency="{{ CURRENCY }}"
+     {% if stats and stats.stats_url is defined %} data-stats-url="{{ stats.stats_url }}" {% endif %}>
+
+  <header class="fc-impact__head" role="region" aria-labelledby="fc-impact-title">
+    <span class="fc-chip">⚡ Impact Live</span>
+    <h2 id="fc-impact-title" class="fc-title"><span>Fuel →</span> <span class="fc-title__accent">Real Results.</span></h2>
+    <p class="fc-deck">
+      Transparent impact for <b>{{ TEAM_NAME }}</b> — see how every dollar drives travel, gear, coaching, and tutoring.
+    </p>
+  </header>
+
+  <!-- KPI Strip -->
+  <section class="fc-kpis" role="group" aria-label="Impact metrics">
+    <div class="fc-kpi fc-kpi--primary" aria-hidden="false">
+      <div class="fc-kpi__top">
+        <span class="fc-kpi__val" data-role="raised">${{ '{:,.0f}'.format(raised) }}</span>
+        <span class="fc-kpi__sub">of ${{ '{:,.0f}'.format(goal) }} • <b class="fc-accent" data-role="pct">{{ '{:.0f}'.format(pct) }}%</b></span>
+      </div>
+
+      <div class="fc-meter" role="progressbar" aria-label="Fundraising progress"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (raised/(goal if goal>0 else 1)*100)|round(0) }}">
+        <i class="fc-meter__fill" style="--p: {{ pct }}%"></i>
+      </div>
+
+      <div class="fc-pulse" aria-hidden="true"></div>
+    </div>
+
+    <div class="fc-kpi fc-kpi--stat" aria-hidden="false">
+      <span class="fc-kpi__label">Donors</span>
+      <span class="fc-kpi__num" data-role="donors">{{ metrics.donors or 0 }}</span>
+    </div>
+
+    <div class="fc-kpi fc-kpi--stat" aria-hidden="false">
+      <span class="fc-kpi__label">Athletes</span>
+      <span class="fc-kpi__num" data-role="kids">{{ metrics.kids or 0 }}</span>
+    </div>
+
+    <div class="fc-kpi fc-kpi--stat" aria-hidden="false">
+      <span class="fc-kpi__label">Trips</span>
+      <span class="fc-kpi__num" data-role="trips">{{ metrics.trips or 0 }}</span>
+    </div>
+
+    <div class="fc-kpi fc-kpi--stat" aria-hidden="false">
+      <span class="fc-kpi__label">Tutor Hours</span>
+      <span class="fc-kpi__num" data-role="tutor_hours">{{ metrics.tutor_hours or 0 }}</span>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="fc-cats" aria-label="Impact categories">
+    <article class="fc-cat">
+      <h3><span aria-hidden="true">✈️</span> Travel</h3>
+      <p>Transport, hotels, and meals for away games and tournaments.</p>
+    </article>
+    <article class="fc-cat">
+      <h3><span aria-hidden="true">🏀</span> Gear</h3>
+      <p>Uniforms, practice equipment, shoes, and athletic training aids.</p>
+    </article>
+    <article class="fc-cat">
+      <h3><span aria-hidden="true">📚</span> Tutoring</h3>
+      <p>Academic support to keep players on track in the classroom.</p>
+    </article>
+  </section>
+
+  <!-- Recent Updates -->
+  <section class="fc-updates" aria-labelledby="fc-updates-title">
+    <h3 id="fc-updates-title" class="fc-subhead">Latest Updates</h3>
+    <ul class="fc-feed" aria-live="polite" aria-atomic="false">
+      {% for u in updates %}
+      <li class="fc-item" data-update-id="{{ loop.index }}">
+        <span class="fc-item__emoji" aria-hidden="true">{{ u.emoji }}</span>
+        <div class="fc-item__copy">
+          <div class="fc-item__line"><b>{{ u.title }}</b> <span class="fc-item__ago">· {{ u.timeago }}</span></div>
+          <p>{{ u.text }}</p>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- CTAs -->
+  <footer class="fc-foot" role="region" aria-label="Impact call-to-action">
+    <a class="fc-btn fc-btn--gold" href="{{ HREF_DONATE or '/donate' }}" target="_blank" rel="noopener noreferrer" data-cta="donate">
+      ✨ Donate
+      <span class="fc-cta-shine" aria-hidden="true"></span>
+    </a>
+    <a class="fc-btn fc-btn--ghost" href="{{ (url_for('main.impact') if (url_for is defined and has_endpoint is defined and has_endpoint('main.impact')) else '/impact') }}" data-cta="open-impact">
+      Open full Impact page →
+    </a>
+  
+<!-- FF: Powered by badge -->
+<div class="ff-poweredby">
+  Powered by <strong>FutureFunded</strong>
+</div>
+
+</footer>
+
+  {# SR live region for announcements (kept visually hidden) #}
+  <div id="fc-impact-live-announce" class="fc-sr" aria-live="polite" aria-atomic="true" style="position: absolute; left:-9999px; width:1px; height:1px; overflow:hidden;"></div>
+</div>
+
+{# ===================== Scoped, premium CSS ===================== #}
+<style {{ nonce_attr() }}>
+/* fc-impact.scoped.css
+   Fully scoped — no global selectors; safe to include on any site.
+   Ensure your widget root is: <div class="fc-impact" ...> ... </div>
+*/
+
+.fc-impact { --fc-duration: .42s; }
+
+/* tokens + base (kept in root .fc-impact) */
+.fc-impact {
+  --accent: var(--accent, #facc15);
+  --bg-top: #0f1219;
+  --bg: #0b0e15;
+  --ink: #e8ecf6;
+  --muted: #cbd5e1;
+  --ring: color-mix(in srgb, var(--accent) 60%, transparent);
+  position:relative;
+  color:var(--ink);
+  background:
+    radial-gradient(120% 70% at 50% 0%, var(--bg-top) 0%, var(--bg) 60%);
+  border-radius:18px;
+  padding:1.1rem 1.25rem;
+  display:grid; gap:1rem;
+  box-shadow: 0 12px 36px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.02);
+  backdrop-filter: blur(12px) saturate(120%);
+  isolation:isolate;
+}
+
+/* header */
+.fc-impact .fc-chip{
+  display:inline-block;padding:.26rem .6rem;border-radius:999px;
+  background:rgba(18,22,33,.45); border:1px solid rgba(255,255,255,.04);
+  font:800 .72rem/1 "Inter"; color:var(--muted);
+}
+.fc-impact .fc-title{ margin:0; font:1000 1.5rem/1.05 "Poppins"; color:#fff; letter-spacing:-.01em; }
+.fc-impact .fc-title__accent{ color:var(--accent); text-shadow:0 2px 10px rgba(0,0,0,.45) }
+.fc-impact .fc-deck{ margin:0; color:var(--muted); max-width:70ch; font:600 .95rem/1.35 "Inter" }
+
+/* KPIs grid */
+.fc-impact .fc-kpis{ display:grid; gap:.72rem;
+  grid-template-columns:minmax(0,1.8fr) repeat(4,minmax(0,.88fr)); align-items:end; }
+.fc-impact .fc-kpi{
+  background: linear-gradient(180deg,#0f1219,#0b0e15);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px; padding:.75rem .9rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,.38);
+  transition: transform var(--fc-duration) ease, border-color .22s ease, box-shadow .22s ease;
+  position:relative; overflow:hidden;
+}
+@media (prefers-reduced-motion: reduce){
+  .fc-impact .fc-kpi{ transition:none }
+}
+.fc-impact .fc-kpi:hover{ transform:translateY(-3px); border-color: color-mix(in srgb,var(--accent) 55%, transparent) }
+
+/* primary */
+.fc-impact .fc-kpi--primary .fc-kpi__top{ display:flex; justify-content:space-between; align-items:baseline; gap:.6rem }
+.fc-impact .fc-kpi__val{ font:1000 1.4rem/1 "Inter"; color:#fff }
+.fc-impact .fc-kpi__sub{ color:var(--muted); font:800 .85rem/1 "Inter" }
+.fc-impact .fc-accent{ color:var(--accent) }
+
+/* meter */
+.fc-impact .fc-meter{ height:10px; border-radius:999px; background:#0c0f16; overflow:hidden; margin-top:.5rem; box-shadow:inset 0 1px 0 rgba(255,255,255,.03) }
+.fc-impact .fc-meter__fill{
+  width:var(--p,0%); height:100%;
+  background: linear-gradient(90deg, color-mix(in srgb,var(--accent) 70%, white) 0%, var(--accent) 60%, rgba(255,255,255,.12) 100%);
+  box-shadow: 0 4px 28px color-mix(in srgb,var(--accent) 35%, transparent);
+  transition: width 650ms cubic-bezier(.2,.9,.3,1.1), box-shadow .28s;
+}
+
+/* live pulse */
+.fc-impact .fc-pulse{
+  position:absolute; right:12px; top:8px; width:36px; height:36px; border-radius:999px;
+  background: radial-gradient(circle at center, color-mix(in srgb,var(--accent) 55%, transparent) 0%, transparent 60%);
+  opacity:0; transform:scale(var(--pulse-scale,1)); transition:opacity .42s, transform .42s;
+  filter:blur(6px); pointer-events:none;
+}
+
+/* stats (small cards) */
+.fc-impact .fc-kpi--stat{ display:grid; gap:.2rem; align-content:start; min-width:88px }
+.fc-impact .fc-kpi__label{ color:var(--muted); font:800 .75rem/1 "Inter"; text-transform:uppercase; letter-spacing:.06em }
+.fc-impact .fc-kpi__num{ font:1000 1.05rem/1 "Inter"; color:#fff }
+
+/* categories */
+.fc-impact .fc-cats{ display:grid; gap:.64rem; grid-template-columns:repeat(3,1fr); }
+.fc-impact .fc-cat{ padding:.85rem; border-radius:14px; background:linear-gradient(180deg,#10141d,#0b0e15); border:1px solid #ffffff13; box-shadow:0 2px 6px rgba(0,0,0,.2); transition:background .2s, box-shadow .2s; }
+.fc-impact .fc-cat:hover{ background:#151a22; box-shadow:0 4px 16px #0006; }
+.fc-impact .fc-cat h3{
+  margin:0 0 .23rem; font:900 1rem/1.1 "Poppins";
+  color:#fff; display:flex; gap:.36rem; align-items:center
+}
+.fc-impact .fc-cat p{ margin:0; color:#cbd5e1; font:600 .95rem/1.35 "Inter" }
+
+/* updates feed */
+.fc-impact .fc-subhead{
+  font:900 .95rem/1.1 "Poppins"; color:#fff;
+  margin:.32rem 0; position:relative; padding-bottom:.3rem;
+}
+.fc-impact .fc-subhead::after{
+  content:""; position:absolute; bottom:0; left:0;
+  width:2.5rem; height:2px; background:var(--accent); border-radius:2px;
+}
+.fc-impact .fc-feed{ list-style:none; margin:0; padding:0; display:grid; gap:.52rem }
+.fc-impact .fc-item{
+  display:grid; grid-template-columns:auto 1fr; gap:.6rem; align-items:start;
+  background:#0f131c; border:1px solid #ffffff15;
+  border-radius:12px; padding:.64rem .78rem;
+  transition:box-shadow .18s, border-color .18s, background .2s;
+}
+.fc-impact .fc-item:hover{ background:#161c29; border-color:var(--accent); box-shadow:0 4px 20px #0006; }
+.fc-impact .fc-item__emoji{ font-size:1.2rem; transition:transform .2s }
+.fc-impact .fc-item:hover .fc-item__emoji{ transform:scale(1.25) }
+.fc-impact .fc-item__line{ color:#e8ecf6 }
+.fc-impact .fc-item__ago{ color:#a8b3c7; font:800 .8rem/1 "Inter" }
+.fc-impact .fc-item p{ color:#cbd5e1; margin:.14rem 0 0 }
+
+/* CTAs ===== */
+.fc-impact .fc-foot{
+  display:flex; gap:.64rem; flex-wrap:wrap; margin-top:.42rem
+}
+.fc-impact .fc-btn{
+  display:inline-flex; align-items:center; gap:.5rem;
+  border-radius:.7rem; font:900 .9rem/1 "Inter";
+  padding:.62rem .95rem; text-decoration:none; outline:0;
+  position:relative; overflow:hidden;
+  transition:transform .15s, box-shadow .15s, background .19s
+}
+.fc-impact .fc-btn:hover{ transform:translateY(-1px) }
+.fc-impact .fc-btn--gold{
+  background:linear-gradient(180deg,#fffbe6,var(--accent));
+  color:#111; border:1px solid #0000002a;
+  background-size:200% auto; transition:background-position .4s;
+}
+.fc-impact .fc-btn--gold:hover{ background-position:right center; }
+.fc-impact .fc-btn:focus{outline:0;box-shadow:0 0 0 2.5px var(--fc-ring);}
+.fc-impact .fc-link-alt{font-weight:700;color:var(--accent);font-size:.98rem;text-decoration:underline;padding:.28rem .5rem;}
+
+/* Mini-tiers preview (if included inside the widget) */
+.fc-impact .mini-tiers-grid{
+  display:grid;gap:.55rem;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));
+  margin:.7rem 0 .3rem 0;
+}
+.fc-impact .mini-tier{
+  background:rgba(250,204,21,0.07);border:1px solid #fff2;border-radius:10px;
+  padding:.55rem .5rem .42rem;text-align:center;
+  display:grid;gap:.22rem;font-size:.94rem;
+  box-shadow:0 1px 4px #0002;position:relative;
+}
+.fc-impact .mini-tier.is-premium{border-color:var(--accent);}
+.fc-impact .mini-tier-icon{font-size:1.25rem;}
+.fc-impact .mini-tier-title{font-weight:800;letter-spacing:.01em;}
+.fc-impact .badge-popular{display:inline-block;margin-left:4px;padding:2px 7px;font-size:.66em;font-weight:800;color:#fff;background:linear-gradient(90deg,#facc15 60%,#fff200);border-radius:999px;vertical-align:middle;box-shadow:0 1px 4px #c9a81666;}
+.fc-impact .badge-urgency{display:inline-block;margin-left:4px;padding:2px 5px;font-size:.62em;font-weight:700;color:#fff;background:#db2777;border-radius:999px;vertical-align:middle;}
+.fc-impact .mini-tier-price{font-weight:700;color:var(--accent);font-size:.96rem;}
+.fc-impact .mini-tier-perk{color:#cbd5e1;font-size:.81rem;}
+
+/* Sheet panel (slide-over) — scoped so it doesn't conflict */
+.fc-impact .fc-sheet{position:fixed;inset:0;z-index:9999;display:grid;opacity:0;pointer-events:none;transition:opacity .25s;}
+.fc-impact .fc-sheet[open]{opacity:1;pointer-events:auto;}
+.fc-impact .fc-sheet__backdrop{background:rgba(0,0,0,.5);backdrop-filter:blur(2px);}
+.fc-impact .fc-sheet__panel{position:fixed;top:0;right:0;bottom:0;width:min(760px,96vw);background:#0e1117;color:#e8ecf6;border-left:1px solid #ffffff14;box-shadow:-2px 0 22px rgba(0,0,0,.55);transform:translateX(100%);transition:transform .32s cubic-bezier(.33,.9,.25,1.2);display:flex;flex-direction:column;touch-action:none;}
+.fc-impact .fc-sheet[open] .fc-sheet__panel{transform:translateX(0);}
+.fc-impact .fc-sheet__close{position:absolute;top:.75rem;right:.75rem;background:#11141a;border:1px solid #ffffff26;color:#eaeef5;padding:.35rem .6rem;border-radius:10px;font-weight:900;}
+.fc-impact .fc-sheet__body{position:relative;flex:1;overflow:auto;padding:1rem 1.1rem calc(1.1rem + 64px);}
+.fc-impact .fc-visually-hidden{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+</style>
+<script {{ nonce_attr() }}>
+(() => {
+  if (window.__fcImpactMounted) return; window.__fcImpactMounted = true;
+
+  const ROOT = document.querySelector('.fc-impact');
+  if (!ROOT) return;
+
+  // Elements
+  const elRaised = ROOT.querySelector('[data-role="raised"]');
+  const elPct    = ROOT.querySelector('[data-role="pct"]');
+  const elFill   = ROOT.querySelector('.fc-meter__fill');
+  const elPulse  = ROOT.querySelector('.fc-pulse');
+  const elAnnounce = document.getElementById('fc-impact-live-announce');
+  const feedList = ROOT.querySelector('.fc-feed');
+
+  // Config / state
+  const currency = ROOT.dataset.currency || 'USD';
+  let goal = Math.max(1, Number(ROOT.dataset.goal) || 1);
+  let raised = Math.max(0, Number(ROOT.dataset.raised) || 0);
+
+  const REDUCE = (matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || false;
+  const DUR = { currency: 700, integer: 550, progress: 650, feedEnterStagger: 60 };
+  const MAX_FEED = 30;
+
+  // Formatter (cached)
+  let _fmtCurrency;
+  try {
+    _fmtCurrency = new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 0 }).format;
+  } catch (e) {
+    _fmtCurrency = (n) => '$' + Math.round(n).toLocaleString();
+  }
+  const fmtCurrency = n => {
+    try { return _fmtCurrency(n); } catch { return '$' + Math.round(n).toLocaleString(); }
+  };
+
+  // Helpers
+  const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+  const toNum = v => {
+    if (v == null) return 0;
+    if (typeof v === 'number') return v;
+    const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  // Easing: easeOutCubic
+  const ease = t => 1 - Math.pow(1 - t, 3);
+
+  // Generic animate value
+  function animateValue({ el, from, to, duration = 600, onFrame, format }) {
+    if (!el) return Promise.resolve();
+    if (REDUCE || duration <= 0) {
+      el.textContent = format ? format(to) : String(to);
+      return Promise.resolve();
+    }
+    let rafId = null;
+    return new Promise(resolve => {
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const v = from + (to - from) * ease(t);
+        el.textContent = format ? format(Math.round(v)) : String(Math.round(v));
+        if (onFrame) onFrame(v, t);
+        if (t < 1) rafId = requestAnimationFrame(step);
+        else resolve();
+      }
+      rafId = requestAnimationFrame(step);
+      // return nothing — consumer can't cancel individual anims (keeps things simple)
+    });
+  }
+
+  // Render progress (visual only)
+  function renderProgress() {
+    const p = clamp((raised / Math.max(1, goal)) * 100, 0, 100);
+    if (elPct) elPct.textContent = Math.round(p) + '%';
+    if (elFill) {
+      const width = p.toFixed(1) + '%';
+      elFill.style.setProperty('--p', width);
+      // keep legacy width fallback
+      elFill.style.width = width;
+    }
+    if (elPulse) {
+      const scale = (1 + (p / 200)).toFixed(2);
+      elPulse.style.opacity = p> 0 ? '1' : '0';
+      elPulse.style.transform = `scale(${scale})`;
+      elPulse.style.setProperty('--pulse-scale', scale);
+    }
+  }
+
+  // Update metrics with smooth animation
+  function updateMetrics(payload = {}) {
+    const prevRaised = toNum(raised);
+    if (payload.hasOwnProperty('raised')) raised = Math.max(0, toNum(payload.raised));
+    if (payload.hasOwnProperty('goal')) goal = Math.max(1, toNum(payload.goal));
+
+    // animate currency value
+    animateValue({
+      el: elRaised,
+      from: prevRaised,
+      to: raised,
+      duration: DUR.currency,
+      format: fmtCurrency
+    }).catch(() => { /* ignore */ });
+
+    // progress (instant update to reflect new goal then animate fill)
+    renderProgress();
+
+    // integer stats: donors,kids,trips,tutor_hours
+    ['donors', 'kids', 'trips', 'tutor_hours'].forEach(key => {
+      if (payload.hasOwnProperty(key)) {
+        const el = ROOT.querySelector(`[data-role="${key}"]`);
+        if (!el) return;
+        const prev = toNum(el.textContent);
+        const next = toNum(payload[key]);
+        animateValue({ el, from: prev, to: next, duration: DUR.integer }).catch(()=>{});
+      }
+    });
+
+    // Announce meaningful increases
+    if (elAnnounce && raised> prevRaised) {
+      const delta = raised - prevRaised;
+      const message = `${fmtCurrency(delta)} donated — ${Math.round((raised / Math.max(1, goal)) * 100)}% of goal`;
+      elAnnounce.textContent = message;
+    }
+  }
+
+  // Feed: add an update to the top of the list
+  function addUpdate(item = {}) {
+    if (!feedList) return;
+    const id = item.id || ('u' + Date.now());
+    const li = document.createElement('li');
+    li.className = 'fc-item fc-item--new';
+    li.setAttribute('data-update-id', id);
+    li.innerHTML = `
+      <span class="fc-item__emoji" aria-hidden="true">${item.emoji || '✨'}</span>
+      <div class="fc-item__copy">
+        <div class="fc-item__line"><b>${escapeHtml(item.title || 'Update')}</b> <span class="fc-item__ago">· ${escapeHtml(item.timeago || 'now')}</span></div>
+        <p>${escapeHtml(item.text || '')}</p>
+      </div>`;
+
+    // Prepend and animate in
+    feedList.prepend(li);
+    // entrance: set start state then transition
+    li.style.transform = 'translateY(8px)';
+    li.style.opacity = '0';
+    requestAnimationFrame(() => {
+      li.style.transition = `transform 420ms cubic-bezier(.2,.95,.2,1), opacity 280ms`;
+      li.style.transform = 'translateY(0)';
+      li.style.opacity = '1';
+    });
+
+    // Announce to SR region
+    if (elAnnounce) elAnnounce.textContent = `${item.title || 'Update'} — ${item.text || ''}`;
+
+    // Trim old items
+    while (feedList.children.length> MAX_FEED) {
+      feedList.removeChild(feedList.lastElementChild);
+    }
+  }
+
+  // HTML-escape small snippets to avoid XSS
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Initial render: animate from 0 up
+  (function initial() {
+    if (elRaised) elRaised.textContent = fmtCurrency(0);
+    renderProgress();
+    setTimeout(() => {
+      updateMetrics({
+        raised,
+        goal,
+        donors: ROOT.querySelector('[data-role="donors"]')?.textContent || 0,
+        kids: ROOT.querySelector('[data-role="kids"]')?.textContent || 0,
+        trips: ROOT.querySelector('[data-role="trips"]')?.textContent || 0,
+        tutor_hours: ROOT.querySelector('[data-role="tutor_hours"]')?.textContent || 0
+      });
+    }, 120);
+  })();
+
+  // EventSource with reconnect/backoff
+  let __es = null;
+  let __esBackoff = 1000;
+  let __esMaxBackoff = 60_000;
+  function connectSSE(url) {
+    if (!url || typeof EventSource === 'undefined') return;
+    disconnectSSE(); // ensure single connection
+    try {
+      __es = new EventSource(url);
+      window.__fcImpactES = __es;
+      __esBackoff = 1000;
+      __es.addEventListener('message', e => {
+        try {
+          const data = JSON.parse(e.data || '{}');
+          if (data.metrics) updateMetrics(data.metrics);
+          if (data.update) addUpdate(data.update);
+        } catch (err) {
+          console.warn('fcImpact ES parse', err);
+        }
+      });
+      __es.addEventListener('error', (err) => {
+        // on network error, close and schedule reconnect
+        console.warn('fcImpact ES error', err);
+        if (__es && __es.readyState === EventSource.CLOSED) scheduleReconnect(url);
+      });
+    } catch (err) {
+      console.warn('fcImpact ES init failed', err);
+      scheduleReconnect(url);
+    }
+  }
+  function scheduleReconnect(url) {
+    disconnectSSE();
+    __esBackoff = Math.min(__esBackoff * 1.8, __esMaxBackoff);
+    setTimeout(() => connectSSE(url), __esBackoff);
+  }
+  function disconnectSSE() {
+    if (__es) {
+      try { __es.close(); } catch (e) {}
+      __es = null;
+      window.__fcImpactES = null;
+    }
+  }
+
+  // Confetti hook
+  function spark(opts) {
+    if (matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try {
+      if (window.confetti) {
+        window.confetti(Object.assign({ particleCount: 36, spread: 64, origin: { y: 0.18 } }, opts || {}));
+      }
+    } catch (e) { /* noop */ }
+  }
+
+  // Expose public API
+  window.fcImpact = Object.assign(window.fcImpact || {}, {
+    update: (payload) => { try { updateMetrics(payload || {}); } catch (e) { console.warn('fcImpact.update', e); } },
+    addUpdate: (item) => { try { addUpdate(item || {}); } catch (e) { console.warn('fcImpact.addUpdate', e); } },
+    spark,
+    connect: (url) => { try { connectSSE(url || ROOT.dataset.statsUrl); } catch (e) { console.warn('fcImpact.connect', e); } },
+    disconnect: () => { try { disconnectSSE(); } catch (e) { console.warn('fcImpact.disconnect', e); } },
+    isConnected: () => !!__es
+  });
+
+  // Auto-connect if data-stats-url provided
+  const statsUrl = ROOT.dataset.statsUrl;
+  if (statsUrl) connectSSE(statsUrl);
+
+  // Initial feed entrance (if any)
+  if (feedList) {
+    requestAnimationFrame(() => {
+      Array.from(feedList.children).forEach((li, i) => {
+        li.style.transform = 'translateY(6px)'; li.style.opacity = '0';
+        setTimeout(() => {
+          li.style.transition = 'transform 420ms cubic-bezier(.2,.95,.2,1), opacity 280ms';
+          li.style.transform = 'translateY(0)'; li.style.opacity = '1';
+        }, 50 + i * DUR.feedEnterStagger);
+      });
+    });
+  }
+
+  // Cleanup on pagehide/unload
+  addEventListener('pagehide', () => {
+    try { disconnectSSE(); } catch (e) {}
+  }, { passive: true });
+
+})();
+</script>
+

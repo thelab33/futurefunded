@@ -1,0 +1,651 @@
+<style>
+/* SaaS Pro Section Polish */
+.fcx-section, .fcx-section--hero, .fcx-section--tiers {
+  max-width: 1100px;
+  margin-inline: auto;
+  margin-bottom: 3rem;
+  padding-inline: clamp(14px, 5vw, 36px);
+}
+</style>
+{% include "partials/ui_bootstrap.html" ignore missing with context %} {% set
+NONCE = NONCE if NONCE is defined else (csp_nonce() if csp_nonce is defined else
+'') %} {% set brand_color = (team.theme_color if team and team.theme_color else
+'#facc15') %} {% set team_slug = (team.slug if team and team.slug is defined
+else 'default') %} {% set sponsors_sorted = sponsors_sorted if sponsors_sorted
+is defined and sponsors_sorted else [] %} {% set sponsors_total = sponsors_total
+if sponsors_total is defined else (sponsors_sorted | sum(attribute='amount')) %}
+{% set recent_donations = recent_donations if recent_donations is defined else
+[] %} {% set donation_ticker_url = donation_ticker_url|default(None) %} {% set
+has_ticker = donation_ticker_url is not none %} {% set default_logo =
+(url_for('static', filename='images/logo.webp') if url_for is defined else
+'/static/images/logo.webp') %} {% set data_ui_name =
+(name|default('sponsor_wall_widget'))|replace('_','-') %} {% set MAX_SLOTS = 12
+%} {% macro sponsor_key(s) -%} {{- (s.id|string if s.id is defined and s.id is
+not none else (s.name|lower|trim)) -}} {%- endmacro %}
+
+<section
+  id="sponsor-wall-widget"
+  data-ui="{{ data_ui_name }}"
+  class="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] right-6 z-50 w-[min(92vw,26rem)] max-h-[85vh] rounded-3xl bg-zinc-900/95 ring-1 ring-[color:var(--fc-brand-200)] backdrop-blur-lg opacity-0 pointer-events-none translate-y-6 scale-95 transition-all duration-300 ease-out shadow-[0_6px_30px_rgba(251,191,36,0.15)]"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="sponsor-wall-title"
+  aria-describedby="sponsor-wall-desc"
+  tabindex="-1"
+  aria-hidden="true"
+  style="--fc-brand: {{ brand_color }}; --fc-brand-200: color-mix(in srgb, {{ brand_color }} 24%, transparent);"
+  data-team="{{ team_slug }}"
+  data-initial-sponsors="{{ sponsors_sorted|tojson }}"
+  data-initial-total="{{ (sponsors_total or 0)|float }}"
+>
+  <style {{ nonce_attr() }}nonce="{{ NONCE }}">
+    #sponsor-wall-widget .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #sponsor-wall-widget.is-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    #sponsor-wall-list.fc-scroll-shadow::before {
+      content: "";
+      position: sticky;
+      top: 0;
+      height: 8px;
+      width: 100%;
+      background: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--fc-brand) 28%, transparent),
+        transparent
+      );
+      pointer-events: none;
+      z-index: 10;
+      display: block;
+    }
+    #sponsor-wall-widget :focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--fc-brand) 75%, transparent);
+      outline-offset: 2px;
+      border-radius: 0.5rem;
+    }
+
+    /* Density tweaks */
+    html[data-density="compact"] #sponsor-wall-widget .vip-card {
+      padding: 0.5rem 0.6rem;
+    }
+    html[data-density="compact"] #sponsor-wall-widget img {
+      height: 2.25rem;
+      width: 2.25rem;
+    }
+    html[data-density="compact"] #sponsor-wall-list {
+      gap: 0.5rem;
+    }
+  </style>
+
+  <!-- 0) SR live region for new donations -->
+  <p id="sponsor-sr" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+  <!-- 1) Header -->
+  <header
+    class="flex items-center justify-between px-5 py-3 border-b border-[color:var(--fc-brand-200)] bg-gradient-to-r from-[color:var(--fc-brand-200)]/20 to-transparent rounded-t-3xl"
+  >
+    <h2
+      id="sponsor-wall-title"
+      class="flex items-center gap-2 text-lg font-extrabold tracking-tight"
+    >
+      <span aria-hidden="true">🙌</span>
+      <span class="text-yellow-300">Meet Our Champions</span>
+    </h2>
+    <button
+      data-widget-close
+      type="button"
+      aria-label="Close sponsor wall"
+      class="ml-2 p-1 rounded-full text-yellow-300 hover:bg-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+    >
+      <span aria-hidden="true" class="text-2xl font-bold">&times;</span>
+    </button>
+  </header>
+
+  <!-- 2) Live Donation Ticker (optional) -->
+  <div
+    id="donation-ticker-wall"
+    class="flex items-center px-5 py-1 text-sm font-semibold text-yellow-200 bg-yellow-900/30 min-h-[1.7em]"
+    aria-live="polite"
+    {%
+    if
+    has_ticker
+    %}hx-get="{{ donation_ticker_url }}"
+    hx-trigger="every 30s"
+    hx-swap="innerHTML"
+    {%
+    endif
+    %}
+  >
+    <div class="w-full overflow-hidden whitespace-nowrap" data-ticker>
+      {% if recent_donations %}
+      <div class="inline-flex gap-6 pr-6" data-ticker-track>
+        {% for d in recent_donations %}
+        <span class="inline-block"
+          >💸 <strong>{{ d.sponsor_name }}</strong> just donated ${{
+          '{:,.0f}'.format((d.amount or 0)|float) }}</span
+        >
+        {% endfor %}
+      </div>
+      {% else %}
+      <span class="opacity-80">Be the first to donate today 💛</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 3) Description / Impact -->
+  <div
+    id="sponsor-wall-desc"
+    class="flex items-center gap-3 px-5 pt-3 pb-1 text-sm text-yellow-200/80"
+  >
+    <span>
+      <span class="font-bold text-yellow-300"
+        ><span data-count>{{ sponsors_sorted|length }}</span> supporters</span
+      >
+      &mdash;
+      <span class="font-bold text-yellow-400"
+        >$
+        <span data-total
+          >{{ '{:,.0f}'.format((sponsors_total or 0)|float) }}</span
+        >
+        raised</span
+      >
+    </span>
+    <span class="hidden md:inline">• fuels gym, travel & academics</span>
+  </div>
+
+  <!-- 4) VIP Row: Top 3 -->
+  <div
+    class="flex gap-2 px-5 pt-2 pb-1 sticky top-0 z-10 bg-gradient-to-b from-zinc-900/80 to-transparent"
+  >
+    {% for s in (sponsors_sorted | sort(attribute='amount', reverse=True))[:3]
+    %} {% set tier = s.tier|default('default') %} {% set raw_logo = s.logo if
+    s.logo else 'images/logo.webp' %} {% set logo_src = (raw_logo if '://' in
+    raw_logo else (url_for('static', filename=raw_logo) if url_for is defined
+    else '/static/' ~ raw_logo)) %}
+    <article
+      data-key="{{ sponsor_key(s) }}"
+      class="vip-card group flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl border {% if tier == 'Platinum' %}bg-yellow-300 text-yellow-900 ring-1 ring-yellow-400 {% elif tier == 'Gold' %}bg-yellow-200 text-yellow-800 ring ring-yellow-300 {% elif tier == 'Silver' %}bg-yellow-100 text-yellow-700 ring ring-yellow-200 {% elif tier == 'Bronze' %}bg-orange-200 text-orange-900 ring ring-orange-300 {% else %}bg-indigo-900 text-yellow-300 ring ring-indigo-600{% endif %}"
+    >
+      {% if s.url %}<a
+        href="{{ s.url }}"
+        target="_blank"
+        rel="noopener sponsored"
+        tabindex="-1"
+        aria-label="Visit {{ s.name }}"
+        >{% endif %}
+        <img
+          src="{{ logo_src }}"
+          alt="{{ s.name }} logo"
+          width="72"
+          height="72"
+          class="h-12 w-12 rounded-lg border border-yellow-400/40 bg-white/90 object-contain shadow-inner"
+          loading="lazy"
+          decoding="async"
+        />
+        {% if s.url %}</a
+      >{% endif %}
+      <div class="text-center leading-tight">
+        <div class="text-xs font-extrabold">{{ s.name }}</div>
+        <div class="text-[11px] text-yellow-800">
+          $ {{ '{:,.0f}'.format((s.amount or 0)|float) }}
+        </div>
+      </div>
+    </article>
+    {% endfor %} {% if sponsors_sorted|length == 0 %}
+    <div class="flex-1 text-yellow-200/80 text-xs">
+      Become our first VIP sponsor ✨
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 5) Sponsor Grid -->
+  <div
+    id="sponsor-wall-list"
+    class="grid grid-cols-2 gap-2.5 px-5 pb-4 overflow-y-auto max-h-64"
+    role="list"
+    tabindex="0"
+    aria-label="Sponsor List"
+  >
+    {% for s in (sponsors_sorted | sort(attribute='amount', reverse=True))[3:]
+    %} {% set tier = s.tier|default('default') %} {% set raw_logo = s.logo if
+    s.logo else 'images/logo.webp' %} {% set logo_src = (raw_logo if '://' in
+    raw_logo else (url_for('static', filename=raw_logo) if url_for is defined
+    else '/static/' ~ raw_logo)) %}
+    <article
+      data-key="{{ sponsor_key(s) }}"
+      class="vip-card group flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border {% if tier == 'Platinum' %}bg-yellow-300 text-yellow-900 ring-1 ring-yellow-400 {% elif tier == 'Gold' %}bg-yellow-200 text-yellow-800 ring ring-yellow-300 {% elif tier == 'Silver' %}bg-yellow-100 text-yellow-700 ring ring-yellow-200 {% elif tier == 'Bronze' %}bg-orange-200 text-orange-900 ring ring-orange-300 {% else %}bg-indigo-900 text-yellow-300 ring ring-indigo-600{% endif %}"
+      role="listitem"
+    >
+      {% if s.url %}<a
+        href="{{ s.url }}"
+        target="_blank"
+        rel="noopener sponsored"
+        tabindex="-1"
+        aria-label="Visit {{ s.name }}"
+        >{% endif %}
+        <img
+          src="{{ logo_src }}"
+          alt="{{ s.name }} logo"
+          width="64"
+          height="64"
+          class="h-10 w-10 rounded-md border border-yellow-400/40 bg-white/90 object-contain shadow-inner"
+          loading="lazy"
+          decoding="async"
+        />
+        {% if s.url %}</a
+      >{% endif %}
+      <div class="text-center leading-tight">
+        <div class="text-[12px] font-bold">{{ s.name }}</div>
+        <div class="text-[11px] text-yellow-800">
+          $ {{ '{:,.0f}'.format((s.amount or 0)|float) }}
+        </div>
+      </div>
+    </article>
+    {% endfor %} {% set slots = MAX_SLOTS - (sponsors_sorted|length) if
+    sponsors_sorted|length < MAX_SLOTS else 0 %} {% for _ in range(slots) %}
+    <div
+      role="listitem"
+      tabindex="0"
+      aria-label="Available sponsorship spot"
+      class="flex flex-col items-center justify-center border-2 border-[color:var(--fc-brand-200)] bg-zinc-900/70 rounded-2xl p-4 min-h-[88px] cursor-pointer hover:bg-yellow-400/5"
+      data-open-sponsor
+    >
+      <span class="text-xl mb-1" aria-hidden="true">✨</span>
+      <span class="text-[11px] text-yellow-200/70 mt-0.5"
+        >Limited premium slots left!</span
+      >
+      <button
+        type="button"
+        class="mt-1 px-3 py-1 bg-yellow-400/90 text-black font-bold rounded-lg hover:bg-yellow-300 transition text-xs"
+        tabindex="-1"
+        data-open-sponsor
+      >
+        🌟 Become a Sponsor
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 6) Footer CTA + Social -->
+  <footer
+    class="flex flex-col gap-2 px-5 pb-4 pt-2 border-t border-[color:var(--fc-brand-200)] bg-gradient-to-t from-yellow-900/10 to-zinc-900/80 rounded-b-3xl"
+  >
+    <button
+      type="button"
+      class="w-full py-2 bg-yellow-400/90 text-black font-extrabold rounded-2xl shadow-inner ring-2 ring-yellow-300/30 hover:bg-yellow-300 transition text-base"
+      aria-label="Become a Sponsor"
+      data-open-sponsor
+    >
+      Become a Sponsor →
+    </button>
+
+    <div class="text-[11px] text-yellow-200/70">
+      Brand your business, inspire kids, make an impact.
+    </div>
+
+    <div class="flex gap-2 mt-1">
+      <button
+        data-share="x"
+        aria-label="Share on X"
+        class="p-1 rounded-full hover:bg-yellow-400/10 transition"
+      >
+        <svg
+          width="18"
+          height="18"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            d="M18.1 2.3h3.8l-8.3 9.3 9.7 10.1h-7.6l-6-6.6-6.8 6.6H-0.1l8.9-9.7L-0.6 2.3h7.8l5.3 5.7 5.6-5.7z"
+          />
+        </svg>
+      </button>
+      <button
+        data-share="fb"
+        aria-label="Share on Facebook"
+        class="p-1 rounded-full hover:bg-yellow-400/10 transition"
+      >
+        <svg
+          width="18"
+          height="18"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            d="M22.7 0H1.3C.6 0 0 .6 0 1.3v21.3C0 23.4.6 24 1.3 24H12.8v-9.3H9.7V11.1h3.1V8.4c0-3 1.9-4.7 4.6-4.7 1.3 0 2.4.1 2.7.1v3.1h-1.8c-1.4 0-1.7.7-1.7 1.7v2.2h3.4l-.4 3.6h-3v9.3h5.9c.7 0 1.3-.6 1.3-1.3V1.3c0-.7-.6-1.3-1.3-1.3z"
+          />
+        </svg>
+      </button>
+      <button
+        data-share="ln"
+        aria-label="Share on LinkedIn"
+        class="p-1 rounded-full hover:bg-yellow-400/10 transition"
+      >
+        <svg
+          width="18"
+          height="18"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.039-1.852-3.039-1.853 0-2.136 1.446-2.136 2.939v5.669h-3.554v-11.5h3.414v1.571h.048c.476-.901 1.635-1.852 3.367-1.852 3.599 0 4.265 2.368 4.265 5.455v6.326zm-16.229-13.71c-1.144 0-2.067-.924-2.067-2.066 0-1.144.924-2.067 2.067-2.067 1.142 0 2.067.923 2.067 2.067 0 1.142-.925 2.066-2.067 2.066zm1.778 13.71h-3.555v-11.5h 3.555v11.5z"
+          />
+        </svg>
+      </button>
+    </div>
+  </footer>
+</section>
+
+<!-- 7) Floating Toggle Button -->
+<button
+  id="sponsor-wall-toggle"
+  aria-expanded="false"
+  aria-controls="sponsor-wall-widget"
+  aria-label="Open Sponsor Wall"
+  class="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+2rem)] right-6 z-[51] flex items-center gap-2 bg-gradient-to-tr from-yellow-400/95 to-yellow-200/80 shadow-xl rounded-full px-4 py-2.5 text-base font-extrabold text-black ring-2 ring-[color:var(--fc-brand-200)] hover:ring-4 hover:scale-105 transition-all duration-300"
+>
+  🙌 <span>Sponsors</span>
+  <span
+    id="sponsor-nudge-dot"
+    class="ml-1 w-2 h-2 rounded-full bg-red-500 hidden motion-safe:animate-pulse"
+  ></span>
+</button>
+
+<div id="sponsor-modal-root"></div>
+
+<script {{ nonce_attr() }} {{ nonce_attr() }}nonce="{{ NONCE }}">
+  (() => {
+    if (window.__fcSponsorWallInit) return; window.__fcSponsorWallInit = true;
+
+    const widget   = document.getElementById('sponsor-wall-widget');
+    const toggle   = document.getElementById('sponsor-wall-toggle');
+    const closeBtn = widget?.querySelector('[data-widget-close]');
+    const list     = document.getElementById('sponsor-wall-list');
+    const nudgeDot = document.getElementById('sponsor-nudge-dot');
+    const tickerEl = widget?.querySelector('[data-ticker]');
+    const sr       = document.getElementById('sponsor-sr');
+    if (!widget || !toggle) return;
+
+    // ---------- State & helpers ----------
+    const TEAM = widget.getAttribute('data-team') || 'default';
+    const KEY_OPENED = `fc_sw_opened:${TEAM}`;
+    const bc = (function(){ try { return new BroadcastChannel('fc_ui'); } catch { return null; }})();
+
+    const reduced = (matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) || (navigator.connection?.saveData === true);
+    const fmtMoney = (n)=> (Number.isFinite(+n) ? Math.round(+n) : 0).toLocaleString();
+    const esc = (t)=> String(t||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    const getInitial = (key, fallback) => { try { const v = widget.dataset[key]; return (v==null||v==='')?fallback:(JSON.parse(v)); } catch { return fallback; } };
+
+    const nameKey = (v)=> String((v?.name||'').toLowerCase().trim());
+    const idKey   = (v)=> v?.id!=null ? String(v.id).toLowerCase() : '';
+    const sponsorKey = (v)=> idKey(v) || nameKey(v);
+
+    let allSponsors = Array.isArray(getInitial('initialSponsors', [])) ? getInitial('initialSponsors', []) : [];
+    let totalRaised = Number(widget.dataset.initialTotal || 0) || allSponsors.reduce((a,b)=>a+(+b.amount||0),0);
+    let openedOnce  = localStorage.getItem(KEY_OPENED) === '1';
+
+    const countEls = widget.querySelectorAll('[data-count]');
+    const totalEls = widget.querySelectorAll('[data-total]');
+
+    function announce(txt){ try { if (sr) sr.textContent = txt; } catch {} }
+    function shadowCue(){ if (!list) return; list.classList.toggle('fc-scroll-shadow', (list.scrollTop||0) > 5); }
+    function updateNumbers(){
+      countEls.forEach(el => el.textContent = String(allSponsors.length));
+      totalEls.forEach(el => el.textContent = fmtMoney(totalRaised));
+    }
+
+    // Deduplicate via stable key (id or lowercased name)
+    function upsertSponsor(s){
+      if (!s) return;
+      const key = sponsorKey(s); if (!key) return;
+      const idx = allSponsors.findIndex(x => sponsorKey(x) === key);
+      if (idx >= 0) allSponsors[idx] = { ...allSponsors[idx], ...s };
+      else allSponsors.unshift(s);
+      totalRaised = allSponsors.reduce((a,b)=> a + (+b.amount||0), 0);
+      paintGridIncremental({ ...s, _key: key });
+      updateNumbers();
+      window.dispatchEvent(new CustomEvent('fc:sponsorwall:added', { detail: { sponsor: s } }));
+    }
+
+    // ---------- Focus trap & keyboard ----------
+    let escBound = false;
+    function onKeydown(e){
+      if (e.key === 'Escape') { e.preventDefault(); closeWidget(); return; }
+      if (e.key !== 'Tab') return;
+      const focusables = widget.querySelectorAll('a,button,input,textarea,select,[tabindex]:not([tabindex="-1"])');
+      const first = focusables[0], last = focusables[focusables.length-1];
+      if (!first) return;
+      if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+
+    // ---------- Open/close ----------
+    let opened = false;
+    function openWidget(){
+      if (opened) return;
+      opened = true;
+      widget.classList.add('is-open');
+      widget.setAttribute('aria-hidden','false');
+      toggle.setAttribute('aria-expanded','true');
+      document.body.style.overflow = 'hidden';
+      nudgeDot?.classList.add('hidden');
+      try { widget.focus({ preventScroll: true }); } catch {}
+      if (!escBound) { document.addEventListener('keydown', onKeydown, { passive:false }); escBound = true; }
+      try { localStorage.setItem(KEY_OPENED,'1'); } catch {}
+      openedOnce = true;
+      shadowCue();
+      bc?.postMessage({ type:'fc:sponsorwall:open', detail:{ team: TEAM } });
+      window.dispatchEvent(new CustomEvent('fc:sponsorwall:open', { detail:{ team: TEAM } }));
+    }
+    function closeWidget(){
+      if (!opened) return;
+      opened = false;
+      widget.classList.remove('is-open');
+      widget.setAttribute('aria-hidden','true');
+      toggle.setAttribute('aria-expanded','false');
+      document.body.style.overflow = '';
+      try { toggle.focus({ preventScroll: true }); } catch {}
+      if (escBound) { document.removeEventListener('keydown', onKeydown); escBound = false; }
+      bc?.postMessage({ type:'fc:sponsorwall:close', detail:{ team: TEAM } });
+      window.dispatchEvent(new CustomEvent('fc:sponsorwall:close', { detail:{ team: TEAM } }));
+    }
+    const toggleWidget = () => (opened ? closeWidget() : openWidget());
+
+    // Mouse + keyboard open/close on toggle
+    toggle.addEventListener('click', () => { toggleWidget(); bc?.postMessage({type:'fc:sponsorwall:toggle'}); }, { passive:true });
+    toggle.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleWidget(); } }, { passive:false });
+
+    closeBtn?.addEventListener('click', closeWidget, { passive:true });
+    list?.addEventListener('scroll', shadowCue, { passive:true });
+
+    // Close on outside click
+    document.addEventListener('click', (e)=>{
+      if (!opened) return;
+      if (!widget.contains(e.target) && !toggle.contains(e.target)) closeWidget();
+    }, { passive:true });
+
+    // Keyboard shortcut: "S" (skip inputs)
+    document.addEventListener('keydown', (e)=>{
+      const tag = (e.target && e.target.tagName) || '';
+      if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+      if ((e.key||'').toLowerCase() === 's'){ e.preventDefault(); toggleWidget(); }
+    }, { passive:false });
+
+    // Deep link open (?open=sponsors or #sponsors)
+    try {
+      const u = new URL(location.href);
+      if (u.searchParams.get('open') === 'sponsors' || location.hash.replace('#','') === 'sponsors') {
+        setTimeout(openWidget, 250);
+      }
+    } catch {}
+
+    // Gentle nudge if never opened
+    if (!openedOnce) {
+      setTimeout(()=>{ if (!opened) nudgeDot?.classList.remove('hidden'); }, 180000);
+    }
+
+    // Sponsor CTA → open tiers modal if present, else emit hook
+    document.addEventListener('click', (e)=>{
+      const openSponsor = e.target.closest?.('[data-open-sponsor]'); if (!openSponsor) return;
+      e.preventDefault();
+      const tiersModal = document.getElementById('tiers-modal');
+      if (tiersModal?.showModal) { tiersModal.showModal(); }
+      else {
+        const mount = document.getElementById('sponsor-modal-root');
+        window.dispatchEvent(new CustomEvent('fc:sponsorwall:cta', { detail:{ team: TEAM, mount } }));
+      }
+    }, { passive:false });
+
+    // Leaderboard toggle UI hook
+    document.querySelectorAll('.leaderboard-toggle').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.leaderboard-toggle').forEach(b=>{
+          b.classList.remove('bg-yellow-400/40','text-black'); b.setAttribute('aria-pressed','false');
+        });
+        btn.classList.add('bg-yellow-400/40','text-black'); btn.setAttribute('aria-pressed','true');
+        const range = btn.dataset.leaderboard || 'all';
+        window.dispatchEvent(new CustomEvent('fc:sponsorwall:range', { detail:{ range } }));
+      }, { passive:true });
+    });
+
+    // Social share (Web Share API fallback)
+    document.addEventListener('click', (e)=>{
+      const share = e.target.closest?.('[data-share]'); if (!share) return;
+      const net = share.getAttribute('data-share'); const url = location.href;
+      const text = 'Support our team — sponsor or donate!';
+      if (navigator.share) { navigator.share({ title: document.title, text, url }).catch(()=>{}); return; }
+      const map = {
+        x:  `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+        fb: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+        ln: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
+      };
+      window.open(map[net] || url, '_blank', 'noopener,noreferrer,width=600,height=600');
+      window.dispatchEvent(new CustomEvent('fc:sponsorwall:share', { detail:{ net } }));
+    }, { passive:true });
+
+    /* ---------- Renderers ---------- */
+    function findCardByKey(key){
+      return key ? list.querySelector(`[data-key="${CSS.escape(key)}"]`) : null;
+    }
+
+    function ensureLogoSrc(raw){
+      if (!raw) return {{ default_logo|tojson }};
+      return /^https?:\/\//i.test(raw) ? raw : (raw.startsWith('/') ? raw : '/' + raw);
+    }
+
+    function paintGridIncremental(s){
+      if (!list || !s) return;
+      const key = s._key || sponsorKey(s);
+      const amt = Number.isFinite(+s.amount) ? +s.amount : 0;
+      const html = `
+        <article data-key="${esc(key)}" class="vip-card group flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border bg-indigo-900 text-yellow-300 ring ring-indigo-600" role="listitem">
+          ${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener sponsored" tabindex="-1" aria-label="Visit ${esc(s.name||'Sponsor')}">` : ``}
+          <img src="${ensureLogoSrc(s.logo)}" alt="${esc(s.name||'Sponsor')} logo" width="64" height="64" class="h-10 w-10 rounded-md border border-yellow-400/40 bg-white/90 object-contain shadow-inner" loading="lazy" decoding="async" />
+          ${s.url ? `</a>` : ``}
+          <div class="text-center leading-tight">
+            <div class="text-[12px] font-bold">${esc(s.name||'Sponsor')}</div>
+            <div class="text-[11px] text-yellow-800">$ ${fmtMoney(amt)}</div>
+          </div>
+        </article>`;
+      const existing = findCardByKey(key);
+      if (existing) existing.outerHTML = html;
+      else list.insertAdjacentHTML('afterbegin', html);
+      shadowCue();
+    }
+
+    /* ---------- Ticker animation (pause offscreen / reduced-motion) ---------- */
+    (function(){
+      const container = tickerEl;
+      if (!container) return;
+      let raf=null, x=0, running=false;
+      const track = container.querySelector('[data-ticker-track]');
+      if (!track) return;
+      const step = () => {
+        if (!running) return;
+        x -= 0.6;
+        const max = track.scrollWidth + 40;
+        if (Math.abs(x) > max) x = container.clientWidth;
+        track.style.transform = `translateX(${x}px)`;
+        raf = requestAnimationFrame(step);
+      };
+      const io = ('IntersectionObserver' in window) ? new IntersectionObserver(([en])=>{
+        const vis = !!(en && en.isIntersecting);
+        if (reduced || !vis) { running=false; if (raf) cancelAnimationFrame(raf), raf=null; }
+        else if (!running) { running=true; raf=requestAnimationFrame(step); }
+      }, { threshold: 0.01 }) : null;
+      if (io) io.observe(container);
+      else if (!reduced) { running=true; raf=requestAnimationFrame(step); }
+      addEventListener('beforeunload', ()=>{ if (raf) cancelAnimationFrame(raf); }, { passive:true });
+    })();
+
+    /* ---------- Live events ---------- */
+    function pushDonation(d){
+      const wrap = document.querySelector('#donation-ticker [data-ticker]'); if (!wrap) return;
+      let track = wrap.querySelector('[data-ticker-track]');
+      if (!track){
+        wrap.innerHTML = '<div data-ticker-track class="inline-flex gap-6 pr-6"></div>';
+        track = wrap.querySelector('[data-ticker-track]');
+      }
+      const who = (d.sponsor_name || d.name || 'Someone');
+      const amt = fmtMoney(d.amount);
+      const span = document.createElement('span');
+      span.className = 'inline-block';
+      span.innerHTML = `💸 <strong>${esc(who)}</strong> just donated $${amt}`;
+      track.prepend(span);
+      announce(`${who} just donated ${amt} dollars`);
+    }
+
+    // Meter/sponsor events harmony
+    addEventListener('fc:vip',        (ev)=> { const d=ev.detail||{}; pushDonation(d); upsertSponsor(d); nudgeDot?.classList.toggle('hidden', opened); }, { passive:true });
+    addEventListener('fc:sponsor:vip',(ev)=> { const d=ev.detail||{}; pushDonation(d); upsertSponsor(d); nudgeDot?.classList.toggle('hidden', opened); }, { passive:true });
+    addEventListener('fc:vip:hit',    (ev)=> { const d=ev.detail||{}; pushDonation(d); upsertSponsor(d); nudgeDot?.classList.toggle('hidden', opened); }, { passive:true });
+    addEventListener('fc:funds:update',(ev)=>{ /* number ribbon already handled elsewhere; keep for future */ }, { passive:true });
+
+    // (Optional) Socket namespaces — guarded
+    (function(){
+      const hasIO = typeof window.io === 'function';
+      if (!hasIO) return;
+      try{
+        const ds = window.io('/donations', { transports:['websocket','polling'] });
+        ds.on?.('donation', (d)=> { pushDonation(d); if (!opened) nudgeDot?.classList.remove('hidden'); });
+        const ss = window.io('/sponsors', { transports:['websocket','polling'] });
+        ss.on?.('sponsor', (s)=> upsertSponsor(s));
+      }catch(_){}
+    })();
+
+    // Cross-tab nudges
+    bc?.addEventListener?.('message', (ev)=>{
+      if (!ev?.data) return;
+      if (ev.data.type === 'fc:sponsorwall:open' && !opened) nudgeDot?.classList.add('hidden');
+    });
+
+    // Public API
+    window.fcSponsorWall = Object.assign({}, window.fcSponsorWall, {
+      open: openWidget,
+      close: closeWidget,
+      toggle: toggleWidget,
+      addSponsor: upsertSponsor,
+      pushDonation
+    });
+
+    // First paint
+    updateNumbers();
+    shadowCue();
+  })();
+</script>
+JINJA

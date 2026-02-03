@@ -1,0 +1,355 @@
+{# ===================== Base (NAS-ready, Polished & Hardened) ===================== #}
+{# ---------- Inputs / Team Context ---------- #}
+{% set TEAM       = team|default(_team|default({})) %}
+{% set BRAND_HEX  = TEAM.theme_color|default('#f2c94c') %}
+{% set BRAND_NAME = TEAM.team_name|default('Connect ATX Elite') %}
+{% set BRAND_SLUG = (TEAM.team_slug|default(BRAND_NAME))|string|lower|replace(' ', '-')|replace('_','-')|replace('--','-')|trim('-') %}
+
+{# ---------- Runtime / Environment ---------- #}
+{% set LOCALE       = LOCALE|default('en_US') %}
+{% set ROUTE        = request.endpoint if request is defined else '' %}
+{% set IS_DONATE    = (ROUTE == 'main.donate') %}
+{% set VER          = ASSET_VER|default(ASSET_VERSION|default(VERSION|default(None))) %}
+{% set SRI          = SRI|default({}) %}
+{% set NONCE        = NONCE|default(csp_nonce() if csp_nonce is defined else '') %}
+{% set SKIN         = SKIN|default('default') %}
+{% set USE_SOCKETIO = USE_SOCKETIO|default(false) %}
+{% set GA_ID        = GA_ID|default(None) %}
+{% set POSTHOG_KEY  = POSTHOG_KEY|default(None) %}
+{% set POSTHOG_HOST = POSTHOG_HOST|default('https://app.posthog.com') %}
+{% set WEBMANIFEST  = WEB_MANIFEST|default(None) %}
+{% set APP_ENV      = app_env|default(app_config.ENV if app_config is defined else 'development') %}
+
+{# ---------- Icons / Favicons ---------- #}
+{% set FAVICON    = TEAM.favicon|default('images/favicon.svg') %}
+{% set APPLE_ICON = TEAM.apple_icon|default('images/apple-touch-icon.png') %}
+
+{# ---------- P2P / OG Context ---------- #}
+{% set PEER       = peer|default(_peer|default({})) %}
+{% set CAMPAIGN   = campaign|default(_campaign|default({})) %}
+{% set PEER_NAME  = PEER.display_name|default(PEER.name|default(None)) %}
+{% set PEER_SLUG  = (PEER.slug|default(PEER_NAME|default('')))|string|lower|replace(' ', '-')|replace('_','-')|replace('--','-')|trim('-') %}
+{% set PEER_IMG   = PEER.og_image|default(PEER.avatar_url|default(PEER.photo_url|default(None))) %}
+{% set CAMP_TITLE = CAMPAIGN.title|default(None) %}
+{% set CAMP_IMG   = CAMPAIGN.og_image|default(CAMPAIGN.cover_image|default(None)) %}
+{% set IS_P2P     = (PEER_NAME or CAMP_TITLE) and true or false %}
+
+{# ---------- Title / Description / OG ---------- #}
+{% set DESC_DEFAULT = 'Fuel the season. Fund the future.' %}
+{% set BASE_TITLE   = (IS_DONATE and TEAM.og_title_donate) or TEAM.og_title
+                      or (IS_DONATE and (BRAND_NAME ~ ' — Donate')) or (BRAND_NAME ~ ' — Fundraiser') %}
+{% set P2P_TITLE    = (PEER_NAME and (PEER_NAME ~ ' — ' ~ BRAND_NAME))
+                      or (CAMP_TITLE and (CAMP_TITLE ~ ' — ' ~ BRAND_NAME)) or None %}
+{% set PAGE_TITLE   = P2P_TITLE or BASE_TITLE %}
+{% set BASE_DESC    = (IS_DONATE and TEAM.og_description_donate) or TEAM.og_description or DESC_DEFAULT %}
+{% set P2P_DESC     = PEER.tagline|default(PEER.bio|default(None))
+                      or CAMPAIGN.tagline|default(CAMPAIGN.summary|default(None)) or None %}
+{% set PAGE_DESC    = P2P_DESC or BASE_DESC %}
+{% set OG_BRAND_IMG = TEAM.og_image|default('images/og_default.jpg') %}
+{% set OG_IMG       = PEER_IMG or CAMP_IMG or OG_BRAND_IMG %}
+
+{# ---------- Macros ---------- #}
+{% macro nonce_attr() -%}{% if NONCE %}nonce="{{ NONCE }}"{% endif %}{%- endmacro %}
+{% macro sri(path)   -%}{{ SRI.get(path) if SRI else None }}{%- endmacro %}
+{% macro asset(path) -%}
+  {%- if path and path|length -%}
+    {%- if url_for is defined -%}
+      {{ url_for('static', filename=path, v=VER if VER else None) }}
+    {%- else -%}
+      {{ '/static/' ~ path }}
+    {%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+{% macro asset_abs(path) -%}
+  {% set rel = asset(path) %}
+  {% if rel and (rel[:4]=='http' or rel[:2]=='//') %}{{ rel }}
+  {% elif request is defined and rel %}{{ request.url_root ~ rel.lstrip('/') }}
+  {% else %}{{ rel or '' }}{% endif %}
+{%- endmacro %}
+
+<!doctype html>
+<html lang="{{ LOCALE[:2]|default('en') }}"
+      class="h-full antialiased selection:bg-white/20"
+      data-theme="dark" data-brand="{{ BRAND_SLUG }}" data-route="{{ ROUTE|default('') }}" data-skin="{{ SKIN }}" data-has-page-hero="{{ 1 if PAGE_HAS_HERO else 0 }}">
+<head>
+  <!-- ===== Meta / Canonical ===== -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="{{ BRAND_HEX }}">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0c" id="meta-theme-color">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="format-detection" content="telephone=no,address=no,email=no">
+  <meta name="csrf-token" content="{{ (csrf_token() if csrf_token is defined else '') }}">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  {% if request is defined %}
+    <link rel="canonical" href="{{ request.base_url }}">
+    <meta property="og:url" content="{{ request.base_url }}">
+  {% endif %}
+
+  <title>{% block title %}{{ PAGE_TITLE }}{% endblock %}</title>
+  <meta name="description" content="{{ PAGE_DESC }}">
+  <meta property="og:type" content="{{ IS_P2P and 'profile' or 'website' }}">
+  <meta property="og:site_name" content="{{ BRAND_NAME }}">
+  <meta property="og:title" content="{{ PAGE_TITLE }}">
+  <meta property="og:description" content="{{ PAGE_DESC }}">
+  <meta property="og:image" content="{{ asset_abs(OG_IMG) }}">
+  <meta property="og:image:alt" content="{{ BRAND_NAME }}">
+  <meta property="og:locale" content="{{ LOCALE }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ PAGE_TITLE }}">
+  <meta name="twitter:description" content="{{ PAGE_DESC }}">
+  <meta name="twitter:image" content="{{ asset_abs(OG_IMG) }}">
+  <meta name="twitter:image:alt" content="{{ BRAND_NAME }}">
+  {% if TEAM.twitter %}<meta name="twitter:site" content="{{ TEAM.twitter }}">{% endif %}
+  
+  {# ===== Structured Data (enterprise-safe) ===== #}
+{# Absolute donate URL with endpoint guard #}
+{% set DONATE_URL =
+  (url_for('main.donate', _external=True)
+    if (url_for is defined and has_endpoint is defined and has_endpoint('main.donate'))
+    else ((request.url_root ~ 'donate') if request is defined else '/donate')) %}
+
+{# Absolute org/site urls & assets #}
+{% set SITE_URL   = (request.url_root if request is defined else '') %}
+{% set LOGO_RAW   = TEAM.logo_url|default(TEAM.logo|default('images/logo.webp')) %}
+{% set LOGO_ABS   = asset_abs(LOGO_RAW) %}
+{% set OG_IMG_ABS = asset_abs(OG_IMG) %}
+
+{# Make this extensible on child pages #}
+{% block structured_data %}
+<script {{ nonce_attr() }} type="application/ld+json">
+{{ [
+  {
+    "@context": "https://schema.org",
+    "@type": "DonateAction",
+    "name": PAGE_TITLE,
+    "description": PAGE_DESC,
+    "recipient": {
+      "@type": "Organization",
+      "name": BRAND_NAME,
+      "url": SITE_URL,
+      "logo": LOGO_ABS,
+      "image": OG_IMG_ABS
+    },
+    "target": DONATE_URL
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": BRAND_NAME,
+    "url": SITE_URL,
+    "logo": LOGO_ABS,
+    "image": OG_IMG_ABS
+  }
+] | tojson }}
+</script>
+{% endblock %}
+
+  <!-- ===== Icons / Manifest ===== -->
+  <link rel="icon" type="image/svg+xml" href="{{ asset(FAVICON) }}">
+  <link rel="alternate icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ asset(APPLE_ICON) }}">
+  <meta name="apple-mobile-web-app-title" content="{{ BRAND_NAME }}">
+  {% if WEBMANIFEST %}
+    <link rel="manifest" href="{{ asset(WEBMANIFEST) }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar" content="black-translucent">
+  {% endif %}
+
+  <!-- ===== Hints ===== -->
+  <link rel="dns-prefetch" href="https://js.stripe.com">
+  <link rel="dns-prefetch" href="https://checkout.stripe.com">
+  <link rel="preconnect" href="https://js.stripe.com" crossorigin>
+  <link rel="preconnect" href="https://checkout.stripe.com" crossorigin>
+  <link rel="preconnect" href="https://api.stripe.com" crossorigin>
+  {% if POSTHOG_KEY %}<link rel="preconnect" href="{{ POSTHOG_HOST }}" crossorigin>{% endif %}
+  {% if USE_SOCKETIO %}<link rel="preconnect" href="/socket.io/" crossorigin>{% endif %}
+  {% if request is defined %}<link rel="preconnect" href="{{ request.url_root }}">{% endif %}
+
+  <!-- ===== Hero preload (with fallback) ===== -->
+  {% if hero_image_url is defined and hero_image_url %}
+    <link rel="preload" as="image" href="{{ hero_image_url }}" fetchpriority="high">
+  {% else %}
+    <link rel="preload" as="image"
+          href="{{ asset('images/hero/hero-1920.avif') }}"
+          imagesizes="100vw"
+          imagesrcset="{{ asset('images/hero/hero-1920.avif') }} 1920w, {{ asset('images/hero/hero-1280.avif') }} 1280w, {{ asset('images/hero/hero-960.avif') }} 960w"
+          fetchpriority="high">
+  {% endif %}
+
+  <!-- ===== CSS ===== -->
+  <link rel="stylesheet" href="{{ asset('css/app.min.css') }}"
+        {% if sri('css/app.min.css') %}integrity="{{ sri('css/app.min.css') }}" crossorigin="anonymous"{% endif %}>
+  <link rel="stylesheet" href="{{ asset('starforge/brand-spine.css') }}">
+  <link rel="modulepreload" href="{{ asset('starforge/enable-brand-spine.js') }}">
+  <link rel="stylesheet" href="{{ asset('css/qr-badge.css') }}">
+  {# Auto-polish CSS (installed by toolkit) #}
+  <link rel="stylesheet" href="{{ asset('fc/_fc_tokens.css') }}">
+  <link rel="stylesheet" href="{{ asset('fc/_fc_typography.css') }}">
+  <link rel="stylesheet" href="{{ asset('fc/_fc_components.css') }}">
+
+  {% block extra_head %}{% endblock %}
+  
+  
+</head>
+
+<body class="min-h-full bg-[color:var(--fc-surface,#0b0f15)] text-zinc-100">
+  <a class="sr-only-focusable" href="#main">Skip to content</a>
+
+  {# ---- Helpers for header partial ---- #}
+  {% set _safe_url = (safe_url_for if (safe_url_for is defined and has_endpoint is defined) else None) %}
+  {% set _has_ep   = (has_endpoint if has_endpoint is defined else None) %}
+
+  <!-- ===== Header (always provides #site-header for sticky math) ===== -->
+  {% block header %}
+    <header id="site-header" role="banner">
+      {% include "partials/header_and_announcement.html" ignore missing with context %}
+    </header>
+  {% endblock %}
+
+  <main id="main" role="main" class="relative" tabindex="-1">
+    <h1 class="fc-h1 sr-only">{% block h1 %}{{ BRAND_NAME }}{% endblock %}</h1>
+    <p id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+    {# ===== Section blocks (modular; consumed by pages like index.html) ===== #}
+    {% block section_ticker %}{% endblock %}
+    {% block section_hero %}{% endblock %}
+    {% block section_pulse %}{% endblock %}
+    {% block section_impact %}{% endblock %}
+    {% block section_tiers %}{% endblock %}
+    {% block section_sponsors %}{% endblock %}
+    {% block section_about %}{% endblock %}
+    {% block section_concierge %}{% endblock %}
+    {% block sections_extra %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}{% include "partials/footer.html" ignore missing with context %}{% endblock %}
+
+  <!-- ===== Scripts ===== -->
+  <link rel="modulepreload" href="{{ asset('js/main.js') }}">
+  <link rel="preload" as="script" href="{{ asset('js/bundle.min.js') }}"
+        {% if sri('js/bundle.min.js') %}crossorigin="anonymous" integrity="{{ sri('js/bundle.min.js') }}"{% endif %}>
+
+  <script {{ nonce_attr() }}>
+    (function(){
+      var head=document.head;
+      function addFallback(){
+        var s=document.createElement('script');
+        s.defer=true;
+        {% if sri('js/bundle.min.js') %}s.integrity="{{ sri('js/bundle.min.js') }}"; s.crossOrigin="anonymous";{% endif %}
+        s.src="{{ asset('js/bundle.min.js') }}";
+        head.appendChild(s);
+      }
+      try{
+        var esm=document.createElement('script');
+        esm.type='module'; esm.defer=true;
+        {% if NONCE %}esm.setAttribute('nonce','{{ NONCE }}');{% endif %}
+        esm.src="{{ asset('js/main.js') }}";
+        esm.onerror=addFallback;
+        head.appendChild(esm);
+      }catch(_){ addFallback(); }
+    })();
+  </script>
+
+  {% if IS_DONATE %}
+    <script {{ nonce_attr() }} id="fc-donate" src="{{ asset('js/donate.min.js') }}" defer
+            {% if sri('js/donate.min.js') %}integrity="{{ sri('js/donate.min.js') }}" crossorigin="anonymous"{% endif %}></script>
+  {% endif %}
+  <script {{ nonce_attr() }} src="{{ asset('js/fc_elite.js') }}" defer></script>
+  {% if USE_SOCKETIO %}<script {{ nonce_attr() }} src="/socket.io/socket.io.js" defer></script>{% endif %}
+
+  {% block body_scripts %}{% endblock %}
+  {% block extra_js %}{% endblock %}
+
+  {% include "partials/_powered_by_badge.html" ignore missing with context %}
+
+  <!-- ===== Tiny polish kit (safe, self-contained) ===== -->
+  <style {{ nonce_attr() }}>
+    :where(h1,h2,h3){text-wrap:balance}
+    :where(.btn,button,[role="button"]){min-height:42px}
+    :where(img){content-visibility:auto; contain-intrinsic-size:auto 300px}
+    :root{ --fc-brand: {{ BRAND_HEX }}; --sticky-offset: var(--fc-header-h, 72px) }
+    :root.using-kbd :where(a,button,[tabindex],input,select,textarea):focus-visible{
+      outline:2px solid color-mix(in oklab, var(--fc-brand) 75%, white);
+      outline-offset:2px; border-radius:.5rem;
+    }
+    /* Containment & stacking guards to prevent overlap across sections */
+    #site-header, #fc-hero, main > section, .nas-section { contain: layout paint style }
+  </style>
+
+  <script {{ nonce_attr() }}>
+    (function(){
+      const d=document, w=window, root=d.documentElement;
+
+      // Focus rings only when Tab is used
+      d.addEventListener('keydown', e => { if(e.key==='Tab') root.classList.add('using-kbd'); }, {passive:true});
+      d.addEventListener('mousedown', () => root.classList.remove('using-kbd'), {passive:true});
+
+      // External links → noopener + _blank
+      try{
+        const here = location.hostname.replace(/^www\./,'');
+        d.querySelectorAll('a[href^="http"]').forEach(a=>{
+          const u=new URL(a.href, location.href);
+          if(u.hostname.replace(/^www\./,'')!==here){
+            a.target=a.target||'_blank';
+            a.rel=(a.rel||'').split(/\s+/).filter(Boolean).concat(['noopener','noreferrer']).join(' ');
+          }
+        });
+      }catch{}
+
+      // Mark current nav
+      try{
+        const path = location.pathname.replace(/\/+$/,'') || '/';
+        d.querySelectorAll('nav a[href]').forEach(a=>{
+          try{
+            const u=new URL(a.getAttribute('href'), location.origin);
+            const p=u.pathname.replace(/\/+$/,'')||'/';
+            if(p===path) a.setAttribute('aria-current','page');
+          }catch{}
+        });
+      }catch{}
+
+      // Image perf defaults
+      try{ d.querySelectorAll('img').forEach(img => { img.decoding='async'; if(!img.hasAttribute('loading')) img.loading='lazy'; }); }catch{}
+
+      // Sticky seam: header + optional ticker (gives --fc-header-h / --sticky-offset)
+      try{
+        const setVars = (h) => {
+          root.style.setProperty('--fc-header-h', h+'px');
+          root.style.setProperty('--sticky-offset', h+'px');
+        };
+        const header = d.getElementById('site-header');
+        const ticker = d.getElementById('sponsor-leaderboard');
+        const calc = () => {
+          const hh = header?.offsetHeight || 0;
+          const ht = (ticker && header && !header.contains(ticker)) ? (ticker.offsetHeight||0) : 0;
+          const h = hh + ht;
+          if(h) setVars(h);
+        };
+        calc();
+        if('ResizeObserver' in w){
+          const ro = new ResizeObserver(calc);
+          header && ro.observe(header);
+          ticker && ro.observe(ticker);
+        }
+        w.addEventListener('resize', calc, {passive:true});
+        w.addEventListener('load', calc, {once:true});
+      }catch{}
+
+      // theme-color sync (light/dark)
+      try{
+        const meta=d.getElementById('meta-theme-color');
+        if(!meta) return;
+        const setColor=()=> meta.setAttribute('content', matchMedia('(prefers-color-scheme: dark)').matches ? '#0b0b0c' : '{{ BRAND_HEX }}');
+        setColor();
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', setColor);
+      }catch{}
+    })();
+  </script>
+</body>
+</html>
+
