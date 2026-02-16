@@ -1524,6 +1524,189 @@
   @media (min-width: 860px) {
     .ff-sectionhead__actions { justify-content: flex-end; }
   }
+
+/* FF NEXT-UP FLEX: START */
+/* VIP + Leaderboard + Donate Success (opt-in states; hook-safe)
+   - VIP: .is-vip / [data-vip="true"] / [data-tier="vip"]
+   - Donate success: .is-success / [data-state="success"]
+   - Loading/ready/error: .is-loading / .is-ready / .is-error
+   - Leaderboard: .ff-leaderboard / [data-ff-leaderboard]
+*/
+
+/* ---------- VIP sponsor effects (opt-in) ---------- */
+.ff-sponsorTier--vip.is-hot,
+.ff-sponsorTier--vip[data-hot="true"] {
+  box-shadow: 0 28px 96px rgba(249,115,22,0.18);
+}
+
+.ff-sponsorTier--vip::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.22;
+  background:
+    radial-gradient(520px 240px at 20% 0%, rgba(249,115,22,0.28), transparent 60%),
+    radial-gradient(520px 260px at 90% 10%, rgba(251,113,133,0.18), transparent 62%);
+  filter: blur(10px);
+}
+
+.ff-sponsorWall__item.is-vip,
+.ff-sponsorWall__item[data-vip="true"],
+.ff-sponsorWall__item[data-tier="vip"] {
+  border-color: rgba(249,115,22,0.34);
+  background: linear-gradient(180deg, rgba(249,115,22,0.10), rgba(255,255,255,0.06));
+  color: var(--ff-text);
+  font-weight: 900;
+  position: relative;
+  overflow: clip;
+}
+
+html[data-theme="dark"] .ff-sponsorWall__item.is-vip,
+html[data-theme="dark"] .ff-sponsorWall__item[data-vip="true"],
+html[data-theme="dark"] .ff-sponsorWall__item[data-tier="vip"] {
+  background: linear-gradient(180deg, rgba(249,115,22,0.10), rgba(255,255,255,0.07));
+}
+
+.ff-sponsorWall__item.is-vip::before,
+.ff-sponsorWall__item[data-vip="true"]::before,
+.ff-sponsorWall__item[data-tier="vip"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background: radial-gradient(260px 140px at 18% 0%, rgba(249,115,22,0.22), transparent 60%);
+}
+
+/* ---------- Leaderboard polish (hook-safe; works if you have it) ---------- */
+.ff-leaderboard,
+[data-ff-leaderboard] {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ff-leaderboard__row,
+[data-ff-leaderboard-row] {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--ff-stroke);
+  background: var(--ff-surface-2);
+  box-shadow: var(--ff-shadow-1);
+  overflow: clip;
+}
+
+@media (hover:hover) {
+  .ff-leaderboard__row:hover,
+  [data-ff-leaderboard-row]:hover {
+    transform: translateY(-1px);
+    border-color: var(--ff-stroke-2);
+    background: var(--ff-surface-3);
+    box-shadow: var(--ff-shadow-2);
+  }
+}
+
+.ff-leaderboard__rank,
+[data-ff-leaderboard-rank] {
+  width: 34px;
+  height: 34px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--ff-stroke);
+  background: rgba(255,255,255,0.06);
+}
+
+html[data-theme="light"] .ff-leaderboard__rank,
+html[data-theme="light"] [data-ff-leaderboard-rank] {
+  background: rgba(11,18,32,0.04);
+}
+
+.ff-leaderboard__amt,
+[data-ff-leaderboard-amt] {
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ff-leaderboard__row[data-rank="1"],
+[data-ff-leaderboard-row][data-rank="1"] {
+  border-color: rgba(249,115,22,0.34);
+  box-shadow: 0 18px 64px rgba(249,115,22,0.14);
+}
+.ff-leaderboard__row[data-rank="1"] .ff-leaderboard__rank,
+[data-ff-leaderboard-row][data-rank="1"] [data-ff-leaderboard-rank] {
+  border-color: rgba(249,115,22,0.30);
+  background: rgba(249,115,22,0.14);
+}
+
+/* ---------- Donation success / state styles (opt-in) ---------- */
+.ff-sheet.is-success .ff-sheet__panel,
+.ff-sheet[data-state="success"] .ff-sheet__panel {
+  border-color: rgba(34,197,94,0.34);
+  box-shadow: 0 26px 92px rgba(34,197,94,0.14);
+}
+
+.ff-sheet.is-error .ff-sheet__panel,
+.ff-sheet[data-state="error"] .ff-sheet__panel {
+  border-color: rgba(239,68,68,0.34);
+}
+
+.ff-checkoutSummary.is-success,
+.ff-checkoutSummary[data-state="success"] {
+  border-color: rgba(34,197,94,0.28);
+  background: linear-gradient(180deg, rgba(34,197,94,0.10), rgba(255,255,255,0.06));
+}
+
+.ff-paymentMount.is-loading,
+.ff-paypalMount.is-loading {
+  opacity: 0.78;
+  filter: saturate(0.98);
+}
+
+.ff-paymentMount.is-ready,
+.ff-paypalMount.is-ready {
+  border-color: rgba(249,115,22,0.22);
+  box-shadow: 0 16px 56px rgba(249,115,22,0.10);
+}
+
+.ff-paymentMount.is-error,
+.ff-paypalMount.is-error {
+  border-color: rgba(239,68,68,0.28);
+}
+
+/* ---------- “Burst” micro-animation (only when class applied) ---------- */
+.ff-burst {
+  animation: ff-burstPop var(--ff-dur-2) var(--ff-ease) both;
+}
+
+@keyframes ff-burstPop {
+  0%   { transform: scale(0.985); filter: blur(2px); opacity: 0.75; }
+  60%  { transform: scale(1.01);  filter: blur(0);  opacity: 1; }
+  100% { transform: scale(1.0);   filter: none;     opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-sponsorTier--vip::after,
+  .ff-burst {
+    animation: none !important;
+    filter: none !important;
+  }
+}
+/* FF NEXT-UP FLEX: END */
+
+
 }
   
    /* ---------- Impact ---------- */
