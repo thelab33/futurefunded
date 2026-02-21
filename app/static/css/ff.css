@@ -2098,3 +2098,101 @@
   color: var(--ff-live-fg, #fff);
   box-shadow: 0 1px 0 rgba(0,0,0,0.12) inset;
 }
+/* ============================================================================
+   merged: index — final defensive defaults for remaining selectors
+   purpose: close audit gaps without changing layout intent
+   ============================================================================ */
+
+/* topline badges / small live indicator */
+#ffLive, [data-ff-live] {
+  display: inline-block;
+  padding: .15rem .5rem;
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  white-space: nowrap;
+  text-transform: none;
+  -webkit-font-smoothing: antialiased;
+  color: var(--ff-live-fg, #fff);
+  background: var(--ff-live-bg, rgba(0,0,0,0.5));
+  box-shadow: 0 1px 0 rgba(0,0,0,0.06) inset;
+}
+
+/* generic selector listing / debug region */
+#ffSelectors {
+  display:block;
+  font-size:.9rem;
+  color:var(--ff-muted);
+}
+
+/* video/modal titles */
+#ffVideoTitle, #ffVideoTitle * { display:block; font-weight:700; font-size:1.02rem; color:var(--ff-hero-fg, #fff); }
+
+/* sponsor interest area (tier copy & trust text) */
+#sponsorInterestTitle, #sponsorInterestDesc, #sponsorInterestTrust {
+  display:block;
+  color:var(--ff-muted);
+  font-size:.95rem;
+  line-height:1.3;
+}
+
+/* small shared helpers */
+[data-ff-share], [data-ff-brand], [data-ff-id], [data-ff-data-mode], [data-ff-version] {
+  display:inline-flex;
+  gap:.4rem;
+  align-items:center;
+  font-size:.85rem;
+  color:var(--ff-quiet);
+}
+
+/* donor identity text */
+[data-ff-donor-name], [data-ff-email] {
+  display:inline-block;
+  font-weight:600;
+  color:var(--ff-quiet);
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* checkout / embed scaffolding */
+[data-ff-open-checkout], [data-ff-open-sponsor], [data-ff-open-drawer] {
+  display:inline-block;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* checkout status / scroll viewport */
+[data-ff-checkout-status] { display:block; color:var(--ff-muted); font-size:.9rem; }
+[data-ff-checkout-scroll], [data-ff-checkout-scroll] * { display:block; min-height:0; max-height:60vh; overflow:auto; -webkit-overflow-scrolling:touch; }
+
+/* content sections & tiers */
+[data-ff-section], [data-ff-tier], [data-ff-impact-activity], [data-ff-hero-capsule] {
+  display:block;
+  padding:.45rem 0;
+  color:var(--ff-muted);
+}
+
+/* small share / meta region in footers & CTAs */
+[data-ff-share] { color:var(--ff-quiet); font-size:.88rem; }
+
+/* small helpers for create/faq wrap */
+[data-ff-create-faq-wrap] { display:block; padding:.5rem 0; color:var(--ff-muted); }
+
+/* final safety: ensure generic ids show */
+#ffSelectors, #ffVideoTitle { min-width:0; }
+
+/* responsive niceties */
+@media(min-width:720px){
+  [data-ff-hero-capsule] { display:flex; gap:.6rem; align-items:center; }
+  [data-ff-checkout-scroll] { max-height:50vh; }
+}
+
+/* respectful reduced-motion */
+@media (prefers-reduced-motion: reduce){
+  * { transition:none !important; animation:none !important; }
+}
+
+/* end merged block */
