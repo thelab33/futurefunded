@@ -1,0 +1,204 @@
+/* ============================================================================
+   FutureFunded — INDEX Top-200 Patch (drop-in)
+   Purpose: structural defaults for remaining index.html selectors and data hooks
+   Scope: index.html focused, safe fallback tokens, accessible defaults
+   ============================================================================ */
+
+:root{
+  --ff-accent: #ff8a36;
+  --ff-muted: rgba(255,255,255,0.75);
+  --ff-quiet: rgba(255,255,255,0.45);
+  --ff-surface: rgba(255,255,255,0.03);
+  --ff-surface-2: rgba(255,255,255,0.02);
+  --ff-radius: 12px;
+  --ff-gap: 0.75rem;
+  --ff-focus: rgba(127,127,127,0.95);
+  --ff-glass: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  --ff-transition: 220ms cubic-bezier(.2,.9,.3,1);
+}
+
+/* quick safeties */
+[data-ff-body], .ff-body, body { color: inherit; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans",sans-serif; -webkit-font-smoothing:antialiased; }
+:where(button,a,input,select,textarea):focus { outline:3px solid var(--ff-focus); outline-offset:3px; }
+
+/* ----------------------------
+   Drawer / Drawer Panel / Drawer Titles
+   ---------------------------- */
+#drawer, .drawer, .ff-drawer { display:block; position:relative; width:100%; }
+#ffDrawerPanel, .ff-drawer__panel, .ffDrawerPanel { box-sizing:border-box; padding:1rem; background:var(--ff-glass); border-radius:var(--ff-radius); color:#fff; max-width:980px; margin:0 auto; }
+#ffDrawerTitle, .ffDrawerTitle { font-weight:700; font-size:1.1rem; display:block; color:#fff; }
+
+/* ----------------------------
+   Topbar / Chrome / Chrome stack
+   ---------------------------- */
+#ffTopbar, .ff-topbar, [data-ff-chrome], [data-ff-chrome-stack] {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.6rem 1rem; gap:.6rem; background:transparent; color:var(--ff-muted);
+}
+.ff-topbar__brandCluster, .ff-topbar__rightCluster { display:flex; gap:.6rem; align-items:center; }
+
+/* ----------------------------
+   Stripe / PayPal mount points / Checkout helpers
+   ---------------------------- */
+#ffStripeJs, [data-ff-stripe-mount], [data-ff-paypal-mount], [data-ff-payment-element], #paymentElement {
+  display:block; min-height:48px; box-sizing:border-box; padding:.5rem 0;
+  background:transparent;
+}
+#ffSuccessTitle, #ffSuccessDesc, #checkoutTitle, #checkoutDesc, [data-ff-checkout-content], [data-ff-checkout-stage], [data-ff-checkout-viewport] {
+  display:block; color:var(--ff-muted);
+  padding:.4rem 0;
+}
+
+/* error and status */
+[data-ff-checkout-error], #checkoutErrorText, .ff-checkout-error, [data-ff-stripe-error], [data-ff-paypal-error] {
+  display:block; color:#ffb3a7; background:rgba(255,75,60,0.06); padding:.5rem; border-radius:8px;
+}
+
+/* checkout success/confirmations */
+[data-ff-checkout-success], .ff-checkout-success { display:block; color: #c8ffd6; background: rgba(20,80,30,0.06); padding:.5rem; border-radius:8px; }
+
+/* ----------------------------
+   Hero rail / hero titles / hero rail desc
+   ---------------------------- */
+#heroRailTitle, .heroRailTitle, #heroRailDesc, .heroRailDesc {
+  display:block; font-weight:700; color:#fff; margin-bottom:.25rem;
+}
+
+/* ----------------------------
+   Impact / Story / Media / video helpers
+   ---------------------------- */
+#impactHint, .ff-impact, .ff-impact__head, #storyTitle, #storyLead, #storyTrust, #storyLead {
+  display:block; color:var(--ff-muted);
+}
+[p[data-ff-video-src], [data-ff-video-src], [data-ff-open-video], [data-ff-video-frame], [data-ff-video-title]] {
+  display:block;
+}
+[data-ff-video-sr], .ff-video-sr { position:absolute !important; left:-9999px !important; width:1px; height:1px; overflow:hidden; }
+
+/* ----------------------------
+   Privacy/Terms/Legal sections
+   ---------------------------- */
+#privacy, #privacyTitle, #terms, #termsTitle {
+  display:block; color:var(--ff-muted); margin:.25rem 0;
+  font-size:.95rem;
+}
+
+/* ----------------------------
+   Sponsors related helpers
+   ---------------------------- */
+#sponsorsLead, [data-ff-sponsor-tier], [data-ff-sponsor-email], [data-ff-sponsor-message], [data-ff-sponsor-submit], [data-ff-sponsor-status] {
+  display:block; color:var(--ff-muted);
+}
+#sponsorEmailHelp, .sponsorEmailHelp, [data-ff-sponsor-email] { font-size:.95rem; color:var(--ff-quiet); display:block; }
+
+/* sponsor player binding */
+[data-ff-sponsor-a-player], [data-ff-player-id], [data-ff-team-id], [data-ff-sponsor-name] { display:inline-block; }
+
+/* sponsor error */
+[data-ff-sponsor-error] { color:#ffb3a7; background:rgba(255,75,60,0.04); padding:.5rem; border-radius:8px; display:block; }
+
+/* ----------------------------
+   Tier and team text pieces
+   ---------------------------- */
+#tierChampionName, #tierCommunityName, #tierPartnerName, #tierVipName,
+#tierChampionBullets, #tierCommunityBullets, #tierPartnerBullets, #tierVipBullets {
+  display:block; color:var(--ff-muted);
+}
+
+/* team labels */
+#team--name, #team--meta, #team--ask { display:block; color:var(--ff-muted); }
+
+/* ----------------------------
+   Back to top / floating tools / version / theme toggle
+   ---------------------------- */
+[data-ff-backtotop], #ffTopbar, [data-ff-theme-toggle], [data-ff-version], [data-ff-build] {
+  display:inline-flex; align-items:center; gap:.4rem;
+}
+[data-ff-version] { font-size:.8rem; color:var(--ff-quiet); }
+
+/* ----------------------------
+   Data-state / config / shell / main
+   ---------------------------- */
+[data-ff-data-state], [data-ff-config], [data-ff-shell], [data-ff-main], [data-ff-home]{
+  display:block;
+}
+
+/* ----------------------------
+   Goals / totals / raised / deadline helpers
+   ---------------------------- */
+[data-ff-goal], [data-ff-raised], [data-ff-pct], [data-ff-totals-verified] {
+  display:inline-block; font-weight:600; color:#fff;
+}
+
+/* deadline */
+[data-ff-deadline], .deadline, #deadlineText { display:inline-block; color:var(--ff-muted); }
+
+/* ----------------------------
+   Checkout scroll / close interactions
+   ---------------------------- */
+[data-ff-close-checkout], [data-ff-close-drawer], [data-ff-close-video], [data-ff-close-sponsor] {
+  cursor:pointer; display:inline-flex; align-items:center; padding:.25rem; background:transparent; border-radius:6px;
+}
+
+/* ----------------------------
+   Story SR / lazy mounts
+   ---------------------------- */
+[data-ff-story-sr], [data-ff-lazy], [data-ff-stripe-skeleton], [data-ff-paypal-skeleton] { display:block; min-height:1px; }
+
+/* ----------------------------
+   Team disclosure / teams grid / rail cols
+   ---------------------------- */
+[data-ff-teams-disclosure], [data-ff-rail-cols], [data-ff-team-card], [data-ff-team-card] { display:block; }
+[data-ff-teams-disclosure] { font-size:.95rem; color:var(--ff-muted); }
+
+/* ----------------------------
+   Sponsor wall / sponsor wall view
+   ---------------------------- */
+[data-ff-sponsor-wall], [data-ff-sponsor-wall-view], .ff-sponsorWall { display:grid; gap:.6rem; grid-template-columns:1fr; }
+@media(min-width:700px){ [data-ff-sponsor-wall] { grid-template-columns: repeat(2, 1fr); } }
+
+/* ----------------------------
+   Donate form wrapper & inputs
+   ---------------------------- */
+[data-ff-donate-form], [data-ff-amount-input], #donationAmount, #donationAmountHelp, #donationAmountLegend {
+  display:block; width:100%; box-sizing:border-box; padding:.5rem; color:#fff;
+}
+
+/* field legends & helper text */
+#donorDetailsLegend, #donorEmailHelp { display:block; color:var(--ff-quiet); font-size:.95rem; }
+
+/* stripe message */
+[data-ff-stripe-msg], [data-ff-paypal-msg] { display:block; color:var(--ff-muted); font-size:.95rem; }
+
+/* ----------------------------
+   Message / toasts / ticker / updates
+   ---------------------------- */
+[data-ff-message], [data-ff-toasts], [data-ff-updates-list], [data-ff-updates-status], [data-ff-updates-week] { display:block; }
+[data-ff-ticker-track] { display:flex; gap:.4rem; overflow:hidden; }
+
+/* ----------------------------
+   Actionable rows and clickable cards
+   ---------------------------- */
+.ff-row--clickable, .ff-card--clickable { cursor:pointer; transition:transform var(--ff-transition), box-shadow var(--ff-transition); }
+.ff-row--clickable:focus, .ff-card--clickable:focus { outline:3px solid var(--ff-focus); outline-offset:3px; }
+
+/* ----------------------------
+   Misc / fallbacks to prevent collapse
+   ---------------------------- */
+#12, #21, #7 { display:block; } /* sometimes template-generated anchors */
+#p7u09q1q_5w { display:block; } /* ephemeral id used by embed scripts - keep visible */
+
+#content, #home, #story, #impactTitle, #impactLead, #teamsTitle, #teamsLead, #sponsorsTitle, #faqTitle, #faqLead, #footer {
+  display:block; color:var(--ff-muted);
+}
+
+/* small responsive polish */
+@media(min-width:768px){
+  .ff-footer__grid { grid-template-columns: repeat(4,1fr); }
+  [data-ff-sponsor-wall] { grid-template-columns: repeat(3,1fr); }
+}
+
+/* prefers reduced motion */
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+/* end */
