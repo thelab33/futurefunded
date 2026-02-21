@@ -2081,3 +2081,20 @@
   /* Pretty wrapping */
   .ff-body :where(p, li) { text-wrap: pretty; }
 }
+
+/* >>> merged: index structural — final [data-ff-live] defensive rule */
+[data-ff-live] {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: 8px;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  -webkit-font-smoothing:antialiased;
+  /* use token if present, fallback to neutral */
+  background: var(--ff-live-bg, rgba(0,0,0,0.35));
+  color: var(--ff-live-fg, #fff);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12) inset;
+}
