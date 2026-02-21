@@ -571,7 +571,6 @@
   {% set _app = url_for('static', filename='js/ff-app.js') ~ '?v=' ~ _v %}
   <link rel="preload" as="script" href="{{ _app|e }}"/>
   <script defer src="{{ _app|e }}" {{ nonce_attr() }}></script>
-    {% raw %}<link rel="stylesheet" href="{{ url_for('static', filename='css/ff_patch_index_top50.css') }}">{% endraw %}
 </head>
 
 <body
