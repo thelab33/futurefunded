@@ -1,0 +1,68 @@
+/* app/static/css/ff_patch_index_top50.css
+   Index Top-50 selectors patch (dev). Minimal, safe rules to restore layout.
+*/
+
+@layer ff.pages {
+  /* Buttons and CTA */
+  .ff-btn__label, .btn-donate, .donate-primary-cta, .cta { display:inline-flex; align-items:center; gap:.5rem; padding:.5rem .9rem; border-radius:10px; cursor:pointer; }
+
+  /* Checkout / modals / sheet heads */
+  .ff-checkoutHead, .ff-modal__head, .ff-modal__head--flagship { font-weight:700; font-size:1.05rem; padding:.5rem .75rem; }
+
+  /* Create / FAQ blocks */
+  .ff-create, .ff-createBody, .ff-createCard, .ff-createPanel, .ff-createSteps,
+  .ff-faqBody, .ff-faqHead, .ff-faqItem, .ff-faqList--compact { display:block; gap:.6rem; padding:.8rem; }
+
+  /* Footer compacting */
+  .ff-footerGrid--tight, .ff-footerGrid--compact, .ff-footerTray--compact,
+  .ff-footerBrand--compact, .ff-footerNav--compact { display:grid; gap:.45rem; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); align-items:start; padding:.6rem 1rem; }
+
+  .ff-footerTrust, .ff-footer__linkgrid--compact { font-size:.9rem; color: #bdbdbd; }
+
+  /* Impact / KPI cards */
+  .ff-impactCard--flagship, .ff-impactPick--flagship, .ff-impactTier { display:block; padding:.8rem; border-radius:12px; min-height:90px; }
+
+  .ff-kpi__label { font-size:.8rem; color:#9aa0a6; }
+  .ff-kpi__value { font-weight:700; font-size:1.25rem; }
+
+  /* Sheets / sticky footer in sheet view */
+  .ff-sheet__footer--sticky { position:sticky; bottom:0; background:transparent; padding:.6rem 1rem; box-shadow: 0 -6px 18px rgba(0,0,0,0.4); }
+
+  /* Team card compact */
+  .ff-teamCard__head, .ff-teamCard__title, .ff-teamCard__meta, .ff-teamCard__ask { display:block; gap:.4rem; }
+
+  /* VIP / spotlight */
+  .ff-vipSpotlight, .is-featured, .is-live { border-radius:12px; padding:.6rem; box-shadow:0 6px 18px rgba(0,0,0,0.4); }
+
+  /* Heads / titles / hero */
+  #heroTitle, #heroPanelTitle, #heroPanelProgressText, .heroLead, .heroRailTitle, .heroRailDesc,
+  .ff-heroHeader, .ff-heroPanelHead { display:block; font-weight:700; }
+
+  /* Checkout form / amount input */
+  #donationAmount, #donationAmountHelp, #donationAmountLegend, [data-ff-amount-input], .ff-amount-display { min-width:0; width:100%; display:block; padding:.5rem; }
+
+  /* Sponsor / ticker / sponsor card */
+  .ff-sponsorCell, .ff-sponsor-card, .ff-sponsor-name, .ff-sponsor-status, [data-ff-sponsor-card] { display:flex; gap:.6rem; align-items:center; padding:.6rem; border-radius:10px; }
+
+  /* Rail, meter, totals */
+  [data-ff-meter], [data-ff-pct], [data-ff-raised], .fc-meter, .fc-meter__fill { display:block; width:100%; height:12px; border-radius:999px; overflow:hidden; }
+  .fc-meter__fill { width:0%; transition: width 420ms ease; min-width:0; background:currentColor; }
+
+  /* Misc layout utilities */
+  .ff-createFaqIntro__text, .ff-createHead, .ff-faqHead, .ff-story, .ff-storyCopy, .ff-storyMedia, .ff-storyMeta,
+  .ff-tabs__item, .ff-topbar__brandCluster, .ff-topbar__rightCluster { display:block; padding:.4rem 0; }
+
+  /* Data-ff attributes (visibility/stub rules) */
+  [data-ff-checkout-sheet], [data-ff-stripe-mount], [data-ff-stripe-skeleton], [data-ff-paypal-skeleton],
+  [data-ff-sponsor-modal], [data-ff-video-modal], [data-ff-vip-spotlight], [data-ff-hero-panel],
+  [data-ff-meter], [data-ff-amount], [data-ff-footer], [data-ff-topbar] { display:block; }
+
+  /* tiny responsive tweaks */
+  @media (min-width:768px) {
+    .ff-footerGrid--tight { grid-template-columns: repeat(4, 1fr); }
+    .ff-createCard { padding:1rem; }
+  }
+
+  /* focus accessibility */
+  :where(button, a, input):focus { outline:3px solid rgba(127,127,127,0.85); outline-offset:3px; }
+}
