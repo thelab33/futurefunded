@@ -1,5 +1,5 @@
 # =============================================================================
-# FutureFunded — .gitignore (Production / SaaS / Playwright Hardened)
+# FutureFunded — .gitignore (Production / SaaS / Playwright Hardened • Enterprise)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -51,37 +51,11 @@ artifacts/
 out/
 tools/.artifacts/
 
-# -----------------------------------------------------------------------------
-# Generated media (ONLY inside artifact / output dirs)
-# NOTE: Do NOT globally ignore images — real product assets live in app/static/.
-# -----------------------------------------------------------------------------
-artifacts/**/*.png
-artifacts/**/*.jpg
-artifacts/**/*.jpeg
-artifacts/**/*.webp
-artifacts/**/*.gif
-artifacts/**/*.avif
-
-.reports/**/*.png
-.reports/**/*.jpg
-.reports/**/*.jpeg
-.reports/**/*.webp
-.reports/**/*.gif
-.reports/**/*.avif
-
-tools/.artifacts/**/*.png
-tools/.artifacts/**/*.jpg
-tools/.artifacts/**/*.jpeg
-tools/.artifacts/**/*.webp
-tools/.artifacts/**/*.gif
-tools/.artifacts/**/*.avif
-
-out/**/*.png
-out/**/*.jpg
-out/**/*.jpeg
-out/**/*.webp
-out/**/*.gif
-out/**/*.avif
+# Generated media ONLY inside artifact/output dirs (do NOT globally ignore images)
+artifacts/**/*.{png,jpg,jpeg,webp,gif,avif}
+.reports/**/*.{png,jpg,jpeg,webp,gif,avif}
+tools/.artifacts/**/*.{png,jpg,jpeg,webp,gif,avif}
+out/**/*.{png,jpg,jpeg,webp,gif,avif}
 
 # -----------------------------------------------------------------------------
 # Local backups / patch artifacts
@@ -92,8 +66,6 @@ out/**/*.avif
 *.BAK.*
 *.orig
 *.rej
-
-# “fix” and “patch” snapshots often created during repair workflows
 *.fix*
 *.patch*
 
@@ -117,9 +89,9 @@ Thumbs.db
 *.swo
 *:Zone.Identifier
 
-# VS Code / JetBrains (optional but recommended)
 .vscode/
 .idea/
+.husky/
 
 # -----------------------------------------------------------------------------
 # Coverage / reports
@@ -135,7 +107,9 @@ htmlcov/
 .env.*
 .cache/
 
-# Local audit dumps (root)
+# -----------------------------------------------------------------------------
+# Local audit dumps & one-off outputs (root)
+# -----------------------------------------------------------------------------
 classes.txt
 ids.txt
 data_attrs.txt
@@ -146,11 +120,57 @@ style-coverage.json
 DOM_CONTRACT_full_snapshot_*.txt
 stripe_fill_fail_*.png
 
-# Local archives (keep out of repo)
+# Catch common audit dump patterns (safe)
+audit-*
+*coverage*.json
+*coverage*.css
+*coverage*.txt
+
+# -----------------------------------------------------------------------------
+# Local archives / scratch (keep out of repo)
+# -----------------------------------------------------------------------------
 app/templates_backup/
 app/static/css_backup/
 app/static/css/archive/
 app/static/_unused/
+
+# -----------------------------------------------------------------------------
+# Template scratch snapshots (explicit)
+# -----------------------------------------------------------------------------
+app/templates/index.pre-overlay-dedupe.html
+app/templates/index.vnext.html
+
+# -----------------------------------------------------------------------------
+# Don’t track backup JS/CSS snapshots (keep real assets tracked)
+# -----------------------------------------------------------------------------
+app/static/js/*.bak*
+app/static/css/*.bak*
+app/templates/*.bak*
+app/__init__.py.bak*
+run.py.bak*
+
+# -----------------------------------------------------------------------------
+# Tooling scratch (keep repo focused; avoid tool sprawl)
+# -----------------------------------------------------------------------------
+missing-selectors.css
+style-audit.css
+ff_css_classes_count.txt
+index_selectors.json
+
+ff_*_autopatch*.py
+ff_*_audit*.py
+ff_*_coverage*.py
+ff_*_doctor*.py
+ff_*_sanitize*.py
+ff_*_superpatch*.py
+
+launch_audit.py
+safe_add_detect_env.py
+safe_fix_detect_env_load.py
+
+# If these are generated locally (common in your workflow)
+tools/_backups/
+tools/.playwright/
 
 # -----------------------------------------------------------------------------
 # Optional: local tooling outputs (uncomment if you generate these)
