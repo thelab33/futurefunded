@@ -1,133 +1,150 @@
+# app/config/config.py
+# Canonical FutureFunded configuration (env-first, production-safe)
+
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Optional, Sequence
+from datetime import timedelta
+from typing import Any, Optional
 
-# Repo root: app/config/config.py → parents[2]
-BASE_DIR = Path(__file__).resolve().parents[2]
 
-# ─────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────
+# ----------------------------
+# Env helpers
+# ----------------------------
+_TRUTHY = {"1", "true", "yes", "on", "y"}
+_FALSY = {"0", "false", "no", "off", "n"}
 
-def _bool(val: Optional[str | bool], default: bool = False) -> bool:
-    if isinstance(val, bool):
-        return val
-    if val is None:
+
+def _env(name: str, default: Optional[str] = None) -> Optional[str]:
+    v = os.getenv(name)
+    if v is None:
         return default
-    return str(val).strip().lower() in {"1", "true", "yes", "on"}
+    s = str(v).strip()
+    return s if s else default
 
-def _csv(val: str | Sequence[str] | None) -> list[str]:
-    if not val:
-        return []
-    if isinstance(val, str):
-        return [p.strip() for p in val.split(",") if p.strip()]
-    return [str(x).strip() for x in val if str(x).strip()]
 
-def _normalize_db(url: str) -> str:
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
-    return url
+def _bool(name: str, default: bool = False) -> bool:
+    v = _env(name)
+    if v is None:
+        return default
+    s = v.strip().lower()
+    if s in _TRUTHY:
+        return True
+    if s in _FALSY:
+        return False
+    return default
 
-def _sqlite_default() -> str:
-    data = (BASE_DIR / "app" / "data").resolve()
-    data.mkdir(parents=True, exist_ok=True)
-    return f"sqlite:///{(data / 'app.db').as_posix()}"
 
-def database_url() -> str:
-    raw = (os.getenv("DATABASE_URL") or "").strip()
-    if not raw:
-        return _sqlite_default()
-    raw = _normalize_db(raw)
-    if raw.startswith("sqlite:///"):
-        p = Path(raw.split("sqlite:///")[1])
-        if not p.is_absolute():
-            p = (BASE_DIR / p).resolve()
-        p.parent.mkdir(parents=True, exist_ok=True)
-        return f"sqlite:///{p.as_posix()}"
-    return raw
+def _int(name: str, default: int) -> int:
+    v = _env(name)
+    if v is None:
+        return default
+    try:
+        return int(str(v).strip())
+    except Exception:
+        return default
 
-# ─────────────────────────────────────────────────────────────
-# Base config (NO ENV HERE — Flask owns env)
-# ─────────────────────────────────────────────────────────────
 
+def _clean_base_url(v: Optional[str]) -> str:
+    s = (v or "").strip().rstrip("/")
+    return s
+
+
+# ----------------------------
+# Config classes
+# ----------------------------
 class BaseConfig:
-    # Core Flask
-    DEBUG = False
-    TESTING = False
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    """
+    Env-first config:
+    - all important settings can be overridden via environment variables
+    - safe defaults for local dev
+    """
 
-    JSON_SORT_KEYS = False
-    JSON_AS_ASCII = False
-    PROPAGATE_EXCEPTIONS = False
+    # Environment naming (your code reads APP_ENV/ENV/FLASK_ENV in places)
+    ENV = (_env("APP_ENV") or _env("ENV") or _env("FLASK_ENV") or "base").strip().lower()
+
+    DEBUG = _bool("FLASK_DEBUG", False)
+    TESTING = _bool("TESTING", False)
+
+    # Security
+    SECRET_KEY = _env("SECRET_KEY", "dev-change-me")
 
     # URLs / scheme
-    PREFERRED_URL_SCHEME = os.getenv("PREFERRED_URL_SCHEME", "http")
+    PUBLIC_BASE_URL = _clean_base_url(_env("PUBLIC_BASE_URL", _env("FF_PUBLIC_BASE_URL", "")))
+    FF_PUBLIC_BASE_URL = _clean_base_url(_env("FF_PUBLIC_BASE_URL", PUBLIC_BASE_URL))
+    PREFERRED_URL_SCHEME = _env("PREFERRED_URL_SCHEME", "https")
 
-    # Database
-    SQLALCHEMY_DATABASE_URI = database_url()
+    # Proxy trust (Cloudflare / reverse proxy)
+    TRUST_PROXY = _bool("TRUST_PROXY", False)
+
+    # Cookies
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = _env("SESSION_COOKIE_SAMESITE", "Lax")
+    SESSION_COOKIE_SECURE = True
+
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = _env("REMEMBER_COOKIE_SAMESITE", "Lax")
+    REMEMBER_COOKIE_SECURE = True
+
+    PERMANENT_SESSION_LIFETIME = timedelta(days=_int("SESSION_DAYS", 31))
+
+    # SQLAlchemy
+    SQLALCHEMY_DATABASE_URI = _env("SQLALCHEMY_DATABASE_URI", "sqlite:///futurefunded-dev.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 
-    # Stripe (legacy-safe)
-    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or ""
-    STRIPE_PUBLISHABLE_KEY = (
-        os.getenv("STRIPE_PUBLISHABLE_KEY")
-        or os.getenv("STRIPE_PUBLIC_KEY")
-        or ""
-    )
-    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET") or ""
+    @classmethod
+    def init_app(cls, app) -> None:
+        """
+        Optional hook for factory boot hardening.
+        Call this from create_app() after app.config.from_object(...)
+        """
+        uri = str(app.config.get("SQLALCHEMY_DATABASE_URI") or "")
 
-    # Sessions / cookies
-    SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "futurefunded")
-    SESSION_COOKIE_SAMESITE = "Lax"
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = False
-    REMEMBER_COOKIE_SECURE = False
+        # SQLite tuning (better concurrency behavior than default)
+        if uri.startswith("sqlite:"):
+            opts = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+            connect_args = dict(opts.get("connect_args") or {})
+            connect_args.setdefault("check_same_thread", False)
+            opts["connect_args"] = connect_args
+            opts.setdefault("pool_pre_ping", True)
+            app.config["SQLALCHEMY_ENGINE_OPTIONS"] = opts
 
-    # CORS
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS") or "*"
-
-    # Realtime
-    SOCKETIO_ASYNC_MODE = os.getenv("SOCKETIO_ASYNC_MODE", "threading")
-
-    # CSP / security (safe defaults)
-    CSP_PRESET = "dev"
-    CSP_EXTRA_SCRIPT_SRC_LIST = _csv(os.getenv("CSP_EXTRA_SCRIPT_SRC_LIST")) or [
-        "https://js.stripe.com",
-        "https://www.paypal.com",
-    ]
-    CSP_STYLE_ALLOW_UNSAFE_INLINE = True
-
-    # Misc
-    AUTO_CREATE_SQLITE = True
-
-# ─────────────────────────────────────────────────────────────
-# Environment variants (behavior only)
-# ─────────────────────────────────────────────────────────────
 
 class DevelopmentConfig(BaseConfig):
+    ENV = "development"
     DEBUG = True
-    TEMPLATES_AUTO_RELOAD = True
 
-class TestingConfig(BaseConfig):
-    TESTING = True
-    DEBUG = False
-    WTF_CSRF_ENABLED = False
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # local defaults (still overrideable via env)
+    SQLALCHEMY_DATABASE_URI = _env("SQLALCHEMY_DATABASE_URI", "sqlite:///futurefunded-dev.db")
+
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
+    PREFERRED_URL_SCHEME = _env("PREFERRED_URL_SCHEME", "http")
+    TRUST_PROXY = _bool("TRUST_PROXY", False)
+
 
 class ProductionConfig(BaseConfig):
+    ENV = "production"
     DEBUG = False
+
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
-    CSP_PRESET = "prod"
-    CSP_STYLE_ALLOW_UNSAFE_INLINE = False
+    PREFERRED_URL_SCHEME = _env("PREFERRED_URL_SCHEME", "https")
+    TRUST_PROXY = _bool("TRUST_PROXY", True)
 
-# Optional helper map
-config_by_name = {
-    "development": DevelopmentConfig,
-    "testing": TestingConfig,
-    "production": ProductionConfig,
-}
+    @classmethod
+    def init_app(cls, app) -> None:
+        super().init_app(app)
 
+        # ---- Production guardrails (fail fast; avoid "haunted dev in prod") ----
+        sk = app.config.get("SECRET_KEY")
+        if not sk or sk == "dev-change-me":
+            raise RuntimeError("SECRET_KEY must be set to a strong random value in production.")
+
+        base = (app.config.get("FF_PUBLIC_BASE_URL") or app.config.get("PUBLIC_BASE_URL") or "").strip()
+        if base and base.startswith("http://"):
+            raise RuntimeError("PUBLIC_BASE_URL / FF_PUBLIC_BASE_URL must be https:// in production.")
+
+        if _bool("FLASK_DEBUG", False):
+            raise RuntimeError("FLASK_DEBUG must be 0 in production.")

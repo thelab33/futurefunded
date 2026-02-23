@@ -3,26 +3,20 @@
 from __future__ import annotations
 
 """
-FutureFunded Flagship Launcher — dev reload + cache-bust + Cloudflare Tunnel hardening.
+FutureFunded Flagship Launcher — ROBUST (env-safe • deterministic reload • turnkey overlay • secrets-safe)
 
-This is the single, complete "run.py/launcher.py" entrypoint you can use for:
-- Local dev:             ./run.py --env development --open-browser
-- Local dev (no reload): ./run.py --env development --no-reload
-- Production (Tunnel):   ENV=production TRUST_PROXY=1 PUBLIC_BASE_URL=https://getfuturefunded.com ./run.py --env production --no-reload --debug=false
-- Gunicorn export:       gunicorn "run:app"  (exports `app` when imported)
+Canonical:
+  ./run.py --env development --open-browser
+  ./run.py --env development --no-reload
+  TRUST_PROXY=1 PUBLIC_BASE_URL=https://getfuturefunded.com ./run.py --env production --no-reload --debug=false --force
+  gunicorn "run:app"
 
-Adds:
-- ProxyFix controls for Cloudflare Tunnel / reverse proxy correctness (X-Forwarded-Proto/Host)
-- PUBLIC_BASE_URL / FF_PUBLIC_BASE_URL wiring so templates + Stripe return_url can be https
-- Production preflight warnings (Stripe test keys, HTTP base URL, debug/reloader on in prod)
-- Optional HTML nonce autopatcher for templates (script/style nonce_attr injection)
-- Dev no-cache headers to stop stale CSS/JS/HTML while iterating
-- Turnkey version overlay: forces /api/turnkey/config flagship.version to a canonical FutureFunded Turnkey version
-
-Notes:
-- Enforce HTTP->HTTPS at Cloudflare edge (Always Use HTTPS / Redirect Rule).
-- This file assumes a Flask app factory at `app.create_app(config_path)`.
-- If you use Flask-SocketIO, it will run via `app.extensions.socketio` if present; otherwise falls back to Flask.run().
+Guarantees:
+- OS env always wins over dotenv (dotenv fills missing keys only)
+- CLI env/config exported BEFORE importing app package
+- Adds diag headers: X-FutureFunded-Env / X-FutureFunded-Config / X-FutureFunded-Turnkey-Version
+- Optional CSP nonce autopatch for templates
+- Never logs secrets (Stripe keys/webhook secret redacted)
 """
 
 import argparse
@@ -37,49 +31,60 @@ import sys
 import threading
 import webbrowser
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Optional, Tuple
+from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple
 
 # -----------------------------------------------------------------------------
-# dotenv (optional)
+# Optional deps
 # -----------------------------------------------------------------------------
 try:
-    from dotenv import load_dotenv  # type: ignore
+    from dotenv import dotenv_values  # type: ignore
 except Exception:  # pragma: no cover
-    load_dotenv = None  # type: ignore
+    dotenv_values = None  # type: ignore
 
 # -----------------------------------------------------------------------------
-# Optional middleware
+# Env utils
 # -----------------------------------------------------------------------------
-try:
-    from werkzeug.middleware.proxy_fix import ProxyFix  # type: ignore
-except Exception:  # pragma: no cover
-    ProxyFix = None  # type: ignore
+_TRUTHY = {"1", "true", "yes", "y", "on"}
+_FALSY = {"0", "false", "no", "n", "off"}
 
-# -----------------------------------------------------------------------------
-# Optional Sentry
-# -----------------------------------------------------------------------------
-try:
-    import sentry_sdk  # type: ignore
-    from sentry_sdk.integrations.flask import FlaskIntegration  # type: ignore
-except Exception:  # pragma: no cover
-    sentry_sdk = None  # type: ignore
-    FlaskIntegration = None  # type: ignore
+# Snapshot of the "real" OS env keys at import time (dotenv must not override these)
+_OS_ENV_KEYS: FrozenSet[str] = frozenset(os.environ.keys())
+
+SENSITIVE_KEYS = {
+    "STRIPE_SECRET_KEY",
+    "STRIPE_PUBLISHABLE_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "SECRET_KEY",
+    "DATABASE_URL",
+    "SQLALCHEMY_DATABASE_URI",
+    "MAIL_PASSWORD",
+    "TWILIO_AUTH_TOKEN",
+    "SENTRY_DSN",
+}
 
 
-# -----------------------------------------------------------------------------
-# Env + dotenv helpers
-# -----------------------------------------------------------------------------
+def _redact(name: str, value: str) -> str:
+    if not value:
+        return ""
+    if name in SENSITIVE_KEYS:
+        # keep prefix for debugging key type, but no material leakage
+        v = value.strip()
+        if len(v) <= 10:
+            return "***"
+        return v[:8] + "…" + v[-4:]
+    return value
+
+
 def _env_bool(name: str) -> Optional[bool]:
-    """Return bool for env var if set, otherwise None."""
     v = os.getenv(name)
     if v is None:
         return None
-    vv = str(v).strip().lower()
-    if vv in {"1", "true", "yes", "y", "on"}:
+    s = str(v).strip().lower()
+    if s in _TRUTHY:
         return True
-    if vv in {"0", "false", "no", "n", "off"}:
+    if s in _FALSY:
         return False
     return None
 
@@ -88,6 +93,8 @@ def _normalize_env_name(v: str) -> str:
     r = (v or "").strip().lower()
     if r in {"dev", "development", "local"}:
         return "development"
+    if r in {"stage", "staging"}:
+        return "development"
     if r in {"test", "testing"}:
         return "testing"
     if r in {"prod", "production"}:
@@ -95,77 +102,25 @@ def _normalize_env_name(v: str) -> str:
     return r or "development"
 
 
-def _dotenv_candidates(env: str) -> list[Path]:
-    """
-    Order matters. We use override=False so OS env vars always win (prod-safe).
-    """
-    env = _normalize_env_name(env)
+def detect_env() -> str:
+    raw = (os.getenv("APP_ENV") or os.getenv("ENV") or os.getenv("FLASK_ENV") or "").strip().lower()
+    cfg = (os.getenv("FLASK_CONFIG") or "").strip().lower()
 
-    aliases: list[str] = []
-    if env in {"development", "testing"}:
-        aliases.append("local")
+    if "productionconfig" in cfg:
+        raw = "production"
+    elif "testingconfig" in cfg:
+        raw = "testing"
+    elif "developmentconfig" in cfg and not raw:
+        raw = "development"
 
-    files: list[Path] = []
-    files.append(Path(".env"))
-    files.append(Path(f".env.{env}"))
-    for a in aliases:
-        files.append(Path(f".env.{a}"))
-
-    out: list[Path] = []
-    seen: set[str] = set()
-    for p in files:
-        k = str(p)
-        if k not in seen:
-            seen.add(k)
-            out.append(p)
-    return out
-
-
-def load_env_stack(*, env: Optional[str] = None, override: bool = False) -> list[Path]:
-    """
-    Loads dotenv files in a predictable order. Returns the files that were loaded.
-
-    Priority:
-      1) DOTENV_PATH (single file, if exists)
-      2) .env, then .env.<env>, then optional alias like .env.local
-
-    override=False is recommended so server-provided env vars win.
-    """
-    loaded: list[Path] = []
-    if load_dotenv is None:
-        return loaded
-
-    explicit = (os.getenv("DOTENV_PATH") or "").strip()
-    if explicit:
-        p = Path(explicit)
-        if p.exists() and p.is_file():
-            load_dotenv(p, override=override)
-            loaded.append(p)
-        return loaded
-
-    env_eff = _normalize_env_name(env or os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development")
-    for p in _dotenv_candidates(env_eff):
-        if p.exists() and p.is_file():
-            load_dotenv(p, override=override)
-            loaded.append(p)
-
-    return loaded
+    return _normalize_env_name(raw or "development")
 
 
 def normalize_config_path(value: Optional[str], *, env_hint: Optional[str] = None) -> str:
-    """
-    Returns a dotted path like "app.config.DevelopmentConfig".
-    Priority:
-      1) explicit value (e.g. --config)
-      2) env_hint (e.g. --env)
-      3) FLASK_ENV / ENV
-    """
     if value and str(value).strip():
         v = value.strip()
-        # backwards-compat normalization if someone used app.config.config.X
         if v.startswith("app.config.config."):
             v = v.replace("app.config.config.", "app.config.", 1)
-
         alias = {
             "dev": "app.config.DevelopmentConfig",
             "development": "app.config.DevelopmentConfig",
@@ -176,12 +131,82 @@ def normalize_config_path(value: Optional[str], *, env_hint: Optional[str] = Non
         }
         return alias.get(v.lower(), v)
 
-    env = _normalize_env_name(env_hint or os.getenv("FLASK_ENV") or os.getenv("ENV") or os.getenv("APP_ENV") or "development")
+    env = _normalize_env_name(env_hint or detect_env())
     return {
         "development": "app.config.DevelopmentConfig",
         "testing": "app.config.TestingConfig",
         "production": "app.config.ProductionConfig",
     }.get(env, "app.config.DevelopmentConfig")
+
+
+def _normalize_base_url(u: str) -> str:
+    return (u or "").strip().rstrip("/")
+
+
+def _is_https(url: str) -> bool:
+    return (url or "").strip().lower().startswith("https://")
+
+
+# -----------------------------------------------------------------------------
+# Dotenv (precedence-safe)
+# -----------------------------------------------------------------------------
+SKIP_DIR_NAMES = {"node_modules", ".git", ".venv", "venv", "__pycache__", ".pytest_cache"}
+
+
+def _dotenv_candidates(env: str, *, include_base: bool = True) -> list[Path]:
+    """
+    Precedence order (low -> high), later dotenv overrides earlier dotenv:
+      1) .env
+      2) .env.<env>
+      3) .env.local (dev/test only)
+    OS env always wins.
+    """
+    env = _normalize_env_name(env)
+    files: list[Path] = []
+    if include_base:
+        files.append(Path(".env"))
+    files.append(Path(f".env.{env}"))
+    if env in {"development", "testing"}:
+        files.append(Path(".env.local"))
+    return files
+
+
+def _apply_dotenv_file(p: Path) -> bool:
+    if dotenv_values is None:
+        return False
+    if not p.exists() or not p.is_file():
+        return False
+
+    vals = dotenv_values(p) or {}
+    wrote = False
+    for k, v in vals.items():
+        if v is None:
+            continue
+        # OS env ALWAYS wins (skip keys that existed in OS snapshot)
+        if k in _OS_ENV_KEYS:
+            continue
+        os.environ[k] = str(v)
+        wrote = True
+    return wrote
+
+
+def load_env_stack(*, env: Optional[str] = None, include_base: bool = True) -> list[Path]:
+    loaded: list[Path] = []
+    if dotenv_values is None:
+        return loaded
+
+    explicit = (os.getenv("DOTENV_PATH") or "").strip()
+    if explicit:
+        p = Path(explicit)
+        if _apply_dotenv_file(p):
+            loaded.append(p)
+        return loaded
+
+    env_eff = _normalize_env_name(env or detect_env())
+    for p in _dotenv_candidates(env_eff, include_base=include_base):
+        if _apply_dotenv_file(p):
+            loaded.append(p)
+    return loaded
 
 
 # -----------------------------------------------------------------------------
@@ -205,19 +230,15 @@ class ColorFormatter(logging.Formatter):
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        obj = {
-            "ts": datetime.utcnow().isoformat(timespec="milliseconds") + "Z",
-            "level": record.levelname,
-            "logger": record.name,
-            "msg": record.getMessage(),
-        }
+        ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        obj = {"ts": ts, "level": record.levelname, "logger": record.name, "msg": record.getMessage()}
         if record.exc_info:
             obj["exc_info"] = self.formatException(record.exc_info)
         return json.dumps(obj)
 
 
 def setup_logging(debug: bool, style: str) -> None:
-    style = (os.getenv("LOG_STYLE") or style).lower()
+    style = (os.getenv("LOG_STYLE") or style).strip().lower()
     handler = logging.StreamHandler(sys.stdout)
 
     if style == "json":
@@ -245,12 +266,9 @@ _STYLE_TAG = re.compile(
     re.IGNORECASE,
 )
 
-SKIP_DIR_NAMES = {"node_modules", ".git", ".venv", "venv", "__pycache__", ".pytest_cache"}
-
 
 def autopatch(scan_dirs: Iterable[Path] | None = None, dry_run: bool = False) -> int:
     print("\033[1;36m🔧 FutureFunded Preflight Autopatcher...\033[0m")
-
     dirs = [Path(p) for p in (scan_dirs or [Path("templates"), Path("app/templates")]) if Path(p).exists()]
     if not dirs:
         print("  ⚠️  No template dirs found to patch.")
@@ -261,10 +279,9 @@ def autopatch(scan_dirs: Iterable[Path] | None = None, dry_run: bool = False) ->
 
     def inject(html: str) -> str:
         html2 = _SCRIPT_TAG.sub(r"<script {{ nonce_attr()|safe }}\1>", html)
-        html3 = _STYLE_TAG.sub(r"<style {{ nonce_attr()|safe }}\1>", html2)
-        return html3
+        return _STYLE_TAG.sub(r"<style {{ nonce_attr()|safe }}\1>", html2)
 
-    changed_files = 0
+    changed = 0
     for base in dirs:
         for f in base.rglob("*.html"):
             if should_skip(f):
@@ -273,7 +290,7 @@ def autopatch(scan_dirs: Iterable[Path] | None = None, dry_run: bool = False) ->
                 raw = f.read_text(encoding="utf-8")
                 patched = inject(raw)
                 if patched != raw:
-                    changed_files += 1
+                    changed += 1
                     if dry_run:
                         print(f"  🧪 Would patch → {f}")
                     else:
@@ -282,8 +299,8 @@ def autopatch(scan_dirs: Iterable[Path] | None = None, dry_run: bool = False) ->
             except Exception as e:
                 print(f"  ⚠️  Skip {f}: {e}")
 
-    print(f"\033[1;32m✨ Autopatch complete (templates/ + static/). Files changed: {changed_files}\033[0m")
-    return changed_files
+    print(f"\033[1;32m✨ Autopatch complete. Files changed: {changed}\033[0m")
+    return changed
 
 
 # -----------------------------------------------------------------------------
@@ -320,20 +337,10 @@ def collect_watch_files(dirs: Iterable[Path]) -> list[str]:
 
 
 # -----------------------------------------------------------------------------
-# Turnkey version detection + overlay
+# Turnkey version overlay
 # -----------------------------------------------------------------------------
 def _detect_turnkey_version_from_json() -> Optional[str]:
-    """
-    Best-effort: read flagship.version from a Turnkey config JSON file.
-    Common paths in this repo:
-      - data/turnkey.json
-      - app/data/turnkey.json
-    """
-    candidates = [
-        Path("data/turnkey.json"),
-        Path("app/data/turnkey.json"),
-        Path("turnkey.json"),
-    ]
+    candidates = [Path("data/turnkey.json"), Path("app/data/turnkey.json"), Path("turnkey.json")]
     for p in candidates:
         try:
             if not p.exists() or not p.is_file():
@@ -351,76 +358,54 @@ def _detect_turnkey_version_from_json() -> Optional[str]:
 
 
 def resolve_turnkey_version(env_name: str) -> str:
-    """
-    Canonical version used for Turnkey responses and headers.
-
-    Priority:
-      1) FF_TURNKEY_VERSION / TURNKEY_VERSION env
-      2) flagship.version inside data/turnkey.json
-      3) sensible default by env
-    """
     v = (os.getenv("FF_TURNKEY_VERSION") or os.getenv("TURNKEY_VERSION") or "").strip()
     if v:
         return v
     v2 = _detect_turnkey_version_from_json()
     if v2:
         return v2
-    # default fallback
     return "15.0.0" if _normalize_env_name(env_name) == "production" else "15.0.0-dev"
 
 
 def install_turnkey_version_overlay(flask_app, version: str) -> None:
-    """
-    Forces /api/turnkey/config to return flagship.version=<version>
-    and emits X-FutureFunded-Turnkey-Version on every response.
-
-    Safe under Cloudflare/Tunnel and avoids Content-Length mismatches.
-    """
     from flask import request
 
-    if not version or not str(version).strip():
+    if flask_app.extensions.get("ff_turnkey_overlay_installed") is True:
+        return
+    flask_app.extensions["ff_turnkey_overlay_installed"] = True
+
+    version = (version or "").strip()
+    if not version:
         return
 
-    version = str(version).strip()
     flask_app.config["FF_TURNKEY_VERSION"] = version
     flask_app.config["TURNKEY_VERSION"] = version
 
     @flask_app.after_request
-    def _turnkey_version_overlay(resp):
-        # Always stamp the header (useful for debugging + client introspection)
+    def _turnkey_overlay(resp):
         resp.headers["X-FutureFunded-Turnkey-Version"] = version
-
-        # If you ever fetch this from a different origin, let JS read it:
-        # (You currently expose X-Request-ID; add this too.)
         try:
             expose = resp.headers.get("Access-Control-Expose-Headers", "")
             expose_set = {h.strip() for h in expose.split(",") if h.strip()}
-            expose_set.add("X-Request-ID")
-            expose_set.add("X-FutureFunded-Turnkey-Version")
+            expose_set.update({"X-Request-ID", "X-FutureFunded-Turnkey-Version", "X-FutureFunded-Env", "X-FutureFunded-Config"})
             resp.headers["Access-Control-Expose-Headers"] = ", ".join(sorted(expose_set))
         except Exception:
             pass
 
-        # Only mutate the turnkey config endpoint body
-        if request.path != "/api/turnkey/config":
-            return resp
-        if resp.status_code != 200:
+        # Optionally rewrite /api/turnkey/config response to ensure flagship.version is present
+        if request.path != "/api/turnkey/config" or resp.status_code != 200:
             return resp
 
-        # Prefer Flask’s JSON helpers
+        obj = None
         try:
             obj = resp.get_json(silent=True)
         except Exception:
             obj = None
-
-        # Fallback: parse manually if needed
         if obj is None:
             try:
-                raw = resp.get_data(as_text=True)
-                obj = json.loads(raw)
+                obj = json.loads(resp.get_data(as_text=True))
             except Exception:
                 return resp
-
         if not isinstance(obj, dict):
             return resp
 
@@ -428,24 +413,19 @@ def install_turnkey_version_overlay(flask_app, version: str) -> None:
         if not isinstance(flagship, dict):
             flagship = {}
 
-        # Put version first for visibility
         obj["flagship"] = {"version": version, **flagship}
 
         try:
-            new_raw = json.dumps(obj, ensure_ascii=False)
-            resp.set_data(new_raw)
-            # Do NOT force a Content-Length; let the server handle it safely
+            resp.set_data(json.dumps(obj, ensure_ascii=False))
             resp.headers.pop("Content-Length", None)
             resp.mimetype = "application/json"
         except Exception:
-            return resp
-
+            pass
         return resp
 
 
-
 # -----------------------------------------------------------------------------
-# CLI model
+# Runner config + CLI
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class RunnerConfig:
@@ -468,22 +448,10 @@ class RunnerConfig:
     trust_proxy: bool
     public_base_url: Optional[str]
     turnkey_version: str
-    
-    # -----------------------------------------------------------------------------
-# CLI parsing helpers
-# -----------------------------------------------------------------------------
-_TRUTHY = {"1", "true", "yes", "y", "on"}
-_FALSY  = {"0", "false", "no", "n", "off"}
+    reloader_type: str  # "stat" or "watchdog"
+
 
 def _sanitize_bool_equals(argv: list[str]) -> list[str]:
-    """
-    Converts:
-      --debug=false      -> --no-debug
-      --debug=true       -> --debug
-      --trust-proxy=0    -> --no-trust-proxy
-      --trust-proxy=1    -> --trust-proxy
-    so systemd-style flags won't crash argparse.
-    """
     out: list[str] = []
     for a in argv:
         if a.startswith("--debug="):
@@ -499,13 +467,7 @@ def _sanitize_bool_equals(argv: list[str]) -> list[str]:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Run the FutureFunded Flask app.")
-    ...
-    return p.parse_args(_sanitize_bool_equals(sys.argv[1:]))
-
-
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Run the FutureFunded Flask app.")
+    p = argparse.ArgumentParser(description="Run the FutureFunded Flask app (Flagship runner).")
     p.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"))
     p.add_argument("--port", type=int, default=int(os.getenv("PORT", "5000")))
     p.add_argument("--log-style", choices=["color", "json", "plain"], default=os.getenv("LOG_STYLE", "color"))
@@ -516,72 +478,100 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--env", choices=["development", "testing", "production"], help="Runtime environment")
     p.add_argument("--config", help="Explicit dotted config path or alias (dev/prod/test)")
-
+    p.add_argument("--public-base-url", default=None, help="Public base URL (e.g. https://getfuturefunded.com).")
+    p.add_argument("--turnkey-version", default=None, help="Override Turnkey flagship.version for /api/turnkey/config.")
     p.add_argument("--autopatch", action="store_true")
     p.add_argument("--autopatch-dry-run", action="store_true")
     p.add_argument("--autopatch-dirs", nargs="*", default=None)
 
-    p.add_argument("--watch-dirs", nargs="*", default=None, help="Extra directories to watch for reload (templates/static)")
+    p.add_argument("--watch-dirs", nargs="*", default=None, help="Extra directories to watch for reload")
+    p.add_argument("--no-reload", action="store_true", help="Disable Werkzeug reloader (default: enabled in dev/test).")
+    p.add_argument("--reloader-type", choices=["stat", "watchdog"], default=os.getenv("FF_RELOADER_TYPE", "stat"))
 
-    # Debug/reload
     try:
         BoolOpt = argparse.BooleanOptionalAction
-        p.add_argument("--debug", action=BoolOpt, default=None, help="Force debug on/off (default: on in dev/test).")
-        p.add_argument("--trust-proxy", action=BoolOpt, default=None, help="Trust X-Forwarded-* headers (recommended for CF Tunnel).")
+        p.add_argument("--debug", action=BoolOpt, default=None)
+        p.add_argument("--trust-proxy", action=BoolOpt, default=None)
     except Exception:
         p.add_argument("--debug", action="store_true", default=None)
         p.add_argument("--trust-proxy", action="store_true", default=None)
 
-    p.add_argument("--no-reload", action="store_true", help="Disable Werkzeug reloader (default: enabled in dev/test).")
-
-    p.add_argument(
-        "--async-mode",
-        default=os.getenv("SOCKETIO_ASYNC_MODE", "threading"),
-        choices=["threading", "eventlet", "gevent", "gevent_uwsgi"],
-    )
-
-    # Helps pin canonical/return URLs; app/templates can read env var(s).
-    p.add_argument("--public-base-url", default=None, help="Public base URL (e.g. https://getfuturefunded.com).")
-
-    # Turnkey version override (optional)
-    p.add_argument("--turnkey-version", default=None, help="Override Turnkey flagship.version served by /api/turnkey/config.")
+    p.add_argument("--async-mode", default=os.getenv("SOCKETIO_ASYNC_MODE", "threading"), choices=["threading", "eventlet", "gevent", "gevent_uwsgi"])
     return p.parse_args(_sanitize_bool_equals(sys.argv[1:]))
 
 
-def _normalize_base_url(u: str) -> str:
-    uu = (u or "").strip()
-    if not uu:
-        return ""
-    uu = uu.rstrip("/")
-    return uu
-
-
 def _default_trust_proxy(env: str) -> bool:
-    """
-    Safe default:
-      - ON in production, because you are behind Cloudflare edge (Tunnel)
-      - Also ON if CF_TUNNEL=1 (explicit signal)
-    """
     env = _normalize_env_name(env)
-    cf_tunnel = (os.getenv("CF_TUNNEL") or os.getenv("CLOUDFLARE_TUNNEL") or "").strip().lower()
-    if cf_tunnel in {"1", "true", "yes", "on"}:
+    cf = (os.getenv("CF_TUNNEL") or os.getenv("CLOUDFLARE_TUNNEL") or "").strip().lower()
+    if cf in _TRUTHY:
         return True
     return env == "production"
 
 
+def _choose_public_base(env: str, cli_value: Optional[str]) -> Optional[str]:
+    env = _normalize_env_name(env)
+    base_env = (os.getenv("FF_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or "").strip()
+    base = _normalize_base_url(cli_value or base_env)
+    if env == "production":
+        if not base:
+            base = _normalize_base_url(os.getenv("FF_DEFAULT_PUBLIC_BASE_URL", "https://getfuturefunded.com"))
+        # force https for prod
+        if base and base.startswith("http://"):
+            base = "https://" + base[len("http://") :]
+    return base or None
+
+
+def _stripe_key_mode(sk: str, pk: str) -> str:
+    sk = (sk or "").strip()
+    pk = (pk or "").strip()
+    if sk.startswith("sk_live_") or pk.startswith("pk_live_"):
+        return "live"
+    if sk.startswith("sk_test_") or pk.startswith("pk_test_"):
+        return "test"
+    return "unknown"
+
+
+def _validate_stripe_for_env(env: str, *, force: bool) -> None:
+    env = _normalize_env_name(env)
+    sk = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
+    pk = (os.getenv("STRIPE_PUBLISHABLE_KEY") or os.getenv("STRIPE_PUBLISHABLE") or "").strip()
+    wh = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
+    mode = _stripe_key_mode(sk, pk)
+
+    enforce_live = (os.getenv("FF_STRIPE_ENFORCE_LIVE_KEYS") or "").strip().lower() in _TRUTHY
+    if env != "production":
+        return
+
+    # Prod expectations
+    if not sk or not pk or not wh:
+        msg = "Stripe env is incomplete in production (STRIPE_SECRET_KEY / STRIPE_PUBLISHABLE_KEY / STRIPE_WEBHOOK_SECRET)."
+        if force:
+            logging.warning("%s (continuing due to --force)", msg)
+        else:
+            raise RuntimeError(msg)
+
+    if mode == "test":
+        msg = "Stripe keys look TEST while env=production."
+        if enforce_live and not force:
+            raise RuntimeError(msg + " Set live keys, or set FF_STRIPE_ENFORCE_LIVE_KEYS=0 temporarily, or use --force.")
+        logging.warning("%s sk=%s pk=%s", msg, _redact("STRIPE_SECRET_KEY", sk), _redact("STRIPE_PUBLISHABLE_KEY", pk))
+
+
 def make_runner_config() -> RunnerConfig:
     a = parse_args()
+    env = _normalize_env_name(a.env or detect_env())
 
-    env = _normalize_env_name(a.env or os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development")
+    # Load dotenv AFTER env is known (OS env still wins)
+    load_env_stack(env=env, include_base=True)
 
-    # Standardize env names everywhere
+    # Canonicalize env exports (CLI env wins)
     os.environ["ENV"] = env
     os.environ["APP_ENV"] = env
     os.environ["FLASK_ENV"] = env
 
     cfg_path = normalize_config_path(a.config or os.getenv("FLASK_CONFIG"), env_hint=env)
+    os.environ["FLASK_CONFIG"] = cfg_path
 
-    # DEBUG precedence
     debug_env = _env_bool("FLASK_DEBUG")
     if a.debug is not None:
         debug = bool(a.debug)
@@ -590,20 +580,12 @@ def make_runner_config() -> RunnerConfig:
     else:
         debug = env in {"development", "testing"}
 
-    # Force mode should not run the reloader (prevents double banners/route spam + occasional kills)
-    use_reloader = bool((env in {"development", "testing"}) and debug and not a.no_reload and not a.force_run)
+    use_reloader = bool((env in {"development", "testing"}) and debug and (not a.no_reload) and (not a.force_run))
 
     async_mode = str(a.async_mode)
-    # Werkzeug reloader + eventlet/gevent combos are often painful; keep it sane for dev.
     if use_reloader and env != "production" and async_mode != "threading":
         async_mode = "threading"
 
-    ap_dirs = tuple(Path(d) for d in (a.autopatch_dirs or ["templates", "app/templates"]))
-    watch_dirs = tuple(Path(d) for d in (a.watch_dirs or _DEFAULT_WATCH_DIRS))
-
-    os.environ["FLASK_DEBUG"] = "1" if debug else "0"
-
-    # Trust proxy: CLI > env TRUST_PROXY > smart default
     trust_env = _env_bool("TRUST_PROXY")
     if a.trust_proxy is not None:
         trust_proxy = bool(a.trust_proxy)
@@ -612,16 +594,25 @@ def make_runner_config() -> RunnerConfig:
     else:
         trust_proxy = _default_trust_proxy(env)
 
-    # Public base URL: CLI > env (FF_PUBLIC_BASE_URL/PUBLIC_BASE_URL) > prod default > None
-    base_env = (os.getenv("FF_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or "").strip()
-    public_base = _normalize_base_url(a.public_base_url or base_env)
+    public_base = _choose_public_base(env, a.public_base_url)
+    if public_base:
+        os.environ["FF_PUBLIC_BASE_URL"] = public_base
+        os.environ["PUBLIC_BASE_URL"] = public_base
 
-    if env == "production" and not public_base:
-        # enterprise-safe default domain if you forgot to export it
-        public_base = _normalize_base_url(os.getenv("FF_DEFAULT_PUBLIC_BASE_URL", "https://getfuturefunded.com"))
-
-    # Turnkey version overlay resolution
     tv = (a.turnkey_version or "").strip() or resolve_turnkey_version(env)
+    os.environ["FF_TURNKEY_VERSION"] = tv
+    os.environ["TURNKEY_VERSION"] = tv
+
+    ap_dirs = tuple(Path(d) for d in (a.autopatch_dirs or ["templates", "app/templates"]))
+    watch_dirs = tuple(Path(d) for d in (a.watch_dirs or _DEFAULT_WATCH_DIRS))
+
+    os.environ["SOCKETIO_ASYNC_MODE"] = async_mode
+    os.environ["FLASK_DEBUG"] = "1" if debug else "0"
+    os.environ["TRUST_PROXY"] = "1" if trust_proxy else "0"
+
+    reloader_type = str(a.reloader_type or "stat").strip().lower()
+    if reloader_type not in {"stat", "watchdog"}:
+        reloader_type = "stat"
 
     return RunnerConfig(
         host=str(a.host),
@@ -636,18 +627,19 @@ def make_runner_config() -> RunnerConfig:
         async_mode=async_mode,
         env=env,
         config_path=cfg_path,
-        do_autopatch=bool(a.autopatch or os.getenv("FC_AUTOPATCH", "0").lower() in {"1", "true", "yes", "on"}),
+        do_autopatch=bool(a.autopatch or (os.getenv("FC_AUTOPATCH", "0").strip().lower() in _TRUTHY)),
         autopatch_dry_run=bool(a.autopatch_dry_run),
         autopatch_dirs=ap_dirs,
         watch_dirs=watch_dirs,
         trust_proxy=trust_proxy,
-        public_base_url=public_base or None,
+        public_base_url=public_base,
         turnkey_version=tv,
+        reloader_type=reloader_type,
     )
 
 
 # -----------------------------------------------------------------------------
-# Helpers
+# Runtime helpers
 # -----------------------------------------------------------------------------
 def _ssl_ctx_from_env() -> Optional[Tuple[str, str]]:
     cert, key = os.getenv("SSL_CERTFILE"), os.getenv("SSL_KEYFILE")
@@ -694,67 +686,39 @@ def _install_signal_handlers() -> None:
 
 
 def banner(cfg: RunnerConfig) -> None:
+    sk = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
+    pk = (os.getenv("STRIPE_PUBLISHABLE_KEY") or os.getenv("STRIPE_PUBLISHABLE") or "").strip()
+    mode = _stripe_key_mode(sk, pk)
+
     print(
         "\n\033[1;34m╭────────────────────────────────────────────────────────────╮\n"
         "│           🚀  FutureFunded Flask SaaS Launcher  ✨            │\n"
         "╰────────────────────────────────────────────────────────────╯\033[0m"
     )
     print(f"\033[1;33m✨ {datetime.now():%Y-%m-%d %H:%M:%S}: Bootstrapping FutureFunded...\033[0m")
-    print(f"🔎 ENV:        {cfg.env}")
-    print(f"⚙️  CONFIG:     {cfg.config_path}")
-    print(f"🐞 DEBUG:      {cfg.debug}")
-    print(f"♻️  RELOAD:     {cfg.use_reloader}")
-    print(f"🛡️  PROXYFIX:   {cfg.trust_proxy}")
-    print(f"🏷️  TURNKEY:    {cfg.turnkey_version}")
+    print(f"🔎 ENV:          {cfg.env}")
+    print(f"⚙️  FLASK_CONFIG: {cfg.config_path}")
+    print(f"🐞 DEBUG:        {cfg.debug}")
+    print(f"♻️  RELOAD:       {cfg.use_reloader} (type={cfg.reloader_type})")
+    print(f"🛡️  TRUST_PROXY:  {cfg.trust_proxy}")
+    print(f"🏷️  TURNKEY:      {cfg.turnkey_version}")
+    print(f"💳 STRIPE:       {mode} (sk={_redact('STRIPE_SECRET_KEY', sk)} pk={_redact('STRIPE_PUBLISHABLE_KEY', pk)})")
     if cfg.public_base_url:
-        print(f"🌐 PUBLIC URL: {cfg.public_base_url}")
-    print(f"🌎 Host:Port:  {cfg.host}:{cfg.port}")
-    print(f"🐍 Python:     {sys.version.split()[0]}")
-    print(f"🧵 SocketIO:   {cfg.async_mode}")
-    if cfg.host in {"0.0.0.0", "127.0.0.1", "localhost"}:
-        print(f"💻 Local:      http://127.0.0.1:{cfg.port}")
-
-
-def print_routes(app, debug: bool, out_path: Optional[Path]) -> None:
-    rows = []
-    for rule in sorted(app.url_map.iter_rules(), key=lambda r: str(r)):
-        rows.append(
-            {
-                "rule": str(rule),
-                "endpoint": rule.endpoint,
-                "methods": sorted((rule.methods or set()) - {"HEAD", "OPTIONS"}),
-            }
-        )
-
-    if out_path:
-        try:
-            out_path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
-            print(f"\n📝 Routes written to: {out_path}")
-        except Exception as e:
-            logging.warning("Failed to write routes file: %s", e)
-
-    if debug:
-        print("\n🔗 Routes:")
-        for r in rows:
-            print(f"  {r['rule']} → {r['endpoint']} ({','.join(r['methods'])})")
-
-
-def init_sentry_if_configured() -> None:
-    dsn = os.getenv("SENTRY_DSN")
-    if not (dsn and sentry_sdk and FlaskIntegration):
-        return
-    try:
-        sentry_sdk.init(dsn=dsn, integrations=[FlaskIntegration()])
-        logging.info("Sentry initialized")
-    except Exception as e:
-        logging.warning("Sentry init failed: %s", e)
+        print(f"🌐 PUBLIC URL:   {cfg.public_base_url}")
+    print(f"🌎 Host:Port:    {cfg.host}:{cfg.port}")
+    print(f"🐍 Python:       {sys.version.split()[0]}")
+    print(f"🧵 SocketIO:     {cfg.async_mode}")
+    print(f"💻 Local:        http://127.0.0.1:{cfg.port}")
 
 
 def install_dev_no_cache(flask_app) -> None:
     """
-    Fix: browser refresh still showing old CSS/JS/HTML due to caching.
-    Only applied in debug.
+    Dev only. Production caching is governed by app/__init__.py flagship cache policy.
     """
+    if flask_app.extensions.get("ff_dev_no_cache_installed") is True:
+        return
+    flask_app.extensions["ff_dev_no_cache_installed"] = True
+
     try:
         flask_app.config["TEMPLATES_AUTO_RELOAD"] = True
         flask_app.jinja_env.auto_reload = True
@@ -765,193 +729,76 @@ def install_dev_no_cache(flask_app) -> None:
     @flask_app.after_request
     def _no_cache(resp):
         ct = (resp.headers.get("Content-Type") or "").lower()
-        if (
-            "text/html" in ct
-            or "text/css" in ct
-            or "javascript" in ct
-            or "application/json" in ct
-            or "image/svg+xml" in ct
-        ):
+        if ("text/html" in ct) or ("text/css" in ct) or ("javascript" in ct) or ("application/json" in ct) or ("image/svg+xml" in ct):
             resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             resp.headers["Pragma"] = "no-cache"
             resp.headers["Expires"] = "0"
         return resp
 
 
-def apply_proxyfix_if_enabled(flask_app, trust_proxy: bool) -> None:
-    """
-    Trust Cloudflare/edge forwarding headers so Flask sees https host/scheme.
-    For Tunnel deployments, this is typically required to stop leaking http:// URLs.
-    """
-    if not trust_proxy:
+def install_diag_headers(flask_app, *, env: str, config_path: str) -> None:
+    if flask_app.extensions.get("ff_diag_headers_installed") is True:
         return
-    if not ProxyFix:
-        logging.warning("TRUST_PROXY enabled but werkzeug ProxyFix is unavailable.")
-        return
-    flask_app.wsgi_app = ProxyFix(
-        flask_app.wsgi_app,
-        x_for=1,
-        x_proto=1,
-        x_host=1,
-        x_port=1,
-        x_prefix=1,
-    )
-    try:
-        flask_app.config["PREFERRED_URL_SCHEME"] = "https"
-    except Exception:
-        pass
-    logging.info("ProxyFix enabled (trusting X-Forwarded-* headers).")
+    flask_app.extensions["ff_diag_headers_installed"] = True
+
+    env = (env or "").strip() or "unknown"
+    config_path = (config_path or "").strip() or "unknown"
+
+    @flask_app.after_request
+    def _diag(resp):
+        resp.headers["X-FutureFunded-Env"] = env
+        resp.headers["X-FutureFunded-Config"] = config_path
+        return resp
 
 
 def preflight_prod_warnings(cfg: RunnerConfig) -> None:
     if cfg.env != "production":
         return
 
-    # Warnings (not exits) to keep ops flexible.
     if cfg.debug or cfg.use_reloader:
-        logging.warning("Production is running with debug/reloader enabled. Recommended: --debug=false --no-reload")
+        logging.warning("Production running with debug/reloader. Recommended: --debug=false --no-reload")
 
-    sk = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
-    pk = (os.getenv("STRIPE_PUBLISHABLE_KEY") or os.getenv("STRIPE_PUBLISHABLE") or "").strip()
-
-    if sk.startswith("sk_test_") or pk.startswith("pk_test_"):
-        logging.warning(
-            "Stripe keys look like TEST keys in production. sk=%s pk=%s",
-            (sk[:10] + "...") if sk else "",
-            (pk[:10] + "...") if pk else "",
-        )
-
-    base = cfg.public_base_url or (os.getenv("FF_PUBLIC_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or "").strip()
-    if base.startswith("http://"):
-        logging.warning("PUBLIC_BASE_URL is http:// in production. Set https://... to avoid insecure share/return URLs.")
+    if cfg.public_base_url and not _is_https(cfg.public_base_url):
+        logging.warning("PUBLIC_BASE_URL is not https in production (will be coerced by app).")
 
     if not cfg.trust_proxy:
         logging.warning("TRUST_PROXY is off in production. Behind Cloudflare Tunnel you likely want TRUST_PROXY=1.")
 
-    # Security sanity warnings
-    secret = (os.getenv("SECRET_KEY") or "").strip()
-    if not secret or secret.lower().startswith("change-me"):
-        logging.warning("SECRET_KEY is missing/placeholder in production. Set a strong SECRET_KEY in .env.production")
-    pin = (os.getenv("TURNKEY_ADMIN_PIN") or "").strip()
-    if not pin or pin.lower().startswith("change-me"):
-        logging.warning("TURNKEY_ADMIN_PIN is missing/placeholder in production. Set TURNKEY_ADMIN_PIN in .env.production")
-
 
 # -----------------------------------------------------------------------------
-# Flask app builder (for gunicorn/flask CLI parity)
+# App build
 # -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# dotenv (optional) — precedence-safe loader
-# -----------------------------------------------------------------------------
-try:
-    from dotenv import dotenv_values  # type: ignore
-except Exception:  # pragma: no cover
-    dotenv_values = None  # type: ignore
+def build_app(cfg: RunnerConfig):
+    # Ensure env vars exist BEFORE importing app
+    os.environ["ENV"] = cfg.env
+    os.environ["APP_ENV"] = cfg.env
+    os.environ["FLASK_ENV"] = cfg.env
+    os.environ["FLASK_CONFIG"] = cfg.config_path
 
+    if cfg.public_base_url:
+        os.environ["FF_PUBLIC_BASE_URL"] = cfg.public_base_url
+        os.environ["PUBLIC_BASE_URL"] = cfg.public_base_url
 
-def _dotenv_candidates(env: str) -> list[Path]:
-    """
-    Precedence order (low -> high), later files override earlier dotenv values:
-      1) .env
-      2) .env.<env>
-      3) .env.local   (only for dev/test)
-    """
-    env = _normalize_env_name(env)
+    from app import create_app
 
-    files: list[Path] = [Path(".env"), Path(f".env.{env}")]
+    flask_app = create_app(cfg.config_path)
 
-    if env in {"development", "testing"}:
-        files.append(Path(".env.local"))
+    install_diag_headers(flask_app, env=cfg.env, config_path=cfg.config_path)
+    install_turnkey_version_overlay(flask_app, cfg.turnkey_version)
 
-    # de-dupe while preserving order
-    out: list[Path] = []
-    seen: set[str] = set()
-    for p in files:
-        k = str(p)
-        if k not in seen:
-            seen.add(k)
-            out.append(p)
-    return out
+    if cfg.debug:
+        install_dev_no_cache(flask_app)
 
+    return flask_app
 
-def load_env_stack(*, env: Optional[str] = None, override: bool = False) -> list[Path]:
-    """
-    Load dotenv files with correct precedence:
-      - dotenv files can override earlier dotenv files
-      - but dotenv files DO NOT override real OS env vars (the "original snapshot")
-    """
-    loaded: list[Path] = []
-    if dotenv_values is None:
-        return loaded
-
-    # Snapshot BEFORE dotenv so OS env always wins (unless override=True)
-    original = dict(os.environ) if not override else {}
-
-    # DOTENV_PATH (single file) bypasses stack logic
-    explicit = (os.getenv("DOTENV_PATH") or "").strip()
-    if explicit:
-        p = Path(explicit)
-        if p.exists() and p.is_file():
-            vals = dotenv_values(p) or {}
-            for k, v in vals.items():
-                if v is None:
-                    continue
-                if (not override) and (k in original):
-                    continue
-                os.environ[k] = str(v)
-            loaded.append(p)
-        return loaded
-
-    env_eff = _normalize_env_name(
-        env or os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development"
-    )
-
-    for p in _dotenv_candidates(env_eff):
-        if not p.exists() or not p.is_file():
-            continue
-        vals = dotenv_values(p) or {}
-        # apply with precedence: override earlier dotenv, but not original OS env
-        for k, v in vals.items():
-            if v is None:
-                continue
-            if (not override) and (k in original):
-                continue
-            os.environ[k] = str(v)
-        loaded.append(p)
-
-    return loaded
 
 # -----------------------------------------------------------------------------
 # Main entry
 # -----------------------------------------------------------------------------
 def main() -> None:
-    load_env_stack(override=False)
-
     cfg = make_runner_config()
-    load_env_stack(env=cfg.env, override=False)
-
-    # Standardize env names everywhere
-    os.environ["ENV"] = cfg.env
-    os.environ["APP_ENV"] = cfg.env
-    os.environ["FLASK_ENV"] = cfg.env
-    os.environ["SOCKETIO_ASYNC_MODE"] = cfg.async_mode
-
-    # Make public base URL available to app/templates if they read env
-    if cfg.public_base_url:
-        os.environ["FF_PUBLIC_BASE_URL"] = cfg.public_base_url
-        os.environ["PUBLIC_BASE_URL"] = cfg.public_base_url
-
-    # Also expose canonical turnkey version
-    os.environ["FF_TURNKEY_VERSION"] = cfg.turnkey_version
-    os.environ["TURNKEY_VERSION"] = cfg.turnkey_version
-
     setup_logging(cfg.debug, cfg.log_style)
     _install_signal_handlers()
-
-    if cfg.do_autopatch:
-        autopatch(scan_dirs=cfg.autopatch_dirs, dry_run=cfg.autopatch_dry_run)
-
-    init_sentry_if_configured()
 
     if cfg.pidfile:
         _write_pidfile(cfg.pidfile)
@@ -960,76 +807,86 @@ def main() -> None:
         logging.error("Port %s already in use (host=%s). Stop the other process or use --force.", cfg.port, cfg.host)
         raise SystemExit(2)
 
-    # Only print banner/routes once when using the reloader
-    is_reloader_main = (not cfg.use_reloader) or (os.environ.get("WERKZEUG_RUN_MAIN") == "true")
-    if is_reloader_main:
-        banner(cfg)
+    # Validate Stripe for prod (fatal unless --force)
+    try:
+        _validate_stripe_for_env(cfg.env, force=cfg.force_run)
+    except Exception as e:
+        logging.error("%s", e)
+        raise SystemExit(3)
+
+    banner(cfg)
     preflight_prod_warnings(cfg)
 
-    try:
-        from app import create_app
+    if cfg.do_autopatch:
+        autopatch(scan_dirs=cfg.autopatch_dirs, dry_run=cfg.autopatch_dry_run)
 
-        flask_app = create_app(cfg.config_path)
+    flask_app = build_app(cfg)
 
-        # Install overlay so /api/turnkey/config always returns canonical flagship.version
-        install_turnkey_version_overlay(flask_app, cfg.turnkey_version)
-
-        if cfg.debug:
-            install_dev_no_cache(flask_app)
-
-        apply_proxyfix_if_enabled(flask_app, cfg.trust_proxy)
-
-        # If you're pinning public base URL, strongly prefer https scheme for URL generation
-        if cfg.public_base_url and cfg.public_base_url.startswith("https://"):
-            try:
-                flask_app.config["PREFERRED_URL_SCHEME"] = "https"
-            except Exception:
-                pass
-
-        if cfg.open_browser and is_reloader_main:
-            ssl_ctx = _ssl_ctx_from_env()
-            if ssl_ctx or (cfg.public_base_url and cfg.public_base_url.startswith("https://")):
-                _open_browser_later(f"https://127.0.0.1:{cfg.port}")
-            else:
-                _open_browser_later(f"http://127.0.0.1:{cfg.port}")
-
-        if is_reloader_main:
-            print_routes(flask_app, cfg.debug, cfg.routes_out)
-
-        # Optional Flask-SocketIO
-        try:
-            from app.extensions import socketio as _socketio  # type: ignore
-        except Exception:
-            _socketio = None
-
+    if cfg.open_browser:
         ssl_ctx = _ssl_ctx_from_env()
-        extra_files = collect_watch_files(cfg.watch_dirs) if cfg.use_reloader else None
+        if ssl_ctx or (cfg.public_base_url and cfg.public_base_url.startswith("https://")):
+            _open_browser_later(f"https://127.0.0.1:{cfg.port}")
+        else:
+            _open_browser_later(f"http://127.0.0.1:{cfg.port}")
 
-        run_kwargs = dict(
-            host=cfg.host,
-            port=cfg.port,
-            debug=cfg.debug,
-            use_reloader=cfg.use_reloader,
-            ssl_context=ssl_ctx,
-        )
+    # SocketIO if present
+    try:
+        from app.extensions import socketio as _socketio  # type: ignore
+    except Exception:
+        _socketio = None
+
+    ssl_ctx = _ssl_ctx_from_env()
+    extra_files = collect_watch_files(cfg.watch_dirs) if cfg.use_reloader else None
+
+    run_kwargs: Dict[str, Any] = {"host": cfg.host, "port": cfg.port, "debug": cfg.debug, "ssl_context": ssl_ctx}
+
+    if cfg.use_reloader:
+        run_kwargs["use_reloader"] = True
+        run_kwargs["reloader_type"] = cfg.reloader_type
         if extra_files:
             run_kwargs["extra_files"] = extra_files
 
-        if _socketio and hasattr(_socketio, "run"):
-            logging.info("Socket.IO async mode: %s", getattr(_socketio, "async_mode", cfg.async_mode))
-            _socketio.run(flask_app, allow_unsafe_werkzeug=cfg.debug, **run_kwargs)
-        else:
-            logging.info("Socket.IO not available; falling back to Flask.run()")
-            flask_app.run(**run_kwargs)
+    if _socketio and hasattr(_socketio, "run"):
+        logging.info("Socket.IO run (async_mode=%s)", getattr(_socketio, "async_mode", cfg.async_mode))
+        _socketio.run(flask_app, allow_unsafe_werkzeug=cfg.debug, **run_kwargs)
+    else:
+        logging.info("Flask.run()")
+        flask_app.run(**run_kwargs)
 
-    except SystemExit:
-        raise
-    except Exception as exc:
-        logging.error("❌ Failed to launch FutureFunded app: %s", exc, exc_info=True)
-        raise SystemExit(1)
 
+# -----------------------------------------------------------------------------
+# Gunicorn export (ONLY when imported, not when run as script)
+# -----------------------------------------------------------------------------
+app = None
+if __name__ != "__main__":
+    env = detect_env()
+    load_env_stack(env=env, include_base=True)
+
+    cfg = RunnerConfig(
+        host=str(os.getenv("HOST", "0.0.0.0")),
+        port=int(os.getenv("PORT", "5000")),
+        debug=bool(_env_bool("FLASK_DEBUG") or (env in {"development", "testing"})),
+        use_reloader=False,
+        open_browser=False,
+        log_style=str(os.getenv("LOG_STYLE", "plain")),
+        pidfile=None,
+        routes_out=None,
+        force_run=False,
+        async_mode=str(os.getenv("SOCKETIO_ASYNC_MODE", "threading")),
+        env=env,
+        config_path=normalize_config_path(os.getenv("FLASK_CONFIG"), env_hint=env),
+        do_autopatch=False,
+        autopatch_dry_run=False,
+        autopatch_dirs=(Path("templates"), Path("app/templates")),
+        watch_dirs=_DEFAULT_WATCH_DIRS,
+        trust_proxy=bool(_env_bool("TRUST_PROXY") if _env_bool("TRUST_PROXY") is not None else (env == "production")),
+        public_base_url=_choose_public_base(env, None),
+        turnkey_version=resolve_turnkey_version(env),
+        reloader_type="stat",
+    )
+
+    setup_logging(cfg.debug, cfg.log_style)
+    app = build_app(cfg)
 
 if __name__ == "__main__":
     main()
-
-

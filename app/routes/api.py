@@ -1,27 +1,31 @@
+# app/routes/api.py
 from __future__ import annotations
 
 """
-FutureFunded API Blueprint
+FutureFunded API Blueprint (Flagship)
 ────────────────────────────────────────────────────────────
 • Mounted at /api via app factory (bp or api_bp)
 • RESTX docs at /api/docs (Bearer auth supported)
 • Status + stats + donors feed + impact buckets
 • Stripe public config/readiness (public-safe)
 • Tolerates missing tables/models in dev/offline
+• Consistent caching + ETag + 304 behavior
 
-Refactor goals:
-- update legacy naming (FundChamps → FutureFunded)
-- remove brittle imports + “CampaignGoal from donation” weirdness
-- support new CampaignGoal shape (org_id primary, team_id nullable/optional)
-- consistent caching + ETag behavior
+Env knobs:
+  API_TOKENS=tok1,tok2          (optional raw bearer tokens)
+  JWT_SECRET=... or JWT_PUBLIC_KEY=...  (optional JWT verification)
+  JWT_ALG=HS256                 (default)
+  API_AUDIENCE=...              (optional)
+  API_ISSUER=...                (optional)
 """
 
+import json
 import os
 from functools import wraps
 from hashlib import sha1
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from flask import Blueprint, current_app, jsonify, make_response, request
+from flask import Blueprint, Response, current_app, jsonify, make_response, request
 from flask_restx import Api, Resource, fields
 from sqlalchemy import desc, func
 from sqlalchemy import inspect as sa_inspect
@@ -52,7 +56,6 @@ try:
     from app.models.example import Example  # type: ignore
 except Exception:  # pragma: no cover
     Example = None  # type: ignore
-
 
 # ─────────────────────────────────────────────────────────────
 # Blueprint + RESTX API
@@ -89,13 +92,17 @@ try:
 except Exception:
     pass
 
-
 # ─────────────────────────────────────────────────────────────
 # Config helpers
 # ─────────────────────────────────────────────────────────────
 def _cfg(name: str, default: Any = None) -> Any:
-    v = current_app.config.get(name) if current_app else None
-    return v if v is not None else os.getenv(name, default)
+    try:
+        v = current_app.config.get(name)
+        if v is not None:
+            return v
+    except Exception:
+        pass
+    return os.getenv(name, default)
 
 
 def _stripe_secret() -> str:
@@ -107,8 +114,11 @@ def _stripe_public() -> str:
 
 
 def _team_cfg() -> Dict[str, Any]:
-    # Keep this light: your main blueprint has richer config shaping.
-    return dict(current_app.config.get("TEAM_CONFIG") or {})
+    # Keep this light: main blueprint has richer config shaping.
+    try:
+        return dict(current_app.config.get("TEAM_CONFIG") or {})
+    except Exception:
+        return {}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -116,7 +126,7 @@ def _team_cfg() -> Dict[str, Any]:
 # ─────────────────────────────────────────────────────────────
 def _table_exists(model: Any) -> bool:
     try:
-        if not db or not db.engine:
+        if not db or not getattr(db, "engine", None):
             return False
         name = getattr(model, "__tablename__", None)
         if not name:
@@ -143,7 +153,8 @@ except Exception:  # pragma: no cover
 
 
 def _api_tokens() -> Set[str]:
-    return {t.strip() for t in str(_cfg("API_TOKENS", "") or "").split(",") if t.strip()}
+    raw = str(_cfg("API_TOKENS", "") or "")
+    return {t.strip() for t in raw.split(",") if t.strip()}
 
 
 def _normalize_pem(s: str) -> str:
@@ -153,7 +164,8 @@ def _normalize_pem(s: str) -> str:
 def _bearer_token() -> Optional[str]:
     h = request.headers.get("Authorization", "")
     if h.lower().startswith("bearer "):
-        return h.split(" ", 1)[1].strip() or None
+        tok = h.split(" ", 1)[1].strip()
+        return tok or None
     return None
 
 
@@ -207,8 +219,9 @@ def require_bearer(optional: bool = True, scopes: Optional[List[str]] = None):
                     return fn(*args, **kwargs)
                 raise Unauthorized("Missing bearer token.")
             subject, granted = _verify_bearer_token(tok)
-            request.api_subject = subject  # type: ignore[attr-defined]
-            request.api_scopes = granted  # type: ignore[attr-defined]
+            # attach for downstream logging/analytics
+            setattr(request, "api_subject", subject)
+            setattr(request, "api_scopes", granted)
             if needed and not (needed.issubset(granted) or "*" in granted):
                 raise Unauthorized("Insufficient scope.")
             return fn(*args, **kwargs)
@@ -219,26 +232,44 @@ def require_bearer(optional: bool = True, scopes: Optional[List[str]] = None):
 
 
 # ─────────────────────────────────────────────────────────────
-# JSON / caching helpers
+# JSON + caching helpers (ETag + 304)
 # ─────────────────────────────────────────────────────────────
 def _etag(s: str) -> str:
     return sha1(s.encode("utf-8")).hexdigest()[:12]
 
 
-def _json(
+def _etag_matches(etag_value: str) -> bool:
+    try:
+        inm = request.if_none_match
+        return bool(inm and inm.contains(etag_value))
+    except Exception:
+        inm2 = request.headers.get("If-None-Match", "")
+        return bool(inm2 and etag_value in inm2)
+
+
+def _json_response(
     data: Any,
+    *,
     status: int = 200,
-    etag: Optional[str] = None,
+    etag_value: Optional[str] = None,
     max_age: int = 15,
-):
+    cache_public: bool = True,
+) -> Response:
+    if request.method == "GET" and etag_value and _etag_matches(etag_value):
+        resp = make_response("", 304)
+        resp.set_etag(etag_value)
+        resp.headers.setdefault("Cache-Control", f"public, max-age={max_age}" if cache_public else "no-store")
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        return resp
+
     resp = make_response(jsonify(data), status)
     if request.method == "GET":
-        if etag:
-            inm = request.headers.get("If-None-Match")
-            if inm and etag in inm:
-                resp = make_response("", 304)
-            resp.set_etag(etag)
-        resp.headers.setdefault("Cache-Control", f"public, max-age={max_age}")
+        if etag_value:
+            resp.set_etag(etag_value)
+        resp.headers.setdefault("Cache-Control", f"public, max-age={max_age}" if cache_public else "no-store")
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    else:
+        resp.headers.setdefault("Cache-Control", "no-store")
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     return resp
 
@@ -312,11 +343,7 @@ readiness_model = api.model(
     },
 )
 
-payments_cfg_model = api.model(
-    "PaymentsConfig",
-    {"stripe_public_key": fields.String(required=True)},
-)
-
+payments_cfg_model = api.model("PaymentsConfig", {"stripe_public_key": fields.String(required=True)})
 
 # ─────────────────────────────────────────────────────────────
 # Data helpers (schema-tolerant)
@@ -332,7 +359,6 @@ def _active_goal_amount(org_id: Optional[int] = None) -> float:
         if CampaignGoal and _table_exists(CampaignGoal):
             q = db.session.query(CampaignGoal)
 
-            # Prefer org-scoped goals if org_id is provided and the column exists.
             if org_id is not None and hasattr(CampaignGoal, "org_id"):
                 q = q.filter(CampaignGoal.org_id == org_id)  # type: ignore[attr-defined]
 
@@ -363,7 +389,10 @@ def _sum_sponsor_approved(org_id: Optional[int] = None) -> float:
     if not Sponsor or not _table_exists(Sponsor):
         return 0.0
     try:
-        q = db.session.query(func.coalesce(func.sum(getattr(Sponsor, "amount")), 0.0))
+        amt_col = getattr(Sponsor, "amount", None)
+        if amt_col is None:
+            return 0.0
+        q = db.session.query(func.coalesce(func.sum(amt_col), 0.0))
         if hasattr(Sponsor, "deleted_at"):
             q = q.filter(Sponsor.deleted_at.is_(None))
         if hasattr(Sponsor, "status"):
@@ -379,7 +408,10 @@ def _sum_donations(org_id: Optional[int] = None) -> float:
     if not Donation or not _table_exists(Donation):
         return 0.0
     try:
-        q = db.session.query(func.coalesce(func.sum(getattr(Donation, "amount")), 0.0))
+        amt_col = getattr(Donation, "amount", None)
+        if amt_col is None:
+            return 0.0
+        q = db.session.query(func.coalesce(func.sum(amt_col), 0.0))
         if org_id is not None and hasattr(Donation, "org_id"):
             q = q.filter(Donation.org_id == org_id)
         return float(q.scalar() or 0.0)
@@ -408,12 +440,11 @@ def _recent_donations(limit: int, org_id: Optional[int] = None) -> List[Dict[str
                 except Exception:
                     amount = 0.0
                 created = _first_attr(d, ("created_at", "created", "timestamp")) or ""
-                out.append({"name": name, "amount": amount, "created_at": str(created)})
+                out.append({"name": str(name), "amount": amount, "created_at": str(created)})
             return out
         except Exception:
             current_app.logger.exception("Recent donations query failed")
 
-    # Sponsor fallback
     if Sponsor and _table_exists(Sponsor):
         try:
             q = db.session.query(Sponsor)
@@ -458,11 +489,13 @@ def _leaderboard(top_n: int, org_id: Optional[int] = None) -> List[Dict[str, Any
                 q = q.order_by(desc(amt_col))
 
             items = q.limit(top_n).all()
-            return [{"name": getattr(s, "name", None) or "Sponsor", "amount": float(getattr(s, "amount", 0.0) or 0.0)} for s in items]
+            return [
+                {"name": getattr(s, "name", None) or "Sponsor", "amount": float(getattr(s, "amount", 0.0) or 0.0)}
+                for s in items
+            ]
         except Exception:
             pass
 
-    # Donation aggregation fallback
     if Donation and _table_exists(Donation):
         try:
             name_col = _first_attr(Donation, ("display_name", "donor_name", "name"))
@@ -523,15 +556,17 @@ class Status(Resource):
     @api.marshal_with(status_model)
     @require_bearer(optional=True)
     def get(self):
-        version = str(current_app.config.get("API_VERSION") or os.getenv("GIT_COMMIT", "1.0.0"))
-        return {"status": "ok", "message": "API live", "version": version, "docs": "/api/docs"}
+        version = str(current_app.config.get("API_VERSION") or _cfg("GIT_COMMIT", "1.0.0"))
+        payload = {"status": "ok", "message": "API live", "version": version, "docs": "/api/docs"}
+        et = _etag(f"status-{payload['version']}")
+        return _json_response(payload, etag_value=et, max_age=60)
 
 
 @api.route("/stats")
 class StatsResource(Resource):
     @api.doc(
         description="Fundraiser totals + leaderboard",
-        params={"top": "Top-N for leaderboard (1–50, default 10)"},
+        params={"top": "Top-N for leaderboard (1–50, default 10)", "org_id": "Optional org_id for multi-tenant totals"},
         tags=["Stats"],
     )
     @api.marshal_with(stats_model)
@@ -539,8 +574,6 @@ class StatsResource(Resource):
     def get(self):
         try:
             top = _safe_int("top", default=10, minimum=1, maximum=50)
-
-            # org scoping (optional): accept org_id query param for multi-tenant frontends
             org_id = request.args.get("org_id", type=int)
 
             raised = _sum_donations(org_id=org_id) + _sum_sponsor_approved(org_id=org_id)
@@ -548,12 +581,9 @@ class StatsResource(Resource):
             percent = (raised / goal * 100.0) if goal else 0.0
             lb = _leaderboard(top, org_id=org_id)
 
-            etag = _etag(f"{int(raised)}-{int(goal)}-{len(lb)}-{org_id or 0}")
-            return (
-                {"raised": float(raised), "goal": float(goal), "percent": round(percent, 2), "leaderboard": lb},
-                200,
-                {"Cache-Control": "public, max-age=10", "ETag": etag, "X-Content-Type-Options": "nosniff"},
-            )
+            payload = {"raised": float(raised), "goal": float(goal), "percent": round(percent, 2), "leaderboard": lb}
+            et = _etag(f"{int(raised)}-{int(goal)}-{len(lb)}-{org_id or 0}-{top}")
+            return _json_response(payload, etag_value=et, max_age=10)
         except BadRequest as e:
             api.abort(400, str(e))
         except Exception:
@@ -563,19 +593,22 @@ class StatsResource(Resource):
 
 # Legacy lightweight totals endpoint (non-RESTX) for older JS
 @api_bp.get("/totals")
+@require_bearer(optional=True)
 def totals():
     org_id = request.args.get("org_id", type=int)
     raised = _sum_donations(org_id=org_id) + _sum_sponsor_approved(org_id=org_id)
     goal = _active_goal_amount(org_id=org_id)
     percent = (raised / goal * 100.0) if goal else 0.0
-    return jsonify({"raised": float(raised), "goal": float(goal), "percent": round(percent, 2)})
+    payload = {"raised": float(raised), "goal": float(goal), "percent": round(percent, 2)}
+    et = _etag(f"totals-{int(raised)}-{int(goal)}-{org_id or 0}")
+    return _json_response(payload, etag_value=et, max_age=10)
 
 
 @api.route("/donors")
 class DonorsResource(Resource):
     @api.doc(
         description="Recent donors (ticker / supporter wall)",
-        params={"limit": "Max items (1–100, default 12)"},
+        params={"limit": "Max items (1–100, default 12)", "org_id": "Optional org_id for multi-tenant feeds"},
         tags=["Stats"],
     )
     @api.marshal_list_with(donor_model)
@@ -587,13 +620,8 @@ class DonorsResource(Resource):
             donors = _recent_donations(limit, org_id=org_id)
 
             first_ts = donors[0]["created_at"] if donors else "0"
-            etag = _etag(f"d-{len(donors)}-{first_ts}-{org_id or 0}")
-
-            return (
-                donors,
-                200,
-                {"Cache-Control": "public, max-age=15", "ETag": etag, "X-Content-Type-Options": "nosniff"},
-            )
+            et = _etag(f"d-{len(donors)}-{first_ts}-{org_id or 0}-{limit}")
+            return _json_response(donors, etag_value=et, max_age=15)
         except BadRequest as e:
             api.abort(400, str(e))
         except Exception:
@@ -608,12 +636,8 @@ class ImpactResource(Resource):
     @require_bearer(optional=True)
     def get(self):
         data = _impact_buckets()
-        etag = _etag(f"impact-{len(data)}-{data[0]['slug'] if data else '0'}")
-        return (
-            data,
-            200,
-            {"Cache-Control": "public, max-age=60", "ETag": etag, "X-Content-Type-Options": "nosniff"},
-        )
+        et = _etag(f"impact-{len(data)}-{data[0]['slug'] if data else '0'}")
+        return _json_response(data, etag_value=et, max_age=60)
 
 
 @api.route("/payments/config")
@@ -621,7 +645,10 @@ class PaymentsConfig(Resource):
     @api.doc(description="Public Stripe config for front-end boot.", tags=["Payments"])
     @api.marshal_with(payments_cfg_model)
     def get(self):
-        return {"stripe_public_key": _stripe_public() or ""}
+        payload = {"stripe_public_key": _stripe_public() or ""}
+        # public key changes rarely; safe longer cache
+        et = _etag(f"pk-{payload['stripe_public_key'][-8:] if payload['stripe_public_key'] else 'none'}")
+        return _json_response(payload, etag_value=et, max_age=300)
 
 
 @api.route("/payments/readiness")
@@ -629,26 +656,27 @@ class PaymentsReadiness(Resource):
     @api.doc(description="Server-side payment readiness flags.", tags=["Payments"])
     @api.marshal_with(readiness_model)
     def get(self):
-        return {"stripe_ready": bool(_stripe_secret()), "stripe_public_key": _stripe_public() or ""}
+        pk = _stripe_public() or ""
+        payload = {"stripe_ready": bool(_stripe_secret()), "stripe_public_key": pk}
+        et = _etag(f"ready-{1 if payload['stripe_ready'] else 0}-{pk[-8:] if pk else 'none'}")
+        return _json_response(payload, etag_value=et, max_age=60)
 
 
 # ─────────────────────────────────────────────────────────────
-# Optional error handler registration (call from app factory if desired)
+# Blueprint-scoped error handlers (optional)
+# NOTE: app/__init__.py already provides unified JSON errors for /api/*
+# so we keep this minimal and non-invasive.
 # ─────────────────────────────────────────────────────────────
-def register_error_handlers(app):
-    @app.errorhandler(404)
-    def handle_404(e):
-        return _json({"error": "Not Found", "message": "The requested endpoint does not exist."}, 404)
+@api_bp.app_errorhandler(400)
+def _handle_400(e):
+    return _json_response({"ok": False, "error": {"code": 400, "message": str(e)}}, status=400, etag_value=None, max_age=0, cache_public=False)
 
-    @app.errorhandler(400)
-    def handle_400(e):
-        return _json({"error": "Bad Request", "message": str(e)}, 400)
 
-    @app.errorhandler(401)
-    def handle_401(e):
-        return _json({"error": "Unauthorized", "message": str(e)}, 401)
+@api_bp.app_errorhandler(401)
+def _handle_401(e):
+    return _json_response({"ok": False, "error": {"code": 401, "message": str(e)}}, status=401, etag_value=None, max_age=0, cache_public=False)
 
-    @app.errorhandler(500)
-    def handle_500(e):
-        return _json({"error": "Internal Server Error", "message": "Something went wrong."}, 500)
 
+@api_bp.app_errorhandler(404)
+def _handle_404(e):
+    return _json_response({"ok": False, "error": {"code": 404, "message": "Not Found"}}, status=404, etag_value=None, max_age=0, cache_public=False)

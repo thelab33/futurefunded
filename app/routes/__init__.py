@@ -1,7 +1,8 @@
+# app/blueprint_loader.py
 from __future__ import annotations
 
 """
-FutureFunded — Blueprint Loader (hardened + repo-drift tolerant)
+FutureFunded — Blueprint Loader (Flagship hardened + repo-drift tolerant)
 
 Core goals:
 - Register blueprints reliably even if module paths move over time
@@ -9,31 +10,13 @@ Core goals:
 - Allow safe auto-discovery for development or when paths vary
 
 Env knobs:
-  # Disable aliases by name (alias or blueprint.name)
-  DISABLE_BPS=api,sms,fallback
-
-  # Override prefix per alias (sanitized). Examples:
-  BP_PREFIX__API=/v2
-  BP_PREFIX__PAYMENTS=/payments
-
-  # Print route summary (also true when app.debug)
-  ROUTE_SUMMARY=1
-
-  # Explicit modules to import (comma-separated) — recommended for production:
-  BP_MODULES=app.routes.main,app.routes.api,app.blueprints.payments
-
-  # Enable/disable discovery fallback (default: on in dev, off in prod unless explicitly enabled)
-  BP_DISCOVER=1
-
-  # Where discovery looks (comma-separated package prefixes)
+  DISABLE_BPS=api,sms,fallback              # disable by alias OR blueprint.name
+  BP_PREFIX__API=/v2                       # override url_prefix per alias
+  ROUTE_SUMMARY=1                          # print route summary (also true when app.debug)
+  BP_MODULES=app.routes.main,app.routes.api,app.blueprints.payments   # deterministic list (recommended prod)
+  BP_DISCOVER=1                             # enable discovery fallback (default on in dev, off in prod)
   BP_DISCOVER_PREFIXES=app.routes,app.blueprints,app.admin
-
-  # Exclude modules containing these substrings (comma-separated)
   BP_DISCOVER_EXCLUDE=tests,migrations,seed,fixtures
-
-Notes:
-- No reliance on bp.url_prefix (Flask doesn’t guarantee it exists).
-- Prefix comes from: BP_PREFIX__ALIAS > spec/default > None.
 """
 
 import logging
@@ -41,7 +24,7 @@ import os
 import pkgutil
 from dataclasses import dataclass
 from importlib import import_module
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sequence
 
 from flask import Blueprint, Flask
 
@@ -63,15 +46,19 @@ class BlueprintSpec:
     prefix: Optional[str] = None
 
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
+# ─── Env/Parse Helpers ──────────────────────────────────────────────────────
+_TRUTHY = {"1", "true", "yes", "y", "on"}
+_FALSY = {"0", "false", "no", "n", "off"}
+
+
 def _env_bool(name: str) -> Optional[bool]:
     v = os.getenv(name)
     if v is None:
         return None
     vv = str(v).strip().lower()
-    if vv in {"1", "true", "yes", "y", "on"}:
+    if vv in _TRUTHY:
         return True
-    if vv in {"0", "false", "no", "n", "off"}:
+    if vv in _FALSY:
         return False
     return None
 
@@ -81,7 +68,7 @@ def _parse_csv(env_value: Optional[str]) -> list[str]:
 
 
 def _parse_disabled_env(env_value: Optional[str]) -> set[str]:
-    # Allow disable by alias *or* blueprint.name
+    # disable by alias OR blueprint.name
     return {p.strip().lower() for p in (env_value or "").split(",") if p.strip()}
 
 
@@ -90,6 +77,12 @@ def _env_prefix_override(alias: str, default: Optional[str]) -> Optional[str]:
 
 
 def _sanitize_prefix(prefix: Optional[str]) -> Optional[str]:
+    """
+    Normalize prefixes:
+    - None / "" / "/" => None (register at root)
+    - ensure leading slash
+    - collapse //, strip trailing slash
+    """
     if prefix is None:
         return None
     p = str(prefix).strip()
@@ -109,11 +102,12 @@ def _iter_candidates(attrs: Iterable[str] | str) -> list[str]:
     return [a for a in attrs if a]
 
 
+# ─── Import/Discovery ───────────────────────────────────────────────────────
 def _import_blueprints_from_module(module: str, attrs: Iterable[str]) -> list[Blueprint]:
     """
-    Returns *all* Blueprint objects we can find in a module.
-    - First checks common attribute names (bp, api_bp, main_bp, etc.)
-    - Then scans module globals for Blueprint instances
+    Returns *all* Blueprint objects we can find in a module:
+      1) Named attributes (bp, api_bp, main_bp, etc.)
+      2) Fallback scan of module globals for Blueprint instances
     """
     try:
         mod = import_module(module)
@@ -127,12 +121,12 @@ def _import_blueprints_from_module(module: str, attrs: Iterable[str]) -> list[Bl
     for name in _iter_candidates(attrs):
         try:
             cand = getattr(mod, name, None)
-            if isinstance(cand, Blueprint):
+            if isinstance(cand, Blueprint) and cand not in found:
                 found.append(cand)
         except Exception:
             continue
 
-    # 2) Scan everything (covers weird naming)
+    # 2) Scan everything (covers odd naming)
     try:
         for _, cand in vars(mod).items():
             if isinstance(cand, Blueprint) and cand not in found:
@@ -143,66 +137,11 @@ def _import_blueprints_from_module(module: str, attrs: Iterable[str]) -> list[Bl
     return found
 
 
-def _safe_register(app: Flask, *, alias: str, bp: Blueprint, prefix: Optional[str]) -> bool:
-    alias_lc = alias.lower()
-    bpname_lc = (bp.name or "").lower()
-
-    disabled = getattr(app, "_ff_disabled_bps", set())
-    if alias_lc in disabled or bpname_lc in disabled:
-        app.logger.info("⏭️ Disabled via env: %s (bp=%s)", alias_lc, bp.name)
-        return False
-
-    if bp.name in app.blueprints:
-        app.logger.info("⏭️ Already registered: %s", bp.name)
-        return False
-
-    final_prefix = _sanitize_prefix(_env_prefix_override(alias_lc, prefix))
-
-    try:
-        app.register_blueprint(bp, url_prefix=final_prefix)
-        app.logger.info("🧩 Registered blueprint: %-14s bp=%-18s prefix=%s", alias, bp.name, final_prefix or "/")
-        return True
-    except Exception as exc:  # pragma: no cover
-        app.logger.error("❌ Failed to register '%s' (bp=%s): %s", alias, bp.name, exc, exc_info=True)
-        return False
-
-
-def _route_summary(app: Flask) -> None:
-    want = bool(app.debug) or os.getenv("ROUTE_SUMMARY", "0").strip().lower() in {"1", "true", "yes", "on"}
-    if not want:
-        return
-
-    try:
-        bps = ", ".join(sorted(app.blueprints.keys())) or "—"
-        app.logger.info("📦 Blueprints: %s", bps)
-
-        lines: list[str] = []
-        for rule in sorted(app.url_map.iter_rules(), key=lambda r: (str(r.rule), r.endpoint)):
-            methods = ",".join(
-                sorted(m for m in (rule.methods or set()) if m in {"GET", "POST", "PUT", "PATCH", "DELETE"})
-            )
-            lines.append(f"{rule.rule:<44} {methods:<16} → {rule.endpoint}")
-
-        if lines:
-            app.logger.info("🔗 Routes:\n%s", "\n".join(lines))
-    except Exception:  # pragma: no cover
-        app.logger.debug("Could not render route summary", exc_info=True)
-
-
-# ─── Fallback Blueprint ─────────────────────────────────────────────────────
-fallback_bp = Blueprint("fallback", __name__)
-
-
-@fallback_bp.get("/")
-def _default_root() -> str:
-    return "✅ FutureFunded backend is running.<br><strong>Main homepage not registered.</strong>"
-
-
-# ─── Discovery (repo-drift tolerant) ─────────────────────────────────────────
 def _discover_blueprints(prefixes: list[str], exclude_substrings: list[str]) -> list[tuple[str, Blueprint]]:
     """
-    Walks packages under given prefixes and returns (alias, blueprint).
+    Walk packages under given prefixes and return (alias, blueprint).
     Alias is derived from blueprint.name (preferred) or module leaf.
+    Discovery is DEV-ONLY by default; see BP_DISCOVER.
     """
     results: list[tuple[str, Blueprint]] = []
 
@@ -224,9 +163,7 @@ def _discover_blueprints(prefixes: list[str], exclude_substrings: list[str]) -> 
 
             bps = _import_blueprints_from_module(modname, attrs=())
             for bp in bps:
-                alias = (bp.name or modname.rsplit(".", 1)[-1]).strip()
-                if not alias:
-                    alias = modname.rsplit(".", 1)[-1]
+                alias = (bp.name or modname.rsplit(".", 1)[-1]).strip() or modname.rsplit(".", 1)[-1]
                 results.append((alias, bp))
 
     # De-dupe by blueprint.name
@@ -243,17 +180,14 @@ def _discover_blueprints(prefixes: list[str], exclude_substrings: list[str]) -> 
 def _default_discover_enabled(env: str) -> bool:
     # default: on in dev/test, off in prod unless explicitly enabled
     env_lc = (env or "").strip().lower()
-    if env_lc in {"production", "prod"}:
-        return False
-    return True
+    return env_lc not in {"production", "prod"}
 
 
 def _ordered_alias_weight(alias: str) -> int:
     """
     Ensures sensible registration order. Lower is earlier.
-    Adjust as your platform grows.
     """
-    a = alias.lower()
+    a = (alias or "").lower()
     if "diag" in a or "health" in a:
         return 10
     if a in {"main", "site", "web"}:
@@ -271,22 +205,82 @@ def _ordered_alias_weight(alias: str) -> int:
     return 100
 
 
+# ─── Registration ───────────────────────────────────────────────────────────
+def _safe_register(app: Flask, *, alias: str, bp: Blueprint, prefix: Optional[str]) -> bool:
+    """
+    Register blueprint safely with:
+    - disable by alias or blueprint.name via DISABLE_BPS
+    - no duplicates
+    - BP_PREFIX__ override support
+    """
+    alias_lc = (alias or "").lower()
+    bpname_lc = (bp.name or "").lower()
+
+    disabled = app.extensions.get("ff_disabled_bps", set())
+    if alias_lc in disabled or bpname_lc in disabled:
+        app.logger.info("⏭️ Disabled via env: %s (bp=%s)", alias_lc, bp.name)
+        return False
+
+    if bp.name in app.blueprints:
+        app.logger.info("⏭️ Already registered: %s", bp.name)
+        return False
+
+    final_prefix = _sanitize_prefix(_env_prefix_override(alias_lc, prefix))
+
+    try:
+        app.register_blueprint(bp, url_prefix=final_prefix)
+        app.logger.info("🧩 Registered blueprint: %-14s bp=%-18s prefix=%s", alias_lc, bp.name, final_prefix or "/")
+        return True
+    except Exception as exc:  # pragma: no cover
+        app.logger.error("❌ Failed to register '%s' (bp=%s): %s", alias_lc, bp.name, exc, exc_info=True)
+        return False
+
+
+def _route_summary(app: Flask) -> None:
+    want = bool(app.debug) or (os.getenv("ROUTE_SUMMARY", "0").strip().lower() in _TRUTHY)
+    if not want:
+        return
+
+    try:
+        bps = ", ".join(sorted(app.blueprints.keys())) or "—"
+        app.logger.info("📦 Blueprints: %s", bps)
+
+        lines: list[str] = []
+        for rule in sorted(app.url_map.iter_rules(), key=lambda r: (str(r.rule), r.endpoint)):
+            methods = ",".join(sorted(m for m in (rule.methods or set()) if m in {"GET", "POST", "PUT", "PATCH", "DELETE"}))
+            lines.append(f"{rule.rule:<44} {methods:<16} → {rule.endpoint}")
+
+        if lines:
+            app.logger.info("🔗 Routes:\n%s", "\n".join(lines))
+    except Exception:  # pragma: no cover
+        app.logger.debug("Could not render route summary", exc_info=True)
+
+
+# ─── Fallback Blueprint ─────────────────────────────────────────────────────
+fallback_bp = Blueprint("fallback", __name__)
+
+
+@fallback_bp.get("/")
+def _default_root() -> str:
+    return "✅ FutureFunded backend is running.<br><strong>Main homepage not registered.</strong>"
+
+
 # ─── Public API ─────────────────────────────────────────────────────────────
 def register_blueprints(app: Flask) -> None:
     """
     Register CLI commands & blueprints with env overrides.
 
-    Recommended production approach:
+    Flagship production recommendation:
       - Set BP_MODULES explicitly (deterministic)
-      - Keep discovery off unless you want auto behavior
+      - Keep discovery off unless you truly want auto behavior
 
     Common:
       DISABLE_BPS=api,sms,fallback
       BP_PREFIX__API=/v2
       ROUTE_SUMMARY=1
     """
-    # Cache disabled aliases on the app
-    app._ff_disabled_bps = _parse_disabled_env(os.getenv("DISABLE_BPS"))
+    # Cache disabled aliases on the app (extensions is safer than attribute)
+    app.extensions["ff_disabled_bps"] = _parse_disabled_env(os.getenv("DISABLE_BPS"))
 
     # Optional CLI group
     if starforge:
@@ -296,56 +290,54 @@ def register_blueprints(app: Flask) -> None:
         except Exception as exc:  # pragma: no cover
             app.logger.warning("⚠️ Could not register CLI group 'starforge': %s", exc)
 
-    env = (os.getenv("ENV") or os.getenv("FLASK_ENV") or "development").strip().lower()
+    env = (os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development").strip().lower()
 
     # 1) Deterministic specs (explicit modules) — recommended for production
     specs: list[BlueprintSpec] = []
     for mod in _parse_csv(os.getenv("BP_MODULES")):
-        # Alias default is module leaf; prefix can be overridden via BP_PREFIX__ALIAS
         alias = mod.rsplit(".", 1)[-1]
-        specs.append(BlueprintSpec(alias=alias, module=mod, attrs=("bp", "main_bp", "api_bp", "admin_bp", "payments_bp")))
+        specs.append(
+            BlueprintSpec(
+                alias=alias,
+                module=mod,
+                attrs=("bp", "main_bp", "api_bp", "admin_bp", "payments_bp", "sms_bp"),
+            )
+        )
 
-    # 2) “Best guess” compatibility specs (safe to leave; they no-op if missing)
-    #    Keep these conservative and aligned to your known endpoints:
-    #    - payments should provide /payments/config and /payments/stripe/intent
+    # 2) Conservative compatibility specs (only used when BP_MODULES is not set)
+    #    Keep aligned with your known endpoints; harmless if modules missing.
     if not specs:
         specs = [
+            BlueprintSpec("diag", "app.diag", ("bp",), "/_diag"),
+            BlueprintSpec("api", "app.routes.api", ("bp", "api_bp"), "/api"),
+            BlueprintSpec("admin", "app.admin.routes", ("bp", "admin_bp"), "/admin"),
+            BlueprintSpec("metrics", "app.blueprints.fc_metrics", ("bp",), "/metrics"),
+            BlueprintSpec("newsletter", "app.routes.newsletter", ("bp",), "/newsletter"),
+            BlueprintSpec("sms", "app.routes.sms", ("sms_bp", "bp"), "/sms"),
+            BlueprintSpec("legal", "app.routes.legal", ("bp",), "/legal"),
+            # payments (prefer app.blueprints.payments)
+            BlueprintSpec("payments", "app.blueprints.payments", ("bp", "payments_bp"), "/payments"),
+            # main
             BlueprintSpec("main", "app.routes.main", ("main_bp", "bp"), "/"),
-            BlueprintSpec("payments", "app.routes.payments", ("payments_bp", "bp"), "/payments"),
-            BlueprintSpec("payments", "app.blueprints.payments", ("payments_bp", "bp"), "/payments"),
-            BlueprintSpec("payments", "app.blueprints.fc_payments", ("bp", "payments_bp"), "/payments"),
-            BlueprintSpec("api", "app.routes.api", ("api_bp", "bp"), "/api"),
-            BlueprintSpec("admin", "app.admin.routes", ("admin_bp", "bp"), "/admin"),
-            BlueprintSpec("webhooks", "app.routes.webhooks", ("webhook_bp", "bp"), "/webhooks"),
-            BlueprintSpec("stripe", "app.routes.stripe", ("stripe_bp", "bp"), "/stripe"),
-            BlueprintSpec("metrics", "app.routes.metrics", ("metrics_bp", "bp"), "/metrics"),
         ]
 
-    registered_aliases: set[str] = set()
     found_main = False
 
-    # Register explicit/spec-driven
+    # Spec-driven registration
     for spec in specs:
-        if spec.alias.lower() in registered_aliases:
-            continue
-
         bps = _import_blueprints_from_module(spec.module, spec.attrs)
         if not bps:
             continue
 
-        # If a module contains multiple BPs, register them all; use spec.alias as “group alias”
         for bp in bps:
-            # alias per BP helps BP_PREFIX__ overrides be precise
-            bp_alias = (bp.name or spec.alias).lower()
+            bp_alias = (bp.name or spec.alias).strip().lower()
             ok = _safe_register(app, alias=bp_alias, bp=bp, prefix=spec.prefix)
-            if ok:
-                registered_aliases.add(bp_alias)
-                if bp_alias == "main":
-                    found_main = True
+            if ok and bp_alias == "main":
+                found_main = True
 
-    # Register discovery fallback (optional)
+    # Discovery fallback (optional)
     discover_env = _env_bool("BP_DISCOVER")
-    discover_enabled = discover_env if discover_env is not None else _default_discover_enabled(env)
+    discover_enabled = bool(discover_env) if discover_env is not None else _default_discover_enabled(env)
 
     if discover_enabled:
         prefixes = _parse_csv(os.getenv("BP_DISCOVER_PREFIXES")) or ["app.routes", "app.blueprints", "app.admin"]
@@ -355,16 +347,19 @@ def register_blueprints(app: Flask) -> None:
         discovered.sort(key=lambda t: _ordered_alias_weight(t[0]))
 
         for alias, bp in discovered:
-            # Don’t stomp something already registered
             if bp.name in app.blueprints:
                 continue
             _safe_register(app, alias=alias, bp=bp, prefix=None)
-            if alias.lower() == "main":
+            if (alias or "").lower() == "main":
                 found_main = True
 
     # Fallback if 'main' not present (unless explicitly disabled)
-    if not found_main and "fallback" not in getattr(app, "_ff_disabled_bps", set()):
+    disabled = app.extensions.get("ff_disabled_bps", set())
+    if not found_main and "fallback" not in disabled:
         _safe_register(app, alias="fallback", bp=fallback_bp, prefix="/")
 
     _route_summary(app)
     app.logger.info("✅ Blueprint registration complete. (%d total)", len(app.blueprints))
+
+
+__all__ = ["register_blueprints", "BlueprintSpec", "fallback_bp"]

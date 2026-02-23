@@ -1,30 +1,26 @@
+# app/routes/main.py
 from __future__ import annotations
 
 """
-Main web blueprint (FutureFunded)
+Main web blueprint (FutureFunded • Flagship)
 
-This blueprint is designed for a setup with:
-  - templates/index.html
-  - static/js/ff-app.js
-  - static/css/ff.css
-
-Key guarantees:
-- Teams + team photos are ALWAYS sourced from TEAM_CONFIG (or g.team override), and injected into:
-  - template context: context["teams"], context["gallery_items"]
-  - frontend JSON: context["ff_config"]["teams"], context["ff_config"]["galleryItems"]
-- Logo URL is ALWAYS normalized into cfg["logo_url"] and exposed as:
-  - template context: org_logo / TEAM_LOGO
-  - ff_config: brand.logoUrl and org.logo
-- Asset URLs under /static are cache-busted via ?v=<asset_version> to mitigate stale CDN/Cloudflare cache.
-- ETag changes when:
-  - raised/goal/percent changes
-  - sponsors count changes
-  - ff_config hash changes (includes teams/gallery/build_id)
-  - template file mtime changes (index.html)
+Contracts:
+- Root route endpoint remains: main.home
+- Teams + team photos come from TEAM_CONFIG (or g.team override),
+  but if DB teams exist they win (optional DB-first layer).
+- Template context always includes:
+    teams, gallery_items, org_logo, TEAM_LOGO, TEAM_NAME
+    ff_config (dict), ff_cfg_hash (stable hash), build_id, asset_version
+- Frontend config always includes:
+    ff_config["teams"], ff_config["galleryItems"]
+    brand.logoUrl + org.logo
+- HTML responses are no-store, but support ETag/304.
 """
 
 import hashlib
+import json
 import os
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -62,7 +58,7 @@ try:  # pragma: no cover
 except Exception:  # pragma: no cover
     stripe = None  # type: ignore
 
-# Optional models/imports (graceful fallback in non-prod / test)
+# Optional models/imports (graceful fallback)
 try:
     from app.models.campaign_goal import CampaignGoal  # type: ignore
 except Exception:  # pragma: no cover
@@ -73,7 +69,7 @@ try:
 except Exception:  # pragma: no cover
     Sponsor = None  # type: ignore
 
-# Local team config (single-source for team photos)
+# Local team config (single-source fallback)
 try:
     from app.config.team_config import TEAM_CONFIG  # type: ignore
 except Exception:  # pragma: no cover
@@ -81,7 +77,6 @@ except Exception:  # pragma: no cover
         "team_name": "Connect ATX Elite",
         "fundraising_goal": 10_000,
         "theme_color": "#f59e0b",
-        # Put photos in /static/images/teams/... and reference "images/teams/<file>"
         "teams": [],
     }
 
@@ -93,6 +88,7 @@ try:
         _generate_impact_stats,
         _generate_mission_section,
         _prepare_stats,
+        to_cents as _to_cents_lib,  # prefer shared helpers if present
     )
 except Exception:  # pragma: no cover
 
@@ -111,6 +107,7 @@ except Exception:  # pragma: no cover
     def _prepare_stats(cfg: Mapping[str, Any], raised: float, goal: float, pct: float) -> Dict[str, Any]:
         return {"raised": raised, "goal": goal, "percent": pct}
 
+    _to_cents_lib = None  # type: ignore
 
 # Forms fallback
 try:
@@ -137,7 +134,6 @@ PERSONAS_DEFAULT = ["Sponsor", "Parent", "Coach"]
 MIN_DONATION_CENTS = 100  # $1.00
 DEFAULT_CURRENCY = "usd"
 
-# Bump this any time you change index.html structure or ff-app contract expectations.
 DEFAULT_BUILD_ID = "flagship-v16.3"
 
 DEFAULT_TIERS: List[Dict[str, Any]] = [
@@ -170,7 +166,6 @@ DEFAULT_TIERS: List[Dict[str, Any]] = [
     },
 ]
 
-
 # ----------------------
 # Types
 # ----------------------
@@ -188,21 +183,44 @@ class FundraisingStats:
 # ----------------------
 # Core helpers
 # ----------------------
+def _cfg_str(*vals: Any, default: str = "") -> str:
+    for v in vals:
+        if v is None:
+            continue
+        s = str(v).strip()
+        if s:
+            return s
+    return default
+
+
 def _build_id() -> str:
-    return (
-        os.getenv("FF_BUILD_ID")
-        or os.getenv("ASSET_VERSION")
-        or os.getenv("GIT_COMMIT")
-        or DEFAULT_BUILD_ID
-    ).strip() or DEFAULT_BUILD_ID
+    # Prefer app/__init__.py aliases if present
+    return _cfg_str(
+        os.getenv("FF_BUILD_ID"),
+        os.getenv("BUILD_ID"),
+        os.getenv("ASSET_VERSION"),
+        os.getenv("GIT_COMMIT"),
+        current_app.config.get("FF_BUILD_ID") if current_app else "",
+        current_app.config.get("BUILD_ID") if current_app else "",
+        current_app.config.get("ASSET_VERSION") if current_app else "",
+        DEFAULT_BUILD_ID,
+    )
 
 
 def _asset_version() -> str:
-    return (os.getenv("ASSET_VERSION") or os.getenv("GIT_COMMIT") or _build_id()).strip()
+    return _cfg_str(
+        os.getenv("FF_ASSET_V"),
+        os.getenv("FF_ASSET_VERSION"),
+        os.getenv("ASSET_VERSION"),
+        current_app.config.get("FF_ASSET_V") if current_app else "",
+        current_app.config.get("FF_ASSET_VERSION") if current_app else "",
+        current_app.config.get("ASSET_VERSION") if current_app else "",
+        _build_id(),
+    )
 
 
 def _env_publishable_key() -> str:
-    return os.getenv("STRIPE_PUBLISHABLE_KEY") or os.getenv("STRIPE_PUBLIC_KEY") or ""
+    return _cfg_str(os.getenv("STRIPE_PUBLISHABLE_KEY"), os.getenv("STRIPE_PUBLIC_KEY"), default="")
 
 
 def safe_url(endpoint: str, default: str) -> str:
@@ -212,10 +230,23 @@ def safe_url(endpoint: str, default: str) -> str:
         return default
 
 
+def _is_html_response(resp: Response) -> bool:
+    try:
+        mt = (resp.mimetype or "").lower()
+    except Exception:
+        mt = ""
+    return mt.startswith("text/html")
+
+
 def _nocache_html(resp: Response) -> Response:
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
+    """
+    HTML is no-store (but we still support ETag/304).
+    Note: app/__init__.py applies authoritative static caching separately.
+    """
+    if _is_html_response(resp):
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
     return resp
 
 
@@ -225,8 +256,6 @@ def _short_etag(seed: str) -> str:
 
 def _stable_json_hash(obj: Any) -> str:
     try:
-        import json
-
         s = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         return hashlib.sha1(s).hexdigest()[:12]
     except Exception:
@@ -238,7 +267,7 @@ def _template_mtime(name: str) -> int:
         loader = current_app.jinja_loader
         if not loader:
             return 0
-        source, filename, uptodate = loader.get_source(current_app.jinja_env, name)
+        _src, filename, _uptodate = loader.get_source(current_app.jinja_env, name)
         if filename and os.path.exists(filename):
             return int(os.path.getmtime(filename))
     except Exception:
@@ -246,28 +275,15 @@ def _template_mtime(name: str) -> int:
     return 0
 
 
-def _ctx_etag(seed_dict: Mapping[str, Any]) -> str:
-    sponsors_len = 0
-    try:
-        sponsors_len = len(seed_dict.get("sponsors_sorted") or [])
-    except Exception:
-        sponsors_len = 0
-
-    seed = "|".join(
-        [
-            str(int(seed_dict.get("raised", 0) or 0)),
-            str(int(seed_dict.get("goal", 0) or 0)),
-            str(int(float(seed_dict.get("percent", 0) or 0))),
-            str(int(sponsors_len)),
-            str(seed_dict.get("build_id") or ""),
-            str(seed_dict.get("ff_cfg_hash") or ""),
-            str(int(seed_dict.get("tpl_mtime") or 0)),
-        ]
-    )
-    return _short_etag(seed)
-
-
 def _to_cents(amount: Any) -> int:
+    """
+    Prefer app.helpers.to_cents if available; otherwise a local safe conversion.
+    """
+    if callable(_to_cents_lib):
+        try:
+            return int(_to_cents_lib(amount))
+        except Exception:
+            pass
     try:
         if isinstance(amount, Decimal):
             return int((amount * 100).to_integral_value())
@@ -299,39 +315,6 @@ def _render_error(message: str, status: int = 500):
         return render_template("error.html", message=message), status
     except Exception:
         return message, status
-        
-
-def _ff_json_dumps(obj) -> str:
-    """Stable JSON for embedding inside <script type=application/json>."""
-    import json
-    from decimal import Decimal
-    from datetime import datetime
-
-    def _clean(v):
-        if isinstance(v, Decimal):
-            return float(v)
-        if isinstance(v, datetime):
-            return v.isoformat()
-        if isinstance(v, dict):
-            return {k: _clean(x) for k, x in v.items() if x is not None}
-        if isinstance(v, (list, tuple)):
-            return [_clean(x) for x in v if x is not None]
-        return v
-
-    return json.dumps(_clean(obj), ensure_ascii=False, separators=(",", ":"))
-
-    def _clean(v):
-        if isinstance(v, Decimal):
-            return float(v)
-        if isinstance(v, datetime):
-            return v.isoformat()
-        if isinstance(v, dict):
-            return {k: _clean(x) for k, x in v.items() if x is not None}
-        if isinstance(v, (list, tuple)):
-            return [_clean(x) for x in v if x is not None]
-        return v
-
-    return json.dumps(_clean(obj), ensure_ascii=False, separators=(",", ":"))
 
 
 def _template_exists(name: str) -> bool:
@@ -360,21 +343,15 @@ def _wrap_document(title: str, body_html: str) -> str:
 
 def _asset_url(raw: str) -> str:
     """
-    Normalize asset URLs. Supports:
-      - absolute https://...
-      - absolute /static/...
-      - relative "images/teams/x.jpg" (resolved via url_for('static', filename=...))
-    Adds cache-bust query (?v=...) to mitigate CDN staleness for /static/.
+    Normalize asset URLs and add ?v= to /static/* (only if not already present).
     """
     s = (raw or "").strip()
     if not s:
         return ""
 
-    # absolute URL
     if "://" in s or s.startswith("//"):
         return s
 
-    # absolute path
     if s.startswith("/"):
         out = s
     else:
@@ -384,26 +361,135 @@ def _asset_url(raw: str) -> str:
             out = f"/static/{s.lstrip('/')}"
 
     v = _asset_version()
-    if v and out.startswith("/static/"):
+    if v and out.startswith("/static/") and ("v=" not in out):
         joiner = "&" if "?" in out else "?"
         out = f"{out}{joiner}v={v}"
     return out
 
 
-def _normalize_team_config(cfg: Mapping[str, Any]) -> Dict[str, Any]:
-    """
-    Ensures expected keys exist and normalizes teams/photos/logo.
-    """
-    team_name = str(cfg.get("team_name") or cfg.get("teamName") or "Our Team").strip()
-    theme_color = str(cfg.get("theme_color") or cfg.get("themeColor") or "#0ea5e9").strip()
-    fundraising_goal = cfg.get("fundraising_goal") or cfg.get("goal") or DEFAULT_FUNDRAISING_GOAL
+# ----------------------
+# DB-first Teams (optional)
+# ----------------------
+_DB_TEAMS_CACHE: Dict[str, Any] = {"ts": 0.0, "teams": None, "gallery": None}
 
+
+def _db_path_appdb() -> str:
+    return os.path.join(current_app.root_path, "data", "app.db")
+
+
+def _db_teams_enabled() -> bool:
+    """
+    DB-first teams can be disabled if you want a pure-config deployment:
+      FF_DB_TEAMS=0
+    """
+    v = (os.getenv("FF_DB_TEAMS") or "").strip().lower()
+    if v in {"0", "false", "no", "off"}:
+        return False
+    return True
+
+
+def _load_db_teams_cached(ttl_seconds: int = 10) -> Tuple[Optional[List[Dict[str, Any]]], Optional[List[Dict[str, Any]]]]:
+    if not _db_teams_enabled():
+        return None, None
+
+    now = time.time()
+    ts = float(_DB_TEAMS_CACHE.get("ts") or 0.0)
+    if (now - ts) < ttl_seconds:
+        return _DB_TEAMS_CACHE.get("teams"), _DB_TEAMS_CACHE.get("gallery")
+
+    teams: Optional[List[Dict[str, Any]]] = None
+    gallery: Optional[List[Dict[str, Any]]] = None
+
+    try:
+        import sqlite3
+
+        db_path = _db_path_appdb()
+        if not os.path.exists(db_path):
+            raise FileNotFoundError(db_path)
+
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT slug, team_name, hero_image, og_image, record
+            FROM teams
+            WHERE deleted = 0
+            ORDER BY id ASC
+            """
+        ).fetchall()
+        conn.close()
+
+        if rows:
+            teams = []
+            gallery = []
+            for i, r in enumerate(rows):
+                slug = (r["slug"] or "").strip()
+                name = (r["team_name"] or slug or "Team").strip()
+
+                img = (r["hero_image"] or r["og_image"] or "").strip()
+                img = img or "/static/images/teams/default.webp"
+                img = _asset_url(img)
+
+                rec: Dict[str, Any] = {}
+                raw = r["record"]
+                if raw:
+                    try:
+                        rec = json.loads(raw) if isinstance(raw, str) else (raw or {})
+                    except Exception:
+                        rec = {}
+
+                featured = bool(rec.get("featured", i < 3))
+                tag = (rec.get("tag") or (slug.split("-")[0] if slug else "teams")).lower()
+
+                team_obj = {
+                    "id": slug or f"t{i+1}",
+                    "name": name,
+                    "featured": featured,
+                    "photo": img,
+                    # compatibility keys
+                    "src": img,
+                    "thumb": img,
+                    "tag": tag,
+                    "tags": rec.get("tags", []) if isinstance(rec.get("tags", []), list) else [],
+                    "sort": rec.get("sort", (i + 1) * 10),
+                    "meta": rec.get("meta", ""),
+                }
+                teams.append(team_obj)
+
+                gallery.append(
+                    {
+                        "id": f"team-{team_obj['id']}",
+                        "caption": name,
+                        "alt": f"{name} photo",
+                        "featured": featured,
+                        "src": img,
+                        "thumb": img,
+                        "tag": tag,
+                    }
+                )
+
+    except Exception as e:
+        try:
+            current_app.logger.debug("[teams] DB-first not available: %s", e)
+        except Exception:
+            pass
+        teams, gallery = None, None
+
+    _DB_TEAMS_CACHE["ts"] = now
+    _DB_TEAMS_CACHE["teams"] = teams
+    _DB_TEAMS_CACHE["gallery"] = gallery
+    return teams, gallery
+
+
+def _normalize_team_config(cfg: Mapping[str, Any]) -> Dict[str, Any]:
+    team_name = _cfg_str(cfg.get("team_name"), cfg.get("teamName"), default="Our Team")
+    theme_color = _cfg_str(cfg.get("theme_color"), cfg.get("themeColor"), default="#0ea5e9")
+    fundraising_goal = cfg.get("fundraising_goal") or cfg.get("goal") or DEFAULT_FUNDRAISING_GOAL
     try:
         fundraising_goal = float(fundraising_goal)
     except Exception:
         fundraising_goal = float(DEFAULT_FUNDRAISING_GOAL)
 
-    # ✅ Normalize org logo into a single canonical key: logo_url
     logo_raw = (
         cfg.get("logo_url")
         or cfg.get("logoUrl")
@@ -412,120 +498,97 @@ def _normalize_team_config(cfg: Mapping[str, Any]) -> Dict[str, Any]:
         or cfg.get("logo")
         or ""
     )
-    logo_url = _asset_url(str(logo_raw)) or _asset_url("images/logo.webp")
+    logo_url = _asset_url(_cfg_str(logo_raw)) or _asset_url("images/logo.webp")
 
     teams_in = cfg.get("teams") if isinstance(cfg.get("teams"), list) else []
     teams_out: List[Dict[str, Any]] = []
-
     for i, t in enumerate(teams_in):
         if not isinstance(t, dict):
             continue
-        tid = str(t.get("id") or f"t{i+1}").strip()
-        name = str(t.get("name") or t.get("team_name") or "Team").strip()
-        photo = _asset_url(str(t.get("photo") or t.get("image") or t.get("src") or "").strip())
+        tid = _cfg_str(t.get("id"), default=f"t{i+1}")
+        name = _cfg_str(t.get("name"), t.get("team_name"), default="Team")
+        photo = _asset_url(_cfg_str(t.get("photo"), t.get("image"), t.get("src"), default=""))
         featured = bool(t.get("featured") or False)
         tags = t.get("tags") if isinstance(t.get("tags"), list) else []
-        teams_out.append(
-            {
-                "id": tid,
-                "name": name,
-                "photo": photo,
-                "featured": featured,
-                "tags": tags,
-            }
-        )
+        teams_out.append({"id": tid, "name": name, "photo": photo, "featured": featured, "tags": tags})
 
-    # Normalize gallery items if provided; else derive from teams.
     gallery_in = cfg.get("gallery_items") if isinstance(cfg.get("gallery_items"), list) else []
     gallery_out: List[Dict[str, Any]] = []
-
     if gallery_in:
         for i, gi in enumerate(gallery_in):
             if not isinstance(gi, dict):
                 continue
-            src = _asset_url(str(gi.get("src") or gi.get("photo") or "").strip())
+            src = _asset_url(_cfg_str(gi.get("src"), gi.get("photo"), default=""))
             if not src:
                 continue
-            gid = str(gi.get("id") or f"g{i+1}").strip()
-            caption = str(gi.get("caption") or "").strip()
-            alt = str(gi.get("alt") or caption or "Team photo").strip()
-            tag = str(gi.get("tag") or "teams").strip()
+            gid = _cfg_str(gi.get("id"), default=f"g{i+1}")
+            caption = _cfg_str(gi.get("caption"), default="")
+            alt = _cfg_str(gi.get("alt"), default=(caption or "Team photo"))
+            tag = _cfg_str(gi.get("tag"), default="teams")
             featured = bool(gi.get("featured") or False)
-            gallery_out.append(
-                {
-                    "id": gid,
-                    "src": src,
-                    "thumb": _asset_url(str(gi.get("thumb") or src).strip()) or src,
-                    "alt": alt,
-                    "caption": caption,
-                    "tag": tag,
-                    "featured": featured,
-                }
-            )
+            thumb = _asset_url(_cfg_str(gi.get("thumb"), default=src)) or src
+            gallery_out.append({"id": gid, "src": src, "thumb": thumb, "alt": alt, "caption": caption, "tag": tag, "featured": featured})
     else:
         seen: Set[str] = set()
         for t in teams_out:
-            src = str(t.get("photo") or "").strip()
+            src = _cfg_str(t.get("photo"), default="")
             if not src or src in seen:
                 continue
             seen.add(src)
-            name = str(t.get("name") or "Team").strip()
-            tid = str(t.get("id") or "").strip() or f"t{len(gallery_out)+1}"
-            first = name.split()[0].lower() if name.split() else "teams"
-            tag = first if first.endswith(("st", "nd", "rd", "th")) else "teams"
-            gallery_out.append(
-                {
-                    "id": f"team-{tid}",
-                    "src": src,
-                    "thumb": src,
-                    "alt": f"{name} photo",
-                    "caption": name,
-                    "tag": tag,
-                    "featured": bool(t.get("featured")),
-                }
-            )
+            name = _cfg_str(t.get("name"), default="Team")
+            tid = _cfg_str(t.get("id"), default=f"t{len(gallery_out)+1}")
+            gallery_out.append({"id": f"team-{tid}", "src": src, "thumb": src, "alt": f"{name} photo", "caption": name, "tag": "teams", "featured": bool(t.get("featured"))})
 
     out = dict(cfg)
-    out.setdefault("team_name", team_name)
-    out.setdefault("theme_color", theme_color)
+    out["team_name"] = team_name
+    out["theme_color"] = theme_color
     out["fundraising_goal"] = fundraising_goal
-
-    # ✅ Canonicalized logo fields (template + JS compatibility)
     out["logo_url"] = logo_url
+    # back-compat keys
     out["team_logo"] = logo_url
     out["logo"] = logo_url
     out["logoUrl"] = logo_url
-
     out["teams"] = teams_out
     out["gallery_items"] = gallery_out
     return out
 
 
-def _team_cfg() -> Mapping[str, Any]:
+def _team_cfg() -> Dict[str, Any]:
     """
-    Single source of truth for "current team config".
-    Supports g.team overrides (multi-tenant / per-org overrides later).
+    Single source of truth for team config:
+    - base from g.team override OR TEAM_CONFIG
+    - normalized
+    - DB-first teams override (if present)
     """
     base = getattr(g, "team", None) or TEAM_CONFIG or {}
     if not isinstance(base, Mapping):
         base = {}
-    return cast(Mapping[str, Any], _normalize_team_config(cast(Mapping[str, Any], base)))
+    cfg = _normalize_team_config(cast(Mapping[str, Any], base))
+
+    db_teams, db_gallery = _load_db_teams_cached()
+    if db_teams:
+        cfg["teams"] = db_teams
+        cfg["gallery_items"] = db_gallery or []
+
+    return cfg
 
 
 # ----------------------
-# Async email
+# Email helpers
 # ----------------------
 def _send_email_in_app(app, msg: Message) -> None:
     with app.app_context():
         try:
-            mail.send(msg)
-            current_app.logger.info("Email sent", extra={"recipients": msg.recipients})
+            if mail:
+                mail.send(msg)
         except Exception:
             current_app.logger.exception("Email send failed", extra={"recipients": getattr(msg, "recipients", None)})
 
 
 def _queue_email(msg: Message) -> None:
     try:
+        if not mail:
+            return
         app = current_app._get_current_object()
         Thread(target=_send_email_in_app, args=(app, msg), daemon=True).start()
     except Exception:
@@ -548,7 +611,7 @@ def _create_thank_you_msg(name: str, email: str) -> Message:
 
 
 # ----------------------
-# DB helpers
+# DB helpers (sponsors / goal)
 # ----------------------
 @lru_cache(maxsize=64)
 def _has_table_cached(table_name: str) -> bool:
@@ -589,7 +652,6 @@ def _get_sponsors() -> Tuple[List[Any], float, Optional[Any]]:
         q = _sponsor_query()
         if q is None:
             return [], 0.0, None
-
         sponsors: List[Any] = q.all()
         total = float(sum((getattr(s, "amount", 0) or 0) for s in sponsors))
         top = sponsors[0] if sponsors else None
@@ -603,7 +665,6 @@ def _active_goal_amount() -> float:
     try:
         if CampaignGoal and _table_exists(getattr(CampaignGoal, "__tablename__", "campaign_goals")):
             q = db.session.query(CampaignGoal)
-
             if hasattr(CampaignGoal, "active"):
                 q = q.filter(CampaignGoal.active.is_(True))
             elif hasattr(CampaignGoal, "is_active"):
@@ -678,7 +739,7 @@ def _build_ff_config(context: Mapping[str, Any]) -> Dict[str, Any]:
             "programMeta": cfg.get("program_meta") or "Youth Program • Community Fundraiser",
             "seasonLabel": cfg.get("season_label") or "",
             "logoUrl": cfg.get("logo_url") or "",
-            "initials": cfg.get("initials") or "FC",
+            "initials": cfg.get("initials") or "FF",
             "themeColor": cfg.get("theme_color") or "#0ea5e9",
         },
         "campaign": {
@@ -694,19 +755,14 @@ def _build_ff_config(context: Mapping[str, Any]) -> Dict[str, Any]:
             "stripePublishableKey": _env_publishable_key(),
             "paypalClientId": os.getenv("PAYPAL_CLIENT_ID", ""),
         },
-        "checkout": {
-            "endpoint": "/api/checkout/session",
-            "method": "POST",
-        },
         "ui": {
             "personas": PERSONAS_DEFAULT,
             "assetVersion": _asset_version(),
             "buildId": _build_id(),
         },
-        # ✅ Teams + gallery for frontend
         "teams": teams,
         "galleryItems": gallery_items,
-        # ✅ Back-compat keys (harmless if unused)
+        # back-compat keys
         "gallery_items": gallery_items,
         "theme_color": cfg.get("theme_color") or "#0ea5e9",
         "org": {
@@ -715,6 +771,66 @@ def _build_ff_config(context: Mapping[str, Any]) -> Dict[str, Any]:
             "logo": cfg.get("logo_url") or "",
         },
     }
+
+
+def _ctx_etag(seed: Mapping[str, Any]) -> str:
+    sponsors_len = 0
+    try:
+        sponsors_len = int(seed.get("sponsors_count") or 0)
+    except Exception:
+        sponsors_len = 0
+
+    payload = "|".join(
+        [
+            str(int(float(seed.get("raised") or 0))),
+            str(int(float(seed.get("goal") or 0))),
+            str(int(float(seed.get("percent") or 0))),
+            str(int(sponsors_len)),
+            str(seed.get("build_id") or ""),
+            str(seed.get("ff_cfg_hash") or ""),
+            str(int(seed.get("tpl_mtime") or 0)),
+            str(seed.get("ff_data_mode") or ""),
+            str(bool(seed.get("smoke") or False)),
+        ]
+    )
+    return _short_etag(payload)
+
+
+def _ensure_jsonld_json(context: Dict[str, Any]) -> None:
+    """
+    Ensure context["jsonld_json"] is always a JSON string.
+    """
+    if "jsonld_json" in context:
+        return
+    context["jsonld_json"] = "{}"
+
+    try:
+        from jinja2.runtime import Undefined as _JinjaUndefined  # type: ignore
+
+        def _clean(v):
+            if isinstance(v, _JinjaUndefined):
+                return None
+            if isinstance(v, dict):
+                out = {}
+                for k, vv in v.items():
+                    cv = _clean(vv)
+                    if cv is not None:
+                        out[k] = cv
+                return out
+            if isinstance(v, (list, tuple)):
+                out = []
+                for vv in v:
+                    cv = _clean(vv)
+                    if cv is not None:
+                        out.append(cv)
+                return out
+            return v
+
+        obj = context.get("jsonld_obj")
+        if isinstance(obj, dict):
+            context["jsonld_json"] = json.dumps(_clean(obj) or {}, ensure_ascii=False)
+    except Exception:
+        pass
 
 
 # ----------------------
@@ -737,457 +853,116 @@ def _home_context() -> Dict[str, Any]:
     pct_val = float(stats.percent_raised or 0.0)
     pct_int = int(round(pct_val)) if pct_val >= 0 else 0
 
-    org_name = str(cfg.get("team_name", "Our Team"))
-    org_location = str(cfg.get("location") or "")
-    org_logo = str(cfg.get("logo_url") or "") or _asset_url("images/logo.webp")
-    theme_color = str(cfg.get("theme_color") or "#f97316")
+    org_name = _cfg_str(cfg.get("team_name"), default="Our Team")
+    org_location = _cfg_str(cfg.get("location"), default="")
+    org_logo = _cfg_str(cfg.get("logo_url"), default="") or _asset_url("images/logo.webp")
+    theme_color = _cfg_str(cfg.get("theme_color"), default="#f97316")
+
+    # mode/smoke are injected by app/__init__.py (context_processor), but for ETag stability in dev
+    ff_data_mode = _cfg_str(request.args.get("mode"), default="")
+    smoke = (request.args.get("smoke") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
 
     ctx: Dict[str, Any] = dict(
         team=cfg,
-
-        # ✅ direct template consumption (index.html)
         org_name=org_name,
         org_location=org_location,
         org_logo=org_logo,
         theme_color=theme_color,
-
-        # ✅ Make teams and gallery available to template
         teams=cfg.get("teams", []),
         gallery_items=cfg.get("gallery_items", []),
-
         about=_generate_about_section(cfg),
         challenge=_generate_challenge_section(cfg, impact),
         mission=_generate_mission_section(cfg, impact),
         stats=_prepare_stats(cfg, stats.raised, stats.goal or 0.0, stats.percent_raised),
-
         raised=raised_val,
         goal=goal_val,
         percent=pct_val,
-
         sponsors_total=sponsors_total,
         sponsors_sorted=sponsors_sorted,
         sponsor=top_sponsor,
-
         form=SponsorForm() if SponsorForm else None,
         stripe_pk=_env_publishable_key(),
         paypal_client_id=os.getenv("PAYPAL_CLIENT_ID", ""),
-
         sponsor_list_href=sponsor_list_href,
         become_sponsor_href=become_sponsor_href,
         donate_href=donate_href,
         stats_url=stats_api_href,
-
-        BRAND_NAME=cfg.get("brand_name", "FundChamps"),
-        BRAND_TAG=cfg.get("brand_tag", "White-Label"),
-
+        BRAND_NAME=_cfg_str(cfg.get("brand_name"), default="FutureFunded"),
+        BRAND_TAG=_cfg_str(cfg.get("brand_tag"), default="Flagship"),
         TEAM_NAME=org_name,
         TEAM_LOGO=org_logo,
         PLATFORM_LOGO=cfg.get("platform_logo") or url_for("static", filename="images/fundchamps-logo.svg"),
-
         RAISED=raised_val,
         GOAL=goal_val,
         PCT=pct_int,
-
         DONATE_URL=donate_href,
         SPONSOR_URL=become_sponsor_href,
-
         features={"digital_hub_enabled": True},
         personas=PERSONAS_DEFAULT,
+        ff_data_mode=ff_data_mode,
+        smoke=bool(smoke),
     )
 
     ctx["build_id"] = _build_id()
+    ctx["asset_version"] = _asset_version()
+    ctx["tpl_mtime"] = _template_mtime("index.html")
+
+    # Build ff_config as dict; template should tojson it exactly once.
     ctx["ff_config"] = json_sanitize(_build_ff_config(ctx))
     ctx["ff_cfg_hash"] = _stable_json_hash(ctx["ff_config"])
-    ctx["tpl_mtime"] = _template_mtime("index.html")
+
+    try:
+        ctx["teams_count"] = len(ctx.get("teams") or [])
+        ctx["gallery_count"] = len(ctx.get("gallery_items") or [])
+    except Exception:
+        ctx["teams_count"] = 0
+        ctx["gallery_count"] = 0
+
+    _ensure_jsonld_json(ctx)
     return ctx
 
 
-def _etag_seed_for_home(ctx: Mapping[str, Any]) -> Dict[str, Any]:
-    return {
-        "raised": ctx.get("raised", 0),
-        "goal": ctx.get("goal", 0),
-        "percent": ctx.get("percent", 0),
-        "sponsors_sorted": ctx.get("sponsors_sorted", []),
-        "build_id": ctx.get("build_id", ""),
-        "ff_cfg_hash": ctx.get("ff_cfg_hash", ""),
-        "tpl_mtime": ctx.get("tpl_mtime", 0),
-    }
-def _ensure_jsonld_json(context: dict) -> None:
-    """
-    Ensure context["jsonld_json"] is always a JSON string (never Undefined).
-    Keeps templates stable when jsonld_obj contains Jinja Undefined values.
-    """
-    if "jsonld_json" in context:
-        return
-
-    context["jsonld_json"] = "{}"
-    try:
-        import json as _json
-        try:
-            from jinja2.runtime import Undefined as _JinjaUndefined  # type: ignore
-        except Exception:
-            _JinjaUndefined = ()  # type: ignore
-
-        def _clean(v):
-            if _JinjaUndefined and isinstance(v, _JinjaUndefined):  # type: ignore[arg-type]
-                return None
-            if isinstance(v, dict):
-                out = {}
-                for k, vv in v.items():
-                    cv = _clean(vv)
-                    if cv is not None:
-                        out[k] = cv
-                return out
-            if isinstance(v, (list, tuple)):
-                out = []
-                for vv in v:
-                    cv = _clean(vv)
-                    if cv is not None:
-                        out.append(cv)
-                return out
-            return v
-
-        obj = context.get("jsonld_obj")
-        if isinstance(obj, dict):
-            context["jsonld_json"] = _json.dumps(_clean(obj) or {}, ensure_ascii=False)
-    except Exception:
-        pass
-
-
-def _normalize_teams(cfg: dict) -> tuple[list, list, str]:
-    """
-    Normalize cfg into (teams:list, gallery_items:list, logo_url:str).
-    Handles teams being a dict wrapper like {"enabled":..., "items":[...]}.
-    """
-    teams = cfg.get("teams") or []
-    gallery_items = cfg.get("gallery_items") or []
-    logo_url = cfg.get("logo_url") or ""
-
-    # teams could be {"enabled": True, "items": [...]}
-    if isinstance(teams, dict):
-        teams = teams.get("items") or teams.get("teams") or []
-
-    if isinstance(gallery_items, dict):
-        gallery_items = gallery_items.get("items") or []
-
-    if not isinstance(teams, list):
-        teams = []
-    if not isinstance(gallery_items, list):
-        gallery_items = []
-    if not isinstance(logo_url, str):
-        logo_url = str(logo_url or "")
-
-    return teams, gallery_items, logo_url
-
-
-def _make_gallery_from_teams(teams: list) -> list:
-    """
-    If gallery_items isn't configured, derive it from teams (best-effort).
-    """
-    out = []
-    for i, t in enumerate(teams or []):
-        if not isinstance(t, dict):
-            continue
-        tid = str(t.get("id") or t.get("slug") or f"team-{i}")
-        name = str(t.get("name") or t.get("title") or tid)
-        src = str(t.get("src") or t.get("image") or t.get("thumb") or "/static/images/teams/default.webp")
-        featured = bool(t.get("featured", i < 3))
-        tag = str(t.get("tag") or (tid.split("-")[0] if "-" in tid else tid)).lower()
-
-        out.append(
-            {
-                "id": f"team-{tid}",
-                "caption": name,
-                "alt": f"{name} photo",
-                "featured": featured,
-                "src": src,
-                "thumb": src,
-                "tag": tag,
-            }
-        )
-    return out
-
 # ----------------------
-# DB-first Teams Helpers (TURNKEY)
-# ----------------------
-def _db_path_appdb():
-    from pathlib import Path
-    from flask import current_app
-    return Path(current_app.root_path) / "data" / "app.db"
-
-
-def _load_db_teams():
-    """
-    Returns (teams, gallery_items) if DB has non-deleted teams, else (None, None).
-    Safe if DB/table missing.
-    """
-    try:
-        import sqlite3, json
-        from flask import current_app
-
-        db_path = _db_path_appdb()
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-
-        rows = conn.execute(
-            """
-            SELECT slug, team_name, hero_image, og_image, record
-            FROM teams
-            WHERE deleted = 0
-            ORDER BY id ASC
-            """
-        ).fetchall()
-        conn.close()
-
-        if not rows:
-            return None, None
-
-        teams = []
-        gallery_items = []
-
-        for i, r in enumerate(rows):
-            slug = (r["slug"] or "").strip()
-            name = (r["team_name"] or slug or "Team").strip()
-
-            img = (r["hero_image"] or r["og_image"] or "").strip()
-            if not img:
-                img = "/static/images/teams/default.webp"
-
-            rec = {}
-            raw = r["record"]
-            if raw:
-                try:
-                    rec = json.loads(raw) if isinstance(raw, str) else (raw or {})
-                except Exception:
-                    rec = {}
-
-            featured = bool(rec.get("featured", i < 3))
-            tag = (rec.get("tag") or slug.split("-")[0]).lower()
-
-            # Keep compatibility with your existing front-end shape
-            team_obj = {
-                "id": slug,            # IMPORTANT: use DB slug as canonical id
-                "name": name,
-                "featured": featured,
-                "photo": img,
-                "src": img,            # extra compatibility if UI uses src/thumb
-                "thumb": img,
-                "tag": tag,
-                "tags": rec.get("tags", []) if isinstance(rec.get("tags", []), list) else [],
-            }
-            teams.append(team_obj)
-
-            gallery_items.append(
-                {
-                    "id": f"team-{slug}",
-                    "caption": name,
-                    "alt": f"{name} photo",
-                    "featured": featured,
-                    "src": img,
-                    "thumb": img,
-                    "tag": tag,
-                }
-            )
-
-        try:
-            current_app.logger.info("[teams] DB-first active: %s", [t["id"] for t in teams])
-        except Exception:
-            pass
-
-        return teams, gallery_items
-
-    except Exception as e:
-        try:
-            from flask import current_app
-            current_app.logger.warning("[teams] DB-first failed: %s", e)
-        except Exception:
-            pass
-        return None, None
-
-
-def _apply_db_teams_override(cfg: dict, context: dict | None = None):
-    """
-    Mutates cfg and/or context in-place if DB teams exist.
-    - cfg['teams'], cfg['gallery_items']
-    - context['teams'], context['gallery_items']
-    """
-    teams, gallery_items = _load_db_teams()
-    if not teams:
-        return
-
-    cfg["teams"] = teams
-    cfg["gallery_items"] = gallery_items
-
-    if context is not None:
-        context["teams"] = teams
-        context["gallery_items"] = gallery_items
-
-
-# ----------------------
-# Routes (TURNKEY DROP-IN)
+# Routes
 # ----------------------
 @bp.get("/")
 def home():
     try:
-        faqs = [
-            {"q": "Is my gift tax-deductible?", "a": "Yes. We’ll email a receipt right away."},
-            {"q": "Can I sponsor anonymously?", "a": "Yes—toggle anonymous at checkout."},
-            {"q": "Corporate matching?", "a": "Yes. We’ll include the info HR portals need."},
-            {"q": "Refunds/cancellations?", "a": "Email support and we’ll help."},
-            {"q": "Where does it go?", "a": "Program costs, travel, uniforms—updated live."},
-        ]
-
         context = _home_context()
-        context["faqs"] = faqs
 
-        # ✅ DB-first teams: pull from /teams.json logic by calling _team_cfg() + DB override once
-        # If you prefer, you can call teams_debug() internals; here we inline minimal approach:
+        etag = _ctx_etag(
+            {
+                "raised": context.get("raised", 0),
+                "goal": context.get("goal", 0),
+                "percent": context.get("percent", 0),
+                "sponsors_count": len(context.get("sponsors_sorted") or []),
+                "build_id": context.get("build_id", ""),
+                "ff_cfg_hash": context.get("ff_cfg_hash", ""),
+                "tpl_mtime": context.get("tpl_mtime", 0),
+                "ff_data_mode": context.get("ff_data_mode", ""),
+                "smoke": context.get("smoke", False),
+            }
+        )
+
+        # Robust ETag check
         try:
-            # Reuse the same DB override behavior as /teams.json by simply calling it and reading cfg again
-            # (lowest risk: single source)
-            cfg = _team_cfg()
-            context["team"] = cfg  # if templates use it
-
-            # Option A: if your _home_context already sets teams/gallery_items, keep them
-            # Option B (safer): fetch DB-first from local endpoint logic (no HTTP):
-            # We'll copy the same DB-first block used above:
-            import sqlite3, json
-            from pathlib import Path
-
-            db_path = Path(current_app.root_path) / "data" / "app.db"
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                """
-                SELECT slug, team_name, hero_image, og_image, record
-                FROM teams
-                WHERE deleted = 0
-                ORDER BY id ASC
-                """
-            ).fetchall()
-            conn.close()
-
-            if rows:
-                teams = []
-                gallery_items = []
-                for i, r in enumerate(rows):
-                    slug = r["slug"]
-                    name = r["team_name"]
-                    img = r["hero_image"] or r["og_image"] or "/static/images/teams/default.webp"
-
-                    rec = {}
-                    if r["record"]:
-                        try:
-                            rec = json.loads(r["record"]) if isinstance(r["record"], str) else (r["record"] or {})
-                        except Exception:
-                            rec = {}
-
-                    featured = bool(rec.get("featured", i < 3))
-                    tag = (rec.get("tag") or slug.split("-")[0]).lower()
-
-                    teams.append(
-                        {
-                            "id": slug,
-                            "name": name,
-                            "featured": featured,
-                            "photo": img,
-                            "src": img,
-                            "thumb": img,
-                            "tag": tag,
-                            "tags": rec.get("tags") or ([] if not tag else [tag]),
-                            "sort": rec.get("sort", (i + 1) * 10),
-                            "meta": rec.get("meta", ""),
-                            "goal": rec.get("goal"),
-                            "raised": rec.get("raised"),
-                            "ask": rec.get("ask"),
-                        }
-                    )
-
-                    gallery_items.append(
-                        {
-                            "id": f"team-{slug}",
-                            "caption": name,
-                            "alt": f"{name} photo",
-                            "featured": featured,
-                            "src": img,
-                            "thumb": img,
-                            "tag": tag,
-                        }
-                    )
-
-                context["teams"] = teams
-                context["gallery_items"] = gallery_items
-
-        except Exception as e:
-            current_app.logger.warning("[home] DB teams override failed: %s", e)
-
-        # ✅ Build ffConfig ONCE, from context
-        ff_config = {
-            "org": {
-                "name": (context.get("team_name") or context.get("org_name") or ""),
-                "meta": (context.get("org_meta") or ""),
-                "heroAccentLine": (context.get("hero_accent_line") or ""),
-                "footerTagline": (context.get("footer_tagline") or ""),
-            },
-            "fundraiser": {
-                "goalAmount": context.get("fundraising_goal"),
-                "raisedAmount": context.get("raised_amount"),
-                "deadlineISO": context.get("deadline_iso"),
-            },
-            "teams": context.get("teams") or [],
-            "gallery": {
-                "enabled": True,
-                "items": context.get("gallery_items") or [],
-            },
-            "sponsors": context.get("sponsors") or {},
-            "flagship": {
-                "version": str(context.get("turnkey_version") or context.get("TURNKEY") or "15.0.0"),
-                "build": str(context.get("build_id") or _build_id()),
-            },
-        }
-        context["ff_config_json"] = _ff_json_dumps(ff_config)
-
-        # ✅ Now compute ETag AFTER we’ve finalized the context
-        etag = _ctx_etag(_etag_seed_for_home(context))
-
-        if request.if_none_match and etag in request.if_none_match:
-            resp = make_response("", 304)
-            resp.set_etag(etag)
-            _nocache_html(resp)
-            return resp
-
-        # JSON-LD stabilization (keep your existing logic)
-        if "jsonld_json" not in context:
-            context["jsonld_json"] = "{}"
-            try:
-                import json as _json
-                from jinja2.runtime import Undefined as _JinjaUndefined
-
-                def _ff__clean(v):
-                    if isinstance(v, _JinjaUndefined):
-                        return None
-                    if isinstance(v, dict):
-                        return {k: _ff__clean(x) for k, x in v.items() if _ff__clean(x) is not None}
-                    if isinstance(v, (list, tuple)):
-                        return [x for x in (_ff__clean(i) for i in v) if x is not None]
-                    return v
-
-                _obj = context.get("jsonld_obj")
-                if isinstance(_obj, dict):
-                    context["jsonld_json"] = _json.dumps(_ff__clean(_obj) or {}, ensure_ascii=False)
-            except Exception:
-                pass
+            if request.if_none_match and request.if_none_match.contains(etag):
+                resp = make_response("", 304)
+                resp.set_etag(etag)
+                return _nocache_html(resp)
+        except Exception:
+            if request.if_none_match and etag in request.if_none_match:
+                resp = make_response("", 304)
+                resp.set_etag(etag)
+                return _nocache_html(resp)
 
         resp = make_response(render_template("index.html", **context))
         resp.set_etag(etag)
-
         resp.headers["X-FF-Build"] = str(context.get("build_id") or "")
         resp.headers["X-FF-Cfg"] = str(context.get("ff_cfg_hash") or "")
-        resp.headers["X-FF-Teams"] = str(len(context.get("teams") or []))
-        resp.headers["X-FF-Gallery"] = str(len(context.get("gallery_items") or []))
-
-        _nocache_html(resp)
-        return resp
+        resp.headers["X-FF-Teams"] = str(context.get("teams_count") or 0)
+        resp.headers["X-FF-Gallery"] = str(context.get("gallery_count") or 0)
+        return _nocache_html(resp)
 
     except Exception:
         current_app.logger.exception("Error rendering homepage")
@@ -1196,99 +971,108 @@ def home():
 
 @bp.get("/teams.json")
 def teams_debug():
-    """
-    Contract used by ff-app.js and debug tooling.
-    DB-first teams override fallback cfg teams.
-    """
     cfg = _team_cfg()
-
     teams = list(cfg.get("teams") or [])
     gallery_items = list(cfg.get("gallery_items") or [])
     logo_url = cfg.get("logo_url") or ""
-
-    # --- DB-first teams (override fallback) -----------------------
-    try:
-        import sqlite3, json
-        from pathlib import Path
-
-        db_path = Path(current_app.root_path) / "data" / "app.db"
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-
-        rows = conn.execute(
-            """
-            SELECT slug, team_name, hero_image, og_image, record
-            FROM teams
-            WHERE deleted = 0
-            ORDER BY id ASC
-            """
-        ).fetchall()
-        conn.close()
-
-        if rows:
-            teams = []
-            gallery_items = []
-
-            for i, r in enumerate(rows):
-                slug = r["slug"]
-                name = r["team_name"]
-                img = r["hero_image"] or r["og_image"] or "/static/images/teams/default.webp"
-
-                rec = {}
-                if r["record"]:
-                    try:
-                        rec = json.loads(r["record"]) if isinstance(r["record"], str) else (r["record"] or {})
-                    except Exception:
-                        rec = {}
-
-                featured = bool(rec.get("featured", i < 3))
-                tag = (rec.get("tag") or slug.split("-")[0]).lower()
-
-                # ✅ include BOTH shapes (photo + src/thumb) for compatibility
-                teams.append(
-                    {
-                        "id": slug,
-                        "name": name,
-                        "featured": featured,
-                        "photo": img,
-                        "src": img,
-                        "thumb": img,
-                        "tag": tag,
-                        "tags": rec.get("tags") or ([] if not tag else [tag]),
-                        "sort": rec.get("sort", (i + 1) * 10),
-                    }
-                )
-
-                gallery_items.append(
-                    {
-                        "id": f"team-{slug}",
-                        "caption": name,
-                        "alt": f"{name} photo",
-                        "featured": featured,
-                        "src": img,
-                        "thumb": img,
-                        "tag": tag,
-                    }
-                )
-
-            current_app.logger.info("[teams.json] Using DB teams: %s", [t["id"] for t in teams])
-
-    except Exception as e:
-        current_app.logger.warning("[teams.json] DB teams override failed: %s", e)
-    # --------------------------------------------------------------
-
-    return jsonify(
+    resp = jsonify(
         {
             "ok": True,
             "build_id": _build_id(),
             "asset_version": _asset_version(),
-            "teams_count": len(teams or []),
-            "gallery_count": len(gallery_items or []),
+            "teams_count": len(teams),
+            "gallery_count": len(gallery_items),
             "logo_url": logo_url,
-            "teams": teams or [],
-            "gallery_items": gallery_items or [],
+            "teams": teams,
+            "gallery_items": gallery_items,
         }
     )
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
+
+
+@bp.get("/stats")
+def stats_json():
+    try:
+        cfg = _team_cfg()
+        s = _get_fundraising_stats()
+        sponsors_sorted, sponsors_total, _ = _get_sponsors()
+
+        payload = {
+            "team": cfg.get("team_name", "Our Team"),
+            "raised": int(s.raised),
+            "goal": int(s.goal or 0),
+            "percent": round(s.percent_raised, 1),
+            "sponsors_total": int(sponsors_total),
+            "sponsors_count": len(sponsors_sorted),
+            "raised_cents": _to_cents(s.raised),
+            "goal_cents": _to_cents(s.goal or 0),
+            "as_of": datetime.utcnow().isoformat() + "Z",
+        }
+
+        etag = _short_etag(json.dumps(payload, sort_keys=True, separators=(",", ":")))
+        try:
+            if request.if_none_match and request.if_none_match.contains(etag):
+                resp = make_response("", 304)
+                resp.set_etag(etag)
+                resp.cache_control.public = True
+                resp.cache_control.max_age = 30
+                return resp
+        except Exception:
+            if request.if_none_match and etag in request.if_none_match:
+                resp = make_response("", 304)
+                resp.set_etag(etag)
+                resp.cache_control.public = True
+                resp.cache_control.max_age = 30
+                return resp
+
+        resp = make_response(jsonify(payload))
+        resp.set_etag(etag)
+        resp.cache_control.public = True
+        resp.cache_control.max_age = 30
+        return resp
+
+    except Exception:
+        current_app.logger.exception("Stats endpoint failed")
+        cfg = _team_cfg()
+        fallback = {
+            "team": cfg.get("team_name", "Our Team"),
+            "raised": 0,
+            "goal": int(cfg.get("fundraising_goal", DEFAULT_FUNDRAISING_GOAL)),
+            "percent": 0.0,
+            "sponsors_total": 0,
+            "sponsors_count": 0,
+            "raised_cents": 0,
+            "goal_cents": _to_cents(cfg.get("fundraising_goal", DEFAULT_FUNDRAISING_GOAL)),
+            "as_of": datetime.utcnow().isoformat() + "Z",
+        }
+        resp = make_response(jsonify(fallback), 200)
+        resp.headers.setdefault("Cache-Control", "no-store")
+        return resp
+
+
+@bp.get("/sponsors")
+def sponsor_list():
+    page = request.args.get("page", 1, type=int)
+    sponsors: List[Any] = []
+    pagination = None
+
+    q = _sponsor_query()
+    if q is None:
+        return render_template("sponsor_list.html", sponsors=sponsors, pagination=pagination)
+
+    try:
+        try:
+            pagination = q.paginate(page=page, per_page=SPONSORS_PER_PAGE, error_out=False)  # type: ignore[attr-defined]
+            sponsors = list(pagination.items)  # type: ignore[assignment]
+        except Exception:
+            sponsors = q.limit(SPONSORS_PER_PAGE).offset((page - 1) * SPONSORS_PER_PAGE).all()
+            pagination = None
+    except Exception:
+        current_app.logger.exception("Error fetching sponsors list")
+        sponsors, pagination = [], None
+
+    return render_template("sponsor_list.html", sponsors=sponsors, pagination=pagination)
 
 
 @bp.route("/become-sponsor", methods=["GET", "POST"])
@@ -1299,11 +1083,11 @@ def become_sponsor():
         return redirect(url_for("main.home"))
 
     if form.validate_on_submit():
-        name = (getattr(form, "name", None) and form.name.data or "").strip() or None
-        email = ((getattr(form, "email", None) and (form.email.data or "")) or "").lower().strip() or None
+        name = (_cfg_str(getattr(form, "name", None).data) if hasattr(form, "name") else "").strip() or None  # type: ignore[attr-defined]
+        email = (_cfg_str(getattr(form, "email", None).data) if hasattr(form, "email") else "").lower().strip() or None  # type: ignore[attr-defined]
 
         try:
-            amt = Decimal(str(getattr(form, "amount", None) and form.amount.data or "0"))
+            amt = Decimal(str(getattr(form, "amount", None).data if hasattr(form, "amount") else "0"))  # type: ignore[attr-defined]
         except Exception:
             amt = Decimal("0")
 
@@ -1335,48 +1119,6 @@ def become_sponsor():
     return render_template("become_sponsor.html", form=form)
 
 
-@bp.get("/about")
-def about():
-    try:
-        cfg = _team_cfg()
-        context: Dict[str, Any] = dict(
-            team=cfg,
-            about=_generate_about_section(cfg),
-            mission=_generate_mission_section(cfg, _generate_impact_stats(cfg)),
-        )
-        resp = make_response(render_template("about.html", **context))
-        resp.set_etag(_short_etag(str(sorted(context.keys()))))
-        _nocache_html(resp)
-        return resp
-    except Exception:
-        current_app.logger.exception("Error rendering About page")
-        return _render_error("About page temporarily unavailable.", 500)
-
-
-@bp.get("/sponsors")
-def sponsor_list():
-    page = request.args.get("page", 1, type=int)
-    sponsors: List[Any] = []
-    pagination = None
-
-    q = _sponsor_query()
-    if q is None:
-        return render_template("sponsor_list.html", sponsors=sponsors, pagination=pagination)
-
-    try:
-        try:
-            pagination = q.paginate(page=page, per_page=SPONSORS_PER_PAGE, error_out=False)  # type: ignore[attr-defined]
-            sponsors = list(pagination.items)  # type: ignore[assignment]
-        except Exception:
-            sponsors = q.limit(SPONSORS_PER_PAGE).offset((page - 1) * SPONSORS_PER_PAGE).all()
-            pagination = None
-    except Exception:
-        current_app.logger.exception("Error fetching sponsors list")
-        sponsors, pagination = [], None
-
-    return render_template("sponsor_list.html", sponsors=sponsors, pagination=pagination)
-
-
 @bp.route("/donate", methods=["GET", "POST"])
 def donate():
     if SponsorForm is None:
@@ -1386,27 +1128,27 @@ def donate():
 
     form = SponsorForm()
     prefill = {
-        "name": (request.args.get("prefill_name") or "").strip(),
-        "email": (request.args.get("prefill_email") or "").strip(),
-        "amount": (request.args.get("prefill_amount") or "").strip(),
-        "frequency": ((request.args.get("prefill_frequency") or "once").strip() or "once"),
-        "source": (request.args.get("source") or "").strip(),
+        "name": _cfg_str(request.args.get("prefill_name"), default=""),
+        "email": _cfg_str(request.args.get("prefill_email"), default=""),
+        "amount": _cfg_str(request.args.get("prefill_amount"), default=""),
+        "frequency": _cfg_str(request.args.get("prefill_frequency"), default="once") or "once",
+        "source": _cfg_str(request.args.get("source"), default=""),
     }
 
     if request.method == "GET":
         if prefill["name"] and hasattr(form, "name"):
-            form.name.data = prefill["name"]
+            form.name.data = prefill["name"]  # type: ignore[attr-defined]
         if prefill["email"] and hasattr(form, "email"):
-            form.email.data = prefill["email"]
+            form.email.data = prefill["email"]  # type: ignore[attr-defined]
         if prefill["amount"] and hasattr(form, "amount"):
             try:
-                form.amount.data = Decimal(prefill["amount"])
+                form.amount.data = Decimal(prefill["amount"])  # type: ignore[attr-defined]
             except Exception:
                 current_app.logger.debug("Ignoring invalid prefill_amount=%r", prefill["amount"])
         if hasattr(form, "frequency"):
-            form.frequency.data = prefill["frequency"]
+            form.frequency.data = prefill["frequency"]  # type: ignore[attr-defined]
         if hasattr(form, "source"):
-            form.source.data = prefill["source"]
+            form.source.data = prefill["source"]  # type: ignore[attr-defined]
 
         return render_template("donate.html", form=form, prefill=prefill)
 
@@ -1417,8 +1159,8 @@ def donate():
     def _field_value(obj: Any, name: str, default: str = "") -> Any:
         return getattr(obj, name).data if hasattr(obj, name) else default
 
-    name = (_field_value(form, "name", "Friend") or "Friend").strip()
-    email = (_field_value(form, "email", "") or "").strip().lower()
+    name = (_cfg_str(_field_value(form, "name", "Friend")) or "Friend").strip()
+    email = (_cfg_str(_field_value(form, "email", "")) or "").strip().lower()
 
     raw_amount = _field_value(form, "amount", "0")
     try:
@@ -1426,8 +1168,8 @@ def donate():
     except Exception:
         amount = 0.0
 
-    frequency = (request.form.get("frequency") or prefill["frequency"] or "once").strip()
-    source = (request.form.get("source") or prefill["source"]).strip()
+    frequency = _cfg_str(request.form.get("frequency"), prefill["frequency"], default="once")
+    source = _cfg_str(request.form.get("source"), prefill["source"], default="")
 
     current_app.logger.info(
         "Donation submitted",
@@ -1458,9 +1200,9 @@ def donate():
 
 @bp.get("/thank-you")
 def thank_you():
-    org_slug = (request.args.get("org") or request.args.get("org_slug") or "default").strip()
+    org_slug = _cfg_str(request.args.get("org"), request.args.get("org_slug"), default="default")
 
-    raw_amount = request.args.get("amount", "0")
+    raw_amount = _cfg_str(request.args.get("amount"), default="0")
     try:
         amount = float(Decimal(str(raw_amount)))
     except Exception:
@@ -1480,28 +1222,19 @@ def thank_you():
 
     if org is None:
         cfg = _team_cfg()
-        org = SimpleNamespace(
-            slug=org_slug or "default",
-            name=(cfg.get("team_name", "Our Team") if hasattr(cfg, "get") else "Our Team"),
-        )
+        org = SimpleNamespace(slug=org_slug or "default", name=(cfg.get("team_name", "Our Team")))
 
     try:
         return render_template("thank_you.html", org=org, amount=amount, return_url=return_url)
     except Exception:
         current_app.logger.exception("thank-you template render failed; using fallback")
         html = f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Thank you</title>
-</head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Thank you</title></head>
 <body style="font-family:system-ui; padding:24px;">
-  <h1>Thank you</h1>
-  <p>We appreciate your support{" of $" + format(amount, ",.2f") if amount else ""}.</p>
-  <p><a href="{return_url}">Back to fundraiser</a></p>
-</body>
-</html>"""
+<h1>Thank you</h1>
+<p>We appreciate your support{" of $" + format(amount, ",.2f") if amount else ""}.</p>
+<p><a href="{return_url}">Back to fundraiser</a></p>
+</body></html>"""
         return Response(html, mimetype="text/html", status=200)
 
 
@@ -1512,9 +1245,8 @@ def tiers():
     if not tiers_list:
         tiers_list = DEFAULT_TIERS
 
-    mode = (request.args.get("mode") or "").strip().lower()
+    mode = _cfg_str(request.args.get("mode"), default="").lower()
     fragment_tpl = "embed/tiers_inline.html" if mode == "inline" else "embed/tiers_sheet.html"
-
     wants_fragment = (request.args.get("embed") in ("1", "true", "yes") or bool(request.headers.get("X-Partial")))
 
     if wants_fragment:
@@ -1537,76 +1269,13 @@ def tiers():
     return Response(_wrap_document("Sponsorship Tiers", fragment), mimetype="text/html", status=200)
 
 
-@bp.get("/stats")
-def stats_json():
-    try:
-        cfg = _team_cfg()
-        s = _get_fundraising_stats()
-        sponsors_sorted, sponsors_total, _ = _get_sponsors()
-
-        payload = {
-            "team": cfg.get("team_name", "Our Team"),
-            "raised": int(s.raised),
-            "goal": int(s.goal or 0),
-            "percent": round(s.percent_raised, 1),
-            "sponsors_total": int(sponsors_total),
-            "sponsors_count": len(sponsors_sorted),
-            "raised_cents": _to_cents(s.raised),
-            "goal_cents": _to_cents(s.goal or 0),
-            "as_of": datetime.utcnow().isoformat() + "Z",
-        }
-
-        etag = _ctx_etag(
-            {
-                "raised": payload["raised"],
-                "goal": payload["goal"],
-                "percent": payload["percent"],
-                "sponsors_sorted": sponsors_sorted,
-                "build_id": _build_id(),
-                "ff_cfg_hash": "",
-                "tpl_mtime": 0,
-            }
-        )
-
-        if request.if_none_match and etag in request.if_none_match:
-            resp = make_response("", 304)
-            resp.set_etag(etag)
-            resp.cache_control.public = True
-            resp.cache_control.max_age = 30
-            return resp
-
-        resp = make_response(jsonify(payload))
-        resp.set_etag(etag)
-        resp.cache_control.public = True
-        resp.cache_control.max_age = 30
-        return resp
-
-    except Exception:
-        current_app.logger.exception("Stats endpoint failed")
-        cfg = _team_cfg()
-        fallback = {
-            "team": cfg.get("team_name", "Our Team"),
-            "raised": 0,
-            "goal": int(cfg.get("fundraising_goal", DEFAULT_FUNDRAISING_GOAL)),
-            "percent": 0.0,
-            "sponsors_total": 0,
-            "sponsors_count": 0,
-            "raised_cents": 0,
-            "goal_cents": _to_cents(cfg.get("fundraising_goal", DEFAULT_FUNDRAISING_GOAL)),
-            "as_of": datetime.utcnow().isoformat() + "Z",
-        }
-        resp = make_response(jsonify(fallback), 200)
-        resp.cache_control.no_store = True
-        return resp
-
-
 @bp.post("/api/checkout/session")
 def api_checkout_session():
     data = request.get_json(silent=True) or {}
 
     amount_cents = int(data.get("amount_cents") or 0)
-    currency = str((data.get("currency") or DEFAULT_CURRENCY)).lower()
-    frequency = str((data.get("frequency") or "once")).strip().lower()
+    currency = _cfg_str(data.get("currency"), default=DEFAULT_CURRENCY).lower()
+    frequency = _cfg_str(data.get("frequency"), default="once").lower()
 
     if amount_cents < MIN_DONATION_CENTS:
         return jsonify({"error": "amount_too_small"}), 400
@@ -1618,8 +1287,8 @@ def api_checkout_session():
     stripe.api_key = secret
 
     donor = data.get("donor") or {}
-    donor_email = (donor.get("email") or "").strip() or None
-    donor_name = (donor.get("name") or "").strip()
+    donor_email = _cfg_str(donor.get("email"), default="") or None
+    donor_name = _cfg_str(donor.get("name"), default="")
 
     mode = "subscription" if frequency == "monthly" else "payment"
 
@@ -1670,4 +1339,3 @@ def api_checkout_session():
 def checkout_fallback():
     flash("Checkout is loading—please try again.", "info")
     return redirect(url_for("main.home") + "#donate")
-
