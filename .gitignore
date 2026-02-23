@@ -25,7 +25,7 @@ app/data/*.db
 *.sqlite3
 
 # -----------------------------------------------------------------------------
-# Node / Frontend
+# Node / Frontend build outputs
 # -----------------------------------------------------------------------------
 node_modules/
 dist/
@@ -44,7 +44,7 @@ playwright-report/
 *.har
 
 # -----------------------------------------------------------------------------
-# Test / CI artifacts
+# Test / CI artifacts (local)
 # -----------------------------------------------------------------------------
 artifacts/
 .reports/
@@ -52,14 +52,36 @@ out/
 tools/.artifacts/
 
 # -----------------------------------------------------------------------------
-# Images & media generated locally
+# Generated media (ONLY inside artifact / output dirs)
+# NOTE: Do NOT globally ignore images — real product assets live in app/static/.
 # -----------------------------------------------------------------------------
-*.png
-*.jpg
-*.jpeg
-*.webp
-*.gif
-*.avif
+artifacts/**/*.png
+artifacts/**/*.jpg
+artifacts/**/*.jpeg
+artifacts/**/*.webp
+artifacts/**/*.gif
+artifacts/**/*.avif
+
+.reports/**/*.png
+.reports/**/*.jpg
+.reports/**/*.jpeg
+.reports/**/*.webp
+.reports/**/*.gif
+.reports/**/*.avif
+
+tools/.artifacts/**/*.png
+tools/.artifacts/**/*.jpg
+tools/.artifacts/**/*.jpeg
+tools/.artifacts/**/*.webp
+tools/.artifacts/**/*.gif
+tools/.artifacts/**/*.avif
+
+out/**/*.png
+out/**/*.jpg
+out/**/*.jpeg
+out/**/*.webp
+out/**/*.gif
+out/**/*.avif
 
 # -----------------------------------------------------------------------------
 # Local backups / patch artifacts
@@ -68,9 +90,16 @@ tools/.artifacts/
 *.bak.*
 *.BAK
 *.BAK.*
+*.orig
+*.rej
+
+# “fix” and “patch” snapshots often created during repair workflows
 *.fix*
 *.patch*
-*.orig
+
+# Common editor backup patterns
+*~
+*.save
 
 # -----------------------------------------------------------------------------
 # Logs & temp files
@@ -88,6 +117,10 @@ Thumbs.db
 *.swo
 *:Zone.Identifier
 
+# VS Code / JetBrains (optional but recommended)
+.vscode/
+.idea/
+
 # -----------------------------------------------------------------------------
 # Coverage / reports
 # -----------------------------------------------------------------------------
@@ -96,8 +129,17 @@ coverage/
 htmlcov/
 
 # -----------------------------------------------------------------------------
-# Misc
+# Environment files (never commit secrets)
 # -----------------------------------------------------------------------------
 .env
 .env.*
 .cache/
+
+# -----------------------------------------------------------------------------
+# Optional: local tooling outputs (uncomment if you generate these)
+# -----------------------------------------------------------------------------
+# .mypy_cache/
+# .pytest_cache/
+# .ruff_cache/
+# .tox/
+# pip-wheel-metadata/
