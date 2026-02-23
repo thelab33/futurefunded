@@ -1,2897 +1,1696 @@
 /* ============================================================================
- * ff-app.js — FutureFunded Flagship (DROP-IN REPLACEMENT • SUPERCHARGED • DEDUPED)
- * File: app/static/js/ff-app.js
- * Version: 19.2.0 (“Reliability Canon++ — Hook-safe • CSP-safe • Single-boot • Hash No-Scroll • Provider Prewarm”)
- *
- * Non-negotiable contracts upheld:
- * - Hook-safe: binds to existing IDs/classes/data-ff-* (no renames assumed)
- * - Single-boot hard guard (no duplicate listeners even if script included twice)
- * - CSP-safe (nonce-aware dynamic scripts, no eval/new Function, no inline handlers)
- * - Defensive DOM (missing optional nodes never throw)
- * - Reduced-motion respected for any JS-initiated scrolling
- *
- * Behavior upgrades (still hook-safe):
- * - Hash updates avoid scroll-jump (history.pushState/replaceState when possible)
- * - Provider prewarm on intent (pointer/focus) without creating intents
- * - Payment intent creation gated to checkout-open (prevents backend spam)
- * - PayPal “missing client id” notice is session-once (no toast spam)
- *
- * Config compatibility:
- * - Reads #ffConfig JSON when present, else meta tags
- * - Keeps legacy endpoint key names intact (stripe_intent_endpoint, paypal_create_endpoint, paypal_capture_endpoint, etc.)
- * ============================================================================ */
+  FutureFunded • Flagship — ff-app.js (FULL DROP-IN • Hook-safe • CSP-safe)
+  File: app/static/js/ff-app.js
+  Version: 26.2.1-js.0
 
-(() => {
+  Key upgrades vs 26.2.0-js.0:
+  - PERF P0: NEVER loads Stripe/PayPal on home automatically (only when checkout is opened + amount > 0)
+  - P0: Amount input now triggers Stripe/PayPal prep live while checkout is open
+  - Fix: Stripe submit button de-dupe (prior object-key trick could collapse incorrectly)
+  - Safety: Removes trailing-arg commas + hardens script loader reuse checks
+============================================================================ */
+
+(function () {
   "use strict";
 
-  const APP = "FutureFunded Flagship";
-  const VERSION = "19.2.0";
+  /* -----------------------------
+     Core helpers
+  ----------------------------- */
 
-  // ---------------------------------------------------------------------------
-  // Single boot guard (HARD)
-  // ---------------------------------------------------------------------------
-  const BOOT_KEY = "__FF_APP_BOOT__";
-  if (window[BOOT_KEY]) return;
-  window[BOOT_KEY] = { at: Date.now(), app: APP, v: VERSION };
+  var APP_VERSION = "26.2.1-js.0";
 
-  // ---------------------------------------------------------------------------
-  // Tiny utilities (CSP-safe)
-  // ---------------------------------------------------------------------------
-  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
-  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  function qs(sel, root) {
+    return (root || document).querySelector(sel);
+  }
+  function qsa(sel, root) {
+    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  }
 
-  const safeJson = (txt, fallback = null) => {
+  function safeParseJSON(text) {
     try {
-      return JSON.parse(String(txt ?? ""));
-    } catch {
-      return fallback;
-    }
-  };
-
-  const cssEscape = (s) => {
-    const v = String(s ?? "");
-    try {
-      if (window.CSS?.escape) return window.CSS.escape(v);
-    } catch {}
-    return v.replace(/["\\]/g, "\\$&");
-  };
-
-  const $ = (sel, root = document) => {
-    try {
-      return (root || document).querySelector(sel);
-    } catch {
+      return JSON.parse(text);
+    } catch (e) {
       return null;
     }
-  };
+  }
 
-  const $$ = (sel, root = document) => {
-    try {
-      return Array.from((root || document).querySelectorAll(sel));
-    } catch {
-      return [];
-    }
-  };
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+  function nowMs() {
+    return Date.now ? Date.now() : new Date().getTime();
+  }
 
-  const on = (el, ev, fn, opts) => {
-    try {
-      el?.addEventListener?.(ev, fn, opts || false);
-    } catch {}
-  };
+  function getMeta(name) {
+    var el = qs('meta[name="' + name + '"]');
+    return el ? String(el.getAttribute("content") || "").trim() : "";
+  }
 
-  const meta = (name) => {
-    try {
-      const el = document.querySelector(`meta[name="${cssEscape(name)}"]`);
-      return (el?.getAttribute("content") || "").trim();
-    } catch {
-      return "";
-    }
-  };
+  function getCSRF() {
+    // Flask-WTF: <meta name="csrf-token" content="...">
+    var v = getMeta("csrf-token");
+    return v || "";
+  }
 
-  const metaAny = (...names) => {
-    for (const n of names) {
-      const v = meta(n);
-      if (v) return v;
-    }
-    return "";
-  };
-
-  const prefersReducedMotion = () => {
-    try {
-      return !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    } catch {
-      return false;
-    }
-  };
-
-  const fetchWithTimeout = async (url, opts = {}, timeoutMs = 15000) => {
-    const ctrl = new AbortController();
-    const callerSignal = opts?.signal;
-
-    try {
-      if (callerSignal?.addEventListener) {
-        if (callerSignal.aborted) ctrl.abort();
-        else callerSignal.addEventListener("abort", () => ctrl.abort(), { once: true });
-      }
-    } catch {}
-
-    const t = setTimeout(() => {
-      try {
-        ctrl.abort();
-      } catch {}
-    }, clamp(Number(timeoutMs) || 15000, 1000, 60000));
-
-    try {
-      return await fetch(url, { ...opts, signal: ctrl.signal });
-    } finally {
-      clearTimeout(t);
-    }
-  };
-
-  const safeFetchJson = async (url, opts = {}, timeoutMs = 15000) => {
-    try {
-      const r = await fetchWithTimeout(url, opts, timeoutMs);
-      const j = await r.json().catch(() => ({}));
-      return { ok: !!r.ok, status: r.status, json: j, res: r };
-    } catch (e) {
-      return { ok: false, status: 0, json: {}, error: e };
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Money + validation
-  // ---------------------------------------------------------------------------
-  const MIN_CENTS = 100; // $1.00 minimum
-  const MAX_CENTS = 5_000_000; // $50,000 max (sane ceiling)
-
-  const parseMoneyToCents = (val) => {
-    const raw = String(val ?? "").trim();
-    if (!raw) return 0;
-    const cleaned = raw.replace(/,/g, "").replace(/[^\d.]/g, "");
-    if (!cleaned) return 0;
-    const n = Number(cleaned);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    return Math.round(n * 100);
-  };
-
-  const centsToDollarsString = (cents) => {
-    const c = Number(cents || 0);
-    if (!Number.isFinite(c) || c <= 0) return "";
-    const d = c / 100;
-    return String(d % 1 === 0 ? Math.round(d) : d.toFixed(2));
-  };
-
-  const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
-
-  const formatMoney = (cents, currency = "USD", locale = "en-US") => {
-    const c = Number(cents || 0);
-    try {
-      return new Intl.NumberFormat(locale, { style: "currency", currency }).format(c / 100);
-    } catch {
-      return `$${(c / 100).toFixed(2)}`;
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Hash (no-scroll updates when possible)
-  // ---------------------------------------------------------------------------
-  const Hash = (() => {
-    const set = (hash, { replace = false } = {}) => {
-      const h = String(hash || "").trim();
-      if (!h) return;
-
-      try {
-        if (location.hash === h) return;
-      } catch {}
-
-      const url = (() => {
+  function promiseFinally(p, cb) {
+    return p.then(
+      function (v) {
         try {
-          const u = new URL(location.href);
-          u.hash = h.startsWith("#") ? h : `#${h}`;
-          return u.toString();
-        } catch {
-          return h.startsWith("#") ? h : `#${h}`;
+          cb();
+        } catch (e) {}
+        return v;
+      },
+      function (err) {
+        try {
+          cb();
+        } catch (e2) {}
+        throw err;
+      }
+    );
+  }
+
+  function fetchJSON(url, opts) {
+    var o = opts || {};
+    var headers = o.headers || {};
+    headers["Accept"] = "application/json";
+    if (o.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+    var csrf = getCSRF();
+    if (csrf) headers["X-CSRFToken"] = csrf;
+
+    o.headers = headers;
+    if (!o.credentials) o.credentials = "same-origin";
+
+    return fetch(url, o).then(function (res) {
+      return res.text().then(function (txt) {
+        var data = safeParseJSON(txt);
+        if (!res.ok) {
+          var msg =
+            data && (data.error || data.message)
+              ? (data.error || data.message)
+              : "Request failed (" + res.status + ")";
+          var err = new Error(msg);
+          err.status = res.status;
+          err.data = data;
+          err.raw = txt;
+          throw err;
         }
-      })();
+        if (!data) {
+          var e = new Error("Server returned non-JSON.");
+          e.status = res.status;
+          e.raw = txt;
+          throw e;
+        }
+        return data;
+      });
+    });
+  }
 
-      try {
-        if (replace) history.replaceState(null, "", url);
-        else history.pushState(null, "", url);
-        return;
-      } catch {}
+  function raf() {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(resolve);
+    });
+  }
 
-      try {
-        location.hash = h.startsWith("#") ? h : `#${h}`;
-      } catch {}
-    };
+  function ready(fn) {
+    if (document.readyState === "complete" || document.readyState === "interactive") fn();
+    else document.addEventListener("DOMContentLoaded", fn, { once: true });
+  }
 
-    const clear = ({ replace = true } = {}) => {
-      try {
-        const u = new URL(location.href);
-        u.hash = "";
-        if (replace) history.replaceState(null, "", u.toString());
-        else history.pushState(null, "", u.toString());
-      } catch {
-        try {
-          if (replace) history.replaceState(null, "", `${location.pathname}${location.search || ""}`);
-          else history.pushState(null, "", `${location.pathname}${location.search || ""}`);
-        } catch {}
+  function stripHash(url) {
+    try {
+      var u = new URL(url, window.location.origin);
+      u.hash = "";
+      return u.toString();
+    } catch (e) {
+      return String(url || "").split("#")[0] || window.location.href.split("#")[0];
+    }
+  }
+
+  /* -----------------------------
+     CSP nonce (for dynamic script injection)
+  ----------------------------- */
+
+  function getCSPNonce() {
+    // Prefer explicit meta if you set it server-side
+    var meta = getMeta("csp-nonce");
+    if (meta) return meta;
+
+    // Current script nonce (works when ff-app.js is loaded with nonce)
+    try {
+      var cs = document.currentScript;
+      if (cs && cs.nonce) return cs.nonce;
+      if (cs && cs.getAttribute) {
+        var n = cs.getAttribute("nonce");
+        if (n) return n;
       }
-    };
+    } catch (e) {}
 
-    return { set, clear };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // CSP nonce + safe dynamic script loader (single-flight)
-  // ---------------------------------------------------------------------------
-  const CSP = (() => {
-    const findNonce = () => {
+    // Any existing nonce'd script tag
+    var s = qs("script[nonce]");
+    if (s) {
       try {
-        const m = metaAny("csp-nonce", "ff-csp-nonce");
-        if (m) return m;
-
-        const cs = document.currentScript;
-        const n1 = cs?.nonce || cs?.getAttribute?.("nonce") || "";
-        if (n1) return n1;
-
-        const tag = $$("script[src]").find((s) => (s.getAttribute("src") || "").includes("ff-app"));
-        const n2 = tag?.nonce || tag?.getAttribute?.("nonce") || "";
-        return n2 || "";
-      } catch {
+        return s.nonce || s.getAttribute("nonce") || "";
+      } catch (e2) {
         return "";
       }
-    };
-    return { nonce: () => String(findNonce() || "").trim() };
-  })();
-
-  const loadScriptOnce = (src, { id = "", nonce = "", attrs = {} } = {}) => {
-    const key = id || src;
-    if (!key || !src) return Promise.reject(new Error("Missing script src"));
-
-    window.__FF_SCRIPT_PROMISES__ = window.__FF_SCRIPT_PROMISES__ || {};
-    if (window.__FF_SCRIPT_PROMISES__[key]) return window.__FF_SCRIPT_PROMISES__[key];
-
-    const existing = id ? document.getElementById(id) : $$("script").find((s) => (s.src || "") === src);
-    if (existing) {
-      const already = existing.getAttribute("data-ff-loaded") === "1" || existing.dataset?.ffLoaded === "1";
-      if (already) return Promise.resolve(existing);
-
-      window.__FF_SCRIPT_PROMISES__[key] = new Promise((resolve, reject) => {
-        try {
-          existing.addEventListener("load", () => resolve(existing), { once: true });
-          existing.addEventListener("error", () => reject(new Error(`Script failed: ${src}`)), { once: true });
-        } catch (e) {
-          reject(e);
-        }
-      });
-      return window.__FF_SCRIPT_PROMISES__[key];
     }
+    return "";
+  }
 
-    window.__FF_SCRIPT_PROMISES__[key] = new Promise((resolve, reject) => {
-      try {
-        const s = document.createElement("script");
-        s.src = src;
-        s.async = true;
-        if (id) s.id = id;
+  /* -----------------------------
+     Config + Selectors
+  ----------------------------- */
 
-        const n = String(nonce || CSP.nonce() || "").trim();
-        if (n) s.setAttribute("nonce", n);
+  var cfgEl = qs("#ffConfig");
+  var cfg = cfgEl ? safeParseJSON(cfgEl.textContent || "") : null;
 
-        try {
-          Object.entries(attrs || {}).forEach(([k, v]) => {
-            if (v === true) s.setAttribute(k, "");
-            else if (v != null && v !== false) s.setAttribute(k, String(v));
-          });
-        } catch {}
+  if (!cfg) {
+    cfg = {
+      env: getMeta("ff-env") || getMeta("ff:env") || "",
+      dataMode: getMeta("ff-data-mode") || getMeta("ff:data-mode") || "live",
+      version: getMeta("ff-version") || getMeta("ff:version") || "",
+      payments: {
+        stripePk: getMeta("ff-stripe-pk") || getMeta("ff:stripe-pk") || "",
+        stripeJs: getMeta("ff-stripe-js") || getMeta("ff:stripe-js") || "https://js.stripe.com/v3/",
+        stripeIntentEndpoint:
+          getMeta("ff-stripe-intent-endpoint") ||
+          getMeta("ff:stripe-intent-endpoint") ||
+          "/payments/stripe/intent",
+        stripeReturnUrl: stripHash(window.location.href),
+        paypalClientId: getMeta("ff-paypal-client-id") || getMeta("ff:paypal-client-id") || "",
+        paypalJs: getMeta("ff-paypal-js") || getMeta("ff:paypal-js") || "https://www.paypal.com/sdk/js",
+        paypalCreateEndpoint:
+          getMeta("ff-paypal-create-endpoint") || getMeta("ff:paypal-create-endpoint") || "/payments/paypal/order",
+        paypalCaptureEndpoint:
+          getMeta("ff-paypal-capture-endpoint") || getMeta("ff:paypal-capture-endpoint") || "/payments/paypal/capture"
+      },
+      fundraiser: { currency: "USD" },
+      support: { email: "support@getfuturefunded.com" },
+      accessibility: { focusRestore: true, ariaLiveToasts: true }
+    };
+  }
 
-        s.onload = () => {
-          try {
-            s.setAttribute("data-ff-loaded", "1");
-          } catch {}
-          resolve(s);
-        };
-        s.onerror = () => reject(new Error(`Script failed: ${src}`));
+  var selectorsEl = qs("#ffSelectors");
+  var selectorsPayload = selectorsEl ? safeParseJSON(selectorsEl.textContent || "") : null;
+  var hooks = selectorsPayload && selectorsPayload.hooks ? selectorsPayload.hooks : {};
+  function hookSel(key, fallback) {
+    return hooks && hooks[key] ? hooks[key] : (fallback || "");
+  }
 
-        document.head.appendChild(s);
-      } catch (e) {
-        reject(e);
-      }
-    });
+  /* -----------------------------
+     Runtime state + public API
+  ----------------------------- */
 
-    return window.__FF_SCRIPT_PROMISES__[key];
+  var rootEl = document.documentElement;
+
+  var state = {
+    version: APP_VERSION,
+    cfg: cfg,
+    hooks: hooks,
+    startedAt: nowMs(),
+    cspNonce: getCSPNonce(),
+    openStack: [], // stack of { id, root, panel, restoreEl, trap }
+    openMap: {}, // id -> true when open (prevents duplicate push)
+    stripe: {
+      pk: cfg && cfg.payments && cfg.payments.stripePk ? String(cfg.payments.stripePk || "") : "",
+      intentEndpoint:
+        cfg && cfg.payments && cfg.payments.stripeIntentEndpoint
+          ? String(cfg.payments.stripeIntentEndpoint || "")
+          : "/payments/stripe/intent",
+      returnUrl:
+        cfg && cfg.payments && cfg.payments.stripeReturnUrl
+          ? String(cfg.payments.stripeReturnUrl || "")
+          : stripHash(window.location.href),
+      jsUrl:
+        cfg && cfg.payments && cfg.payments.stripeJs
+          ? String(cfg.payments.stripeJs || "")
+          : "https://js.stripe.com/v3/",
+      stripe: null,
+      elements: null,
+      paymentEl: null,
+      mounted: false,
+      preparing: false,
+      submitting: false,
+      loadPromise: null,
+      clientSecret: "",
+      intentAmount: 0,
+      amount: 0
+    },
+    paypal: {
+      clientId:
+        cfg && cfg.payments && cfg.payments.paypalClientId ? String(cfg.payments.paypalClientId || "") : "",
+      jsUrl:
+        cfg && cfg.payments && cfg.payments.paypalJs
+          ? String(cfg.payments.paypalJs || "")
+          : "https://www.paypal.com/sdk/js",
+      createEndpoint:
+        cfg && cfg.payments && cfg.payments.paypalCreateEndpoint
+          ? String(cfg.payments.paypalCreateEndpoint || "")
+          : "/payments/paypal/order",
+      captureEndpoint:
+        cfg && cfg.payments && cfg.payments.paypalCaptureEndpoint
+          ? String(cfg.payments.paypalCaptureEndpoint || "")
+          : "/payments/paypal/capture",
+      loaded: false,
+      rendered: false,
+      loadPromise: null
+    }
   };
 
-  // ---------------------------------------------------------------------------
-  // Analytics (safe, zero-network by default unless endpoint already exists)
-  // ---------------------------------------------------------------------------
-  const Analytics = (() => {
-    const ENDPOINT = meta("ff-analytics-endpoint") || "";
-    const DEBUG = (() => {
-      const d = (meta("ff-debug") || "").toLowerCase();
-      if (["1", "true", "yes"].includes(d)) return true;
-      const host = String(location.hostname || "").toLowerCase();
-      return host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
-    })();
+  /* -----------------------------
+     DOM cache
+  ----------------------------- */
 
-    const base = () => ({
-      ts: (() => {
-        try {
-          return new Date().toISOString();
-        } catch {
-          return String(Date.now());
-        }
-      })(),
-      app: APP,
-      v: VERSION,
-      path: String(location.pathname || ""),
-      host: String(location.host || ""),
+  var amountInput = qs("#donationAmount");
+  var stripeSkeleton = qs("[data-ff-stripe-skeleton]");
+  var paypalSkeleton = qs("[data-ff-paypal-skeleton]");
+  var paymentMount = qs("[data-ff-stripe-mount]");
+  var paypalMount = qs("[data-ff-paypal-mount]");
+  var stripeErr = qs("[data-ff-stripe-error]");
+  var paypalErr = qs("[data-ff-paypal-error]");
+
+  // Optional status elements (do NOT require markup changes)
+  var stripeMsg = qs("[data-ff-stripe-msg]") || qs("[data-ff-stripe-status]") || qs("[data-ff-payment-msg]");
+  var paypalMsg = qs("[data-ff-paypal-msg]") || qs("[data-ff-paypal-status]") || qs("[data-ff-paypal-message]");
+
+  var checkoutSheet = qs("#checkout");
+  var checkoutPanel = checkoutSheet ? qs(".ff-sheet__panel", checkoutSheet) : null;
+
+  var drawer = qs("#drawer");
+  var drawerPanel = drawer ? qs(".ff-drawer__panel", drawer) : null;
+
+  var sponsorModal = qs("#sponsor-interest");
+  var sponsorPanel = sponsorModal ? qs(".ff-modal__panel", sponsorModal) : null;
+
+  var videoModal = qs("#press-video");
+  var videoPanel = videoModal ? qs(".ff-modal__panel", videoModal) : null;
+
+  var burst = qs(".ff-burst");
+
+  // Support both legacy and new toast host classes
+  var toastHost = qs(".ff-toastHost") || qs(".ff-toasts");
+
+  /* -----------------------------
+     Tiny UI helpers
+  ----------------------------- */
+
+  function setHidden(el, hidden) {
+    if (!el) return;
+    if (hidden) el.setAttribute("hidden", "");
+    else el.removeAttribute("hidden");
+  }
+
+  function setOpenAttrs(root, isOpen) {
+    if (!root) return;
+    root.setAttribute("data-open", isOpen ? "true" : "false");
+    root.setAttribute("aria-hidden", isOpen ? "false" : "true");
+    if (isOpen) root.classList.add("is-open");
+    else root.classList.remove("is-open");
+    setHidden(root, !isOpen);
+  }
+
+  function isRootOpen(root) {
+    if (!root) return false;
+    return (
+      root.getAttribute("data-open") === "true" ||
+      root.classList.contains("is-open") ||
+      root.getAttribute("aria-hidden") === "false"
+    );
+  }
+
+  function lockScroll(locked) {
+    try {
+      document.body.style.overflow = locked ? "hidden" : "";
+      document.body.style.touchAction = locked ? "none" : "";
+    } catch (e) {}
+  }
+
+  function toast(kind, msg) {
+    if (!toastHost) return;
+
+    var t = document.createElement("div");
+    t.className = "ff-toast ff-toast--" + String(kind || "info");
+    t.setAttribute("role", "status");
+
+    var inner = document.createElement("div");
+    inner.className = "ff-toast__inner";
+
+    var m = document.createElement("div");
+    m.className = "ff-toast__msg";
+    m.textContent = String(msg || "");
+
+    var btn = document.createElement("button");
+    btn.className = "ff-toast__x";
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Dismiss");
+    btn.textContent = "✕";
+    btn.addEventListener("click", function () {
+      try {
+        toastHost.removeChild(t);
+      } catch (e) {}
     });
 
-    const queue = [];
-    let flushing = false;
-    let flushTimer = 0;
+    inner.appendChild(m);
+    inner.appendChild(btn);
+    t.appendChild(inner);
 
-    const scheduleFlush = () => {
-      if (!ENDPOINT) return;
-      if (flushing) return;
-      clearTimeout(flushTimer);
-      flushTimer = setTimeout(async () => {
-        if (!queue.length || flushing) return;
-        flushing = true;
-        const batch = queue.splice(0, 25);
+    toastHost.appendChild(t);
+
+    setTimeout(function () {
+      try {
+        toastHost.removeChild(t);
+      } catch (e) {}
+    }, 5200);
+  }
+
+  function markLoading(on) {
+    if (rootEl) rootEl.classList.toggle("is-loading", !!on);
+  }
+  function markReady() {
+    if (rootEl) rootEl.classList.add("is-ready");
+  }
+  function markError() {
+    if (rootEl) rootEl.classList.add("is-error");
+  }
+
+  function burstOnce() {
+    if (!burst) return;
+    try {
+      burst.classList.add("is-open");
+      burst.setAttribute("data-open", "true");
+      burst.setAttribute("aria-hidden", "false");
+      setTimeout(function () {
         try {
-          await fetchWithTimeout(
-            ENDPOINT,
-            {
-              method: "POST",
-              credentials: "same-origin",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({ events: batch }),
-              keepalive: true,
-            },
-            6000
-          ).catch(() => null);
-        } catch {}
-        finally {
-          flushing = false;
-        }
-      }, 650);
-    };
+          burst.classList.remove("is-open");
+          burst.setAttribute("data-open", "false");
+          burst.setAttribute("aria-hidden", "true");
+        } catch (e) {}
+      }, 900);
+    } catch (e2) {}
+  }
 
-    const emit = (eventName, payload = {}) => {
-      if (!eventName) return;
-      const detail = { name: String(eventName), ...base(), ...(isObj(payload) ? payload : {}) };
+  function ensureInnerWrapper(mountEl, name) {
+    // P0: Never wipe mount node; mount providers into a stable child wrapper.
+    if (!mountEl) return null;
+    var sel = '[data-ff-inner-mount="' + name + '"]';
+    var inner = qs(sel, mountEl);
+    if (inner) return inner;
 
-      try {
-        window.dispatchEvent(new CustomEvent("ff:event", { detail }));
-      } catch {}
+    inner = document.createElement("div");
+    inner.setAttribute("data-ff-inner-mount", name);
+    mountEl.appendChild(inner);
+    return inner;
+  }
 
-      if (ENDPOINT) {
-        queue.push(detail);
-        scheduleFlush();
+  /* -----------------------------
+     Focus trap (lightweight, robust)
+  ----------------------------- */
+
+  function getFocusable(root) {
+    if (!root) return [];
+    var sels = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(",");
+    return qsa(sels, root).filter(function (el) {
+      return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    });
+  }
+
+  function trapFocus(panel, onClose) {
+    if (!panel) return { destroy: function () {} };
+
+    if (!panel.hasAttribute("tabindex")) panel.setAttribute("tabindex", "-1");
+
+    function onKeyDown(e) {
+      var key = e.key || e.keyCode;
+
+      if (key === "Escape" || key === "Esc" || key === 27) {
+        if (typeof onClose === "function") onClose();
+        return;
       }
+      if (key !== "Tab" && key !== 9) return;
 
-      if (DEBUG) {
+      var focusables = getFocusable(panel);
+      if (!focusables.length) {
+        e.preventDefault();
         try {
-          console.debug("[FF]", eventName, payload);
-        } catch {}
-      }
-    };
-
-    return { emit };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Selectors overrides (#ffSelectors JSON)
-  // ---------------------------------------------------------------------------
-  const Selectors = (() => {
-    const readSelectors = () => {
-      try {
-        const el = document.getElementById("ffSelectors");
-        if (el && String(el.type || "").includes("json")) {
-          const j = safeJson(el.textContent || "", null);
-          if (j && typeof j === "object") return j;
-        }
-      } catch {}
-      return {};
-    };
-
-    const overrides = readSelectors();
-
-    const merge = (key, fallback) => {
-      const o = overrides?.[key];
-      if (typeof o === "string" && o.trim()) return o.trim();
-      if (Array.isArray(o) && o.length) return o.filter(Boolean).join(",");
-      return String(fallback || "").trim();
-    };
-
-    return { merge };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Config loader + normalization (keeps legacy key names)
-  // ---------------------------------------------------------------------------
-  const Config = (() => {
-    const readConfigJson = () => {
-      try {
-        const el = document.getElementById("ffConfig");
-        if (!el) return null;
-        const raw = String(el.textContent || "").trim();
-        if (!raw) return null;
-        const j = safeJson(raw, null);
-        return j && typeof j === "object" ? j : null;
-      } catch {
-        return null;
-      }
-    };
-
-    // raw config (public for debugging)
-    const raw = readConfigJson() || {};
-    window.__FF_CONFIG__ = raw;
-
-    const sanitizeClientId = (cid) => {
-      const v = String(cid || "").trim();
-      if (!v) return "";
-      const low = v.toLowerCase();
-      if (low === "none" || low === "null" || low === "undefined") return "";
-      return v;
-    };
-
-    const normalize = () => {
-      const c = raw || {};
-
-      // legacy keys (root-level)
-      const stripe_intent_endpoint = String(
-        c.stripe_intent_endpoint ||
-          c?.payments?.stripe?.intent_endpoint ||
-          c?.stripe?.intent_endpoint ||
-          metaAny("ff-stripe-intent-endpoint", "ff-stripe-intent-url") ||
-          "/payments/stripe/intent"
-      ).trim();
-
-      const paypal_create_endpoint = String(
-        c.paypal_create_endpoint ||
-          c?.payments?.paypal?.create_endpoint ||
-          c?.paypal?.create_endpoint ||
-          metaAny("ff-paypal-create-endpoint") ||
-          "/payments/paypal/order"
-      ).trim();
-
-      const paypal_capture_endpoint = String(
-        c.paypal_capture_endpoint ||
-          c?.payments?.paypal?.capture_endpoint ||
-          c?.paypal?.capture_endpoint ||
-          metaAny("ff-paypal-capture-endpoint") ||
-          "/payments/paypal/capture"
-      ).trim();
-
-      const stripe_pk = String(
-        c.stripe_pk ||
-          c?.payments?.stripe?.publishable_key ||
-          c?.stripe?.publishable_key ||
-          metaAny("ff-stripe-pk", "ff:stripe-pk", "ff-stripe-publishable-key") ||
-          ""
-      ).trim();
-
-      const paypal_client_id = sanitizeClientId(
-        c.paypal_client_id ||
-          c?.payments?.paypal?.client_id ||
-          c?.paypal?.client_id ||
-          metaAny("ff-paypal-client-id", "ff-paypal-clientid") ||
-          ""
-      );
-
-      const env = String(c.env || c?.flagship?.env || metaAny("ff-env") || "").trim();
-
-      const currency = String(
-        c?.flagship?.defaults?.currency ||
-          c?.defaults?.currency ||
-          metaAny("ff-currency", "ff-paypal-currency") ||
-          "USD"
-      ).trim();
-
-      const locale = String(
-        c?.flagship?.defaults?.locale || c?.defaults?.locale || metaAny("ff-locale") || "en-US"
-      ).trim();
-
-      const stripe_return_url = String(
-        c.stripe_return_url ||
-          c?.payments?.stripe?.return_url ||
-          c?.stripe?.return_url ||
-          metaAny("ff-stripe-return-url", "ff-canonical") ||
-          `${location.origin}${location.pathname}${location.search || ""}`
-      ).trim();
-
-      const paypal_currency = String(
-        c.paypal_currency ||
-          c?.payments?.paypal?.currency ||
-          c?.paypal?.currency ||
-          metaAny("ff-paypal-currency") ||
-          currency ||
-          "USD"
-      ).trim();
-
-      const paypal_intent = String(
-        c.paypal_intent ||
-          c?.payments?.paypal?.intent ||
-          c?.paypal?.intent ||
-          metaAny("ff-paypal-intent") ||
-          "capture"
-      ).trim();
-
-      const sponsor_endpoint = String(
-        c?.sponsor?.endpoint ||
-          c?.sponsors?.endpoint ||
-          c?.sponsor_endpoint ||
-          metaAny("ff-sponsor-endpoint") ||
-          ""
-      ).trim();
-
-      const csrf_token = String(metaAny("csrf-token", "ff-csrf", "x-csrf-token") || "").trim();
-
-      const require_email = (() => {
-        const v0 = c.require_email ?? c?.flagship?.require_email ?? c?.payments?.require_email;
-        if (typeof v0 === "boolean") return v0;
-        const v = String(metaAny("ff-require-email", "ff-email-required") || "").toLowerCase();
-        if (["0", "false", "no"].includes(v)) return false;
-        if (["1", "true", "yes"].includes(v)) return true;
-        return true; // default: require email for receipts
-      })();
-
-      return Object.freeze({
-        env,
-        currency,
-        locale,
-        csrf_token,
-
-        // legacy keys kept verbatim
-        stripe_intent_endpoint,
-        paypal_create_endpoint,
-        paypal_capture_endpoint,
-
-        // providers
-        stripe_pk,
-        stripe_return_url,
-        paypal_client_id,
-        paypal_currency,
-        paypal_intent,
-
-        // misc
-        sponsor_endpoint,
-
-        // derived helpers
-        providers: {
-          stripe: { pk: stripe_pk, intent_endpoint: stripe_intent_endpoint, return_url: stripe_return_url },
-          paypal: {
-            client_id: paypal_client_id,
-            currency: paypal_currency,
-            intent: paypal_intent,
-            create_endpoint: paypal_create_endpoint,
-            capture_endpoint: paypal_capture_endpoint,
-          },
-        },
-
-        require_email,
-      });
-    };
-
-    const data = normalize();
-
-    // getters (stable)
-    const currency = () => data.currency;
-    const locale = () => data.locale;
-    const csrfToken = () => data.csrf_token;
-    const requireEmail = () => !!data.require_email;
-
-    // legacy key getters
-    const stripeIntentEndpoint = () => String(data.stripe_intent_endpoint || "").trim();
-    const paypalCreateEndpoint = () => String(data.paypal_create_endpoint || "").trim();
-    const paypalCaptureEndpoint = () => String(data.paypal_capture_endpoint || "").trim();
-
-    const sponsorEndpoint = () => String(data.sponsor_endpoint || "").trim();
-
-    const stripePk = () => String(data.stripe_pk || "").trim();
-    const stripeReturnUrl = () => String(data.stripe_return_url || "").trim();
-
-    const paypalClientId = () => String(data.paypal_client_id || "").trim();
-    const paypalCurrency = () => String(data.paypal_currency || "").trim();
-    const paypalIntent = () => String(data.paypal_intent || "").trim();
-
-    return {
-      raw,
-      data,
-      currency,
-      locale,
-      csrfToken,
-      requireEmail,
-
-      stripeIntentEndpoint,
-      paypalCreateEndpoint,
-      paypalCaptureEndpoint,
-
-      sponsorEndpoint,
-
-      stripePk,
-      stripeReturnUrl,
-
-      paypalClientId,
-      paypalCurrency,
-      paypalIntent,
-    };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // DOM access (contract defaults + optional selector overrides)
-  // ---------------------------------------------------------------------------
-  const DOM = (() => {
-    const q = (key, fallback) => $(Selectors.merge(key, fallback));
-    const qa = (key, fallback) => $$(Selectors.merge(key, fallback));
-
-    // Checkout sheet contract
-    const checkoutSheet = () =>
-      q(
-        "checkoutSheet",
-        `#checkout.ff-sheet[data-ff-checkout-sheet],
-         section#checkout.ff-sheet.ff-sheet--checkout[data-ff-checkout-sheet],
-         [data-ff-checkout-sheet]#checkout,
-         [data-ff-checkout-sheet],
-         #donate.ff-sheet[data-ff-checkout-sheet],
-         #donate,
-         #donateSheet`
-      );
-
-    const checkoutPanel = (sheet) => {
-      const host = sheet || checkoutSheet();
-      if (!host) return null;
-      return host.querySelector?.("[data-ff-sheet-panel]") || host.querySelector?.(".ff-sheet__panel") || host;
-    };
-
-    const checkoutBackdrop = () =>
-      q(
-        "checkoutBackdrop",
-        `a.ff-sheet__backdrop[href="#home"][data-ff-close-checkout],
-         .ff-sheet__backdrop[data-ff-close-checkout],
-         [data-ff-close-checkout].ff-sheet__backdrop,
-         .ff-sheet__backdrop`
-      );
-
-    const openCheckoutTriggers = () =>
-      qa(
-        "openCheckout",
-        `[data-ff-open-checkout],
-         [data-ff-checkout-open],
-         [data-ff-open-donate],
-         [data-ff-donate-open],
-         a[href="#checkout"],
-         a[href="#donate"]`
-      );
-
-    const closeCheckoutTriggers = () =>
-      qa(
-        "closeCheckout",
-        `[data-ff-close-checkout],
-         [data-ff-checkout-close],
-         [data-ff-close-donate],
-         [data-ff-donate-close]`
-      );
-
-    // Donation form contract
-    const donationForm = () =>
-      q("donationForm", `form#donationForm[data-ff-donate-form], #donationForm, form[data-ff-donate-form]`);
-    const amountInput = () => q("amountInput", `#donationAmount[data-ff-amount-input], #donationAmount, [data-ff-amount-input]`);
-    const amountDisplays = () => qa("amountDisplays", `[data-ff-amount-display]`);
-    const teamHiddenInput = () =>
-      q(
-        "teamHiddenInput",
-        `input[name="team_id"][data-ff-team-id], input[data-ff-team-id][name="team_id"], input[data-ff-team-id]`
-      );
-
-    const stripeMount = () => q("stripeMount", `#paymentElement[data-ff-payment-element], #paymentElement, [data-ff-payment-element]`);
-    const paypalMount = () => q("paypalMount", `#paypalButtons[data-ff-paypal-mount], #paypalButtons, [data-ff-paypal-mount]`);
-    const payBtn = () => q("payBtn", `#payBtn[data-ff-pay-btn], #payBtn, [data-ff-pay-btn]`);
-
-    const checkoutError = () => q("checkoutError", `[data-ff-checkout-error]`);
-    const checkoutStatus = () => q("checkoutStatus", `[data-ff-checkout-status]`);
-
-    // Sponsor modal contract
-    const sponsorModal = () =>
-      q(
-        "sponsorModal",
-        `section#sponsor-interest.ff-modal[data-ff-sponsor-modal],
-         #sponsor-interest[data-ff-sponsor-modal],
-         [data-ff-sponsor-modal]#sponsor-interest,
-         [data-ff-sponsor-modal]`
-      );
-    const sponsorOpeners = () => qa("sponsorOpeners", `[data-ff-open-sponsor], a[href="#sponsor-interest"]`);
-    const sponsorClosers = () => qa("sponsorClosers", `[data-ff-close-sponsor]`);
-    const sponsorSubmit = () => q("sponsorSubmit", `[data-ff-sponsor-submit]`);
-    const sponsorName = () => q("sponsorName", `[data-ff-sponsor-name]`);
-    const sponsorEmail = () => q("sponsorEmail", `[data-ff-sponsor-email]`);
-    const sponsorMessage = () => q("sponsorMessage", `[data-ff-sponsor-message]`);
-
-    // Drawer contract
-    const drawer = () => q("drawer", `aside.ff-drawer[data-ff-drawer], [data-ff-drawer].ff-drawer, [data-ff-drawer], #mobileDrawer`);
-    const drawerPanel = (d) => (d || drawer())?.querySelector?.("[data-ff-drawer-panel]") || (d || drawer());
-    const drawerOpeners = () => qa("drawerOpeners", `[data-ff-open-drawer], [data-ff-drawer-open]`);
-    const drawerClosers = () => qa("drawerClosers", `[data-ff-close-drawer], [data-ff-drawer-close]`);
-
-    // Theme toggle
-    const themeToggles = () => qa("themeToggles", `[data-ff-theme-toggle]`);
-
-    // Toasts
-    const toastsHost = () => q("toastsHost", `[data-ff-toasts]`);
-
-    // Back to top
-    const backToTop = () => q("backToTop", `a.ff-backtotop[data-ff-backtotop], [data-ff-backtotop]`);
-
-    // Share
-    const shareButtons = () => qa("shareButtons", `[data-ff-share]`);
-
-    // Countdown contract: [data-ff-countdown] inside node with data-ff-deadline="ISO"
-    const deadlineNodes = () => qa("deadlineNodes", `[data-ff-deadline]`);
-
-    // Team attribution contract: clickable nodes with data-ff-team-id="…"
-    const teamNodes = () => qa("teamNodes", `[data-ff-team-id]`);
-
-    // Optional donor fields
-    const donorNameInput = () => q("donorNameInput", `[data-ff-name], input[name="donor_name"], input[name="name"]`);
-    const donorEmailInput = () => q("donorEmailInput", `[data-ff-email], input[name="donor_email"], input[name="email"]`);
-    const donorMessageInput = () => q("donorMessageInput", `[data-ff-message], textarea[name="donor_message"], textarea[name="message"]`);
-
-    return {
-      q,
-      qa,
-      checkoutSheet,
-      checkoutPanel,
-      checkoutBackdrop,
-      openCheckoutTriggers,
-      closeCheckoutTriggers,
-      donationForm,
-      amountInput,
-      amountDisplays,
-      teamHiddenInput,
-      stripeMount,
-      paypalMount,
-      payBtn,
-      checkoutError,
-      checkoutStatus,
-      sponsorModal,
-      sponsorOpeners,
-      sponsorClosers,
-      sponsorSubmit,
-      sponsorName,
-      sponsorEmail,
-      sponsorMessage,
-      drawer,
-      drawerPanel,
-      drawerOpeners,
-      drawerClosers,
-      themeToggles,
-      toastsHost,
-      backToTop,
-      shareButtons,
-      deadlineNodes,
-      teamNodes,
-      donorNameInput,
-      donorEmailInput,
-      donorMessageInput,
-    };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Toast system (non-breaking, never throws)
-  // ---------------------------------------------------------------------------
-  const Toasts = (() => {
-    const escapeHtml = (s) =>
-      String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-
-    const ensureHost = () => {
-      let host = DOM.toastsHost();
-      if (host) return host;
-
-      try {
-        host = document.createElement("div");
-        host.setAttribute("data-ff-toasts", "");
-        host.setAttribute("aria-live", "polite");
-        host.setAttribute("aria-atomic", "false");
-        host.className = "ff-toasts";
-        document.body.appendChild(host);
-        return host;
-      } catch {
-        return null;
-      }
-    };
-
-    const showToast = (type, title, message, opts = {}) => {
-      try {
-        const host = ensureHost();
-        if (!host) return;
-
-        const kind = String(type || "info").toLowerCase();
-        const ttl = String(title || "").trim();
-        const msg = String(message || "").trim();
-        const ms = clamp(Number(opts.ms ?? opts.duration ?? 2600) || 2600, 1200, 9000);
-
-        const el = document.createElement("div");
-        el.className = "ff-toast";
-        el.setAttribute("role", "status");
-        el.setAttribute("data-ff-toast", kind);
-        el.tabIndex = -1;
-
-        el.innerHTML = `
-          <div class="ff-toast__inner">
-            ${ttl ? `<div class="ff-toast__title">${escapeHtml(ttl)}</div>` : ``}
-            <div class="ff-toast__msg">${escapeHtml(msg || ttl || "Done")}</div>
-          </div>
-        `;
-
-        host.appendChild(el);
-        try {
-          el.focus({ preventScroll: true });
-        } catch {}
-
-        setTimeout(() => {
-          try {
-            el.remove();
-          } catch {}
-        }, ms);
-      } catch {}
-    };
-
-    return { showToast };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // UI helpers (busy/disabled/status/toast/scroll)
-  // ---------------------------------------------------------------------------
-  const UI = (() => {
-    const setHidden = (el, hide) => {
-      try {
-        if (el) el.hidden = !!hide;
-      } catch {}
-    };
-
-    const setText = (el, txt) => {
-      try {
-        if (el) el.textContent = String(txt ?? "");
-      } catch {}
-    };
-
-    const clearCheckoutNotices = () => {
-      setHidden(DOM.checkoutError(), true);
-      setHidden(DOM.checkoutStatus(), true);
-    };
-
-    const showError = (msg, { toast = false } = {}) => {
-      const box = DOM.checkoutError();
-      if (box) {
-        setText(box, msg || "Something went wrong.");
-        setHidden(box, false);
-      } else if (toast) {
-        Toasts.showToast("error", "Checkout", msg || "Something went wrong.");
-      }
-    };
-
-    const showStatus = (msg) => {
-      const box = DOM.checkoutStatus();
-      if (box) {
-        setText(box, msg || "");
-        setHidden(box, false);
-      }
-    };
-
-    const setDisabled = (el, disabled) => {
-      try {
-        if (!el) return;
-        el.disabled = !!disabled;
-      } catch {}
-      try {
-        if (!el) return;
-        el.setAttribute("aria-disabled", disabled ? "true" : "false");
-      } catch {}
-    };
-
-    const setBusy = (el, busy, opts = {}) => {
-      if (!el) return;
-      try {
-        const label = String(opts.label || "Processing…");
-        const was = el.getAttribute("data-ff-label") || el.textContent || "";
-        if (!el.getAttribute("data-ff-label")) el.setAttribute("data-ff-label", was);
-
-        el.setAttribute("aria-busy", busy ? "true" : "false");
-        setDisabled(el, !!busy);
-
-        if (typeof opts.setText === "boolean" ? opts.setText : true) {
-          el.textContent = busy ? label : el.getAttribute("data-ff-label") || was;
-        }
-      } catch {}
-    };
-
-    const safeScrollIntoView = (el, opts = {}) => {
-      try {
-        if (!el?.scrollIntoView) return;
-        const reduce = prefersReducedMotion();
-        el.scrollIntoView({
-          block: opts.block || "center",
-          inline: opts.inline || "nearest",
-          behavior: reduce ? "auto" : opts.behavior || "smooth",
-        });
-      } catch {
-        try {
-          const r = el?.getBoundingClientRect?.();
-          if (!r) return;
-          window.scrollTo({
-            top: Math.max(0, window.scrollY + r.top - 24),
-            behavior: prefersReducedMotion() ? "auto" : "smooth",
-          });
-        } catch {}
-      }
-    };
-
-    return {
-      clearCheckoutNotices,
-      showError,
-      showStatus,
-      setDisabled,
-      setBusy,
-      safeScrollIntoView,
-      formatMoney: (cents) => formatMoney(cents, Config.currency(), Config.locale()),
-      toast: Toasts.showToast,
-    };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Scroll lock (ref-counted)
-  // ---------------------------------------------------------------------------
-  const ScrollLock = (() => {
-    let count = 0;
-    const prev = { bodyOverflow: "", bodyPadR: "", htmlOverflow: "" };
-
-    const lock = () => {
-      count += 1;
-      if (count > 1) return;
-
-      const body = document.body;
-      const html = document.documentElement;
-
-      prev.bodyOverflow = body.style.overflow || "";
-      prev.bodyPadR = body.style.paddingRight || "";
-      prev.htmlOverflow = html.style.overflow || "";
-
-      let scrollbarW = 0;
-      try {
-        scrollbarW = Math.max(0, window.innerWidth - html.clientWidth);
-      } catch {}
-
-      try {
-        html.style.overflow = "hidden";
-      } catch {}
-      try {
-        body.style.overflow = "hidden";
-      } catch {}
-
-      if (scrollbarW > 0) {
-        try {
-          body.style.paddingRight = `${scrollbarW}px`;
-        } catch {}
-      }
-    };
-
-    const unlock = () => {
-      count = Math.max(0, count - 1);
-      if (count !== 0) return;
-
-      const body = document.body;
-      const html = document.documentElement;
-
-      try {
-        body.style.overflow = prev.bodyOverflow;
-      } catch {}
-      try {
-        body.style.paddingRight = prev.bodyPadR;
-      } catch {}
-      try {
-        html.style.overflow = prev.htmlOverflow;
-      } catch {}
-    };
-
-    return { lock, unlock };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Focus helpers (trap + restore)
-  // ---------------------------------------------------------------------------
-  const Focus = (() => {
-    const focusable = (root) => {
-      const host = root && root.nodeType ? root : document;
-      const selectors = [
-        'a[href]:not([tabindex="-1"])',
-        'area[href]:not([tabindex="-1"])',
-        'button:not([disabled]):not([tabindex="-1"])',
-        'input:not([disabled]):not([type="hidden"]):not([tabindex="-1"])',
-        'select:not([disabled]):not([tabindex="-1"])',
-        'textarea:not([disabled]):not([tabindex="-1"])',
-        'iframe:not([tabindex="-1"])',
-        '[tabindex]:not([tabindex="-1"])',
-        '[contenteditable="true"]:not([tabindex="-1"])',
-      ].join(",");
-
-      let list = [];
-      try {
-        list = Array.from(host.querySelectorAll(selectors));
-      } catch {
-        list = [];
+          panel.focus({ preventScroll: true });
+        } catch (e1) {}
+        return;
       }
 
-      return list.filter((el) => {
-        try {
-          if (!el) return false;
-          if (el.hidden) return false;
-          if (el.getAttribute("aria-hidden") === "true") return false;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      var active = document.activeElement;
 
-          if (el.offsetParent === null) {
-            const cs = getComputedStyle(el);
-            if (cs.position !== "fixed") return false;
-          }
-          return true;
-        } catch {
-          return false;
-        }
-      });
-    };
-
-    const trapKeydown = (e, container, onEscape) => {
-      try {
-        if (!e) return;
-
-        if (e.key === "Escape") {
-          try {
-            onEscape?.();
-          } catch {}
+      if (e.shiftKey) {
+        if (active === first || active === panel) {
           e.preventDefault();
-          return;
+          try {
+            last.focus({ preventScroll: true });
+          } catch (e2) {}
         }
-
-        if (e.key !== "Tab") return;
-
-        const root = container || document;
-        const items = focusable(root);
-        if (!items.length) return;
-
-        const first = items[0];
-        const last = items[items.length - 1];
-        const active = document.activeElement;
-
-        if (!root.contains(active)) {
+      } else {
+        if (active === last) {
           e.preventDefault();
-          (first || root)?.focus?.();
-          return;
-        }
-
-        if (e.shiftKey) {
-          if (active === first || active === root) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (active === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      } catch {}
-    };
-
-    return { focusable, trapKeydown };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // State: amount + team attribution
-  // ---------------------------------------------------------------------------
-  const State = (() => {
-    const KEY_TEAM = "ff_selected_team_id";
-    const KEY_AMOUNT = "ff_last_amount_cents";
-
-    let teamId = "";
-    let amountCents = 0;
-
-    const readStored = () => {
-      try {
-        teamId = String(localStorage.getItem(KEY_TEAM) || "").trim();
-      } catch {
-        teamId = "";
-      }
-
-      try {
-        const a = Number(localStorage.getItem(KEY_AMOUNT) || 0) || 0;
-        amountCents = clamp(a | 0, 0, MAX_CENTS);
-      } catch {
-        amountCents = 0;
-      }
-    };
-
-    const persistTeam = () => {
-      try {
-        if (teamId) localStorage.setItem(KEY_TEAM, teamId);
-        else localStorage.removeItem(KEY_TEAM);
-      } catch {}
-    };
-
-    const persistAmount = () => {
-      try {
-        if (amountCents > 0) localStorage.setItem(KEY_AMOUNT, String(amountCents));
-      } catch {}
-    };
-
-    const setTeam = (id) => {
-      const v = String(id || "").trim();
-      if (!v) return;
-      teamId = v;
-      persistTeam();
-      try {
-        const inp = DOM.teamHiddenInput();
-        if (inp) inp.value = teamId;
-      } catch {}
-      Analytics.emit("team_selected", { team_id: teamId });
-    };
-
-    const setAmount = (cents) => {
-      amountCents = clamp(Number(cents || 0) | 0, 0, MAX_CENTS);
-      persistAmount();
-      Analytics.emit("amount_set", { amount_cents: amountCents });
-    };
-
-    const getTeam = () => teamId;
-    const getAmount = () => amountCents;
-
-    readStored();
-
-    return { setTeam, setAmount, getTeam, getAmount, readStored };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Amount controller (input + displays + quick buttons)
-  // ---------------------------------------------------------------------------
-  const Amounts = (() => {
-    const syncDisplays = (cents) => {
-      const displays = DOM.amountDisplays();
-      if (!displays.length) return;
-      const txt = cents > 0 ? UI.formatMoney(cents) : "—";
-      for (const el of displays) {
-        try {
-          el.textContent = txt;
-        } catch {}
-      }
-    };
-
-    const syncInput = (cents) => {
-      const input = DOM.amountInput();
-      if (!input) return;
-      try {
-        const asStr = centsToDollarsString(cents);
-        if (asStr && String(input.value || "") !== asStr) input.value = asStr;
-        if (!asStr && String(input.value || "")) input.value = "";
-      } catch {}
-    };
-
-    const normalizeAndSet = (rawVal, { clampMin = true } = {}) => {
-      const cents0 = parseMoneyToCents(rawVal);
-      const cents1 = clamp(cents0, 0, MAX_CENTS);
-      const cents2 = clampMin ? (cents1 > 0 ? Math.max(cents1, MIN_CENTS) : 0) : cents1;
-
-      State.setAmount(cents2);
-      syncInput(cents2);
-      syncDisplays(cents2);
-
-      Payments.queuePrepare(false);
-    };
-
-    const setFromQuick = (val) => {
-      const n = Number(String(val || "").replace(/[^\d.]/g, "")) || 0;
-      if (n <= 0) return;
-      normalizeAndSet(String(n), { clampMin: true });
-    };
-
-    const init = () => {
-      try {
-        const cents = State.getAmount();
-        syncInput(cents);
-        syncDisplays(cents);
-      } catch {}
-
-      const input = DOM.amountInput();
-      if (input) {
-        on(input, "input", () => normalizeAndSet(input.value, { clampMin: false }));
-        on(input, "change", () => normalizeAndSet(input.value, { clampMin: true }));
-      }
-    };
-
-    return { init, setFromQuick, normalizeAndSet };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Team attribution controller
-  // ---------------------------------------------------------------------------
-  const TeamAttribution = (() => {
-    const applyToHiddenInput = () => {
-      try {
-        const inp = DOM.teamHiddenInput();
-        if (inp) inp.value = State.getTeam() || "";
-      } catch {}
-    };
-
-    const init = () => {
-      applyToHiddenInput();
-      try {
-        const u = new URL(location.href);
-        const src = String(u.searchParams.get("src") || "").trim();
-        const m = src.match(/^team:(.+)$/i);
-        const fromUrl = m ? String(m[1] || "").trim() : "";
-        if (fromUrl) State.setTeam(fromUrl);
-        applyToHiddenInput();
-      } catch {}
-    };
-
-    const handleTeamClick = (node) => {
-      try {
-        const id = node?.getAttribute?.("data-ff-team-id") || node?.dataset?.ffTeamId || "";
-        if (!id) return;
-        State.setTeam(id);
-        applyToHiddenInput();
-        Payments.queuePrepare(true);
-      } catch {}
-    };
-
-    return { init, handleTeamClick };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Overlay controller core (sheet/drawer/modal)
-  // ---------------------------------------------------------------------------
-  const OverlayCore = (() => {
-    const setOpenAttrs = (root, open, { addOpenClass = true } = {}) => {
-      if (!root) return;
-      try {
-        if (open) {
-          root.hidden = false;
-          if (addOpenClass) root.classList.add("is-open");
-          root.setAttribute("data-open", "true");
-          root.setAttribute("aria-hidden", "false");
-        } else {
-          if (addOpenClass) root.classList.remove("is-open");
-          root.setAttribute("data-open", "false");
-          root.setAttribute("aria-hidden", "true");
-          root.hidden = true;
-        }
-      } catch {}
-    };
-
-    const isOpenByState = (root) => {
-      if (!root) return false;
-
-      const byTarget = (() => {
-        const id = String(root.id || "").trim();
-        const h = String(location.hash || "").trim();
-        return id && h === `#${id}`;
-      })();
-
-      const byClass = (() => {
-        try {
-          return root.classList.contains("is-open");
-        } catch {
-          return false;
-        }
-      })();
-
-      const byData = (() => {
-        try {
-          return root.getAttribute("data-open") === "true";
-        } catch {
-          return false;
-        }
-      })();
-
-      const byAria = (() => {
-        try {
-          return root.getAttribute("aria-hidden") === "false";
-        } catch {
-          return false;
-        }
-      })();
-
-      return !!(byTarget || byClass || byData || byAria);
-    };
-
-    return { setOpenAttrs, isOpenByState };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Checkout sheet controller (hash + JS toggles + focus trap + restore)
-  // ---------------------------------------------------------------------------
-  const Checkout = (() => {
-    let openState = false;
-    let returnFocusEl = null;
-    let panelEl = null;
-
-    const sheet = () => DOM.checkoutSheet();
-    const panel = () => DOM.checkoutPanel(sheet());
-
-    const open = (openerEl, { setHash = true } = {}) => {
-      const s = sheet();
-      if (!s) return;
-
-      returnFocusEl = openerEl || document.activeElement || null;
-
-      if (!openState) {
-        openState = true;
-        panelEl = panel();
-        ScrollLock.lock();
-      }
-
-      OverlayCore.setOpenAttrs(s, true, { addOpenClass: true });
-
-      if (setHash) {
-        try {
-          const id = String(s.id || "checkout");
-          Hash.set(`#${id}`, { replace: false });
-        } catch {}
-      }
-
-      requestAnimationFrame(() => {
-        try {
-          const amt = DOM.amountInput();
-          const root = panelEl || panel() || sheet();
-          const items = Focus.focusable(root);
-          const target = amt || items[0] || root || s;
-          target?.focus?.({ preventScroll: true });
-        } catch {}
-      });
-
-      try {
-        Payments.queuePrepare(true);
-      } catch {}
-
-      Analytics.emit("checkout_open", { mode: "sheet" });
-    };
-
-    const close = ({ restoreHash = true } = {}) => {
-      const s = sheet();
-      if (!s || !openState) return;
-
-      openState = false;
-      panelEl = null;
-
-      OverlayCore.setOpenAttrs(s, false, { addOpenClass: true });
-      ScrollLock.unlock();
-
-      if (restoreHash) {
-        try {
-          if (document.getElementById("home")) Hash.set("#home", { replace: true });
-          else Hash.clear({ replace: true });
-        } catch {}
-      }
-
-      const prev = returnFocusEl;
-      returnFocusEl = null;
-      try {
-        prev?.focus?.({ preventScroll: true });
-      } catch {}
-
-      Analytics.emit("checkout_close", { mode: "sheet" });
-    };
-
-    const syncWithHash = () => {
-      const s = sheet();
-      if (!s) return;
-
-      if (OverlayCore.isOpenByState(s)) {
-        if (!openState) open(null, { setHash: false });
-        else OverlayCore.setOpenAttrs(s, true, { addOpenClass: true });
-      } else {
-        if (openState) close({ restoreHash: false });
-        else OverlayCore.setOpenAttrs(s, false, { addOpenClass: true });
-      }
-    };
-
-    const isOpen = () => !!openState;
-
-    const getTrapRoot = () => panelEl || panel() || sheet();
-
-    const onBackdropClick = (target) => {
-      const s = sheet();
-      if (!s || !openState) return false;
-
-      const p = panelEl || panel();
-      if (p && p.contains(target)) return false;
-
-      const backdrop = DOM.checkoutBackdrop();
-      if (backdrop && (target === backdrop || backdrop.contains(target))) return true;
-
-      // rare markup: click on sheet root outside panel
-      if (target === s) return true;
-
-      return false;
-    };
-
-    return { open, close, syncWithHash, isOpen, getTrapRoot, onBackdropClick };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Drawer controller (open/close + trap + restore)
-  // ---------------------------------------------------------------------------
-  const Drawer = (() => {
-    let openState = false;
-    let returnFocusEl = null;
-    let panelEl = null;
-
-    const root = () => DOM.drawer();
-    const panel = () => DOM.drawerPanel(root());
-
-    const open = (openerEl) => {
-      const d = root();
-      if (!d) return;
-
-      if (!openState) {
-        openState = true;
-        returnFocusEl = openerEl || document.activeElement || null;
-        panelEl = panel();
-        ScrollLock.lock();
-      }
-
-      try {
-        d.hidden = false;
-        d.setAttribute("aria-hidden", "false");
-        d.setAttribute("data-open", "true");
-      } catch {}
-
-      requestAnimationFrame(() => {
-        try {
-          const items = Focus.focusable(panelEl || d);
-          (items[0] || panelEl || d)?.focus?.({ preventScroll: true });
-        } catch {}
-      });
-
-      Analytics.emit("drawer_open", {});
-    };
-
-    const close = () => {
-      const d = root();
-      if (!d || !openState) return;
-
-      openState = false;
-      panelEl = null;
-
-      try {
-        d.setAttribute("aria-hidden", "true");
-        d.setAttribute("data-open", "false");
-        d.hidden = true;
-      } catch {}
-
-      ScrollLock.unlock();
-
-      const prev = returnFocusEl;
-      returnFocusEl = null;
-      try {
-        prev?.focus?.({ preventScroll: true });
-      } catch {}
-
-      Analytics.emit("drawer_close", {});
-    };
-
-    const isOpen = () => !!openState;
-    const getTrapRoot = () => panelEl || panel() || root();
-
-    const onBackdropClick = (target) => {
-      const d = root();
-      if (!d || !openState) return false;
-      const p = panelEl || panel();
-      if (p && p.contains(target)) return false;
-      return target === d; // click on drawer root overlay
-    };
-
-    return { open, close, isOpen, getTrapRoot, onBackdropClick };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Sponsor modal controller (open/close + trap + restore + submit)
-  // ---------------------------------------------------------------------------
-  const Sponsor = (() => {
-    let openState = false;
-    let returnFocusEl = null;
-    let panelEl = null;
-
-    const modal = () => DOM.sponsorModal();
-
-    const setAttrs = (m, open) => {
-      if (!m) return;
-      try {
-        if (open) {
-          m.hidden = false;
-          m.setAttribute("aria-hidden", "false");
-          m.setAttribute("role", m.getAttribute("role") || "dialog");
-          m.setAttribute("aria-modal", "true");
-        } else {
-          m.setAttribute("aria-hidden", "true");
-          m.hidden = true;
-        }
-      } catch {}
-    };
-
-    const open = (openerEl, { setHash = false } = {}) => {
-      const m = modal();
-      if (!m) return;
-
-      if (!openState) {
-        openState = true;
-        returnFocusEl = openerEl || document.activeElement || null;
-        panelEl = m.querySelector?.("[data-ff-modal-panel]") || m.querySelector?.(".ff-modal__panel") || m;
-        ScrollLock.lock();
-      }
-
-      setAttrs(m, true);
-
-      if (setHash) {
-        try {
-          const id = String(m.id || "sponsor-interest");
-          Hash.set(`#${id}`, { replace: false });
-        } catch {}
-      }
-
-      requestAnimationFrame(() => {
-        try {
-          const items = Focus.focusable(panelEl || m);
-          (items[0] || panelEl || m)?.focus?.({ preventScroll: true });
-        } catch {}
-      });
-
-      Analytics.emit("sponsor_open", {});
-    };
-
-    const close = ({ restoreHash = false } = {}) => {
-      const m = modal();
-      if (!m || !openState) return;
-
-      openState = false;
-      panelEl = null;
-
-      setAttrs(m, false);
-      ScrollLock.unlock();
-
-      if (restoreHash) {
-        try {
-          if (document.getElementById("home")) Hash.set("#home", { replace: true });
-          else Hash.clear({ replace: true });
-        } catch {}
-      }
-
-      const prev = returnFocusEl;
-      returnFocusEl = null;
-      try {
-        prev?.focus?.({ preventScroll: true });
-      } catch {}
-
-      Analytics.emit("sponsor_close", {});
-    };
-
-    const syncWithHash = () => {
-      const m = modal();
-      if (!m) return;
-      const id = String(m.id || "sponsor-interest");
-      if (location.hash === `#${id}`) {
-        if (!openState) open(null, { setHash: false });
-      } else {
-        if (openState) close({ restoreHash: false });
-      }
-    };
-
-    const submit = async () => {
-      UI.clearCheckoutNotices();
-
-      const name = String(DOM.sponsorName()?.value || "").trim();
-      const email = String(DOM.sponsorEmail()?.value || "").trim();
-      const message = String(DOM.sponsorMessage()?.value || "").trim();
-
-      if (email && !isEmail(email)) {
-        UI.toast("error", "Sponsor", "Please enter a valid email.");
-        return;
-      }
-
-      const endpoint = Config.sponsorEndpoint();
-      const csrf = Config.csrfToken();
-
-      if (!endpoint) {
-        UI.toast("success", "Sponsor", "Sent! We’ll follow up ASAP.");
-        Analytics.emit("sponsor_submit", { mode: "local" });
-        close({ restoreHash: false });
-        return;
-      }
-
-      try {
-        const payload = {
-          sponsor_name: name,
-          sponsor_email: email,
-          sponsor_message: message,
-          team_id: State.getTeam() || "",
-          page: `${location.origin}${location.pathname}`,
-        };
-
-        const out = await safeFetchJson(
-          endpoint,
-          {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              ...(csrf ? { "X-CSRFToken": csrf } : {}),
-            },
-            body: JSON.stringify(payload),
-          },
-          15000
-        );
-
-        if (!out.ok) {
-          const msg = String(out.json?.error || out.json?.message || "Could not send sponsor note.");
-          throw new Error(msg);
-        }
-
-        UI.toast("success", "Sponsor", "Sent! We’ll follow up ASAP.");
-        Analytics.emit("sponsor_submit", { mode: "network" });
-        close({ restoreHash: false });
-      } catch (e) {
-        UI.toast("error", "Sponsor", String(e?.message || "Could not send. Please try again."));
-        Analytics.emit("sponsor_submit_error", { message: String(e?.message || "") });
-      }
-    };
-
-    const isOpen = () => !!openState;
-    const getTrapRoot = () => panelEl || modal();
-
-    const onBackdropClick = (target) => {
-      const m = modal();
-      if (!m || !openState) return false;
-      const p = panelEl || m;
-      if (p && p.contains(target) && target !== m) return false;
-      return target === m;
-    };
-
-    return { open, close, syncWithHash, submit, isOpen, getTrapRoot, onBackdropClick };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Theme toggle (html[data-theme="light"/"dark"], persists preference)
-  // ---------------------------------------------------------------------------
-  const Theme = (() => {
-    const STORAGE_KEY = "ff_theme";
-
-    const getSaved = () => {
-      try {
-        const v = String(localStorage.getItem(STORAGE_KEY) || "").trim().toLowerCase();
-        if (v === "light" || v === "dark" || v === "system") return v;
-      } catch {}
-      return "system";
-    };
-
-    const resolve = (mode) => {
-      if (mode === "light" || mode === "dark") return mode;
-      try {
-        const mql = window.matchMedia?.("(prefers-color-scheme: dark)");
-        return mql && mql.matches ? "dark" : "light";
-      } catch {
-        return "light";
-      }
-    };
-
-    const apply = (mode) => {
-      const resolved = resolve(mode);
-      const root = document.documentElement;
-
-      try {
-        root.dataset.theme = resolved;
-        root.classList.toggle("dark", resolved === "dark");
-        root.style.colorScheme = resolved;
-      } catch {}
-
-      try {
-        DOM.themeToggles().forEach((btn) => {
           try {
-            btn.setAttribute("aria-pressed", resolved === "dark" ? "true" : "false");
-          } catch {}
-        });
-      } catch {}
-
-      try {
-        Stripe.invalidateMount();
-      } catch {}
-      Payments.queuePrepare(true);
-    };
-
-    const toggle = (e) => {
-      const saved = getSaved();
-      const cur = resolve(saved);
-      const next =
-        e?.altKey
-          ? saved === "system"
-            ? "dark"
-            : saved === "dark"
-              ? "light"
-              : "system"
-          : cur === "dark"
-            ? "light"
-            : "dark";
-
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-      } catch {}
-      apply(next);
-
-      Analytics.emit("theme_toggle", { mode: next, resolved: resolve(next) });
-      UI.toast("info", "Theme", resolve(next) === "dark" ? "Dark mode" : "Light mode", { ms: 1800 });
-    };
-
-    const init = () => {
-      apply(getSaved());
-      try {
-        const mql = window.matchMedia?.("(prefers-color-scheme: dark)");
-        mql?.addEventListener?.("change", () => {
-          if (getSaved() === "system") apply("system");
-        });
-      } catch {}
-    };
-
-    return { init, toggle };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Canonical URL (share-safe, no hash noise)
-  // ---------------------------------------------------------------------------
-  const Canonical = (() => {
-    let cachedBase = "";
-
-    const baseUrl = () => {
-      if (cachedBase) return cachedBase;
-
-      const fromMeta = metaAny("ff-canonical", "ff-stripe-return-url");
-      const fallback = `${location.origin}${location.pathname}${location.search || ""}`;
-
-      try {
-        const u = new URL(fromMeta || fallback, location.origin);
-        u.hash = "";
-        cachedBase = u.toString();
-        return cachedBase;
-      } catch {
-        cachedBase = `${location.origin}${location.pathname}${location.search || ""}`;
-        return cachedBase;
-      }
-    };
-
-    const shareUrl = () => {
-      try {
-        const u = new URL(baseUrl());
-        const tid = State.getTeam();
-        if (tid) u.searchParams.set("src", `team:${tid}`);
-        else u.searchParams.delete("src");
-        return u.toString();
-      } catch {
-        return baseUrl();
-      }
-    };
-
-    return { baseUrl, shareUrl };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Share flow ([data-ff-share])
-  // ---------------------------------------------------------------------------
-  const Share = (() => {
-    const copyText = async (text) => {
-      const v = String(text ?? "");
-      if (!v) return false;
-
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(v);
-          return true;
-        }
-      } catch {}
-
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = v;
-        ta.readOnly = true;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-          document.execCommand("copy");
-        } catch {}
-        ta.remove();
-        return true;
-      } catch {
-        return false;
-      }
-    };
-
-    const doShare = async () => {
-      const url = Canonical.shareUrl();
-      const title = String(meta("application-name") || Config.raw?.org?.name || "FutureFunded").trim() || "FutureFunded";
-      const text = `Support the program here: ${url}`;
-
-      if (navigator.share) {
-        try {
-          await navigator.share({ title, text, url });
-          UI.toast("success", "Share", "Shared!");
-          Analytics.emit("share", { mode: "native" });
-          return;
-        } catch {}
-      }
-
-      const ok = await copyText(url);
-      UI.toast("success", "Share", ok ? "Link copied" : "Copy failed");
-      Analytics.emit("share", { mode: ok ? "copy" : "copy_failed" });
-    };
-
-    return { doShare };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Countdown
-  // ---------------------------------------------------------------------------
-  const Countdown = (() => {
-    let timer = 0;
-
-    const parseDeadline = (node) => {
-      try {
-        const iso = String(node?.getAttribute?.("data-ff-deadline") || "").trim();
-        if (!iso) return null;
-        const d = new Date(iso);
-        return Number.isFinite(d.getTime()) ? d : null;
-      } catch {
-        return null;
-      }
-    };
-
-    const fmt = (ms) => {
-      const s = Math.max(0, Math.floor(ms / 1000));
-      const d = Math.floor(s / 86400);
-      const h = Math.floor((s % 86400) / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const sec = Math.floor(s % 60);
-
-      if (d > 1) return `${d}d ${h}h`;
-      if (d === 1) return `Final day`;
-      if (h > 0) return `${h}h ${m}m`;
-      if (m > 0) return `${m}m ${sec}s`;
-      return `${sec}s`;
-    };
-
-    const tick = () => {
-      const nodes = DOM.deadlineNodes();
-      if (!nodes.length) return;
-
-      for (const n of nodes) {
-        const d = parseDeadline(n);
-        const targets = $$("[data-ff-countdown]", n);
-        if (!targets.length) continue;
-
-        let txt = "—";
-        if (!d) txt = "—";
-        else {
-          const ms = d.getTime() - Date.now();
-          if (ms <= 0) txt = "Ended";
-          else txt = fmt(ms);
-        }
-
-        for (const t of targets) {
-          try {
-            t.textContent = txt;
-          } catch {}
+            first.focus({ preventScroll: true });
+          } catch (e3) {}
         }
       }
-    };
+    }
 
-    const start = () => {
-      stop();
-      tick();
-      timer = window.setInterval(tick, 1000);
-    };
-
-    const stop = () => {
-      if (timer) {
+    panel.addEventListener("keydown", onKeyDown);
+    return {
+      destroy: function () {
         try {
-          clearInterval(timer);
-        } catch {}
-        timer = 0;
+          panel.removeEventListener("keydown", onKeyDown);
+        } catch (e) {}
       }
     };
+  }
 
-    const init = () => {
-      if (!DOM.deadlineNodes().length) return;
-      start();
-      on(document, "visibilitychange", () => {
-        try {
-          if (document.hidden) stop();
-          else start();
-        } catch {}
+  /* -----------------------------
+     Overlay manager (sheet/modals/drawer + hash targets)
+  ----------------------------- */
+
+  function pushOpen(id, root, panel) {
+    if (state.openMap[id]) return; // prevents duplicate stacking
+    state.openMap[id] = true;
+
+    var restore = document.activeElement;
+    var entry = { id: id, root: root, panel: panel, restoreEl: restore, trap: null };
+    state.openStack.push(entry);
+
+    lockScroll(true);
+
+    if (panel) {
+      entry.trap = trapFocus(panel, function () {
+        closeById(id);
       });
-    };
-
-    return { init };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Stripe (Payment Element) — single-flight init + single mount + resilient retries
-  // ---------------------------------------------------------------------------
-  const Stripe = (() => {
-    let stripe = null;
-    let elements = null;
-
-    let sdkPromise = null;
-    let intentPromise = null;
-
-    let mountedSig = "";
-    let lastClientSecret = "";
-    let lastIntentSig = "";
-
-    const sdkReady = () => typeof window.Stripe === "function";
-
-    const loadSdk = async () => {
-      if (sdkReady()) return true;
-      if (sdkPromise) return sdkPromise;
-
-      sdkPromise = loadScriptOnce("https://js.stripe.com/v3/", {
-        id: "ffStripeSdk",
-        nonce: CSP.nonce(),
-        attrs: { referrerpolicy: "origin" },
-      })
-        .then(() => true)
-        .catch(() => false)
-        .finally(() => {
-          sdkPromise = null;
-        });
-
-      return sdkPromise;
-    };
-
-    const appearance = () => {
-      const theme = String(document.documentElement.dataset.theme || "light");
-      return { theme: theme === "dark" ? "night" : "stripe" };
-    };
-
-    const readDonor = () => ({
-      donor_name: String(DOM.donorNameInput()?.value || "").trim(),
-      donor_email: String(DOM.donorEmailInput()?.value || "").trim(),
-      donor_message: String(DOM.donorMessageInput()?.value || "").trim(),
-    });
-
-    const readAmountTeam = () => ({
-      amount_cents: clamp(State.getAmount() | 0, 0, MAX_CENTS),
-      currency: String(Config.currency() || "USD"),
-      team_id: String(State.getTeam() || "").trim(),
-    });
-
-    const intentSig = (p) => [p.amount_cents || 0, p.currency || "", p.team_id || "", p.donor_email || "", p.donor_name || ""].join("|");
-
-    const createOrReuseIntent = async ({ force = false } = {}) => {
-      const pk0 = Config.stripePk();
-      const ep = String(Config.stripeIntentEndpoint() || "").trim();
-      const mount = DOM.stripeMount();
-      if (!pk0 || !ep || !mount) return { ok: false, reason: "missing_config" };
-
-      const donor = readDonor();
-      if (Config.requireEmail() && !donor.donor_email) return { ok: false, reason: "incomplete_form", message: "Email required." };
-      if (donor.donor_email && !isEmail(donor.donor_email)) return { ok: false, reason: "incomplete_form", message: "Invalid email." };
-
-      const core = readAmountTeam();
-      if (!core.amount_cents || core.amount_cents < MIN_CENTS) return { ok: false, reason: "incomplete_form", message: "Amount required." };
-
-      const payload = {
-        amount_cents: core.amount_cents,
-        currency: core.currency,
-        donor_name: donor.donor_name,
-        donor_email: donor.donor_email,
-        donor_message: donor.donor_message,
-        team_id: core.team_id,
-      };
-
-      const sig = intentSig(payload);
-      if (!force && lastClientSecret && sig === lastIntentSig) {
-        return { ok: true, reused: true, client_secret: lastClientSecret, publishable_key: pk0 };
-      }
-
-      if (intentPromise) return intentPromise;
-
-      const csrf = Config.csrfToken();
-
-      intentPromise = (async () => {
-        UI.clearCheckoutNotices();
-
-        const out = await safeFetchJson(
-          ep,
-          {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              ...(csrf ? { "X-CSRFToken": csrf } : {}),
-            },
-            body: JSON.stringify(payload),
-          },
-          15000
-        );
-
+      raf().then(function () {
         try {
-          if (!out.ok) {
-            const msg = String(out.json?.error || out.json?.message || "Could not start Stripe checkout.");
-            return { ok: false, reason: "server_error", message: msg };
-          }
-
-          const cs = String(out.json?.client_secret || out.json?.clientSecret || out.json?.secret || "").trim();
-          const pkFromServer = String(out.json?.publishable_key || out.json?.publishableKey || "").trim();
-          if (!cs) return { ok: false, reason: "bad_response", message: "Missing Stripe client secret." };
-
-          lastClientSecret = cs;
-          lastIntentSig = sig;
-
-          return { ok: true, client_secret: cs, publishable_key: pkFromServer || pk0 };
-        } catch {
-          return { ok: false, reason: "bad_response", message: "Stripe intent response error." };
-        } finally {
-          intentPromise = null;
-        }
-      })();
-
-      return intentPromise;
-    };
-
-    const mountOnce = async ({ force = false } = {}) => {
-      const mount = DOM.stripeMount();
-      if (!mount) return { ok: false, reason: "no_mount" };
-
-      const pk0 = Config.stripePk();
-      if (!pk0) return { ok: false, reason: "missing_pk" };
-
-      const sdkOk = await loadSdk();
-      if (!sdkOk || !sdkReady()) return { ok: false, reason: "sdk" };
-
-      const intent = await createOrReuseIntent({ force });
-      if (!intent.ok) return intent;
-
-      try {
-        if (!stripe) stripe = window.Stripe(intent.publishable_key || pk0);
-      } catch {
-        stripe = null;
-      }
-      if (!stripe) return { ok: false, reason: "stripe_init", message: "Stripe failed to initialize." };
-
-      const themeKey = String(document.documentElement.dataset.theme || "light");
-      const sig = `${intent.client_secret}::${themeKey}`;
-
-      if (!force && mountedSig === sig && mount.getAttribute("data-ff-stripe-mounted") === sig) {
-        return { ok: true, reused: true };
-      }
-
-      try {
-        mount.replaceChildren();
-      } catch {}
-
-      elements = null;
-
-      try {
-        elements = stripe.elements({
-          clientSecret: intent.client_secret,
-          appearance: appearance(),
-        });
-
-        const paymentEl = elements.create("payment");
-        paymentEl.mount(mount);
-
-        mountedSig = sig;
-        mount.setAttribute("data-ff-stripe-mounted", sig);
-
-        Analytics.emit("stripe_ready", { mounted: true });
-        return { ok: true };
-      } catch {
-        return { ok: false, reason: "mount_error", message: "Stripe failed to mount." };
-      }
-    };
-
-    const invalidateMount = () => {
-      mountedSig = "";
-      try {
-        const mount = DOM.stripeMount();
-        if (mount) mount.removeAttribute("data-ff-stripe-mounted");
-      } catch {}
-    };
-
-    const confirm = async () => {
-      UI.clearCheckoutNotices();
-
-      const donor = readDonor();
-      const core = readAmountTeam();
-
-      if (!core.amount_cents || core.amount_cents < MIN_CENTS) {
-        UI.showError("Enter a donation amount.");
-        return;
-      }
-
-      if (Config.requireEmail() && !donor.donor_email) {
-        UI.showError("Enter your email for a receipt.");
-        return;
-      }
-
-      if (donor.donor_email && !isEmail(donor.donor_email)) {
-        UI.showError("Enter a valid email.");
-        return;
-      }
-
-      const btn = DOM.payBtn();
-      UI.setBusy(btn, true, { label: "Processing…" });
-
-      Analytics.emit("payment_attempt", { provider: "stripe" });
-
-      const prep = await mountOnce({ force: false });
-      if (!prep.ok) {
-        const msg = prep.message || "Card payment is unavailable right now.";
-        UI.showError(msg);
-        UI.toast("error", "Card payment", msg, { ms: 4200 });
-        Analytics.emit("payment_error", { provider: "stripe", reason: prep.reason || "", message: msg });
-        UI.setBusy(btn, false);
-        return;
-      }
-
-      if (!stripe || !elements) {
-        UI.showError("Stripe is not ready.");
-        Analytics.emit("payment_error", { provider: "stripe", reason: "not_ready" });
-        UI.setBusy(btn, false);
-        return;
-      }
-
-      try {
-        const result = await stripe.confirmPayment({
-          elements,
-          confirmParams: {
-            return_url: Config.stripeReturnUrl(),
-            receipt_email: donor.donor_email || undefined,
-          },
-          redirect: "if_required",
-        });
-
-        if (result?.error) {
-          const msg = String(result.error.message || "Payment failed.");
-          UI.showError(msg);
-          UI.toast("error", "Payment failed", msg, { ms: 4200 });
-          Analytics.emit("payment_error", { provider: "stripe", message: msg, code: String(result.error.code || "") });
-          return;
-        }
-
-        const pi = result?.paymentIntent;
-        if (pi && (pi.status === "succeeded" || pi.status === "processing")) {
-          UI.showStatus("Payment received. Thank you!");
-          UI.toast("success", "Thank you!", "Payment received.", { ms: 3200 });
-          Analytics.emit("payment_success", {
-            provider: "stripe",
-            payment_intent_id: String(pi.id || ""),
-            status: String(pi.status || ""),
-          });
-          try {
-            Checkout.close();
-          } catch {}
-        } else {
-          UI.showStatus("Payment submitted. Completing…");
-          Analytics.emit("payment_success", { provider: "stripe", status: "submitted" });
-        }
-      } catch (e) {
-        const msg = "Payment could not be completed.";
-        UI.showError(msg);
-        Analytics.emit("payment_error", { provider: "stripe", message: String(e?.message || "") });
-      } finally {
-        UI.setBusy(btn, false);
-      }
-    };
-
-    const handleReturnIfPresent = async () => {
-      try {
-        const u = new URL(location.href);
-        const cs =
-          u.searchParams.get("payment_intent_client_secret") ||
-          u.searchParams.get("setup_intent_client_secret") ||
-          "";
-        if (!cs) return;
-
-        const pk0 = Config.stripePk();
-        if (!pk0) return;
-
-        const sdkOk = await loadSdk();
-        if (!sdkOk || !sdkReady()) return;
-
-        const s = window.Stripe(pk0);
-        const res = await s.retrievePaymentIntent(cs).catch(() => null);
-        const pi = res?.paymentIntent;
-        if (!pi) return;
-
-        if (pi.status === "succeeded") {
-          UI.showStatus("Payment received. Thank you!");
-          UI.toast("success", "Thank you!", "Payment received.", { ms: 3200 });
-          Analytics.emit("payment_success", {
-            provider: "stripe",
-            payment_intent_id: String(pi.id || ""),
-            status: "succeeded",
-          });
-        } else if (pi.status === "processing") {
-          UI.showStatus("Payment processing. You’ll receive a receipt by email.");
-          Analytics.emit("payment_success", {
-            provider: "stripe",
-            payment_intent_id: String(pi.id || ""),
-            status: "processing",
-          });
-        } else if (pi.status === "requires_payment_method") {
-          UI.showError("Payment failed. Please try again.");
-          Analytics.emit("payment_error", {
-            provider: "stripe",
-            payment_intent_id: String(pi.id || ""),
-            status: String(pi.status || ""),
-          });
-        }
-      } catch {}
-    };
-
-    return { loadSdk, mountOnce, confirm, invalidateMount, handleReturnIfPresent };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // PayPal (Buttons) — lazy-load once, render once, server create/capture only
-  // ---------------------------------------------------------------------------
-  const PayPal = (() => {
-    let sdkPromise = null;
-    let renderedKey = "";
-    let rendered = false;
-
-    const sdkReady = () => !!window.paypal?.Buttons;
-
-    const loadSdk = async () => {
-      if (sdkReady()) return true;
-      if (sdkPromise) return sdkPromise;
-
-      const cid = Config.paypalClientId();
-      if (!cid) return false;
-
-      const params = new URLSearchParams({
-        "client-id": cid,
-        currency: Config.paypalCurrency(),
-        components: "buttons",
-        intent: Config.paypalIntent(),
+          panel.focus({ preventScroll: true });
+        } catch (e) {}
       });
+    }
+  }
 
-      const src = `https://www.paypal.com/sdk/js?${params.toString()}`;
+  function popOpen(id) {
+    if (!state.openMap[id]) {
+      if (!state.openStack.length) lockScroll(false);
+      return;
+    }
 
-      sdkPromise = loadScriptOnce(src, {
-        id: "ffPayPalSdk",
-        nonce: CSP.nonce(),
-        attrs: { "data-namespace": "paypal" },
-      })
-        .then(() => true)
-        .catch(() => false)
-        .finally(() => {
-          sdkPromise = null;
-        });
+    state.openMap[id] = false;
 
-      return sdkPromise;
-    };
-
-    const readDonor = () => ({
-      donor_name: String(DOM.donorNameInput()?.value || "").trim(),
-      donor_email: String(DOM.donorEmailInput()?.value || "").trim(),
-      donor_message: String(DOM.donorMessageInput()?.value || "").trim(),
-    });
-
-    const buildPayload = () => {
-      const donor = readDonor();
-      return {
-        amount_cents: clamp(State.getAmount() | 0, 0, MAX_CENTS),
-        currency: String(Config.paypalCurrency() || Config.currency() || "USD"),
-        team_id: String(State.getTeam() || "").trim(),
-        donor_name: donor.donor_name,
-        donor_email: donor.donor_email,
-        donor_message: donor.donor_message,
-      };
-    };
-
-    const canAttempt = () => {
-      const cid = Config.paypalClientId();
-      if (!cid) return { ok: false, reason: "missing_client_id" };
-
-      const amt = State.getAmount() | 0;
-      if (!amt || amt < MIN_CENTS) return { ok: false, reason: "incomplete_form" };
-
-      const donor = readDonor();
-      if (Config.requireEmail() && !donor.donor_email) return { ok: false, reason: "incomplete_form" };
-      if (donor.donor_email && !isEmail(donor.donor_email)) return { ok: false, reason: "incomplete_form" };
-
-      const createUrl = String(Config.paypalCreateEndpoint() || "").trim();
-      const captureUrl = String(Config.paypalCaptureEndpoint() || "").trim();
-      if (!createUrl || !captureUrl) return { ok: false, reason: "missing_endpoints" };
-
-      return { ok: true };
-    };
-
-    const disablePaypalGracefully = (mount, why) => {
-      try {
-        if (!mount) return;
-        mount.setAttribute("data-ff-paypal-disabled", why || "1");
-        mount.setAttribute("aria-disabled", "true");
-      } catch {}
-    };
-
-    const renderOnce = async ({ force = false } = {}) => {
-      const mount = DOM.paypalMount();
-      if (!mount) return { ok: false, reason: "no_mount" };
-
-      const cid = Config.paypalClientId();
-      if (!cid) {
-        disablePaypalGracefully(mount, "missing_client_id");
-        return { ok: false, reason: "missing_config" };
-      }
-
-      const can = canAttempt();
-      if (!can.ok) return can;
-
-      const okSdk = await loadSdk();
-      if (!okSdk || !sdkReady()) return { ok: false, reason: "sdk" };
-
-      const p = buildPayload();
-      const key = `${p.currency}|${p.team_id}|${p.amount_cents}|${p.donor_email}`;
-
-      if (!force && rendered && renderedKey === key && mount.getAttribute("data-ff-paypal-rendered") === key) {
-        return { ok: true, reused: true };
-      }
-
-      try {
-        mount.replaceChildren();
-      } catch {}
-      rendered = false;
-      renderedKey = key;
-
-      const csrf = Config.csrfToken();
-      const createUrl = String(Config.paypalCreateEndpoint() || "").trim();
-      const captureUrl = String(Config.paypalCaptureEndpoint() || "").trim();
-
-      try {
-        const buttons = window.paypal.Buttons({
-          style: { layout: "vertical", label: "donate" },
-
-          createOrder: async () => {
-            UI.clearCheckoutNotices();
-            Analytics.emit("payment_attempt", { provider: "paypal" });
-
-            const payload = buildPayload();
-            const out = await safeFetchJson(
-              createUrl,
-              {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                  "Content-Type": "application/json",
-                  Accept: "application/json",
-                  ...(csrf ? { "X-CSRFToken": csrf } : {}),
-                },
-                body: JSON.stringify(payload),
-              },
-              15000
-            );
-
-            if (!out.ok) {
-              const msg = String(out.json?.error || out.json?.message || "Could not create PayPal order.");
-              throw new Error(msg);
-            }
-
-            const id = String(out.json?.id || out.json?.order_id || out.json?.orderId || "").trim();
-            if (!id) throw new Error("Missing PayPal order id.");
-            return id;
-          },
-
-          onApprove: async (data) => {
-            const btn = DOM.payBtn();
-            UI.setBusy(btn, true, { label: "Finalizing…" });
-
+    for (var i = state.openStack.length - 1; i >= 0; i--) {
+      if (state.openStack[i].id === id) {
+        var entry = state.openStack.splice(i, 1)[0];
+        if (entry && entry.trap) entry.trap.destroy();
+        if (
+          cfg &&
+          cfg.accessibility &&
+          cfg.accessibility.focusRestore &&
+          entry &&
+          entry.restoreEl &&
+          entry.restoreEl.focus
+        ) {
+          raf().then(function () {
             try {
-              const payload = { order_id: String(data?.orderID || ""), ...buildPayload() };
-              const out = await safeFetchJson(
-                captureUrl,
-                {
-                  method: "POST",
-                  credentials: "same-origin",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                    ...(csrf ? { "X-CSRFToken": csrf } : {}),
-                  },
-                  body: JSON.stringify(payload),
-                },
-                15000
-              );
-
-              if (!out.ok) {
-                const msg = String(out.json?.error || out.json?.message || "Could not capture PayPal order.");
-                throw new Error(msg);
-              }
-
-              UI.showStatus("Payment received. Thank you!");
-              UI.toast("success", "Thank you!", "Payment received.", { ms: 3200 });
-
-              Analytics.emit("payment_success", {
-                provider: "paypal",
-                order_id: String(data?.orderID || ""),
-                status: String(out.json?.status || "captured"),
-              });
-
-              try {
-                Checkout.close();
-              } catch {}
-            } catch (e) {
-              const msg = String(e?.message || "PayPal payment failed.");
-              UI.showError(msg);
-              UI.toast("error", "PayPal", msg, { ms: 4200 });
-              Analytics.emit("payment_error", { provider: "paypal", message: msg });
-            } finally {
-              UI.setBusy(DOM.payBtn(), false);
-            }
-          },
-
-          onCancel: () => {
-            UI.toast("info", "PayPal", "Canceled", { ms: 2000 });
-            Analytics.emit("payment_error", { provider: "paypal", message: "canceled" });
-          },
-
-          onError: () => {
-            UI.showError("PayPal error. Please try again.");
-            Analytics.emit("payment_error", { provider: "paypal", message: "sdk_error" });
-          },
-        });
-
-        const eligible = buttons?.isEligible?.() !== false;
-        if (!eligible) return { ok: false, reason: "ineligible" };
-
-        await buttons.render(mount);
-
-        rendered = true;
-        renderedKey = key;
-        mount.setAttribute("data-ff-paypal-rendered", key);
-
-        Analytics.emit("paypal_ready", { rendered: true });
-        return { ok: true };
-      } catch (e) {
-        return { ok: false, reason: "render_error", message: String(e?.message || "PayPal failed to render.") };
-      }
-    };
-
-    return { loadSdk, renderOnce };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Payments Orchestration (intent creation gated to checkout-open)
-  // ---------------------------------------------------------------------------
-  const Payments = (() => {
-    let prepTimer = 0;
-    let paypalWarnedMissingCid = false;
-
-    const updateReadyState = () => {
-      const btn = DOM.payBtn();
-      const amt = State.getAmount() | 0;
-      const email = String(DOM.donorEmailInput()?.value || "").trim();
-
-      const okAmount = amt >= MIN_CENTS;
-      const okEmail = Config.requireEmail() ? isEmail(email) : !email || isEmail(email);
-
-      if (btn) {
-        try {
-          btn.disabled = !(okAmount && okEmail);
-        } catch {}
-        try {
-          btn.setAttribute("aria-disabled", okAmount && okEmail ? "false" : "true");
-        } catch {}
-      }
-    };
-
-    const shouldPrepareNow = (force) => {
-      if (force) return true;
-      // Avoid creating intents/rendering buttons until checkout is open.
-      return Checkout.isOpen();
-    };
-
-    const prepare = async (force = false) => {
-      updateReadyState();
-
-      if (!shouldPrepareNow(!!force)) return;
-
-      const amt = State.getAmount() | 0;
-      const email = String(DOM.donorEmailInput()?.value || "").trim();
-      const okEmail = Config.requireEmail() ? isEmail(email) : !email || isEmail(email);
-
-      if (amt < MIN_CENTS || !okEmail) return;
-
-      // Stripe (attempt if configured)
-      if (Config.stripePk() && DOM.stripeMount()) {
-        const res = await Stripe.mountOnce({ force: !!force });
-        if (!res.ok && res.reason !== "incomplete_form") {
-          Analytics.emit("stripe_ready", { mounted: false, reason: res.reason || "" });
+              entry.restoreEl.focus({ preventScroll: true });
+            } catch (e2) {}
+          });
         }
+        break;
+      }
+    }
+
+    if (!state.openStack.length) lockScroll(false);
+  }
+
+  function openRoot(id, root, panel) {
+    if (!root) return;
+    if (!isRootOpen(root)) setOpenAttrs(root, true);
+    pushOpen(id, root, panel);
+  }
+
+  function closeRoot(id, root) {
+    if (!root) return;
+    if (isRootOpen(root) || state.openMap[id]) setOpenAttrs(root, false);
+    popOpen(id);
+  }
+
+  function closeById(id) {
+    if (id === "checkout") closeCheckout(true);
+    else if (id === "drawer") closeDrawer(true);
+    else if (id === "sponsor-interest") closeSponsor(true);
+    else if (id === "press-video") closeVideo(true);
+    else if (id === "terms") closeLegal("terms");
+    else if (id === "privacy") closeLegal("privacy");
+  }
+
+  function setHash(hash) {
+    if (typeof hash !== "string") return;
+    if (hash && hash.charAt(0) !== "#") hash = "#" + hash;
+
+    var cur = window.location.hash || "";
+    var next = hash || "#home";
+
+    if (cur === next) {
+      onHashChange();
+      return;
+    }
+
+    try {
+      history.pushState(null, "", next);
+    } catch (e) {
+      window.location.hash = next;
+      return;
+    }
+    onHashChange();
+  }
+
+  function currentHashId() {
+    var h = window.location.hash || "";
+    if (!h || h === "#") return "";
+    return h.replace("#", "").trim();
+  }
+
+  function openCheckout() {
+    setHash("checkout");
+  }
+  function closeCheckout(useHome) {
+    setHash(useHome ? "home" : "");
+  }
+  function openDrawer() {
+    setHash("drawer");
+  }
+  function closeDrawer(useHome) {
+    setHash(useHome ? "home" : "");
+  }
+  function openSponsor() {
+    setHash("sponsor-interest");
+  }
+  function closeSponsor(useHome) {
+    setHash(useHome ? "home" : "");
+  }
+  function openVideo() {
+    setHash("press-video");
+  }
+  function closeVideo(useHome) {
+    setHash(useHome ? "home" : "");
+  }
+  function closeLegal(which) {
+    setHash("home");
+  }
+
+  function onHashChange() {
+    var id = currentHashId();
+
+    if (checkoutSheet) {
+      if (id === "checkout") openRoot("checkout", checkoutSheet, checkoutPanel);
+      else closeRoot("checkout", checkoutSheet);
+    }
+
+    if (drawer) {
+      if (id === "drawer") openRoot("drawer", drawer, drawerPanel);
+      else closeRoot("drawer", drawer);
+    }
+
+    if (sponsorModal) {
+      if (id === "sponsor-interest") openRoot("sponsor-interest", sponsorModal, sponsorPanel);
+      else closeRoot("sponsor-interest", sponsorModal);
+    }
+
+    if (videoModal) {
+      if (id === "press-video") openRoot("press-video", videoModal, videoPanel);
+      else closeRoot("press-video", videoModal);
+    }
+
+    var terms = qs("#terms");
+    var privacy = qs("#privacy");
+    if (terms) {
+      if (id === "terms") openRoot("terms", terms, qs(".ff-modal__panel", terms) || terms);
+      else closeRoot("terms", terms);
+    }
+    if (privacy) {
+      if (id === "privacy") openRoot("privacy", privacy, qs(".ff-modal__panel", privacy) || privacy);
+      else closeRoot("privacy", privacy);
+    }
+  }
+
+  window.addEventListener("hashchange", onHashChange);
+
+  // Global ESC closes top overlay even if focus is outside panel
+  window.addEventListener("keydown", function (e) {
+    var key = e.key || e.keyCode;
+    if (key !== "Escape" && key !== "Esc" && key !== 27) return;
+    if (!state.openStack || !state.openStack.length) return;
+    var top = state.openStack[state.openStack.length - 1];
+    if (top && top.id) closeById(top.id);
+  });
+
+  /* -----------------------------
+     Backdrop click-to-close (contract-safe, no new hooks required)
+  ----------------------------- */
+
+  function initBackdropClose() {
+    document.addEventListener("click", function (e) {
+      var t = e.target;
+
+      if (t && t.classList && t.classList.contains("ff-sheet__backdrop")) {
+        e.preventDefault();
+        closeCheckout(true);
+        return;
       }
 
-      // PayPal (quietly attempt; skip if disabled; no spammy toasts)
-      if (DOM.paypalMount()) {
-        const cid = Config.paypalClientId();
-        if (!cid) return;
-        await PayPal.renderOnce({ force: !!force });
+      if (t && t.classList && t.classList.contains("ff-modal__backdrop")) {
+        e.preventDefault();
+        var id = currentHashId();
+        if (id === "sponsor-interest") closeSponsor(true);
+        else if (id === "press-video") closeVideo(true);
+        else if (id === "terms") closeLegal("terms");
+        else if (id === "privacy") closeLegal("privacy");
+        return;
       }
-};
 
-    const queuePrepare = (force = false) => {
-      clearTimeout(prepTimer);
-      prepTimer = setTimeout(() => {
-        prepare(!!force);
-      }, force ? 0 : 220);
-    };
+      if (t && t.classList && t.classList.contains("ff-drawer__backdrop")) {
+        e.preventDefault();
+        closeDrawer(true);
+      }
+    });
+  }
 
-    const init = () => {
-      // donor fields rerender triggers
-      const rerender = () => queuePrepare(false);
-      [DOM.donorEmailInput(), DOM.donorNameInput(), DOM.donorMessageInput()].forEach((el) => {
-        if (!el) return;
-        on(el, "input", rerender);
-        on(el, "change", rerender);
+  /* -----------------------------
+     Payments: Stripe / PayPal
+  ----------------------------- */
+
+  function setMountState(kind, msg, mountEl, msgEl) {
+    if (mountEl) {
+      mountEl.setAttribute("data-state", String(kind || ""));
+      if (msg != null) mountEl.setAttribute("data-msg", String(msg || ""));
+    }
+    if (msgEl && msg != null) msgEl.textContent = String(msg || "");
+  }
+
+  function showStripeError(msg) {
+    if (!stripeErr) return;
+    stripeErr.textContent = String(msg || "Card payment error.");
+    setHidden(stripeErr, false);
+  }
+  function hideStripeError() {
+    if (stripeErr) setHidden(stripeErr, true);
+  }
+
+  function showPayPalError(msg) {
+    if (!paypalErr) return;
+    paypalErr.textContent = String(msg || "PayPal error.");
+    setHidden(paypalErr, false);
+  }
+  function hidePayPalError() {
+    if (paypalErr) setHidden(paypalErr, true);
+  }
+
+  function loadScriptOnce(src, id) {
+    return new Promise(function (resolve, reject) {
+      if (!src) return reject(new Error("Missing script src"));
+
+      // Prefer id reuse
+      if (id) {
+        var byId = qs("script#" + id);
+        if (byId) return resolve(byId);
+      }
+
+      // Also reuse same src if already present
+      var existing = qsa("script[src]");
+      for (var i = 0; i < existing.length; i++) {
+        var s0 = existing[i];
+        try {
+          if (String(s0.getAttribute("src") || "") === String(src)) return resolve(s0);
+        } catch (e0) {}
+      }
+
+      var s = document.createElement("script");
+      if (id) s.id = id;
+      s.src = src;
+      s.async = true;
+      s.defer = true;
+
+      if (state.cspNonce) {
+        try {
+          s.setAttribute("nonce", state.cspNonce);
+        } catch (e) {}
+      }
+
+      s.onload = function () {
+        resolve(s);
+      };
+      s.onerror = function () {
+        reject(new Error("Failed to load " + src));
+      };
+      document.head.appendChild(s);
+    });
+  }
+
+  function getThemeForPayments() {
+    var t = rootEl.getAttribute("data-theme");
+    if (t === "light") return "stripe";
+    if (t === "dark") return "night";
+    try {
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "night";
+    } catch (e) {}
+    return "stripe";
+  }
+
+  function getCurrency() {
+    var c = cfg && cfg.fundraiser && cfg.fundraiser.currency ? String(cfg.fundraiser.currency || "USD") : "USD";
+    return (c || "USD").toUpperCase();
+  }
+
+  function ensureStripeLoaded() {
+    if (!state.stripe.pk) return Promise.reject(new Error("Stripe is not configured."));
+    if (state.stripe.stripe) return Promise.resolve(state.stripe.stripe);
+    if (state.stripe.loadPromise) return state.stripe.loadPromise;
+
+    state.stripe.loadPromise = loadScriptOnce(state.stripe.jsUrl, "ff-stripe-js").then(function () {
+      if (!window.Stripe) throw new Error("Stripe.js did not initialize.");
+      state.stripe.stripe = window.Stripe(state.stripe.pk);
+      return state.stripe.stripe;
+    });
+
+    return state.stripe.loadPromise;
+  }
+
+  function extractClientSecret(d) {
+    if (!d) return "";
+    if (typeof d === "string") return d;
+    var cs =
+      d.clientSecret ||
+      d.client_secret ||
+      (d.data && (d.data.clientSecret || d.data.client_secret)) ||
+      (d.intent && (d.intent.clientSecret || d.intent.client_secret)) ||
+      (d.payment_intent && (d.payment_intent.clientSecret || d.payment_intent.client_secret)) ||
+      "";
+    return cs ? String(cs) : "";
+  }
+
+  function createStripeIntent(amount) {
+    var a = Number(amount || 0);
+    if (!isFinite(a) || a <= 0) return Promise.reject(new Error("Enter an amount to continue."));
+    var payload = { amount: a, currency: getCurrency() };
+    return fetchJSON(state.stripe.intentEndpoint, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }).then(function (d) {
+      var cs = extractClientSecret(d);
+      if (!cs) throw new Error("Stripe intent did not return a client secret.");
+      return { clientSecret: cs };
+    });
+  }
+
+  function unmountStripeSafe() {
+    try {
+      if (state.stripe.paymentEl && state.stripe.paymentEl.unmount) state.stripe.paymentEl.unmount();
+    } catch (e) {}
+    state.stripe.paymentEl = null;
+    state.stripe.elements = null;
+    state.stripe.mounted = false;
+    state.stripe.clientSecret = "";
+    state.stripe.intentAmount = 0;
+  }
+
+  var stripePrepTimer = null;
+  function debounceStripePrep() {
+    if (stripePrepTimer) clearTimeout(stripePrepTimer);
+    stripePrepTimer = setTimeout(function () {
+      prepareStripe();
+    }, 140);
+  }
+
+  function prepareStripe() {
+    if (state.stripe.preparing) return;
+    if (!paymentMount) return;
+
+    // PERF P0: do nothing unless checkout is open
+    if (currentHashId() !== "checkout") return;
+
+    var amount = Number(state.stripe.amount || 0);
+
+    if (!state.stripe.pk) {
+      setMountState("idle", "Stripe is not configured yet.", paymentMount, stripeMsg);
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      setMountState("idle", "Enter an amount to load card payment.", paymentMount, stripeMsg);
+      if (stripeSkeleton) setHidden(stripeSkeleton, true);
+      hideStripeError();
+      if (state.stripe.mounted) unmountStripeSafe();
+      return;
+    }
+
+    if (state.stripe.mounted && state.stripe.intentAmount === amount && state.stripe.clientSecret) return;
+
+    state.stripe.preparing = true;
+    hideStripeError();
+    if (stripeSkeleton) setHidden(stripeSkeleton, false);
+    setMountState("loading", "Loading card payment…", paymentMount, stripeMsg);
+
+    if (state.stripe.mounted) unmountStripeSafe();
+
+    var mountTarget = ensureInnerWrapper(paymentMount, "stripe");
+    if (!mountTarget) {
+      state.stripe.preparing = false;
+      return;
+    }
+
+    var p = ensureStripeLoaded()
+      .then(function (stripe) {
+        return createStripeIntent(amount).then(function (r) {
+          state.stripe.clientSecret = r.clientSecret;
+          state.stripe.intentAmount = amount;
+
+          state.stripe.elements = stripe.elements({
+            clientSecret: state.stripe.clientSecret,
+            appearance: { theme: getThemeForPayments() }
+          });
+
+          state.stripe.paymentEl = state.stripe.elements.create("payment");
+          state.stripe.paymentEl.mount(mountTarget);
+
+          state.stripe.mounted = true;
+
+          setMountState("ready", "", paymentMount, stripeMsg);
+          if (stripeSkeleton) setHidden(stripeSkeleton, true);
+        });
+      })
+      .catch(function (e) {
+        showStripeError(e && e.message ? e.message : "Unable to load Stripe.");
+        setMountState("error", "", paymentMount, stripeMsg);
+        if (stripeSkeleton) setHidden(stripeSkeleton, true);
+        markError();
       });
 
-      // form submit (Enter key safety)
-      const form = DOM.donationForm();
-      if (form) {
-        on(form, "submit", (e) => {
-          try {
-            e.preventDefault();
-          } catch {}
-          Stripe.confirm();
-        });
+    return promiseFinally(p, function () {
+      state.stripe.preparing = false;
+    });
+  }
+
+  function disableEl(el, on) {
+    if (!el) return;
+    try {
+      el.disabled = !!on;
+    } catch (e) {}
+    if (on) el.setAttribute("aria-disabled", "true");
+    else el.removeAttribute("aria-disabled");
+  }
+
+  function findStripeSubmitButtons() {
+    // Hook-safe: supports multiple possible existing hooks without requiring markup changes.
+    var btns = []
+      .concat(qsa("[data-ff-stripe-submit]"))
+      .concat(qsa("[data-ff-pay-card]"))
+      .concat(qsa('button[name="stripeSubmit"]'))
+      .concat(qsa('button[type="submit"][data-ff-stripe="true"]'));
+
+    // Real de-dupe by identity
+    var out = [];
+    for (var i = 0; i < btns.length; i++) {
+      var b = btns[i];
+      var seen = false;
+      for (var j = 0; j < out.length; j++) {
+        if (out[j] === b) {
+          seen = true;
+          break;
+        }
+      }
+      if (!seen && b) out.push(b);
+    }
+    return out;
+  }
+
+  function getStripeReturnUrl() {
+    var base = state.stripe.returnUrl || stripHash(window.location.href);
+    return stripHash(base);
+  }
+
+  function startStripeConfirm() {
+    if (!state.stripe.pk) {
+      showStripeError("Stripe is not configured.");
+      return Promise.reject(new Error("Stripe not configured"));
+    }
+    if (!state.stripe.mounted || !state.stripe.elements || !state.stripe.stripe) {
+      return prepareStripe() && Promise.resolve().then(function () {
+        if (!state.stripe.mounted) throw new Error("Enter an amount to continue.");
+      });
+    }
+
+    if (state.stripe.submitting) return Promise.resolve(false);
+    state.stripe.submitting = true;
+
+    hideStripeError();
+
+    var submitBtns = findStripeSubmitButtons();
+    submitBtns.forEach(function (b) {
+      disableEl(b, true);
+    });
+
+    setMountState("processing", "Processing…", paymentMount, stripeMsg);
+
+    var p = state.stripe.stripe
+      .confirmPayment({
+        elements: state.stripe.elements,
+        confirmParams: { return_url: getStripeReturnUrl() },
+        redirect: "if_required"
+      })
+      .then(function (res) {
+        if (res && res.error) throw res.error;
+
+        burstOnce();
+        toast("success", "Thank you! Your card donation is confirmed.");
+        closeCheckout(true);
+        return true;
+      })
+      .catch(function (err) {
+        var msg = err && err.message ? err.message : "Card payment failed.";
+        showStripeError(msg);
+        setMountState("error", "", paymentMount, stripeMsg);
+        markError();
+        return false;
+      });
+
+    return promiseFinally(p, function () {
+      state.stripe.submitting = false;
+      submitBtns.forEach(function (b) {
+        disableEl(b, false);
+      });
+    });
+  }
+
+  function loadPayPalOnce() {
+    if (!state.paypal.clientId) return Promise.reject(new Error("PayPal is not configured."));
+    if (state.paypal.loaded) return Promise.resolve(true);
+    if (state.paypal.loadPromise) return state.paypal.loadPromise;
+
+    var src = state.paypal.jsUrl;
+    if (src.indexOf("?") === -1) src += "?client-id=" + encodeURIComponent(state.paypal.clientId);
+    else if (src.indexOf("client-id=") === -1) src += "&client-id=" + encodeURIComponent(state.paypal.clientId);
+
+    state.paypal.loadPromise = loadScriptOnce(src, "ff-paypal-js")
+      .then(function () {
+        state.paypal.loaded = true;
+        return true;
+      })
+      .catch(function (e) {
+        showPayPalError(e && e.message ? e.message : "Unable to load PayPal.");
+        markError();
+        throw e;
+      });
+
+    return state.paypal.loadPromise;
+  }
+
+  var paypalRenderTimer = null;
+  function debouncePayPalRender() {
+    if (paypalRenderTimer) clearTimeout(paypalRenderTimer);
+    paypalRenderTimer = setTimeout(function () {
+      renderPayPalButtons();
+    }, 180);
+  }
+
+  function renderPayPalButtons() {
+    if (!paypalMount) return;
+
+    // PERF P0: do nothing unless checkout is open
+    if (currentHashId() !== "checkout") return;
+
+    var amount = Number(state.stripe.amount || 0);
+
+    if (!state.paypal.clientId) {
+      setMountState("idle", "PayPal is not configured.", paypalMount, paypalMsg);
+      if (paypalSkeleton) setHidden(paypalSkeleton, true);
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      setMountState("idle", "Enter an amount to load PayPal.", paypalMount, paypalMsg);
+      if (paypalSkeleton) setHidden(paypalSkeleton, true);
+      hidePayPalError();
+      return;
+    }
+
+    if (state.paypal.rendered) {
+      setMountState("ready", "", paypalMount, paypalMsg);
+      if (paypalSkeleton) setHidden(paypalSkeleton, true);
+      return;
+    }
+
+    hidePayPalError();
+    if (paypalSkeleton) setHidden(paypalSkeleton, false);
+    setMountState("loading", "Loading PayPal…", paypalMount, paypalMsg);
+
+    var ppTarget = ensureInnerWrapper(paypalMount, "paypal");
+    if (!ppTarget) {
+      if (paypalSkeleton) setHidden(paypalSkeleton, true);
+      return;
+    }
+
+    return loadPayPalOnce()
+      .then(function () {
+        if (!window.paypal || !window.paypal.Buttons) throw new Error("PayPal SDK did not initialize.");
+
+        if (ppTarget.childNodes && ppTarget.childNodes.length > 0) {
+          state.paypal.rendered = true;
+          if (paypalSkeleton) setHidden(paypalSkeleton, true);
+          setMountState("ready", "", paypalMount, paypalMsg);
+          return;
+        }
+
+        window.paypal
+          .Buttons({
+            style: { layout: "vertical", label: "paypal" },
+            createOrder: function () {
+              var payload = { amount: Number(state.stripe.amount || 0) };
+              return fetchJSON(state.paypal.createEndpoint, {
+                method: "POST",
+                body: JSON.stringify(payload)
+              }).then(function (d) {
+                var id = d && (d.id || d.orderID || d.order_id);
+                if (!id) throw new Error("PayPal create did not return an order id.");
+                return id;
+              });
+            },
+            onApprove: function (data) {
+              return fetchJSON(state.paypal.captureEndpoint, {
+                method: "POST",
+                body: JSON.stringify({ orderID: data && data.orderID })
+              }).then(function () {
+                burstOnce();
+                toast("success", "Thank you! Your PayPal donation is confirmed.");
+                closeCheckout(true);
+              });
+            },
+            onError: function (err) {
+              showPayPalError(err && err.message ? err.message : "PayPal error.");
+            }
+          })
+          .render(ppTarget);
+
+        state.paypal.rendered = true;
+        if (paypalSkeleton) setHidden(paypalSkeleton, true);
+        setMountState("ready", "", paypalMount, paypalMsg);
+      })
+      .catch(function (e) {
+        showPayPalError(e && e.message ? e.message : "Unable to render PayPal.");
+        if (paypalSkeleton) setHidden(paypalSkeleton, true);
+        setMountState("error", "", paypalMount, paypalMsg);
+      });
+  }
+
+  /* -----------------------------
+     Amount handling (chips + input)
+  ----------------------------- */
+
+  function parseAmount(v) {
+    var s = String(v == null ? "" : v);
+    s = s.replace(/[^0-9.]/g, "");
+    if (!s) return 0;
+    var n = Number(s);
+    if (!isFinite(n) || n < 0) return 0;
+    n = clamp(n, 0, 100000);
+    n = Math.round(n * 100) / 100;
+    return n;
+  }
+
+  function syncAmountToUI(amount) {
+    if (amountInput) {
+      if (document.activeElement !== amountInput) amountInput.value = amount ? String(amount) : "";
+    }
+
+    var chips = qsa("[data-ff-amount]");
+    chips.forEach(function (btn) {
+      var v = parseAmount(btn.getAttribute("data-ff-amount") || 0);
+      var sel = v > 0 && amount > 0 && v === amount;
+      if (sel) {
+        btn.classList.add("is-selected");
+        btn.setAttribute("aria-pressed", "true");
+      } else {
+        btn.classList.remove("is-selected");
+        btn.setAttribute("aria-pressed", "false");
+      }
+    });
+  }
+
+  function setAmount(next) {
+    var v = parseAmount(next);
+    state.stripe.amount = v;
+    syncAmountToUI(v);
+  }
+
+  function handleAmountChangedWhileCheckoutOpen() {
+    if (currentHashId() !== "checkout") return;
+    debounceStripePrep();
+    debouncePayPalRender();
+  }
+
+  function handleAmountClick(btn) {
+    var v = parseAmount(btn.getAttribute("data-ff-amount") || 0);
+    setAmount(v);
+    handleAmountChangedWhileCheckoutOpen();
+  }
+
+  function initAmountInput() {
+    if (!amountInput) return;
+
+    setAmount(amountInput.value);
+
+    amountInput.addEventListener("input", function () {
+      setAmount(amountInput.value);
+      handleAmountChangedWhileCheckoutOpen();
+    });
+    amountInput.addEventListener("blur", function () {
+      setAmount(amountInput.value);
+      handleAmountChangedWhileCheckoutOpen();
+    });
+  }
+
+  /* -----------------------------
+     Click delegation for hooks
+  ----------------------------- */
+
+  function handleOpenCheckout() {
+    openCheckout();
+    // Prep happens after hashchange opens overlay
+    setTimeout(function () {
+      handleAmountChangedWhileCheckoutOpen();
+    }, 0);
+  }
+
+  function handleCloseAttr(el) {
+    if (!el) return;
+    if (el.hasAttribute("data-ff-close-checkout")) closeCheckout(true);
+    else if (el.hasAttribute("data-ff-close-drawer")) closeDrawer(true);
+    else if (el.hasAttribute("data-ff-close-sponsor")) closeSponsor(true);
+    else if (el.hasAttribute("data-ff-close-video")) closeVideo(true);
+  }
+
+  function doShare() {
+    var url = window.location.href;
+    var title = document.title || "FutureFunded";
+    if (navigator.share) {
+      navigator.share({ title: title, url: url }).catch(function () {});
+    } else {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url);
+          toast("success", "Link copied.");
+        } else {
+          toast("info", url);
+        }
+      } catch (e) {
+        toast("info", url);
+      }
+    }
+  }
+
+  function initEvents() {
+    document.addEventListener("click", function (e) {
+      var t = e.target;
+
+      function closestAttr(node, attr) {
+        while (node && node !== document.documentElement) {
+          if (node.getAttribute && node.hasAttribute(attr)) return node;
+          node = node.parentNode;
+        }
+        return null;
       }
 
-      updateReadyState();
-      queuePrepare(false);
-    };
+      var amt = closestAttr(t, "data-ff-amount");
+      if (amt) {
+        e.preventDefault();
+        handleAmountClick(amt);
+        return;
+      }
 
-    return { init, queuePrepare, prepare, updateReadyState };
-  })();
+      var oc = closestAttr(t, "data-ff-open-checkout");
+      if (oc) {
+        e.preventDefault();
+        handleOpenCheckout();
+        return;
+      }
 
-  // ---------------------------------------------------------------------------
-  // Provider prewarm (intent-based) — loads SDKs without mounting/intents
-  // ---------------------------------------------------------------------------
-  const Prewarm = (() => {
-    let didStripe = false;
-    let didPayPal = false;
+      var cc =
+        closestAttr(t, "data-ff-close-checkout") ||
+        closestAttr(t, "data-ff-close-drawer") ||
+        closestAttr(t, "data-ff-close-sponsor") ||
+        closestAttr(t, "data-ff-close-video");
+      if (cc) {
+        e.preventDefault();
+        handleCloseAttr(cc);
+        return;
+      }
 
-    const warm = () => {
+      var od = closestAttr(t, "data-ff-open-drawer");
+      if (od) {
+        e.preventDefault();
+        openDrawer();
+        return;
+      }
+
+      var os = closestAttr(t, "data-ff-open-sponsor");
+      if (os) {
+        e.preventDefault();
+        openSponsor();
+        return;
+      }
+
+      var ov = closestAttr(t, "data-ff-open-video");
+      if (ov) {
+        e.preventDefault();
+        openVideo();
+        return;
+      }
+
+      var sh = closestAttr(t, "data-ff-share");
+      if (sh) {
+        e.preventDefault();
+        doShare();
+        return;
+      }
+
+      var ss = closestAttr(t, "data-ff-stripe-submit") || closestAttr(t, "data-ff-pay-card");
+      if (ss) {
+        e.preventDefault();
+        startStripeConfirm().catch(function () {});
+        return;
+      }
+    });
+
+    document.addEventListener("submit", function (e) {
+      var form = e.target;
+      if (!form || !form.querySelector) return;
+
+      var explicit =
+        form.hasAttribute("data-ff-stripe-form") || form.getAttribute("data-ff-payments") === "stripe";
+      var containsMount = !!(paymentMount && form.contains(paymentMount));
+
+      if (!explicit && !containsMount) return;
+
+      e.preventDefault();
+      startStripeConfirm().catch(function () {});
+    });
+  }
+
+  /* -----------------------------
+     Theme toggle
+  ----------------------------- */
+
+  function getStoredTheme() {
+    try {
+      return localStorage.getItem("ff:theme") || "";
+    } catch (e) {
+      return "";
+    }
+  }
+  function setStoredTheme(v) {
+    try {
+      localStorage.setItem("ff:theme", v);
+    } catch (e) {}
+  }
+
+  function applyTheme(next) {
+    var theme = next === "dark" || next === "light" ? next : "";
+    if (!theme) return;
+    rootEl.setAttribute("data-theme", theme);
+    setStoredTheme(theme);
+
+    try {
+      var ev = new CustomEvent("ff:theme", { detail: { theme: theme } });
+      window.dispatchEvent(ev);
+    } catch (e) {}
+  }
+
+  function initTheme() {
+    var stored = getStoredTheme();
+    if (stored) applyTheme(stored);
+    qsa("[data-ff-theme-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        var cur = rootEl.getAttribute("data-theme") || "dark";
+        applyTheme(cur === "dark" ? "light" : "dark");
+      });
+    });
+  }
+
+  /* -----------------------------
+     Sticky donate (mobile): show after hero scroll
+  ----------------------------- */
+
+  function initStickyDonate() {
+    var sticky = qs("[data-ff-sticky-donate]");
+    if (!sticky) return;
+
+    var hero = qs("#home") || qs('[data-ff-section="hero"]');
+    var shown = false;
+
+    function setShown(next) {
+      var v = !!next;
+      if (v === shown) return;
+      shown = v;
+      sticky.hidden = !shown;
+      sticky.setAttribute("aria-hidden", shown ? "false" : "true");
+    }
+
+    function shouldHideForOverlay() {
+      return !!(state.openStack && state.openStack.length);
+    }
+
+    function updateFromHero(isHeroVisible) {
+      setShown(!isHeroVisible && !shouldHideForOverlay());
+    }
+
+    if (hero && "IntersectionObserver" in window) {
       try {
-        if (!didStripe && Config.stripePk()) {
-          didStripe = true;
-          Stripe.loadSdk?.().catch?.(() => null);
-        }
-      } catch {}
+        var io = new IntersectionObserver(
+          function (entries) {
+            var entry = entries && entries[0];
+            var isVisible = !!(entry && entry.isIntersecting);
+            updateFromHero(isVisible);
+          },
+          { root: null, threshold: 0.12 }
+        );
+        io.observe(hero);
+      } catch (e) {}
+    }
 
-      try {
-        if (!didPayPal && Config.paypalClientId()) {
-          didPayPal = true;
-          PayPal.loadSdk?.().catch?.(() => null);
-        }
-      } catch {}
-    };
-
-    const init = () => {
-      // Capture-phase intent signals: pointer/focus on open-checkout or pay actions.
-      const handler = (e) => {
-        try {
-          const t = e?.target;
-          if (!t) return;
-
-          const intentNode = t.closest?.(
-            "[data-ff-open-checkout],[data-ff-checkout-open],[data-ff-open-donate],[data-ff-donate-open],a[href='#checkout'],a[href='#donate'],#payBtn,[data-ff-pay-btn]"
-          );
-          if (intentNode) warm();
-        } catch {}
-      };
-
-      on(document, "pointerdown", handler, true);
-      on(document, "pointerenter", handler, true);
-      on(document, "focusin", handler, true);
-    };
-
-    return { init };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Back-to-top (smooth, reduced-motion aware) + optional autohide if toggles exist
-  // ---------------------------------------------------------------------------
-  const BackToTop = (() => {
-    const scrollTop = () => {
-      const reduce = prefersReducedMotion();
-      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-      Analytics.emit("back_to_top", {});
-    };
-
-    const maybeAutoHide = () => {
-      const el = DOM.backToTop();
-      if (!el) return;
-
-      // ONLY toggle if element already participates in hide semantics
-      const hasToggle = el.hasAttribute("data-hidden") || el.hasAttribute("aria-hidden");
-      if (!hasToggle) return;
-
-      const y = (() => {
-        try {
-          return window.scrollY || document.documentElement.scrollTop || 0;
-        } catch {
-          return 0;
-        }
-      })();
-
-      const show = y > 420;
-      try {
-        if (el.hasAttribute("data-hidden")) el.setAttribute("data-hidden", show ? "false" : "true");
-      } catch {}
-      try {
-        if (el.hasAttribute("aria-hidden")) el.setAttribute("aria-hidden", show ? "false" : "true");
-      } catch {}
-    };
-
-    const init = () => {
-      maybeAutoHide();
-      on(
-        window,
+    if (!("IntersectionObserver" in window) || !hero) {
+      var last = 0;
+      window.addEventListener(
         "scroll",
-        () => {
-          try {
-            maybeAutoHide();
-          } catch {}
+        function () {
+          var y = window.scrollY || window.pageYOffset || 0;
+          if (Math.abs(y - last) < 40) return;
+          last = y;
+          updateFromHero(y < 220);
         },
         { passive: true }
       );
-      return { scrollTop };
-    };
-
-    return { init, scrollTop };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // Global event delegation (single listener for click/keydown/hashchange/popstate)
-  // Ensures: team + amount updates happen BEFORE checkout open.
-  // ---------------------------------------------------------------------------
-  const Events = (() => {
-    const isModifiedClick = (e) => !!(e?.metaKey || e?.ctrlKey || e?.shiftKey || e?.altKey);
-
-    const handleClick = (e) => {
-      try {
-        const t = e.target;
-        if (!t) return;
-
-        // 1) Team attribution: any [data-ff-team-id] click
-        const teamNode = t.closest?.("[data-ff-team-id]");
-        if (teamNode) TeamAttribution.handleTeamClick(teamNode);
-
-        // 2) Quick amount: [data-ff-amount="25"]
-        const amtNode = t.closest?.("[data-ff-amount]");
-        if (amtNode) {
-          const v = amtNode.getAttribute("data-ff-amount") || amtNode.dataset?.ffAmount || "";
-          if (v) Amounts.setFromQuick(v);
-        }
-
-        // 3) Theme toggle
-        const themeBtn = t.closest?.("[data-ff-theme-toggle]");
-        if (themeBtn) {
-          if (themeBtn.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          Theme.toggle(e);
-          return;
-        }
-
-        // 4) Share
-        const shareBtn = t.closest?.("[data-ff-share]");
-        if (shareBtn) {
-          if (shareBtn.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          Share.doShare();
-          return;
-        }
-
-        // 5) Back to top
-        const btt = t.closest?.("a.ff-backtotop[data-ff-backtotop],[data-ff-backtotop]");
-        if (btt) {
-          if (btt.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          BackToTop.scrollTop();
-          return;
-        }
-
-        // 6) Drawer open/close
-        const drawerOpen = t.closest?.("[data-ff-open-drawer],[data-ff-drawer-open]");
-        if (drawerOpen) {
-          if (drawerOpen.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          Drawer.open(drawerOpen);
-          return;
-        }
-
-        const drawerClose = t.closest?.("[data-ff-close-drawer],[data-ff-drawer-close]");
-        if (drawerClose) {
-          e.preventDefault();
-          Drawer.close();
-          return;
-        }
-
-        // 7) Sponsor modal open/close/submit
-        const sponsorOpen = t.closest?.("[data-ff-open-sponsor],a[href='#sponsor-interest']");
-        if (sponsorOpen) {
-          if (sponsorOpen.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          Sponsor.open(sponsorOpen, { setHash: true });
-          return;
-        }
-
-        const sponsorClose = t.closest?.("[data-ff-close-sponsor]");
-        if (sponsorClose) {
-          e.preventDefault();
-          Sponsor.close({ restoreHash: false });
-          return;
-        }
-
-        const sponsorSubmit = t.closest?.("[data-ff-sponsor-submit]");
-        if (sponsorSubmit) {
-          e.preventDefault();
-          Sponsor.submit();
-          return;
-        }
-
-        // 8) Checkout open triggers (after team/amount set)
-        const openNode = t.closest?.(
-          "[data-ff-open-checkout],[data-ff-checkout-open],[data-ff-open-donate],[data-ff-donate-open],a[href='#checkout'],a[href='#donate']"
-        );
-        if (openNode) {
-          if (openNode.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          Checkout.open(openNode, { setHash: true });
-          return;
-        }
-
-        // 9) Checkout close triggers
-        const closeNode = t.closest?.(
-          "[data-ff-close-checkout],[data-ff-checkout-close],[data-ff-close-donate],[data-ff-donate-close]"
-        );
-        if (closeNode) {
-          e.preventDefault();
-          Checkout.close({ restoreHash: true });
-          return;
-        }
-
-        // 10) Backdrop clicks (never close when clicking inside panel)
-        if (Checkout.isOpen() && Checkout.onBackdropClick(t)) {
-          e.preventDefault();
-          Checkout.close({ restoreHash: true });
-          return;
-        }
-        if (Drawer.isOpen() && Drawer.onBackdropClick(t)) {
-          e.preventDefault();
-          Drawer.close();
-          return;
-        }
-        if (Sponsor.isOpen() && Sponsor.onBackdropClick(t)) {
-          e.preventDefault();
-          Sponsor.close({ restoreHash: false });
-          return;
-        }
-
-        // 11) Pay button (Stripe confirm)
-        const payBtn = t.closest?.("#payBtn,[data-ff-pay-btn]");
-        if (payBtn) {
-          if (payBtn.tagName === "A" && isModifiedClick(e)) return;
-          e.preventDefault();
-          Stripe.confirm();
-          return;
-        }
-      } catch {}
-    };
-
-    const handleKeydown = (e) => {
-      try {
-        // priority: checkout > drawer > sponsor
-        if (Checkout.isOpen()) {
-          Focus.trapKeydown(e, Checkout.getTrapRoot(), () => Checkout.close({ restoreHash: true }));
-          return;
-        }
-        if (Drawer.isOpen()) {
-          Focus.trapKeydown(e, Drawer.getTrapRoot(), () => Drawer.close());
-          return;
-        }
-        if (Sponsor.isOpen()) {
-          Focus.trapKeydown(e, Sponsor.getTrapRoot(), () => Sponsor.close({ restoreHash: false }));
-          return;
-        }
-      } catch {}
-    };
-
-    const handleHashChange = () => {
-      try {
-        Checkout.syncWithHash();
-      } catch {}
-      try {
-        Sponsor.syncWithHash();
-      } catch {}
-    };
-
-    const init = () => {
-      on(document, "click", handleClick, true);
-      on(document, "keydown", handleKeydown, true);
-      on(window, "hashchange", handleHashChange);
-      on(window, "popstate", handleHashChange);
-    };
-
-    return { init, handleHashChange };
-  })();
-
-  // ---------------------------------------------------------------------------
-  // App init
-  // ---------------------------------------------------------------------------
-  const App = (() => {
-    const init = () => {
-      try {
-        Analytics.emit("app_boot", { v: VERSION });
-
-        try {
-          State.readStored?.();
-        } catch {}
-
-        Theme.init();
-        Amounts.init();
-        TeamAttribution.init();
-
-        Countdown.init();
-        BackToTop.init();
-
-        Payments.init();
-        Prewarm.init();
-        Events.init();
-
-        // initial sync for hash-driven overlays (:target)
-        Events.handleHashChange();
-
-        // Stripe return handling (safe no-op if none)
-        Stripe.handleReturnIfPresent();
-
-        Payments.queuePrepare(false);
-
-        Analytics.emit("app_ready", {});
-      } catch (e) {
-        try {
-          console.warn("[FF] init error", e);
-        } catch {}
-      }
-    };
-
-    return { init };
-  })();
-
-  try {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => App.init(), { once: true });
-    } else {
-      App.init();
+      updateFromHero((window.scrollY || 0) < 220);
     }
-  } catch {
-    try {
-      App.init();
-    } catch {}
-  }
-})();
 
+    window.addEventListener("hashchange", function () {
+      raf().then(function () {
+        if (shouldHideForOverlay()) setShown(false);
+      });
+    });
+  }
+
+  /* ---------------------------------------------
+     A11Y hotfix: KPI <dl> must contain only dt/dd
+  --------------------------------------------- */
+  function ffFixHeroKpiDl() {
+    try {
+      var dl = document.querySelector("dl.ff-hero__kpis");
+      if (!dl) return;
+
+      var notes = dl.querySelectorAll(".ff-kpiCard > p");
+      if (!notes || !notes.length) return;
+
+      for (var i = 0; i < notes.length; i++) {
+        var p = notes[i];
+        if (!p || !p.parentElement) continue;
+
+        var card = p.parentElement;
+        var dd = card.querySelector("dd");
+        if (!dd) continue;
+
+        var span = document.createElement("span");
+        span.className = p.className || "";
+        span.textContent = (p.textContent || "").trim();
+
+        dd.appendChild(span);
+        p.remove();
+      }
+    } catch (e) {}
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ffFixHeroKpiDl, { once: true });
+  } else {
+    ffFixHeroKpiDl();
+  }
+
+  /* -----------------------------
+     Recent donations ticker (real-only; hidden until data arrives)
+  ----------------------------- */
+
+  function normalizeRecentPayload(payload) {
+    if (!payload) return { items: [], supportersWeek: null };
+    if (Array.isArray(payload)) return { items: payload, supportersWeek: null };
+    var items = payload.items || payload.donations || payload.recent || payload.results || [];
+    var supportersWeek =
+      payload.supportersWeek != null
+        ? payload.supportersWeek
+        : payload.weekSupporters != null
+        ? payload.weekSupporters
+        : payload.supporters_this_week != null
+        ? payload.supporters_this_week
+        : null;
+    return { items: Array.isArray(items) ? items : [], supportersWeek: supportersWeek };
+  }
+
+  function fmtMoney(val, isCents) {
+    var n = Number(val);
+    if (!isFinite(n) || n <= 0) return "";
+    if (isCents) n = Math.round(n) / 100;
+    try {
+      return n.toLocaleString(undefined, {
+        style: "currency",
+        currency: getCurrency(),
+        maximumFractionDigits: n % 1 === 0 ? 0 : 2
+      });
+    } catch (e) {
+      return "$" + Math.round(n);
+    }
+  }
+
+    function initTicker() {
+      var wrap = qs("[data-ff-ticker]") || qs("[data-ff-donor-ticker]");
+      if (!wrap) return;
+
+      var placeholder = qs("[data-ff-ticker-placeholder]", wrap) || qs("p", wrap);
+      if (placeholder && !placeholder.hasAttribute("data-ff-ticker-placeholder")) {
+        placeholder.setAttribute("data-ff-ticker-placeholder", "");
+      }
+
+      var track = qs("[data-ff-ticker-track]", wrap) || qs("[data-ff-ticker-track]");
+      if (!track) {
+        track = document.createElement("div");
+        track.className = "ff-ticker__track";
+        track.setAttribute("data-ff-ticker-track", "");
+        track.setAttribute("role", "list");
+        track.setAttribute("aria-label", "Recent supporters");
+        wrap.appendChild(track);
+      } else if (!track.classList.contains("ff-ticker__track")) {
+        track.classList.add("ff-ticker__track");
+      }
+
+      function clearTrack() {
+        while (track.firstChild) track.removeChild(track.firstChild);
+      }
+
+      function setPlaceholderVisible(on) {
+        if (!placeholder) return;
+        if (on) placeholder.removeAttribute("hidden");
+        else placeholder.setAttribute("hidden", "");
+      }
+
+      function render(items) {
+        clearTrack();
+
+        var max = 8;
+        var count = 0;
+
+        for (var i = 0; i < items.length; i++) {
+          if (count >= max) break;
+
+          var it = items[i];
+          if (it && (it.verified === false || it.is_verified === false)) continue;
+
+          var amt = "";
+          if (it && it.amount_cents != null) amt = fmtMoney(it.amount_cents, true);
+          else if (it && it.amount != null) amt = fmtMoney(it.amount, false);
+          if (!amt) continue;
+
+          var team = "";
+          if (it && it.team) team = String(it.team || "").trim();
+          if (it && it.team_name) team = String(it.team_name || "").trim();
+
+          var when = "";
+          if (it && it.when) when = String(it.when || "").trim();
+          if (!when && it && it.minutes_ago != null) {
+            var m = Number(it.minutes_ago);
+            if (isFinite(m) && m >= 0) when = m < 2 ? "just now" : Math.round(m) + " min ago";
+          }
+          if (!when && it && it.created_at) when = "recent";
+
+          var itemEl = document.createElement("div");
+          itemEl.className = "ff-ticker__item";
+          itemEl.setAttribute("role", "listitem");
+
+          var amtEl = document.createElement("span");
+          amtEl.className = "ff-ticker__amt ff-num";
+          amtEl.textContent = amt;
+
+          var metaEl = document.createElement("span");
+          metaEl.className = "ff-ticker__meta";
+          metaEl.textContent = (team ? "to " + team : "new supporter") + (when ? " • " + when : "");
+
+          itemEl.appendChild(amtEl);
+          itemEl.appendChild(metaEl);
+          track.appendChild(itemEl);
+
+          count += 1;
+        }
+
+        setPlaceholderVisible(count === 0);
+
+        if (count > 0) {
+          wrap.setAttribute("data-ff-ticker-live", "true");
+          wrap.setAttribute("aria-hidden", "false");
+        }
+      }
+
+      function getRecentEndpoint() {
+        var ep = "";
+        if (cfg && cfg.stats && cfg.stats.recentDonationsEndpoint) ep = String(cfg.stats.recentDonationsEndpoint || "").trim();
+        if (!ep) ep = getMeta("ff-recent-donations-endpoint") || getMeta("ff:recent-donations-endpoint") || getMeta("recent-donations-endpoint") || "";
+        return String(ep || "").trim();
+      }
+
+      function startDemoTicker() {
+        var teams = cfg && cfg.teams && Array.isArray(cfg.teams) ? cfg.teams : [];
+        var names = [];
+        for (var i = 0; i < teams.length; i++) {
+          var nm = teams[i] && teams[i].name ? String(teams[i].name || "").trim() : "";
+          if (nm) names.push(nm);
+        }
+        if (!names.length) names = ["the team"];
+
+        function anon() {
+          var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          return letters.charAt(Math.floor(Math.random() * letters.length)) + ".";
+        }
+
+        var amounts = [25, 35, 50, 75, 100, 150, 250, 500];
+        var buffer = [];
+
+        function pushOne(minAgo) {
+          buffer.unshift({
+            amount: amounts[Math.floor(Math.random() * amounts.length)],
+            team_name: names[Math.floor(Math.random() * names.length)],
+            minutes_ago: minAgo,
+            name: anon()
+          });
+          if (buffer.length > 6) buffer.length = 6;
+          render(buffer);
+        }
+
+        pushOne(12);
+        pushOne(4);
+
+        var t0 = nowMs();
+        setInterval(function () {
+          var mins = Math.max(0, Math.round((nowMs() - t0) / 60000));
+          pushOne(Math.max(1, 1 + (mins % 12)));
+        }, 18000);
+      }
+
+      var ep = getRecentEndpoint();
+      if (!ep) {
+        // Demo fallback: only when not production+live (keeps prod clean)
+        var isLive = cfg && String(cfg.dataMode || "").toLowerCase() === "live";
+        var isProd = cfg && String(cfg.env || "").toLowerCase() === "production";
+        if (!isLive || !isProd) startDemoTicker();
+        return;
+      }
+
+      fetchJSON(ep, { method: "GET" })
+        .then(function (data) {
+          var norm = normalizeRecentPayload(data);
+          render(norm.items);
+        })
+        .catch(function () {});
+    }
+
+
+  /* -----------------------------
+     Init
+  ----------------------------- */
+
+  function initMountWrappers() {
+    if (paymentMount) ensureInnerWrapper(paymentMount, "stripe");
+    if (paypalMount) ensureInnerWrapper(paypalMount, "paypal");
+  }
+
+  function initPaymentsHints() {
+    if (paymentMount) {
+      setMountState("", state.stripe.pk ? "Enter an amount to load card payment." : "Stripe is not configured yet.", paymentMount, stripeMsg);
+    }
+    if (paypalMount) {
+      setMountState("", state.paypal.clientId ? "Enter an amount to load PayPal." : "PayPal is not configured yet.", paypalMount, paypalMsg);
+    }
+  }
+
+  function init() {
+    markLoading(true);
+
+    initMountWrappers();
+
+    onHashChange();
+
+    initTheme();
+    initEvents();
+    initBackdropClose();
+    initAmountInput();
+    initTicker();
+    initStickyDonate();
+    initPaymentsHints();
+
+    // If direct-linked to checkout
+    if (currentHashId() === "checkout") {
+      handleAmountChangedWhileCheckoutOpen();
+    }
+
+    markLoading(false);
+    markReady();
+  }
+
+  // Minimal public surface (safe)
+  try {
+    window.FutureFunded = window.FutureFunded || {};
+    window.FutureFunded.app = window.FutureFunded.app || {};
+    window.FutureFunded.app.version = APP_VERSION;
+    window.FutureFunded.app.openCheckout = openCheckout;
+    window.FutureFunded.app.closeCheckout = closeCheckout;
+    window.FutureFunded.app.openDrawer = openDrawer;
+    window.FutureFunded.app.closeDrawer = closeDrawer;
+  } catch (e) {}
+
+  ready(function () {
+    try {
+      init();
+    } catch (e) {
+      toast("error", "App failed to start.");
+      try {
+        console.error("[ff-app] init error", e);
+      } catch (e2) {}
+    }
+  });
+})();

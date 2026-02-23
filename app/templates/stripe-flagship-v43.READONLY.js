@@ -1945,7 +1945,7 @@ Changes can cause double charges or failed payments.
       teams: [
         { key: "6g", name: "6th Grade Gold", blurb: "First AAU reps — learning sets, defense, and communication.", goal: 5000, raised: 3420, image: "/static/images/connect-atx-team.jpg", tag: "Featured" },
         { key: "7g", name: "7th Grade Gold", blurb: "Speed + spacing — film, fundamentals, and pressure reps.", goal: 6000, raised: 4680, image: "/static/images/7thGold.jpg" },
-        { key: "7b", name: "7th Grade Black", blurb: "Defense travels — effort and stops into transition.", goal: 5000, raised: 2210, image: "/static/images/7thBlack.png" },
+        { key: "7b", name: "7th Grade Black", blurb: "Defense travels — effort and stops into transition.", goal: 5000, raised: 2210, image: "/static/images/7thBlack.webp" },
         { key: "8g", name: "8th Grade Gold", blurb: "Finish strong — high-intensity reps and leadership.", goal: 6000, raised: 4680, image: "/static/images/8thGold.jpg" },
         { key: "8b", name: "8th Grade Black", blurb: "Next gym ready — advanced reads and competitive weekends.", goal: 5000, raised: 2210, image: "/static/images/connect-atx-team_3.jpg" },
       ],
