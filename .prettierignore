@@ -1,0 +1,18 @@
+# Build/test outputs
+.cache/
+.playwright/
+test-results/
+playwright-report/
+
+# Legacy / template-derived artifacts (contain Jinja or HTML)
+app/static/js/extracted/
+app/static/js/**/*.min.js
+app/static/css/**/*.min.css
+
+# Known mixed-template “CSS” files (Jinja tokens)
+app/static/css/app*.css
+app/static/css/campaign*.css
+app/static/css/fc-app.css
+app/static/css/fundchamps*.css
+app/static/css/futurefunded_*.css
+app/static/css/input.css
