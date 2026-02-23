@@ -135,6 +135,23 @@ htmlcov/
 .env.*
 .cache/
 
+# Local audit dumps (root)
+classes.txt
+ids.txt
+data_attrs.txt
+css_vs_html_presence.txt
+inline_events_hits.txt
+inline_styles_hits.txt
+style-coverage.json
+DOM_CONTRACT_full_snapshot_*.txt
+stripe_fill_fail_*.png
+
+# Local archives (keep out of repo)
+app/templates_backup/
+app/static/css_backup/
+app/static/css/archive/
+app/static/_unused/
+
 # -----------------------------------------------------------------------------
 # Optional: local tooling outputs (uncomment if you generate these)
 # -----------------------------------------------------------------------------
