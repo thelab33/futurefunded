@@ -1,0 +1,1 @@
+import "../tools/ff_app_e2e.spec.mjs";
