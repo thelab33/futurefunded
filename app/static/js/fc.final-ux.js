@@ -119,7 +119,6 @@
   function preconnectStripe() {
     if (!tenantCfg.features.preconnectStripe) return;
     const link = D.createElement('link');
-    link.rel = 'preconnect'; link.href = 'https://js.stripe.com'; link.crossOrigin = 'anonymous';
     D.head.appendChild(link);
     report.info.push({ preconnect: 'stripe' });
   }

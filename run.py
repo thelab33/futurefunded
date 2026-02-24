@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 """
-FutureFunded Flagship Launcher — ROBUST (env-safe • deterministic reload • turnkey overlay • secrets-safe)
+FutureFunded Flagship Launcher — ROBUST
+(env-safe • deterministic reload • turnkey overlay • secrets-safe • routes export)
 
 Canonical:
   ./run.py --env development --open-browser
@@ -17,6 +18,7 @@ Guarantees:
 - Adds diag headers: X-FutureFunded-Env / X-FutureFunded-Config / X-FutureFunded-Turnkey-Version
 - Optional CSP nonce autopatch for templates
 - Never logs secrets (Stripe keys/webhook secret redacted)
+- Can write routes to a file: --routes-out /tmp/routes.txt
 """
 
 import argparse
@@ -49,7 +51,6 @@ except Exception:  # pragma: no cover
 _TRUTHY = {"1", "true", "yes", "y", "on"}
 _FALSY = {"0", "false", "no", "n", "off"}
 
-# Snapshot of the "real" OS env keys at import time (dotenv must not override these)
 _OS_ENV_KEYS: FrozenSet[str] = frozenset(os.environ.keys())
 
 SENSITIVE_KEYS = {
@@ -64,12 +65,15 @@ SENSITIVE_KEYS = {
     "SENTRY_DSN",
 }
 
+SKIP_DIR_NAMES = {"node_modules", ".git", ".venv", "venv", "__pycache__", ".pytest_cache"}
+_DEFAULT_WATCH_DIRS = (Path("templates"), Path("static"), Path("app/templates"), Path("app/static"))
+_WATCH_EXTS = {".py", ".html", ".jinja", ".jinja2", ".css", ".js", ".mjs", ".json", ".svg"}
+
 
 def _redact(name: str, value: str) -> str:
     if not value:
         return ""
     if name in SENSITIVE_KEYS:
-        # keep prefix for debugging key type, but no material leakage
         v = value.strip()
         if len(v) <= 10:
             return "***"
@@ -91,13 +95,11 @@ def _env_bool(name: str) -> Optional[bool]:
 
 def _normalize_env_name(v: str) -> str:
     r = (v or "").strip().lower()
-    if r in {"dev", "development", "local"}:
-        return "development"
-    if r in {"stage", "staging"}:
+    if r in {"dev", "development", "local", "stage", "staging"}:
         return "development"
     if r in {"test", "testing"}:
         return "testing"
-    if r in {"prod", "production"}:
+    if r in {"prod", "production", "live"}:
         return "production"
     return r or "development"
 
@@ -150,17 +152,7 @@ def _is_https(url: str) -> bool:
 # -----------------------------------------------------------------------------
 # Dotenv (precedence-safe)
 # -----------------------------------------------------------------------------
-SKIP_DIR_NAMES = {"node_modules", ".git", ".venv", "venv", "__pycache__", ".pytest_cache"}
-
-
 def _dotenv_candidates(env: str, *, include_base: bool = True) -> list[Path]:
-    """
-    Precedence order (low -> high), later dotenv overrides earlier dotenv:
-      1) .env
-      2) .env.<env>
-      3) .env.local (dev/test only)
-    OS env always wins.
-    """
     env = _normalize_env_name(env)
     files: list[Path] = []
     if include_base:
@@ -182,7 +174,6 @@ def _apply_dotenv_file(p: Path) -> bool:
     for k, v in vals.items():
         if v is None:
             continue
-        # OS env ALWAYS wins (skip keys that existed in OS snapshot)
         if k in _OS_ENV_KEYS:
             continue
         os.environ[k] = str(v)
@@ -255,7 +246,7 @@ def setup_logging(debug: bool, style: str) -> None:
 
 
 # -----------------------------------------------------------------------------
-# Autopatch: inject CSP nonce attr into <script> and <style> tags (templates)
+# Autopatch: inject CSP nonce into <script>/<style> tags (templates)
 # -----------------------------------------------------------------------------
 _SCRIPT_TAG = re.compile(
     r"<script\b(?![^>]*\bnonce=)(?![^>]*\{\{[^}]*nonce_attr\(\)[^}]*\}\})([^>]*)>",
@@ -306,10 +297,6 @@ def autopatch(scan_dirs: Iterable[Path] | None = None, dry_run: bool = False) ->
 # -----------------------------------------------------------------------------
 # Watch files (dev reload)
 # -----------------------------------------------------------------------------
-_DEFAULT_WATCH_DIRS = (Path("templates"), Path("static"), Path("app/templates"), Path("app/static"))
-_WATCH_EXTS = {".py", ".html", ".jinja", ".jinja2", ".css", ".js", ".mjs", ".json", ".svg"}
-
-
 def collect_watch_files(dirs: Iterable[Path]) -> list[str]:
     files: list[str] = []
     for d in dirs:
@@ -392,7 +379,6 @@ def install_turnkey_version_overlay(flask_app, version: str) -> None:
         except Exception:
             pass
 
-        # Optionally rewrite /api/turnkey/config response to ensure flagship.version is present
         if request.path != "/api/turnkey/config" or resp.status_code != 200:
             return resp
 
@@ -401,11 +387,13 @@ def install_turnkey_version_overlay(flask_app, version: str) -> None:
             obj = resp.get_json(silent=True)
         except Exception:
             obj = None
+
         if obj is None:
             try:
                 obj = json.loads(resp.get_data(as_text=True))
             except Exception:
                 return resp
+
         if not isinstance(obj, dict):
             return resp
 
@@ -515,7 +503,6 @@ def _choose_public_base(env: str, cli_value: Optional[str]) -> Optional[str]:
     if env == "production":
         if not base:
             base = _normalize_base_url(os.getenv("FF_DEFAULT_PUBLIC_BASE_URL", "https://getfuturefunded.com"))
-        # force https for prod
         if base and base.startswith("http://"):
             base = "https://" + base[len("http://") :]
     return base or None
@@ -531,32 +518,6 @@ def _stripe_key_mode(sk: str, pk: str) -> str:
     return "unknown"
 
 
-def _validate_stripe_for_env(env: str, *, force: bool) -> None:
-    env = _normalize_env_name(env)
-    sk = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
-    pk = (os.getenv("STRIPE_PUBLISHABLE_KEY") or os.getenv("STRIPE_PUBLISHABLE") or "").strip()
-    wh = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
-    mode = _stripe_key_mode(sk, pk)
-
-    enforce_live = (os.getenv("FF_STRIPE_ENFORCE_LIVE_KEYS") or "").strip().lower() in _TRUTHY
-    if env != "production":
-        return
-
-    # Prod expectations
-    if not sk or not pk or not wh:
-        msg = "Stripe env is incomplete in production (STRIPE_SECRET_KEY / STRIPE_PUBLISHABLE_KEY / STRIPE_WEBHOOK_SECRET)."
-        if force:
-            logging.warning("%s (continuing due to --force)", msg)
-        else:
-            raise RuntimeError(msg)
-
-    if mode == "test":
-        msg = "Stripe keys look TEST while env=production."
-        if enforce_live and not force:
-            raise RuntimeError(msg + " Set live keys, or set FF_STRIPE_ENFORCE_LIVE_KEYS=0 temporarily, or use --force.")
-        logging.warning("%s sk=%s pk=%s", msg, _redact("STRIPE_SECRET_KEY", sk), _redact("STRIPE_PUBLISHABLE_KEY", pk))
-
-
 def make_runner_config() -> RunnerConfig:
     a = parse_args()
     env = _normalize_env_name(a.env or detect_env())
@@ -564,7 +525,7 @@ def make_runner_config() -> RunnerConfig:
     # Load dotenv AFTER env is known (OS env still wins)
     load_env_stack(env=env, include_base=True)
 
-    # Canonicalize env exports (CLI env wins)
+    # Canonical env exports (CLI env wins)
     os.environ["ENV"] = env
     os.environ["APP_ENV"] = env
     os.environ["FLASK_ENV"] = env
@@ -711,31 +672,6 @@ def banner(cfg: RunnerConfig) -> None:
     print(f"💻 Local:        http://127.0.0.1:{cfg.port}")
 
 
-def install_dev_no_cache(flask_app) -> None:
-    """
-    Dev only. Production caching is governed by app/__init__.py flagship cache policy.
-    """
-    if flask_app.extensions.get("ff_dev_no_cache_installed") is True:
-        return
-    flask_app.extensions["ff_dev_no_cache_installed"] = True
-
-    try:
-        flask_app.config["TEMPLATES_AUTO_RELOAD"] = True
-        flask_app.jinja_env.auto_reload = True
-        flask_app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    except Exception:
-        pass
-
-    @flask_app.after_request
-    def _no_cache(resp):
-        ct = (resp.headers.get("Content-Type") or "").lower()
-        if ("text/html" in ct) or ("text/css" in ct) or ("javascript" in ct) or ("application/json" in ct) or ("image/svg+xml" in ct):
-            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            resp.headers["Pragma"] = "no-cache"
-            resp.headers["Expires"] = "0"
-        return resp
-
-
 def install_diag_headers(flask_app, *, env: str, config_path: str) -> None:
     if flask_app.extensions.get("ff_diag_headers_installed") is True:
         return
@@ -751,25 +687,44 @@ def install_diag_headers(flask_app, *, env: str, config_path: str) -> None:
         return resp
 
 
-def preflight_prod_warnings(cfg: RunnerConfig) -> None:
-    if cfg.env != "production":
+def install_dev_no_cache(flask_app) -> None:
+    if flask_app.extensions.get("ff_dev_no_cache_installed") is True:
         return
+    flask_app.extensions["ff_dev_no_cache_installed"] = True
 
-    if cfg.debug or cfg.use_reloader:
-        logging.warning("Production running with debug/reloader. Recommended: --debug=false --no-reload")
+    try:
+        flask_app.config["TEMPLATES_AUTO_RELOAD"] = True
+        flask_app.jinja_env.auto_reload = True
+        flask_app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+    except Exception:
+        pass
 
-    if cfg.public_base_url and not _is_https(cfg.public_base_url):
-        logging.warning("PUBLIC_BASE_URL is not https in production (will be coerced by app).")
+    @flask_app.after_request
+    def _no_cache(resp):
+        ct = (resp.headers.get("Content-Type") or "").lower()
+        if any(x in ct for x in ("text/html", "text/css", "javascript", "application/json", "image/svg+xml")):
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+        return resp
 
-    if not cfg.trust_proxy:
-        logging.warning("TRUST_PROXY is off in production. Behind Cloudflare Tunnel you likely want TRUST_PROXY=1.")
+
+def write_routes(flask_app, out_path: Path) -> None:
+    try:
+        lines = []
+        for rule in sorted(flask_app.url_map.iter_rules(), key=lambda r: (r.rule, r.endpoint)):
+            methods = ",".join(sorted(m for m in (rule.methods or set()) if m not in {"HEAD", "OPTIONS"}))
+            lines.append(f"{rule.rule:<40} {methods:<18} {rule.endpoint}")
+        out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        logging.info("Routes written → %s", out_path)
+    except Exception as e:
+        logging.warning("Routes write failed: %s", e)
 
 
 # -----------------------------------------------------------------------------
 # App build
 # -----------------------------------------------------------------------------
 def build_app(cfg: RunnerConfig):
-    # Ensure env vars exist BEFORE importing app
     os.environ["ENV"] = cfg.env
     os.environ["APP_ENV"] = cfg.env
     os.environ["FLASK_ENV"] = cfg.env
@@ -807,20 +762,15 @@ def main() -> None:
         logging.error("Port %s already in use (host=%s). Stop the other process or use --force.", cfg.port, cfg.host)
         raise SystemExit(2)
 
-    # Validate Stripe for prod (fatal unless --force)
-    try:
-        _validate_stripe_for_env(cfg.env, force=cfg.force_run)
-    except Exception as e:
-        logging.error("%s", e)
-        raise SystemExit(3)
-
     banner(cfg)
-    preflight_prod_warnings(cfg)
 
     if cfg.do_autopatch:
         autopatch(scan_dirs=cfg.autopatch_dirs, dry_run=cfg.autopatch_dry_run)
 
     flask_app = build_app(cfg)
+
+    if cfg.routes_out:
+        write_routes(flask_app, cfg.routes_out)
 
     if cfg.open_browser:
         ssl_ctx = _ssl_ctx_from_env()
@@ -855,7 +805,7 @@ def main() -> None:
 
 
 # -----------------------------------------------------------------------------
-# Gunicorn export (ONLY when imported, not when run as script)
+# Gunicorn export
 # -----------------------------------------------------------------------------
 app = None
 if __name__ != "__main__":

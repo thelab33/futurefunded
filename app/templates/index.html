@@ -1,105 +1,86 @@
 <!doctype html>
-
 {# =============================================================================
-FutureFunded • Flagship — INDEX (deterministic production drop-in)
-
-Hook-safe • CSP-safe
-
-ONE #ffConfig tojson payload (ONLY)
-
-ffSelectors is raw JSON (NO template vars)
-
-Env + canonical + Stripe return URL are proxy-safe
+  FutureFunded • Flagship — INDEX (refactored config bootstrap)
+  - Hook-safe • CSP-safe
+  - ONE #ffConfig tojson payload (ONLY)
+  - ffSelectors is raw JSON (NO template vars)
+  - Env + canonical + Stripe return URL are proxy-safe
 ============================================================================= #}
 
 {% macro nonce_attr() -%}
-{%- set _n = (csp_nonce|default((g.csp_nonce if g is defined else ''), true))|string|trim -%}
-{%- if _n -%}nonce="{{ _n|e }}"{%- endif -%}
+  {%- set _n = (csp_nonce|default((g.csp_nonce if g is defined else ''), true))|string|trim -%}
+  {%- if _n -%}nonce="{{ _n|e }}"{%- endif -%}
 {%- endmacro %}
 
 {% macro money(v, symbol='$') -%}
-{%- set _n = (v|default(0, true))|float -%}
-{{- symbol -}}{{- '{:,.0f}'.format(_n) -}}
+  {%- set _n = (v|default(0, true))|float -%}
+  {{- symbol -}}{{- '{:,.0f}'.format(_n) -}}
 {%- endmacro %}
 
-{# ----------------------------
-ENV (ship-safe, injected-first)
----------------------------- #}
+{# ---------------------------- ENV (ship-safe, injected-first) ---------------------------- #}
 {% set _env_guess = (
-ff_env
-|default(ENV|default((config.get('ENV') if config is mapping else ''), true), true)
-|default((config.get('FLASK_ENV') if config is mapping else ''), true)
-|default((config.get('APP_ENV') if config is mapping else ''), true)
-|default('development', true)
+  ff_env
+  |default(ENV|default((config.get('ENV') if config is mapping else ''), true), true)
+  |default((config.get('FLASK_ENV') if config is mapping else ''), true)
+  |default((config.get('APP_ENV') if config is mapping else ''), true)
+  |default('development', true)
 )|string|lower|trim %}
 
 {% set ff_env = (ff_env|default(_env_guess, true))|string|lower|trim %}
 {% if ff_env in ['production','prod','live'] %}
-{% set ff_env = 'production' %}
+  {% set ff_env = 'production' %}
 {% elif ff_env in ['testing','test'] %}
-{% set ff_env = 'testing' %}
+  {% set ff_env = 'testing' %}
 {% else %}
-{% set ff_env = 'development' %}
+  {% set ff_env = 'development' %}
 {% endif %}
 
 {% set _is_prod = ff_env == 'production' %}
 
-{# ----------------------------
-Public base URL (proxy-safe)
----------------------------- #}
+{# ---------------------------- Public base URL (proxy-safe) ---------------------------- #}
 {% set _public_base_raw = (
-(ff_public_base_url|default('', true))
-or (config.get('FF_PUBLIC_BASE_URL') if config is mapping else '')
-or (config.get('PUBLIC_BASE_URL') if config is mapping else '')
-or (request.url_root if request is defined else '')
+  (ff_public_base_url|default('', true))
+  or (config.get('FF_PUBLIC_BASE_URL') if config is mapping else '')
+  or (config.get('PUBLIC_BASE_URL') if config is mapping else '')
+  or (request.url_root if request is defined else '')
 )|string|trim %}
 
 {% if _public_base_raw and _public_base_raw[-1] == '/' %}
-{% set _public_base_raw = _public_base_raw[:-1] %}
+  {% set _public_base_raw = _public_base_raw[:-1] %}
 {% endif %}
 
 {% if _is_prod and _public_base_raw.startswith('http://') %}
-{% set _public_base_raw = _public_base_raw|replace('http://','https://',1) %}
+  {% set _public_base_raw = _public_base_raw|replace('http://','https://',1) %}
 {% endif %}
 
 {# Hard guard: in production, never ship localhost as canonical/return URL #}
 {% if _is_prod and (_public_base_raw|lower is string) and ('localhost' in (_public_base_raw|lower) or '127.0.0.1' in (_public_base_raw|lower) or '[::1]' in (_public_base_raw|lower)) %}
-{% set _public_base_raw = 'https://getfuturefunded.com
-' %}
+  {% set _public_base_raw = 'https://getfuturefunded.com' %}
 {% endif %}
 
 {% set _public_base = _public_base_raw %}
 
-{# ----------------------------
-Canonical URL (uses public base)
----------------------------- #}
+{# ---------------------------- Canonical URL (uses public base) ---------------------------- #}
 {% set _path = (request.path if request is defined else '/')|string %}
 {% set canonical = (canonical_url|default((_public_base ~ _path), true))|string|trim %}
 {% if canonical and canonical.startswith('http://') and _is_prod %}
-{% set canonical = canonical|replace('http://','https://',1) %}
+  {% set canonical = canonical|replace('http://','https://',1) %}
 {% endif %}
 
-{# ----------------------------
-Stripe return URL (MUST be public-base safe)
----------------------------- #}
+{# ---------------------------- Stripe return URL (MUST be public-base safe) ---------------------------- #}
 {% set _stripe_return = (stripe_return_url|default(canonical, true))|string|trim %}
 {% if _stripe_return and _stripe_return.startswith('http://') and _is_prod %}
-{% set _stripe_return = _stripe_return|replace('http://','https://',1) %}
+  {% set _stripe_return = _stripe_return|replace('http://','https://',1) %}
 {% endif %}
 {% if _is_prod and ('localhost' in (_stripe_return|lower) or '127.0.0.1' in (_stripe_return|lower) or '[::1]' in (_stripe_return|lower)) %}
-{% set _stripe_return = 'https://getfuturefunded.com/
-' %}
+  {% set _stripe_return = 'https://getfuturefunded.com/' %}
 {% endif %}
 
-{# ----------------------------
-Smoke (non-prod utility)
----------------------------- #}
+{# ---------------------------- Smoke (non-prod utility) ---------------------------- #}
 {% set _smoke_raw = (request.args.get('smoke') if request is defined else '') %}
 {% set _smoke = (_smoke_raw is boolean and _smoke_raw) or (_smoke_raw|string|lower|trim in ['1','true','yes','on']) %}
 
-{# ----------------------------
-Org / Campaign text
----------------------------- #}
+{# ---------------------------- Org / Campaign text ---------------------------- #}
 {% set _org_name = (org_name|default((team.get('team_name') if team is mapping else 'Connect ATX Elite'), true))|string|trim %}
 {% if not _org_name %}{% set _org_name = 'Connect ATX Elite' %}{% endif %}
 
@@ -107,38 +88,32 @@ Org / Campaign text
 {% if not _location %}{% set _location = 'Austin, TX' %}{% endif %}
 
 {% set _organizer_label = (organizer_label|default(_org_name ~ ' coaching staff', true))|string|trim %}
-{% set _organizer_email = (organizer_email|default(contact_email, true)|default(support_email, true)|default('support@getfuturefunded.com
-', true))|string|trim %}
+{% set _organizer_email = (organizer_email|default(contact_email, true)|default(support_email, true)|default('support@getfuturefunded.com', true))|string|trim %}
 
 {% set _campaign_headline = (campaign_headline|default('Fuel the season. Fund the future.', true))|string|trim %}
 {% if not _campaign_headline %}{% set _campaign_headline = 'Fuel the season. Fund the future.' %}{% endif %}
 
-{% set _campaign_subhead = (campaign_subhead|default('Support', true))|string|trim %}
-{% if not _campaign_subhead %}{% set _campaign_subhead = 'Support' %}{% endif %}
+{% set _campaign_subhead = (campaign_subhead|default('Back the athletes of', true))|string|trim %}
+{% if not _campaign_subhead %}{% set _campaign_subhead = 'Back the athletes of' %}{% endif %}
 
 {% set _campaign_name = (campaign_name|default(_org_name, true))|string|trim %}
 {% if not _campaign_name %}{% set _campaign_name = _org_name %}{% endif %}
 {% if _campaign_name|length > 48 %}{% set _campaign_name = _org_name %}{% endif %}
 
-{% set _campaign_tagline = (campaign_tagline|default('Travel, gym time, gear, and tournament fees — your gift keeps the program running.', true))|string|trim %}
-{% if not _campaign_tagline %}{% set _campaign_tagline = 'Travel, gym time, gear, and tournament fees — your gift keeps the program running.' %}{% endif %}
+{% set _campaign_tagline = (campaign_tagline|default('Travel, gym time, gear, and tournament fees — your gift keeps them playing.', true))|string|trim %}
+{% if not _campaign_tagline %}{% set _campaign_tagline = 'Travel, gym time, gear, and tournament fees — your gift keeps them playing.' %}{% endif %}
 
-{# ----------------------------
-Logos / Platform
----------------------------- #}
+{# ---------------------------- Logos / Platform ---------------------------- #}
 {% set _org_logo = (org_logo|default(url_for('static', filename='images/logo.webp') ~ '?v=' ~ _v, true))|string|trim %}
 {% set _org_logo_svg = (org_logo_svg|default(url_for('static', filename='images/fundchamps-fc.svg') ~ '?v=' ~ _v, true))|string|trim %}
 
-{% set _ff_home = (ff_home|default('https://getfuturefunded.com
-', true))|string|trim %}
+{% set _ff_home = (ff_home|default('https://getfuturefunded.com', true))|string|trim %}
 {% set _ff_home_noslash = (_ff_home[:-1] if _ff_home and _ff_home[-1] == '/' else _ff_home) %}
 {% set _ff_create = (ff_create_url|default(_ff_home_noslash ~ '/create', true))|string|trim %}
 {% set _ff_logo = (ff_logo|default(url_for('static', filename='images/fundchamps-fc.svg') ~ '?v=' ~ _v, true))|string|trim %}
 {% set _platform_logo = (platform_logo|default(_ff_logo, true))|string|trim %}
 
-{# ----------------------------
-Legal / Support
----------------------------- #}
+{# ---------------------------- Legal / Support ---------------------------- #}
 {% set _email = (_organizer_email)|string|trim %}
 {% set _announce = (announcement_text|default(announcement|default('', true), true))|string|trim %}
 {% set announcement_text = (_announce)|string|trim %}
@@ -146,26 +121,24 @@ Legal / Support
 {% set _terms_url = (terms_url|default('#terms', true))|string|trim %}
 {% set _privacy_url = (privacy_url|default('#privacy', true))|string|trim %}
 
-{# ----------------------------
-Payments (keys + endpoints)
----------------------------- #}
+{# ---------------------------- Payments (keys + endpoints) ---------------------------- #}
 {% set _stripe_pk = (
-stripe_pk|default('', true)
-or STRIPE_PUBLISHABLE_KEY|default('', true)
-or STRIPE_PUBLIC_KEY|default('', true)
-or FF_STRIPE_PUBLISHABLE_KEY|default('', true)
-or (config.get('STRIPE_PUBLISHABLE_KEY') if config is mapping else '')
-or (config.get('STRIPE_PUBLIC_KEY') if config is mapping else '')
-or (config.get('FF_STRIPE_PUBLISHABLE_KEY') if config is mapping else '')
+  stripe_pk|default('', true)
+  or STRIPE_PUBLISHABLE_KEY|default('', true)
+  or STRIPE_PUBLIC_KEY|default('', true)
+  or FF_STRIPE_PUBLISHABLE_KEY|default('', true)
+  or (config.get('STRIPE_PUBLISHABLE_KEY') if config is mapping else '')
+  or (config.get('STRIPE_PUBLIC_KEY') if config is mapping else '')
+  or (config.get('FF_STRIPE_PUBLISHABLE_KEY') if config is mapping else '')
 )|string|trim %}
 {% if _stripe_pk|lower in ['none','null'] %}{% set _stripe_pk = '' %}{% endif %}
 
 {% set _pp = (
-paypal_client_id|default('', true)
-or PAYPAL_CLIENT_ID|default('', true)
-or FF_PAYPAL_CLIENT_ID|default('', true)
-or (config.get('PAYPAL_CLIENT_ID') if config is mapping else '')
-or (config.get('FF_PAYPAL_CLIENT_ID') if config is mapping else '')
+  paypal_client_id|default('', true)
+  or PAYPAL_CLIENT_ID|default('', true)
+  or FF_PAYPAL_CLIENT_ID|default('', true)
+  or (config.get('PAYPAL_CLIENT_ID') if config is mapping else '')
+  or (config.get('FF_PAYPAL_CLIENT_ID') if config is mapping else '')
 )|string|trim %}
 {% set _pp_sanitized = (_pp|string|trim) if (_pp|string|trim not in ['None','null','']) else '' %}
 
@@ -180,9 +153,7 @@ or (config.get('FF_PAYPAL_CLIENT_ID') if config is mapping else '')
 {% set _deadline_iso = (fundraiser_deadline_iso|default('2026-02-28T23:59:59-06:00', true))|string|trim %}
 {% set _deadline_fallback = (fundraiser_deadline_human|default((_deadline_iso[:10] if _deadline_iso else ''), true))|string|trim %}
 
-{# ----------------------------
-Feature flags / booleans
----------------------------- #}
+{# ---------------------------- Feature flags / booleans ---------------------------- #}
 {% set _cfx_raw = (cover_fees_exact|default(COVER_FEES_EXACT|default(false, true), true)) %}
 {% set _rem_raw = (require_email|default(REQUIRE_EMAIL|default(true, true), true)) %}
 {% set _cover_fees_exact = (_cfx_raw is boolean and _cfx_raw) or (_cfx_raw|string|lower|trim in ['1','true','yes','on']) %}
@@ -192,312 +163,279 @@ Feature flags / booleans
 {% set _whitelabel_mode = (_wl_raw is boolean and _wl_raw) or (_wl_raw|string|lower|trim in ['1','true','yes','on']) %}
 {% set _whitelabel = _whitelabel_mode %}
 
-{# ----------------------------
-Theme / SEO
----------------------------- #}
+{# ---------------------------- Theme / SEO ---------------------------- #}
 {% set theme_color_final = (theme_color|default((team.get('theme_color') if team is mapping else '#f97316'), true)|default('#f97316', true))|string|trim %}
 {% set theme_color_light_final = (theme_color_light|default(theme_color_final, true))|string|trim %}
 {% set theme_color_dark_final = (theme_color_dark|default('#0b0f17', true))|string|trim %}
 
 {% set page_title_final = (page_title|default(_campaign_name ~ ' • Fundraiser • ' ~ _org_name, true))|string|trim %}
-{% set page_desc_final = (page_description|default('Support ' ~ _campaign_name ~ ' with a fast, secure donation. Email receipt included. No account required.', true))|string|trim %}
+{% set page_desc_final = (page_description|default('Support ' ~ _campaign_name ~ ' with a fast, secure donation. Instant receipt. No account required.', true))|string|trim %}
 
 {% set og_title_final = (og_title|default(page_title_final, true))|string|trim %}
 {% set og_desc_final = (og_description|default(_campaign_tagline, true))|string|trim %}
 {% set og_alt_final = (og_image_alt|default('Fundraiser preview', true))|string|trim %}
 
 {% set _og_webp_path = url_for('static', filename='images/og_connect_atx_elite.webp') %}
-{% set _og_jpg_path = url_for('static', filename='images/og.jpg') %}
+{% set _og_jpg_path  = url_for('static', filename='images/og.jpg') %}
 {% set og_webp = (og_image_webp|default((_public_base ~ _og_webp_path ~ '?v=' ~ _v), true))|string|trim %}
-{% set og_jpg = (og_image_jpg |default((_public_base ~ _og_jpg_path ~ '?v=' ~ _v), true))|string|trim %}
+{% set og_jpg  = (og_image_jpg |default((_public_base ~ _og_jpg_path  ~ '?v=' ~ _v), true))|string|trim %}
 
 {% set _year = (year|default(current_year|default(2026, true), true))|int %}
 
 {# ---------------- DATA TRUTH POLICY (single source of truth) ---------------- #}
 {% set _mode_raw = (ff_data_mode|default('', true))|string|lower|trim %}
 {% if _mode_raw not in ['live','demo','preview'] %}
-{% set _mode_raw = ('live' if _is_prod else 'demo') %}
+  {% set _mode_raw = ('live' if _is_prod else 'demo') %}
 {% endif %}
 {% if (not _is_prod) and request is defined and request.args.get('mode') %}
-{% set _qmode = (request.args.get('mode')|string|lower|trim) %}
-{% if _qmode in ['live','demo','preview'] %}{% set _mode_raw = _qmode %}{% endif %}
+  {% set _qmode = (request.args.get('mode')|string|lower|trim) %}
+  {% if _qmode in ['live','demo','preview'] %}{% set _mode_raw = _qmode %}{% endif %}
 {% endif %}
 {% set ff_data_mode = _mode_raw %}
 
 {# Verified totals + ship-safe hard guard:
-
-In production + live, totals stay ZERO unless FF_ALLOW_LIVE_TOTALS is explicitly enabled. #}
+   - In production + live, totals stay ZERO unless FF_ALLOW_LIVE_TOTALS is explicitly enabled. #}
 {% set _tv_raw = (ff_totals_verified|default(fundraiser_totals_verified|default(false, true), true)) %}
 {% set _totals_verified = (_tv_raw is boolean and _tv_raw) or (_tv_raw|string|lower|trim in ['1','true','yes','on']) %}
 
 {% set _allow_live_totals_raw = (
-ff_allow_live_totals
-|default(FF_ALLOW_LIVE_TOTALS|default(false, true), true)
-|default((config.get('FF_ALLOW_LIVE_TOTALS') if config is mapping else false), true)
+  ff_allow_live_totals
+  |default(FF_ALLOW_LIVE_TOTALS|default(false, true), true)
+  |default((config.get('FF_ALLOW_LIVE_TOTALS') if config is mapping else false), true)
 ) %}
 {% set _allow_live_totals = (_allow_live_totals_raw is boolean and _allow_live_totals_raw) or (_allow_live_totals_raw|string|lower|trim in ['1','true','yes','on']) %}
 {% if _is_prod and ff_data_mode == 'live' and not _allow_live_totals %}
-{% set _totals_verified = false %}
+  {% set _totals_verified = false %}
 {% endif %}
 
-{% set _goal_backend = (fundraiser_goal|default(goal|default(0, true), true))|float %}
+{% set _goal_backend   = (fundraiser_goal|default(goal|default(0, true), true))|float %}
 {% set _raised_backend = (amount_raised|default(raised|default(0, true), true))|float %}
 
 {% set FF_GALLERY = gallery|default({
-"enabled": true,
-"items": [
-{"src": (url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v), "alt": "Connect ATX Elite", "caption": "Connect ATX Elite"},
-{"src": (url_for("static", filename="images/7thGold.jpg") ~ "?v=" ~ _v), "alt": "7th Grade Gold", "caption": "7th Grade Gold"},
-{"src": (url_for("static", filename="images/7thBlack.webp") ~ "?v=" ~ _v), "alt": "7th Grade Black", "caption": "7th Grade Black"},
-{"src": (url_for("static", filename="images/8thGold.jpg") ~ "?v=" ~ _v), "alt": "8th Grade Gold", "caption": "8th Grade Gold"},
-{"src": (url_for("static", filename="images/connect-atx-team_3.jpg") ~ "?v=" ~ _v), "alt": "8th Grade Black", "caption": "8th Grade Black"}
-]
+  "enabled": true,
+  "items": [
+    {"src": (url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v), "alt": "Connect ATX Elite", "caption": "Connect ATX Elite"},
+    {"src": (url_for("static", filename="images/7thGold.jpg") ~ "?v=" ~ _v), "alt": "7th Grade Gold", "caption": "7th Grade Gold"},
+    {"src": (url_for("static", filename="images/7thBlack.png") ~ "?v=" ~ _v), "alt": "7th Grade Black", "caption": "7th Grade Black"},
+    {"src": (url_for("static", filename="images/8thGold.jpg") ~ "?v=" ~ _v), "alt": "8th Grade Gold", "caption": "8th Grade Gold"},
+    {"src": (url_for("static", filename="images/connect-atx-team_3.jpg") ~ "?v=" ~ _v), "alt": "8th Grade Black", "caption": "8th Grade Black"}
+  ]
 }, true) %}
 
-{% set FF_TEAMS_RAW = ff_teams|default(teams_list|default([
-{"id":"6g","name":"6th Grade Gold","meta":"First AAU reps — fundamentals + communication.","goal":5000,"raised":3420,"featured":true,"needs":false,"restricted":false,"photo":(url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v),"ask":"Help cover tournament fees + gym time this month."},
-{"id":"7g","name":"7th Grade Gold","meta":"Speed + spacing — film + pressure reps.","goal":6000,"raised":4680,"featured":true,"needs":false,"restricted":false,"photo":(url_for("static", filename="images/7thGold.jpg") ~ "?v=" ~ _v),"ask":"Help fund travel + entry fees for the next weekend."},
-{"id":"7b","name":"7th Grade Black","meta":"Defense travels — stops into transition.","goal":5000,"raised":2210,"featured":false,"needs":true,"restricted":false,"photo":(url_for("static", filename="images/7thBlack.webp") ~ "?v=" ~ _v),"ask":"Help with uniforms + team meals on tournament days."},
-{"id":"8g","name":"8th Grade Gold","meta":"Finish strong — intensity + leadership.","goal":6000,"raised":4680,"featured":false,"needs":false,"restricted":false,"photo":(url_for("static", filename="images/8thGold.jpg") ~ "?v=" ~ _v),"ask":"Help with gym rentals + training sessions."},
-{"id":"8b","name":"8th Grade Black","meta":"Next-gym ready — advanced reads + weekends.","goal":5000,"raised":2210,"featured":false,"needs":true,"restricted":false,"photo":(url_for("static", filename="images/connect-atx-team_3.jpg") ~ "?v=" ~ _v),"ask":"Help with tournament fees and travel support."}
-], true), true) %}
+{% set FF_TEAMS_RAW = ff_teams | default(teams_list | default([
+  {
+    "id": "6g", "name": "6th Grade Gold", "meta": "First AAU reps — fundamentals + communication.", "goal": 5000, 
+    "raised": 3420, "featured": true, "needs": false, "restricted": false, 
+    "photo": url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v, 
+    "ask": "Help cover tournament fees + gym time this month."
+  },
+  {
+    "id": "7g", "name": "7th Grade Gold", "meta": "Speed + spacing — film + pressure reps.", "goal": 6000, 
+    "raised": 4680, "featured": true, "needs": false, "restricted": false, 
+    "photo": url_for("static", filename="images/7thGold.jpg") ~ "?v=" ~ _v, 
+    "ask": "Help fund travel + entry fees for the next weekend."
+  },
+  {
+    "id": "7b", "name": "7th Grade Black", "meta": "Defense travels — stops into transition.", "goal": 5000, 
+    "raised": 2210, "featured": false, "needs": true, "restricted": false, 
+    "photo": url_for("static", filename="images/7thBlack.png") ~ "?v=" ~ _v, 
+    "ask": "Help with uniforms + team meals on tournament days."
+  },
+  {
+    "id": "8g", "name": "8th Grade Gold", "meta": "Finish strong — intensity + leadership.", "goal": 6000, 
+    "raised": 4680, "featured": false, "needs": false, "restricted": false, 
+    "photo": url_for("static", filename="images/8thGold.jpg") ~ "?v=" ~ _v, 
+    "ask": "Help with gym rentals + training sessions."
+  }
+], true)) %}
 
-{% set nsTeamsSafe = namespace(items=[]) %}
-{% for t in FF_TEAMS_RAW|default([], true) %}
-{% set _tver_raw = t.verified|default(t.is_verified|default(false, true), true) %}
-{% set _t_verified = (_tver_raw is boolean and _tver_raw) or (_tver_raw|string|lower|trim in ['1','true','yes','on']) %}
-{% set _t_goal_raw = (t.goal|default(0, true))|int %}
-{% set _t_raised_raw = (t.raised|default(0, true))|int %}
-{% if ff_data_mode == 'live' and (not _t_verified) %}
-{% set _t_goal = 0 %}
-{% set _t_raised = 0 %}
-{% set _t_data_state = 'hidden' %}
-{% else %}
-{% set _t_goal = (_t_goal_raw if _t_goal_raw > 0 else 0) %}
-{% set _t_raised = (_t_raised_raw if _t_raised_raw > 0 else 0) %}
-{% set _t_data_state = ('verified' if _t_verified else ('preview' if ff_data_mode in ['demo','preview'] else 'unknown')) %}
-{% endif %}
-{% set nsTeamsSafe.items = nsTeamsSafe.items + [{
-"id": (t.id|default('default', true)),
-"name": (t.name|default('Team', true)),
-"meta": (t.meta|default('', true)),
-"goal": _t_goal,
-"raised": _t_raised,
-"featured": (t.featured|default(false, true)),
-"needs": (t.needs|default(false, true)),
-"restricted": (t.restricted|default(false, true)),
-"photo": (t.photo|default('', true)),
-"ask": (t.ask|default('Support the season.', true)),
-"verified": _t_verified,
-"dataState": _t_data_state
-}] %}
-{% endfor %}
-{% set FF_TEAMS = nsTeamsSafe.items %}
-
-{% set nsSum = namespace(raised=0, goal=0) %}
-{% for t in FF_TEAMS|default([], true) %}
-{% set nsSum.raised = nsSum.raised + ((t.raised|default(0, true))|int) %}
-{% set nsSum.goal = nsSum.goal + ((t.goal|default(0, true))|int) %}
-{% endfor %}
-{% set _teams_sum_raised = nsSum.raised %}
-{% set _teams_sum_goal = nsSum.goal %}
-
-{% set _totals_source = (ff_totals_source|default('auto', true))|string|lower|trim %}
-
-{% if ff_data_mode == 'live' %}
-{% set _totals_source_effective = 'backend' %}
-{% set _raised_effective = (_raised_backend if (_totals_verified and _raised_backend > 0) else 0) %}
-{% set _goal_effective = (_goal_backend if (_totals_verified and _goal_backend > 0) else 0) %}
-{% else %}
-{% if _totals_source == 'backend' %}
-{% set _raised_effective = _raised_backend %}
-{% elif _totals_source == 'teams' %}
-{% set _raised_effective = _teams_sum_raised %}
-{% else %}
-{% set _backend_stale = (_raised_backend <= 0 and _teams_sum_raised > 0) or (_teams_sum_raised > 0 and _raised_backend > 0 and (_raised_backend < (_teams_sum_raised * 0.6))) %}
-{% set _raised_effective = (_teams_sum_raised if _backend_stale else _raised_backend) %}
-{% endif %}
-{% set _goal_effective = (_goal_backend if _goal_backend > 0 else (_teams_sum_goal if _teams_sum_goal > 0 else 0)) %}
-{% set _totals_source_effective = _totals_source %}
-{% endif %}
-
-{% if _raised_effective < 0 %}{% set _raised_effective = 0 %}{% endif %}
-{% if _goal_effective < 0 %}{% set _goal_effective = 0 %}{% endif %}
-
-{# Derived % (used in hero + meter) #}
-{% set _pct_i = (100 if (_goal_effective > 0 and _raised_effective >= _goal_effective) else ((_raised_effective * 100 / _goal_effective)|round(0, 'floor')|int if _goal_effective > 0 else 0)) %}
-
-{% set _policy_blurb = (policy_blurb|default(
-'Refunds and disputes are handled by the campaign organizer (' ~ _organizer_label ~ '). '
-~ 'We respond within 24 hours. Please include your receipt email, donor email, approximate time/date, amount, and (if available) PayPal transaction ID.',
-true
-))|string|trim %}
-{% set _proof_blurb = (proof_blurb|default(
-'This fundraiser supports program expenses like gym time, travel, tournament fees, uniforms, gear, and scholarships.',
-true
-))|string|trim %}
-
-{% set FF_CFG = {
-"env": ff_env,
-"dataMode": ff_data_mode,
-"totalsVerified": _totals_verified,
-"version": FF_VERSION,
-"buildId": FF_BUILD_ID,
-"assetV": _v,
-"stripePk": _stripe_pk,
-
-"org": {
-"name": _org_name,
-"meta": _location,
-"seasonPill": "Season Fund",
-"sportPill": "Youth program",
-"heroAccentLine": "Help more kids stay on the floor.",
-"footerTagline": "Fuel the season. Fund the future.",
-"organizer": _organizer_label,
-"contactEmail": _organizer_email
-},
-
-"payments": {
-"stripePk": _stripe_pk,
-"stripeJs": "https://js.stripe.com/v3/
-",
-"stripeIntentEndpoint": _stripe_intent_endpoint,
-"stripeReturnUrl": _stripe_return,
-
-"paypalClientId": _pp_sanitized,
-"paypalCurrency": (paypal_currency|default('USD', true))|string|trim,
-"paypalIntent": (paypal_intent|default('capture', true))|string|trim,
-"paypalCreateEndpoint": _paypal_create_endpoint,
-"paypalCaptureEndpoint": _paypal_capture_endpoint
-
-},
-
-"branding": {
-"whitelabel": _whitelabel_mode,
-"logo": _org_logo,
-"logoSvg": _org_logo_svg,
-"platformHome": _ff_home,
-"platformLogo": _ff_logo,
-"themeColor": theme_color_final
-},
-
-"support": {
-"email": _email,
-"announcement": _announce,
-"policyBlurb": _policy_blurb,
-"proofBlurb": _proof_blurb,
-"termsUrl": _terms_url,
-"privacyUrl": _privacy_url
-},
-
-"campaign": {
-"name": _campaign_name,
-"tagline": _campaign_tagline,
-"location": _location
-},
-
-"fundraiser": {
-"goalAmount": _goal_effective,
-"raisedAmount": _raised_effective,
-"deadlineISO": _deadline_iso,
-"deadlineFallback": _deadline_fallback,
-"currency": _currency,
-"totalsSource": _totals_source_effective
-},
-
-"gallery": FF_GALLERY,
-"teams": FF_TEAMS,
-
-"features": {
-"donorTicker": true,
-"vipSpotlight": true,
-"sponsorAPlayer": true
-},
-
-"accessibility": {
-"reducedMotionRespect": true,
-"focusRestore": true,
-"ariaLiveToasts": true
-}
-} %}
-
-<html class="ff-root" lang="en" dir="ltr" data-density="{{ density|default('compact', true)|string|trim|e }}" data-ff-brand="{{ brand_key|default('futurefunded', true)|string|trim|e }}" data-ff-build="{{ FF_BUILD_ID|e }}" data-ff-version="{{ FF_VERSION|e }}" data-theme="{{ theme|default('light', true)|string|trim|e }}" > <head> <meta charset="utf-8"/> <meta http-equiv="x-ua-compatible" content="ie=edge"/> <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5"/> <meta name="format-detection" content="telephone=no,date=no,address=no,email=no"/> <meta name="referrer" content="strict-origin-when-cross-origin"/> <meta name="color-scheme" content="light dark"/> <meta name="robots" content="index,follow,max-image-preview:large"/> <meta name="generator" content="FutureFunded Flagship"/> <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()"/> <meta name="csp-nonce" content="{{ (csp_nonce|default((g.csp_nonce if g is defined else ''), true))|string|trim|e }}"/> <title>{{ page_title_final|e }}</title> <meta name="description" content="{{ page_desc_final|e }}"/>
-
-{% if canonical %}
-<link rel="canonical" href="{{ canonical|e }}"/>
-<meta property="og:url" content="{{ canonical|e }}"/>
-<meta name="twitter:url" content="{{ canonical|e }}"/>
-{% endif %}
-
-<meta property="og:type" content="website"/> <meta property="og:site_name" content="{{ _org_name|e }}"/> <meta property="og:locale" content="en_US"/> <meta property="og:title" content="{{ og_title_final|e }}"/> <meta property="og:description" content="{{ og_desc_final|e }}"/> <meta property="og:image" content="{{ og_jpg|e }}"/> <meta property="og:image:secure_url" content="{{ og_jpg|e }}"/> <meta property="og:image:type" content="image/jpeg"/> <meta property="og:image:alt" content="{{ og_alt_final|e }}"/> <meta property="og:image" content="{{ og_webp|e }}"/> <meta property="og:image:secure_url" content="{{ og_webp|e }}"/> <meta property="og:image:type" content="image/webp"/> <meta property="og:image:alt" content="{{ og_alt_final|e }}"/> <meta name="twitter:card" content="summary_large_image"/> <meta name="twitter:title" content="{{ og_title_final|e }}"/> <meta name="twitter:description" content="{{ og_desc_final|e }}"/> <meta name="twitter:image" content="{{ og_jpg|e }}"/> <meta name="twitter:image:alt" content="{{ og_alt_final|e }}"/> <meta name="theme-color" media="(prefers-color-scheme: light)" content="{{ theme_color_light_final|e }}"/> <meta name="theme-color" media="(prefers-color-scheme: dark)" content="{{ theme_color_dark_final|e }}"/> <meta name="application-name" content="{{ _org_name|e }}"/> <meta name="apple-mobile-web-app-capable" content="yes"/> <meta name="mobile-web-app-capable" content="yes"/> <meta name="apple-mobile-web-app-title" content="{{ _org_name|e }}"/> <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/> <link rel="icon" sizes="any" href="{{ url_for('static', filename='images/favicon.ico') }}?v={{ _v }}"/> <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/icon-32.png') }}?v={{ _v }}"/> <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/icon-192.png') }}?v={{ _v }}"/> <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}?v={{ _v }}"/> <link rel="mask-icon" color="{{ theme_color_final|e }}" href="{{ url_for('static', filename='images/safari-pinned-tab.svg') }}?v={{ _v }}"/> <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}?v={{ _v }}"/> <link rel="preload" as="image" fetchpriority="high" href="{{ _org_logo|e }}"/> <link rel="preconnect" href="https://js.stripe.com" crossorigin> <link rel="preconnect" href="https://www.paypal.com" crossorigin> <script id="ffStripeJs" data-ff-lazy="true" data-src="https://js.stripe.com/v3/" {{ nonce_attr() }} ></script>
-
-{% if csrf_token is defined %}
-<meta name="csrf-token" content="{{ csrf_token() }}"/>
-{% endif %}
-
-{% set _ff_meta = {
-'env': ff_env,
-'data-mode': ff_data_mode,
-'totals-verified': ('true' if _totals_verified else 'false'),
-'version': FF_VERSION,
-'build-id': FF_BUILD_ID,
-'asset-v': _v,
-
-'stripe-pk': _stripe_pk|default('', true)|string|trim,
-'stripe-intent-endpoint': _stripe_intent_endpoint|default('', true)|string|trim,
-'stripe-return-url': _stripe_return|default('', true)|string|trim,
-'stripe-js': 'https://js.stripe.com/v3/',
-
-'paypal-client-id': _pp_sanitized|default('', true)|string|trim,
-'paypal-currency': (paypal_currency|default('USD', true))|string|trim,
-'paypal-intent': (paypal_intent|default('capture', true))|string|trim,
-'paypal-create-endpoint': _paypal_create_endpoint|default('', true)|string|trim,
-'paypal-capture-endpoint': _paypal_capture_endpoint|default('', true)|string|trim,
-
-'payments-config-endpoint': _payments_config_endpoint|default('', true)|string|trim,
-'payments-health-endpoint': _payments_health_endpoint|default('', true)|string|trim,
-'status-endpoint': _status_endpoint|default('', true)|string|trim,
-
-'cover-fees-exact': ('true' if _cover_fees_exact else 'false'),
-'require-email': ('true' if _require_email else 'false'),
-
-'terms-url': _terms_url,
-'privacy-url': _privacy_url,
-'totals-source': _totals_source_effective
-
-} %}
-
-{% for k, v in _ff_meta.items() %}
-<meta name="ff-{{ k }}" content="{{ v|e }}"/>
-<meta name="ff:{{ k }}" content="{{ v|e }}"/>
-{% endfor %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/_auto_stubs.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ff.css') }}"> <script id="ffConfig" data-ff-config type="application/json" {{ nonce_attr() }}>{{ FF_CFG|tojson }}</script> <script id="ffSelectors" type="application/json" {{ nonce_attr() }}> { "hooks": { "openCheckout": "[data-ff-open-checkout]", "closeCheckout": "[data-ff-close-checkout]", "checkoutSheet": "[data-ff-checkout-sheet]", "checkoutViewport": "[data-ff-checkout-viewport]", "checkoutContent": "[data-ff-checkout-content]", "donationForm": "#donationForm", "amountInput": "[data-ff-amount-input]", "amountChip": "[data-ff-amount]", "teamId": "input[data-ff-team-id][name=\"team_id\"]", "toasts": "[data-ff-toasts]", "live": "[data-ff-live]", "share": "[data-ff-share]", "themeToggle": "[data-ff-theme-toggle]", "openDrawer": "[data-ff-open-drawer]", "closeDrawer": "[data-ff-close-drawer]", "drawer": "[data-ff-drawer]", "openSponsor": "[data-ff-open-sponsor]", "closeSponsor": "[data-ff-close-sponsor]", "sponsorModal": "[data-ff-sponsor-modal]", "sponsorWall": "[data-ff-sponsor-wall]", "openVideo": "[data-ff-open-video]", "closeVideo": "[data-ff-close-video]", "videoModal": "[data-ff-video-modal]", "videoFrame": "[data-ff-video-frame]" } } </script>
-
-{% set _app = url_for('static', filename='js/ff-app.js') ~ '?v=' ~ _v %}
-
-<link rel="preload" as="script" href="{{ _app|e }}"/> <script defer src="{{ _app|e }}" {{ nonce_attr() }}></script> 
-</head>
-<body
-  class="ff-body"
-  data-ff-body=""
-  data-ff-data-mode="{{ ff_data_mode|e }}"
-  data-ff-totals-verified="{{ 'true' if _totals_verified else 'false' }}"
+<html
+  class="ff-root"
+  lang="en"
+  dir="ltr"
+  data-density="{{ density|default('compact', true)|string|trim|e }}"
+  data-ff-brand="{{ brand_key|default('futurefunded', true)|string|trim|e }}"
+  data-ff-build="{{ FF_BUILD_ID|e }}"
+  data-ff-version="{{ FF_VERSION|e }}"
+  data-theme="{{ theme|default('light', true)|string|trim|e }}"
 >
+<head>
+  {# Meta Tags #}
+  <meta charset="utf-8"/>
+  <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5"/>
+  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no"/>
+  <meta name="referrer" content="strict-origin-when-cross-origin"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="robots" content="index,follow,max-image-preview:large"/>
+  <meta name="generator" content="FutureFunded Flagship"/>
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()"/>
+
+  {# Title & Description #}
+  <title>{{ page_title_final|e }}</title>
+  <meta name="description" content="{{ page_desc_final|e }}"/>
+
+  {# Canonical URL & Social Sharing Meta Tags #}
+  {% if canonical %}
+    <link rel="canonical" href="{{ canonical|e }}"/>
+    <meta property="og:url" content="{{ canonical|e }}"/>
+    <meta name="twitter:url" content="{{ canonical|e }}"/>
+  {% endif %}
+
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="{{ _org_name|e }}"/>
+  <meta property="og:locale" content="en_US"/>
+  <meta property="og:title" content="{{ og_title_final|e }}"/>
+  <meta property="og:description" content="{{ og_desc_final|e }}"/>
+
+  {# Open Graph & Twitter Image Meta Tags #}
+  <meta property="og:image" content="{{ og_jpg|e }}"/>
+  <meta property="og:image:secure_url" content="{{ og_jpg|e }}"/>
+  <meta property="og:image:type" content="image/jpeg"/>
+  <meta property="og:image:alt" content="{{ og_alt_final|e }}"/>
+
+  <meta property="og:image" content="{{ og_webp|e }}"/>
+  <meta property="og:image:secure_url" content="{{ og_webp|e }}"/>
+  <meta property="og:image:type" content="image/webp"/>
+  <meta property="og:image:alt" content="{{ og_alt_final|e }}"/>
+
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="{{ og_title_final|e }}"/>
+  <meta name="twitter:description" content="{{ og_desc_final|e }}"/>
+  <meta name="twitter:image" content="{{ og_jpg|e }}"/>
+  <meta name="twitter:image:alt" content="{{ og_alt_final|e }}"/>
+
+  {# Theme & Application Meta Tags #}
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="{{ theme_color_light_final|e }}"/>
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="{{ theme_color_dark_final|e }}"/>
+  <meta name="application-name" content="{{ _org_name|e }}"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="{{ _org_name|e }}"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+
+  {# Favicon & Icons #}
+  <link rel="icon" sizes="any" href="{{ url_for('static', filename='images/favicon.ico') }}?v={{ _v }}"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/icon-32.png') }}?v={{ _v }}"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/icon-192.png') }}?v={{ _v }}"/>
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}?v={{ _v }}"/>
+  <link rel="mask-icon" color="{{ theme_color_final|e }}" href="{{ url_for('static', filename='images/safari-pinned-tab.svg') }}?v={{ _v }}"/>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}?v={{ _v }}"/>
+
+  {# Preload Assets #}
+  <link rel="preload" as="image" fetchpriority="high" href="{{ _org_logo|e }}"/>
+
+
+
+  {# CSRF Token (if available) #}
+  {% if csrf_token is defined %}
+    <meta name="csrf-token" content="{{ csrf_token() }}"/>
+  {% endif %}
+
+  {# FF Meta Data (JSON for configuration) #}
+  {% set _ff_meta = {
+    'env': ff_env,
+    'data-mode': ff_data_mode,
+    'totals-verified': ('true' if _totals_verified else 'false'),
+    'version': FF_VERSION,
+    'build-id': FF_BUILD_ID,
+    'asset-v': _v,
+
+    'stripe-pk': _stripe_pk|default('', true)|string|trim,
+    'stripe-intent-endpoint': _stripe_intent_endpoint|default('', true)|string|trim,
+    'stripe-return-url': _stripe_return|default('', true)|string|trim,
+    'stripe-js': 'https://js.stripe.com/v3/',
+
+    'paypal-client-id': _pp_sanitized|default('', true)|string|trim,
+    'paypal-currency': (paypal_currency|default('USD', true))|string|trim,
+    'paypal-intent': (paypal_intent|default('capture', true))|string|trim,
+    'paypal-create-endpoint': _paypal_create_endpoint|default('', true)|string|trim,
+    'paypal-capture-endpoint': _paypal_capture_endpoint|default('', true)|string|trim,
+
+    'payments-config-endpoint': _payments_config_endpoint|default('', true)|string|trim,
+    'payments-health-endpoint': _payments_health_endpoint|default('', true)|string|trim,
+    'status-endpoint': _status_endpoint|default('', true)|string|trim,
+
+    'cover-fees-exact': ('true' if _cover_fees_exact else 'false'),
+    'require-email': ('true' if _require_email else 'false'),
+
+    'terms-url': _terms_url,
+    'privacy-url': _privacy_url,
+    'totals-source': _totals_source_effective
+  } %}
+
+  {# Inject FF Config & Selectors JSON #}
+  {% for k, v in _ff_meta.items() %}
+    <meta name="ff-{{ k }}" content="{{ v|e }}"/>
+    <meta name="ff:{{ k }}" content="{{ v|e }}"/>
+  {% endfor %}
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ff.css') }}?v={{ _v }}"/>
+
+  {# ✅ ONLY tojson payload in the entire template #}
+  <script id="ffConfig" data-ff-config type="application/json" {{ nonce_attr() }}>{{ FF_CFG|tojson }}</script>
+
+  {# FF Selectors JSON #}
+  <script id="ffSelectors" type="application/json" {{ nonce_attr() }}>
+    {
+      "hooks": {
+        "openCheckout": "[data-ff-open-checkout]",
+        "closeCheckout": "[data-ff-close-checkout]",
+        "checkoutSheet": "[data-ff-checkout-sheet]",
+        "checkoutViewport": "[data-ff-checkout-viewport]",
+        "checkoutContent": "[data-ff-checkout-content]",
+        "donationForm": "#donationForm",
+        "amountInput": "[data-ff-amount-input]",
+        "amountChip": "[data-ff-amount]",
+        "teamId": "input[data-ff-team-id][name=\"team_id\"]",
+        "toasts": "[data-ff-toasts]",
+        "live": "[data-ff-live]",
+        "share": "[data-ff-share]",
+        "themeToggle": "[data-ff-theme-toggle]",
+        "openDrawer": "[data-ff-open-drawer]",
+        "closeDrawer": "[data-ff-close-drawer]",
+        "drawer": "[data-ff-drawer]",
+        "openSponsor": "[data-ff-open-sponsor]",
+        "closeSponsor": "[data-ff-close-sponsor]",
+        "sponsorModal": "[data-ff-sponsor-modal]",
+        "sponsorWall": "[data-ff-sponsor-wall]",
+        "openVideo": "[data-ff-open-video]",
+        "closeVideo": "[data-ff-close-video]",
+        "videoModal": "[data-ff-video-modal]",
+        "videoFrame": "[data-ff-video-frame]"
+      }
+    }
+  </script>
+
+  {# Main App JS #}
+  {% set _app = url_for('static', filename='js/ff-app.js') ~ '?v=' ~ _v %}
+  <link rel="preload" as="script" href="{{ _app|e }}"/>
+  <script defer src="{{ _app|e }}" {{ nonce_attr() }}></script>
+  
+  </head>
+  
+  <body class="ff-body" data-ff-body="" data-ff-data-mode="{{ ff_data_mode|e }}" data-ff-totals-verified="{{ 'true' if _totals_verified else 'false' }}">
+  {# Skip Links #}
   <nav aria-label="Skip links" class="ff-skiplinks">
     <a class="ff-skip" href="#content">Skip to content</a>
     <a class="ff-skip" href="#checkout">Skip to checkout</a>
     <a class="ff-skip" href="#faq">Skip to FAQ</a>
   </nav>
 
+  {# Live Status Element #}
   <div id="ffLive" class="ff-sr" data-ff-live="" aria-live="polite" aria-atomic="true"></div>
+
+  {# Toasts Notifications #}
   <div class="ff-toasts" data-ff-toasts="" role="status" aria-live="polite" aria-relevant="additions removals"></div>
 
+  {# Shell Container (overall layout wrapper) #}
   <div class="ff-shell" data-ff-shell="">
     <div class="ff-shellBg" aria-hidden="true"></div>
 
+    {# Header Section #}
     <header class="ff-chrome" data-ff-chrome="" role="banner">
       <div class="ff-chrome__stack ff-stack" data-ff-chrome-stack="">
+        {# Announcement Banner (optional) #}
         {% if announcement_text %}
         <section class="ff-announce ff-announce--flagship" data-ff-announce="" role="region" aria-label="Announcement">
           <div class="ff-container">
@@ -514,29 +452,18 @@ true
         </section>
         {% endif %}
 
+        {# Top Navigation Bar #}
         <nav class="ff-topbar" data-ff-topbar="" id="ffTopbar" aria-label="Top navigation">
           <div class="ff-container">
             <div class="ff-topbar__capsule ff-glass ff-surface ff-topbar__capsule--flagship">
               <div class="ff-topbar__capsuleInner ff-stack ff-gap-2">
                 <div class="ff-row ff-row--between ff-ais ff-wrap ff-topbar__mainRow">
+                  {# Brand Logo and Info #}
                   <div class="ff-row ff-ais ff-gap-2 ff-minw-0 ff-topbar__brandCluster">
                     {% if not _whitelabel %}
-                    <a
-                      class="ff-platformBrand ff-platformBrand--mark ff-nounderline"
-                      href="{{ _ff_home|e }}"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="FutureFunded platform (opens in new tab)"
-                    >
+                    <a class="ff-platformBrand ff-platformBrand--mark ff-nounderline" href="{{ _ff_home|e }}" target="_blank" rel="noopener noreferrer" aria-label="FutureFunded platform (opens in new tab)">
                       <span class="ff-platformBrand__disc" aria-hidden="true">
-                        <img
-                          class="ff-platformBrand__logo"
-                          src="{{ _platform_logo|e }}"
-                          width="22"
-                          height="22"
-                          alt=""
-                          decoding="async"
-                        />
+                        <img class="ff-platformBrand__logo" src="{{ _platform_logo|e }}" width="22" height="22" alt="" decoding="async"/>
                       </span>
                       <span class="ff-sr">FutureFunded</span>
                     </a>
@@ -544,14 +471,7 @@ true
                     {% endif %}
 
                     <a class="ff-topbarBrand ff-topbarBrand--flagship ff-nounderline" href="#home" data-ff-home="">
-                      <img
-                        src="{{ _org_logo|e }}"
-                        width="34"
-                        height="34"
-                        fetchpriority="high"
-                        alt="{{ _org_name|e }} logo"
-                        decoding="async"
-                      />
+                      <img src="{{ _org_logo|e }}" width="34" height="34" fetchpriority="high" alt="{{ _org_name|e }} logo" decoding="async"/>
                       <span class="ff-topbarBrand__text">{{ _org_name }}</span>
                       {% if ff_data_mode == 'live' %}
                         <span class="ff-pill ff-pill--accent ff-topbarBrand__pill">Live</span>
@@ -561,7 +481,9 @@ true
                     </a>
                   </div>
 
+                  {# Right-side Navigation and Actions #}
                   <div class="ff-row ff-ais ff-gap-2 ff-topbar__rightCluster">
+                    {# Desktop View #}
                     <div class="ff-topbar__desktop-only">
                       <div class="ff-row ff-ais ff-gap-2 ff-wrap">
                         <nav class="ff-navPill ff-glass ff-surface ff-nav ff-nav--pill" aria-label="Primary navigation">
@@ -572,20 +494,10 @@ true
                           <a class="ff-nav__link" href="#faq">FAQ</a>
                         </nav>
 
-                        <a
-                          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                          data-ff-open-checkout=""
-                          href="#checkout"
-                          aria-controls="checkout"
-                        >Donate</a>
+                        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
 
-                        <button
-                          type="button"
-                          class="ff-iconbtn ff-themeToggle"
-                          data-ff-theme-toggle=""
-                          aria-label="Toggle dark mode"
-                          aria-pressed="false"
-                        >
+                        {# Dark Mode & Share Buttons #}
+                        <button type="button" class="ff-iconbtn ff-themeToggle" data-ff-theme-toggle="" aria-label="Toggle dark mode" aria-pressed="false">
                           <span aria-hidden="true">◐</span><span class="ff-sr">Toggle theme</span>
                         </button>
 
@@ -595,21 +507,11 @@ true
                       </div>
                     </div>
 
+                    {# Mobile View #}
                     <div class="ff-row ff-ais ff-gap-2 ff-topbar__mobile-only">
-                      <a
-                        class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                        data-ff-open-checkout=""
-                        href="#checkout"
-                        aria-controls="checkout"
-                      >Donate</a>
+                      <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
 
-                      <button
-                        type="button"
-                        class="ff-iconbtn ff-themeToggle"
-                        data-ff-theme-toggle=""
-                        aria-label="Toggle dark mode"
-                        aria-pressed="false"
-                      >
+                      <button type="button" class="ff-iconbtn ff-themeToggle" data-ff-theme-toggle="" aria-label="Toggle dark mode" aria-pressed="false">
                         <span aria-hidden="true">◐</span><span class="ff-sr">Toggle theme</span>
                       </button>
 
@@ -617,19 +519,14 @@ true
                         <span aria-hidden="true">↗</span><span class="ff-sr">Share</span>
                       </button>
 
-                      <button
-                        type="button"
-                        class="ff-iconbtn"
-                        data-ff-open-drawer=""
-                        aria-controls="ffDrawerPanel"
-                        aria-label="Open menu"
-                      >
+                      <button type="button" class="ff-iconbtn" data-ff-open-drawer="" aria-controls="ffDrawerPanel" aria-label="Open menu">
                         <span aria-hidden="true">☰</span><span class="ff-sr">Menu</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
+                {# Scroll Indicator #}
                 <div class="ff-scroll" data-ff-scrollbar="" aria-hidden="true"><span></span></div>
               </div>
             </div>
@@ -638,6 +535,7 @@ true
       </div>
     </header>
 
+    {# Drawer Menu (for mobile) #}
     <aside id="drawer" class="ff-drawer" data-ff-drawer="" data-open="false" aria-hidden="true" hidden>
       <button type="button" class="ff-drawer__backdrop" data-ff-close-drawer="" aria-label="Close menu"></button>
 
@@ -665,6 +563,7 @@ true
             </ul>
           </nav>
 
+          {# Additional Drawer Actions #}
           <div class="ff-stack ff-mt-3">
             <a class="ff-btn ff-btn--secondary ff-btn--pill" data-ff-open-sponsor="" href="#sponsor-interest">Become a sponsor</a>
             <a class="ff-btn ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
@@ -673,285 +572,245 @@ true
       </div>
     </aside>
 
-    <main id="content" class="ff-main" data-ff-main="" tabindex="-1">
-      <section
-        id="home"
-        class="ff-section ff-section--hero ff-hero"
-        data-ff-section="hero"
-        aria-labelledby="heroTitle"
-        aria-describedby="heroLead"
-      >
-        <div class="ff-hero__bg" aria-hidden="true">
-          <div class="ff-hero__orb ff-hero__orb--a"></div>
-          <div class="ff-hero__orb ff-hero__orb--b"></div>
-          <div class="ff-hero__gridlines"></div>
-        </div>
+    <!-- ===================== HERO ===================== -->
+<section id="home" class="ff-section ff-section--hero ff-hero" data-ff-section="hero" aria-labelledby="heroTitle" aria-describedby="heroLead">
+  {# Hero Background Section #}
+  <div class="ff-hero__bg" aria-hidden="true">
+    <div class="ff-hero__orb ff-hero__orb--a"></div>
+    <div class="ff-hero__orb ff-hero__orb--b"></div>
+    <div class="ff-hero__gridlines"></div>
+  </div>
 
-        <div class="ff-container ff-hero__shell">
-          <div class="ff-hero__grid">
+  <div class="ff-container ff-hero__shell">
+    <div class="ff-hero__grid">
+      <div class="ff-minw-0">
+        {# Hero Capsule #}
+        <article class="ff-hero__capsule ff-glass ff-surface" data-ff-hero-capsule="">
+          <div class="ff-hero__capsuleInner">
+            {# Fundraiser Context Pills #}
+            <ul class="ff-heroContext" aria-label="Fundraiser context">
+              {% if ff_data_mode == 'live' %}
+                <li class="ff-pill ff-pill--live"><span class="ff-dot" aria-hidden="true"></span><span>Live fundraiser</span></li>
+              {% else %}
+                <li class="ff-pill ff-pill--ghost"><span class="ff-dot" aria-hidden="true"></span><span>Preview mode</span></li>
+              {% endif %}
+              <li class="ff-pill ff-pill--verified">Secure checkout</li>
+              <li class="ff-pill ff-pill--ghost">Email receipt</li>
+              <li class="ff-pill ff-pill--ghost">Organized by <span class="ff-num">{{ _organizer_label|e }}</span></li>
+              {% if not _whitelabel %}
+                <li class="ff-pill ff-pill--ghost ff-heroPowered">Powered by <span class="ff-num">FutureFunded</span></li>
+              {% endif %}
+            </ul>
+
+            {# Hero Header #}
+            <header class="ff-heroHeader">
+              <h1 class="ff-display ff-heroTitle" id="heroTitle">
+                <span class="ff-heroLine">{{ _campaign_headline|e }}</span>
+                <span class="ff-heroAccent ff-heroLine" id="heroAccentLine">
+                  {{ _campaign_subhead|e }} <span class="ff-heroName">{{ _campaign_name|e }}</span>.
+                </span>
+              </h1>
+
+              <p class="ff-lead ff-heroLead" id="heroLead">{{ _campaign_tagline|e }}</p>
+
+              <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
+                Contact: <a class="ff-link" href="mailto:{{ _organizer_email|e }}">{{ _organizer_email|e }}</a>
+              </p>
+
+              {# Preview or Testing Alerts #}
+              {% if ff_data_mode != 'live' and ff_env != 'production' %}
+                <div class="ff-alert ff-alert--info ff-mt-3" role="status">
+                  <strong>Preview totals:</strong> amounts may be sample data for demo/testing.
+                </div>
+              {% elif (ff_data_mode == 'live') and (not _totals_verified) and (_raised_effective == 0 and _goal_effective == 0) %}
+                <div class="ff-alert ff-alert--info ff-mt-3" role="status">
+                  Totals show <strong>$0</strong> until verified totals are provided by the organizer.
+                </div>
+              {% endif %}
+            </header>
+
+            {# Key Performance Indicators (KPIs) #}
+            <dl class="ff-hero__kpis ff-hero__kpis--flagship" aria-label="Key fundraising stats">
+              <div class="ff-kpi ff-kpiCard">
+                <dt class="ff-kpi__label ff-help ff-muted">Raised</dt>
+                <dd class="ff-kpi__value ff-big ff-num" data-ff-raised="">{{ money(_raised_effective) }}</dd>
+              </div>
+
+              <div class="ff-kpi ff-kpiCard">
+                <dt class="ff-kpi__label ff-help ff-muted">Season goal</dt>
+                <dd class="ff-kpi__value ff-big ff-num" data-ff-goal="">
+                  {{ money(_goal_effective) }}
+                  <span class="ff-help ff-muted ff-mt-1 ff-mb-0">Set by organizer</span>
+                </dd>
+              </div>
+
+              <div class="ff-kpi ff-kpiCard">
+                <dt class="ff-kpi__label ff-help ff-muted">Progress</dt>
+                <dd class="ff-kpi__value ff-big ff-num" data-ff-pct="">{{ _pct_i }}%</dd>
+              </div>
+            </dl>
+
+            {# Smoke Test Data (for non-production environments) #}
+            {% if _smoke %}
+              <div class="ff-alert ff-alert--info ff-mt-3" role="status">
+                <strong>SMOKE:</strong>
+                mode={{ ff_data_mode|e }},
+                totalsVerified={{ 'true' if _totals_verified else 'false' }},
+                totalsSource={{ _totals_source_effective|e }},
+                backendRaised={{ money(_raised_backend) }},
+                teamSumRaised={{ money(_teams_sum_raised) }}.
+              </div>
+            {% endif %}
+
+            {# Hero Call-to-Action Buttons #}
+            <nav class="ff-heroCtas ff-heroCtas--flagship" aria-label="Primary actions">
+              <a class="ff-btn ff-btn--primary ff-btn--lg ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">
+                <span class="ff-btn__label">Donate securely</span>
+                <span class="ff-btn__sub ff-help ff-muted">Fast checkout • Email receipt</span>
+              </a>
+
+              <p class="ff-help ff-muted ff-mt-1 ff-mb-0">No account • Works on phones • One link to share</p>
+
+              <div class="ff-row ff-wrap ff-gap-2" role="group" aria-label="Secondary actions">
+                <button type="button" class="ff-btn ff-btn--ghost ff-btn--lg ff-btn--pill" data-ff-share="">Share</button>
+                <a class="ff-btn ff-btn--secondary ff-btn--lg ff-btn--pill" href="#sponsors">Sponsor</a>
+              </div>
+            </nav>
+
+            {# Recent Support Section (privacy-safe) #}
+            <section class="ff-card ff-glass ff-pad ff-mt-3" aria-label="Recent support (privacy-safe)">
+              <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
+                <p class="ff-kicker ff-m-0">Recent support</p>
+                <span class="ff-pill ff-pill--soft" aria-label="Privacy safe">Privacy-safe</span>
+              </div>
+
+              <div class="ff-donorTicker ff-mt-2" data-ff-donor-ticker="" data-ff-ticker="" aria-live="polite" aria-atomic="true">
+                <div class="ff-ticker__track" data-ff-ticker-track="" role="list" aria-label="Recent supporters">
+                  <p class="ff-help ff-muted ff-m-0">Supporter names are not displayed publicly.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </article>
+
+        {# Team Highlights Section #}
+        <section class="ff-heroMedia ff-heroMedia--flagship" aria-label="Team highlights">
+          <div class="ff-row ff-row--between ff-ais ff-wrap">
             <div class="ff-minw-0">
-              <article class="ff-hero__capsule ff-glass ff-surface" data-ff-hero-capsule="">
-                <div class="ff-hero__capsuleInner">
-                  <ul class="ff-heroContext" aria-label="Fundraiser context">
-                    {% if ff_data_mode == 'live' %}
-                      <li class="ff-pill ff-pill--live"><span class="ff-dot" aria-hidden="true"></span><span>Live fundraiser</span></li>
-                    {% else %}
-                      <li class="ff-pill ff-pill--ghost"><span class="ff-dot" aria-hidden="true"></span><span>Preview mode</span></li>
-                    {% endif %}
-                    <li class="ff-pill ff-pill--verified">Secure checkout</li>
-                    <li class="ff-pill ff-pill--ghost">Email receipt</li>
-                    <li class="ff-pill ff-pill--ghost">Organized by <span class="ff-num">{{ _organizer_label|e }}</span></li>
-                    {% if not _whitelabel %}
-                      <li class="ff-pill ff-pill--ghost ff-heroPowered">Powered by <span class="ff-num">FutureFunded</span></li>
-                    {% endif %}
-                  </ul>
+              <h2 class="ff-kicker ff-m-0" id="heroRailTitle">Meet the squad</h2>
+              <p class="ff-help ff-muted ff-mt-1" id="heroRailDesc">Tap a photo to preload checkout.</p>
+            </div>
+          </div>
 
-                  <header class="ff-heroHeader">
-                    <h1 class="ff-display ff-heroTitle" id="heroTitle">
-                      <span class="ff-heroLine">{{ _campaign_headline|e }}</span>
-                      <span class="ff-heroAccent ff-heroLine" id="heroAccentLine">
-                        {{ _campaign_subhead|e }} <span class="ff-heroName">{{ _campaign_name|e }}</span>.
-                      </span>
-                    </h1>
+          {# Team Rail - Showcase selected teams or photos #}
+          {% set _max_rail = 8 %}
+          {% set nsRail = namespace(items=[], used=[]) %}
 
-                    <p class="ff-lead ff-heroLead" id="heroLead">{{ _campaign_tagline|e }}</p>
+          {% for t in FF_TEAMS|default([], true) if nsRail.items|length < _max_rail %}
+            {% set _tid = (t.id|default('default', true))|string|trim %}
+            {% if (t.photo|default('', true)) and (_tid not in nsRail.used) %}
+              {% set nsRail.items = nsRail.items + [{"team_id": _tid, "name": (t.name|default('Team', true)), "img": (t.photo|default('', true))}] %}
+              {% set nsRail.used  = nsRail.used + [_tid] %}
+            {% endif %}
+          {% endfor %}
 
-                    <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                      Contact: <a class="ff-link" href="mailto:{{ _organizer_email|e }}">{{ _organizer_email|e }}</a>
-                    </p>
+          {% for g in (FF_GALLERY['items']|default([], true)) if nsRail.items|length < _max_rail %}
+            {% set _img = (g.src|default('', true))|string|trim %}
+            {% if _img %}
+              {% set nsRail.items = nsRail.items + [{"team_id": "default", "name": (g.caption|default('Team', true)), "img": _img}] %}
+            {% endif %}
+          {% endfor %}
 
-                    {% if ff_data_mode != 'live' and ff_env != 'production' %}
-                    <div class="ff-alert ff-alert--info ff-mt-3" role="status">
-                      <strong>Preview totals:</strong> amounts may be sample data for demo/testing.
-                    </div>
-                    {% elif (ff_data_mode == 'live') and (not _totals_verified) and (_raised_effective == 0 and _goal_effective == 0) %}
-                    <div class="ff-alert ff-alert--info ff-mt-3" role="status">
-                      Totals show <strong>$0</strong> until verified totals are provided by the organizer.
-                    </div>
-                    {% endif %}
-                  </header>
+          {% if nsRail.items|length < 3 %}
+            {% for _i in range(3 - (nsRail.items|length)) %}
+              {% set nsRail.items = nsRail.items + [{"team_id": "default", "name": _campaign_name, "img": _org_logo}] %}
+            {% endfor %}
+          {% endif %}
 
-                  <dl class="ff-hero__kpis ff-hero__kpis--flagship" aria-label="Key fundraising stats">
-                    <div class="ff-kpi ff-kpiCard">
-                      <dt class="ff-kpi__label ff-help ff-muted">Raised</dt>
-                      <dd class="ff-kpi__value ff-big ff-num" data-ff-raised="">{{ money(_raised_effective) }}</dd>
-                    </div>
-
-                    <div class="ff-kpi ff-kpiCard">
-                      <dt class="ff-kpi__label ff-help ff-muted">Season goal</dt>
-                      <dd class="ff-kpi__value ff-big ff-num" data-ff-goal="">
-                        {{ money(_goal_effective) }}
-                        <span class="ff-help ff-muted ff-mt-1 ff-mb-0">Set by organizer</span>
-                      </dd>
-                    </div>
-
-                    <div class="ff-kpi ff-kpiCard">
-                      <dt class="ff-kpi__label ff-help ff-muted">Progress</dt>
-                      <dd class="ff-kpi__value ff-big ff-num" data-ff-pct="">{{ _pct_i }}%</dd>
-                    </div>
-                  </dl>
-
-                  {% if _smoke %}
-                  <div class="ff-alert ff-alert--info ff-mt-3" role="status">
-                    <strong>SMOKE:</strong>
-                    mode={{ ff_data_mode|e }},
-                    totalsVerified={{ 'true' if _totals_verified else 'false' }},
-                    totalsSource={{ _totals_source_effective|e }},
-                    backendRaised={{ money(_raised_backend) }},
-                    teamSumRaised={{ money(_teams_sum_raised) }}.
-                  </div>
-                  {% endif %}
-
-                  <nav class="ff-heroCtas ff-heroCtas--flagship" aria-label="Primary actions">
-                    <a
-                      class="ff-btn ff-btn--primary ff-btn--lg ff-btn--pill"
-                      data-ff-open-checkout=""
-                      href="#checkout"
-                      aria-controls="checkout"
-                    >
-                      <span class="ff-btn__label">Donate securely</span>
-                      <span class="ff-btn__sub ff-help ff-muted">Fast checkout • Email receipt</span>
-                    </a>
-
-                    <p class="ff-help ff-muted ff-mt-1 ff-mb-0">No account • Works on phones • One link to share</p>
-
-                    <div class="ff-row ff-wrap ff-gap-2" role="group" aria-label="Secondary actions">
-                      <button type="button" class="ff-btn ff-btn--ghost ff-btn--lg ff-btn--pill" data-ff-share="">Share</button>
-                      <a class="ff-btn ff-btn--secondary ff-btn--lg ff-btn--pill" href="#sponsors">Sponsor</a>
-                    </div>
-                  </nav>
-
-                  <section class="ff-card ff-glass ff-pad ff-mt-3" aria-label="Recent support (privacy-safe)">
-                    <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
-                      <p class="ff-kicker ff-m-0">Recent support</p>
-                      <span class="ff-pill ff-pill--soft" aria-label="Privacy safe">Privacy-safe</span>
-                    </div>
-
-                    <div class="ff-donorTicker ff-mt-2" data-ff-donor-ticker="" data-ff-ticker="" aria-live="polite" aria-atomic="true">
-                      <div class="ff-ticker__track" data-ff-ticker-track="" role="list" aria-label="Recent supporters">
-                        <p class="ff-help ff-muted ff-m-0">Supporter names are not displayed publicly.</p>
-                      </div>
-                    </div>
-                  </section>
+          <div class="ff-rail__track ff-rail__track--flagship" data-ff-hero-rail="" data-ff-rail-cols="3" role="list" aria-labelledby="heroRailTitle" aria-describedby="heroRailDesc">
+            {% for it in nsRail.items[:_max_rail] %}
+              <a class="ff-railcard ff-rail__item" data-ff-open-checkout="" data-ff-team-id="{{ it.team_id|e }}" href="#checkout" role="listitem" aria-controls="checkout" aria-label="Donate to support {{ it.name|e }}">
+                <img class="ff-railcard__img" src="{{ it.img|e }}" width="320" height="200" loading="lazy" decoding="async" alt="{{ it.name|e }}"/>
+                <div class="ff-railcard__meta">
+                  <span class="ff-railcard__chip">Support</span>
+                  <div class="ff-railcard__name">{{ it.name|e }}</div>
                 </div>
-              </article>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
 
-              <section class="ff-heroMedia ff-heroMedia--flagship" aria-label="Team highlights">
-                <div class="ff-row ff-row--between ff-ais ff-wrap">
-                  <div class="ff-minw-0">
-                    <h2 class="ff-kicker ff-m-0" id="heroRailTitle">Meet the squad</h2>
-                    <p class="ff-help ff-muted ff-mt-1" id="heroRailDesc">Tap a photo to preload checkout.</p>
-                  </div>
-                </div>
+      {# Donation Panel #}
+      <aside class="ff-heroPanel ff-heroPanel--flagship" aria-label="Donation panel">
+        <article class="ff-card ff-card--premium ff-card--lift ff-glass ff-pad" data-ff-hero-panel="" aria-labelledby="heroPanelTitle">
+          <header class="ff-heroPanelHead">
+            <p class="ff-kicker ff-m-0">Donate</p>
+            <h2 class="ff-h2" id="heroPanelTitle">Support the season with care.</h2>
+            <p class="ff-help">Organized by {{ _organizer_label|e }} • <a class="ff-link" href="mailto:{{ _organizer_email|e }}">{{ _organizer_email|e }}</a></p>
 
-                {% set _max_rail = 8 %}
-                {% set nsRail = namespace(items=[], used=[]) %}
+            {# Donation Deadline #}
+            <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2 ff-mt-2" aria-label="Deadline">
+              <p class="ff-help ff-muted ff-m-0">Deadline</p>
+              <p class="ff-help ff-m-0"><time datetime="{{ _deadline_iso|e }}" data-ff-deadline="">{{ _deadline_fallback|e }}</time></p>
+            </div>
+          </header>
 
-                {% for t in FF_TEAMS|default([], true) if nsRail.items|length < _max_rail %}
-                  {% set _tid = (t.id|default('default', true))|string|trim %}
-                  {% if (t.photo|default('', true)) and (_tid not in nsRail.used) %}
-                    {% set nsRail.items = nsRail.items + [{"team_id": _tid, "name": (t.name|default('Team', true)), "img": (t.photo|default('', true))}] %}
-                    {% set nsRail.used  = nsRail.used + [_tid] %}
-                  {% endif %}
-                {% endfor %}
-
-                {% for g in (FF_GALLERY['items']|default([], true)) if nsRail.items|length < _max_rail %}
-                  {% set _img = (g.src|default('', true))|string|trim %}
-                  {% if _img %}
-                    {% set nsRail.items = nsRail.items + [{"team_id": "default", "name": (g.caption|default('Team', true)), "img": _img}] %}
-                  {% endif %}
-                {% endfor %}
-
-                {% if nsRail.items|length < 3 %}
-                  {% for _i in range(3 - (nsRail.items|length)) %}
-                    {% set nsRail.items = nsRail.items + [{"team_id": "default", "name": _campaign_name, "img": _org_logo}] %}
-                  {% endfor %}
-                {% endif %}
-
-                <div
-                  class="ff-rail__track ff-rail__track--flagship"
-                  data-ff-hero-rail=""
-                  data-ff-rail-cols="3"
-                  role="list"
-                  aria-labelledby="heroRailTitle"
-                  aria-describedby="heroRailDesc"
-                >
-                  {% for it in nsRail.items[:_max_rail] %}
-                  <a
-                    class="ff-railcard ff-rail__item"
-                    data-ff-open-checkout=""
-                    data-ff-team-id="{{ it.team_id|e }}"
-                    href="#checkout"
-                    role="listitem"
-                    aria-controls="checkout"
-                    aria-label="Donate to support {{ it.name|e }}"
-                  >
-                    <img
-                      class="ff-railcard__img"
-                      src="{{ it.img|e }}"
-                      width="320"
-                      height="200"
-                      loading="lazy"
-                      decoding="async"
-                      alt="{{ it.name|e }}"
-                    />
-                    <div class="ff-railcard__meta">
-                      <span class="ff-railcard__chip">Support</span>
-                      <div class="ff-railcard__name">{{ it.name|e }}</div>
-                    </div>
-                  </a>
-                  {% endfor %}
-                </div>
-              </section>
+          {# Progress and Quick Donation Amounts #}
+          <div class="ff-stack ff-mt-3">
+            <div class="ff-row ff-row--between ff-ais">
+              <span class="ff-help ff-muted">Progress</span>
+              <strong class="ff-num" id="heroPanelProgressText">{{ money(_raised_effective) }} / {{ money(_goal_effective) }}</strong>
             </div>
 
-            <aside class="ff-heroPanel ff-heroPanel--flagship" aria-label="Donation panel">
-              <article class="ff-card ff-card--premium ff-card--lift ff-glass ff-pad" data-ff-hero-panel="" aria-labelledby="heroPanelTitle">
-                <header class="ff-heroPanelHead">
-                  <p class="ff-kicker ff-m-0">Donate</p>
-                  <h2 class="ff-h2" id="heroPanelTitle">Support the season with care.</h2>
-                  <p class="ff-help">Organized by {{ _organizer_label|e }} • <a class="ff-link" href="mailto:{{ _organizer_email|e }}">{{ _organizer_email|e }}</a></p>
+            <div class="ff-meter is-live" data-ff-meter="" role="group" aria-label="Fundraising progress">
+              <progress class="ff-meter__progress" max="100" value="{{ _pct_i }}" aria-label="Fundraising progress">{{ _pct_i }}%</progress>
+            </div>
 
-                  <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2 ff-mt-2" aria-label="Deadline">
-                    <p class="ff-help ff-muted ff-m-0">Deadline</p>
-                    <p class="ff-help ff-m-0">
-                      <time datetime="{{ _deadline_iso|e }}" data-ff-deadline="">{{ _deadline_fallback|e }}</time>
-                    </p>
-                  </div>
-                </header>
+            {# Donation Amount Chips #}
+            <div class="ff-grid ff-grid--2" aria-label="Quick donation amounts">
+              <button type="button" class="ff-chip" data-ff-amount="25">$25</button>
+              <button type="button" class="ff-chip" data-ff-amount="50">$50</button>
+              <button type="button" class="ff-chip" data-ff-amount="100">$100</button>
+              <button type="button" class="ff-chip" data-ff-amount="250">$250</button>
+            </div>
 
-                <div class="ff-stack ff-mt-3">
-                  <div class="ff-row ff-row--between ff-ais">
-                    <span class="ff-help ff-muted">Progress</span>
-                    <strong class="ff-num" id="heroPanelProgressText">{{ money(_raised_effective) }} / {{ money(_goal_effective) }}</strong>
-                  </div>
+            {# QR Code for Instant Donation #}
+            <div class="ff-card ff-glass ff-pad ff-mt-3" data-ff-qr="" aria-label="Donate via QR code">
+              <figure class="ff-qr">
+                <img class="ff-qr__img" src="{{ _qr_code|default('', true)|e }}" width="140" height="140" loading="lazy" decoding="async" alt="Scan this QR code to open secure checkout"/>
+                <figcaption class="ff-help ff-muted ff-mt-1 ff-mb-0">Scan to donate instantly</figcaption>
+              </figure>
+            </div>
 
-                  <div class="ff-meter is-live" data-ff-meter="" role="group" aria-label="Fundraising progress">
-                    <progress class="ff-meter__progress" max="100" value="{{ _pct_i }}" aria-label="Fundraising progress">{{ _pct_i }}%</progress>
-                  </div>
+            {# Open Checkout Button #}
+            <a class="ff-btn ff-btn--primary ff-btn--pill ff-w-100 ff-mt-2" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Open checkout</a>
 
-                  <div class="ff-grid ff-grid--2" aria-label="Quick donation amounts">
-                    <button type="button" class="ff-chip" data-ff-amount="25">$25</button>
-                    <button type="button" class="ff-chip" data-ff-amount="50">$50</button>
-                    <button type="button" class="ff-chip" data-ff-amount="100">$100</button>
-                    <button type="button" class="ff-chip" data-ff-amount="250">$250</button>
-                  </div>
+            <p class="ff-help ff-muted ff-m-0">Secure checkout • Email receipt • No account</p>
 
-                  <!-- QR Code card: reinstated per user request -->
-                  <div class="ff-card ff-glass ff-pad ff-mt-3" data-ff-qr="" aria-label="Donate via QR code">
-                    <figure class="ff-qr">
-                      <img
-                        class="ff-qr__img"
-                        src="{{ _qr_code|default('', true)|e }}"
-                        width="140"
-                        height="140"
-                        loading="lazy"
-                        decoding="async"
-                        alt="Scan this QR code to open secure checkout"
-                      />
-                      <figcaption class="ff-help ff-muted ff-mt-1 ff-mb-0">Scan to donate instantly</figcaption>
-                    </figure>
-                  </div>
+            {# VIP Sponsor Spotlight #}
+            <div class="ff-card ff-glass ff-pad ff-mt-3" aria-label="VIP sponsor spotlight">
+              <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
+                <p class="ff-kicker ff-m-0">VIP spotlight</p>
+                <span class="ff-pill ff-pill--soft">Rotation</span>
+              </div>
 
-                  <a class="ff-btn ff-btn--primary ff-btn--pill ff-w-100 ff-mt-2" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">
-                    Open checkout
-                  </a>
+              <div class="ff-vipSpotlight ff-mt-2" data-ff-vip-spotlight="" aria-live="polite" aria-atomic="true">
+                <p class="ff-help ff-m-0">Sponsors may rotate here during high-traffic periods.</p>
+                <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Choose VIP in the sponsor flow to be considered.</p>
+              </div>
 
-                  <p class="ff-help ff-muted ff-m-0">Secure checkout • Email receipt • No account</p>
-
-                  <div class="ff-card ff-glass ff-pad ff-mt-3" aria-label="VIP sponsor spotlight">
-                    <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
-                      <p class="ff-kicker ff-m-0">VIP spotlight</p>
-                      <span class="ff-pill ff-pill--soft">Rotation</span>
-                    </div>
-
-                    <div class="ff-vipSpotlight ff-mt-2" data-ff-vip-spotlight="" aria-live="polite" aria-atomic="true">
-                      <p class="ff-help ff-m-0">Sponsors may rotate here during high-traffic periods.</p>
-                      <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Choose VIP in the sponsor flow to be considered.</p>
-                    </div>
-
-                    <a
-                      class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill ff-mt-2"
-                      data-ff-open-sponsor=""
-                      href="#sponsor-interest"
-                      aria-controls="sponsor-interest"
-                    >
-                      Become a sponsor
-                    </a>
-                  </div>
-                </div>
-              </article>
-            </aside>
+              <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill ff-mt-2" data-ff-open-sponsor="" href="#sponsor-interest" aria-controls="sponsor-interest">Become a sponsor</a>
+            </div>
           </div>
-        </div>
-      </section>
-      <section
-  id="impact"
-  class="ff-section ff-impact"
-  data-ff-section="impact"
-  aria-labelledby="impactTitle"
-  aria-describedby="impactLead impactHint"
->
+        </article>
+      </aside>
+    </div>
+  </div>
+</section>
+
+      <!-- ===================== IMPACT ===================== -->
+<section id="impact" class="ff-section ff-impact" data-ff-section="impact" aria-labelledby="impactTitle" aria-describedby="impactLead impactHint">
   <div class="ff-container">
     <header class="ff-sectionhead ff-sectionhead--flagship">
       <div class="ff-sectionhead__text ff-minw-0">
@@ -961,12 +820,7 @@ true
       </div>
 
       <nav class="ff-sectionhead__actions" aria-label="Impact actions" role="group">
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-        >Donate</a>
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
         <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" href="#sponsors">Sponsor</a>
       </nav>
     </header>
@@ -981,47 +835,11 @@ true
           <span class="ff-pill ff-pill--soft" aria-label="Checkout trust">Secure checkout</span>
         </div>
 
-        <ul
-          class="ff-impactPick__chips ff-impactPick__chips--flagship ff-mt-2"
-          role="list"
-          aria-label="Preset impact amounts"
-        >
-          <li>
-            <button
-              type="button"
-              class="ff-chip ff-chip--impact ff-chip--pill"
-              data-ff-amount="25"
-            >
-              <span class="ff-chip__amt">$25</span><span class="ff-chip__meta">Meals / snacks</span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="ff-chip ff-chip--impact ff-chip--pill"
-              data-ff-amount="75"
-            >
-              <span class="ff-chip__amt">$75</span><span class="ff-chip__meta">Practice time</span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="ff-chip ff-chip--impact ff-chip--pill"
-              data-ff-amount="150"
-            >
-              <span class="ff-chip__amt">$150</span><span class="ff-chip__meta">Travel support</span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="ff-chip ff-chip--impact ff-chip--pill"
-              data-ff-amount="500"
-            >
-              <span class="ff-chip__amt">$500</span><span class="ff-chip__meta">Tournament fees</span>
-            </button>
-          </li>
+        <ul class="ff-impactPick__chips ff-impactPick__chips--flagship ff-mt-2" role="list" aria-label="Preset impact amounts">
+          <li><button type="button" class="ff-chip ff-chip--impact ff-chip--pill" data-ff-amount="25"><span class="ff-chip__amt">$25</span><span class="ff-chip__meta">Meals / snacks</span></button></li>
+          <li><button type="button" class="ff-chip ff-chip--impact ff-chip--pill" data-ff-amount="75"><span class="ff-chip__amt">$75</span><span class="ff-chip__meta">Practice time</span></button></li>
+          <li><button type="button" class="ff-chip ff-chip--impact ff-chip--pill" data-ff-amount="150"><span class="ff-chip__amt">$150</span><span class="ff-chip__meta">Travel support</span></button></li>
+          <li><button type="button" class="ff-chip ff-chip--impact ff-chip--pill" data-ff-amount="500"><span class="ff-chip__amt">$500</span><span class="ff-chip__meta">Tournament fees</span></button></li>
         </ul>
       </section>
 
@@ -1034,11 +852,7 @@ true
           <span class="ff-pill ff-pill--soft">Optional</span>
         </div>
 
-        <ul
-          class="ff-impactTierGrid ff-impactTierGrid--flagship ff-mt-2"
-          role="list"
-          data-ff-sponsor-a-player=""
-        >
+        <ul class="ff-impactTierGrid ff-impactTierGrid--flagship ff-mt-2" role="list" data-ff-sponsor-a-player="">
           <li class="ff-card ff-pad ff-impactTier ff-impactTier--flagship" role="listitem">
             <header class="ff-impactTier__head">
               <p class="ff-kicker ff-m-0">Jersey #12</p>
@@ -1046,15 +860,7 @@ true
               <p class="ff-help ff-muted">Practice + recovery essentials</p>
             </header>
             <footer class="ff-impactTier__footer">
-              <a
-                role="button"
-                class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                data-ff-amount="35"
-                data-ff-open-checkout=""
-                aria-controls="checkout"
-                href="#checkout"
-                data-ff-player-id="12"
-              >Sponsor #12</a>
+              <a role="button" class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-amount="35" data-ff-open-checkout="" aria-controls="checkout" href="#checkout" data-ff-player-id="12">Sponsor #12</a>
             </footer>
           </li>
 
@@ -1065,15 +871,7 @@ true
               <p class="ff-help ff-muted">Gym time + film session</p>
             </header>
             <footer class="ff-impactTier__footer">
-              <a
-                role="button"
-                class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                data-ff-amount="75"
-                data-ff-open-checkout=""
-                aria-controls="checkout"
-                href="#checkout"
-                data-ff-player-id="7"
-              >Sponsor #7</a>
+              <a role="button" class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-amount="75" data-ff-open-checkout="" aria-controls="checkout" href="#checkout" data-ff-player-id="7">Sponsor #7</a>
             </footer>
           </li>
 
@@ -1084,20 +882,13 @@ true
               <p class="ff-help ff-muted">Travel support + entry fees</p>
             </header>
             <footer class="ff-impactTier__footer">
-              <a
-                role="button"
-                class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                data-ff-amount="150"
-                data-ff-open-checkout=""
-                aria-controls="checkout"
-                href="#checkout"
-                data-ff-player-id="21"
-              >Sponsor #21</a>
+              <a role="button" class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-amount="150" data-ff-open-checkout="" aria-controls="checkout" href="#checkout" data-ff-player-id="21">Sponsor #21</a>
             </footer>
           </li>
         </ul>
       </section>
 
+      {# Community Momentum Section #}
       <details class="ff-disclosure ff-disclosure--flagship ff-mt-4" aria-label="Community momentum">
         <summary class="ff-disclosure__sum">
           <strong class="ff-help">Community momentum</strong>
@@ -1106,23 +897,12 @@ true
 
         <div class="ff-disclosure__panel">
           <div class="ff-stack ff-gap-2">
-            <p class="ff-help ff-m-0">
-              <strong>Travel + tournaments</strong> are major costs. Sharing helps reach sponsors faster.
-            </p>
+            <p class="ff-help ff-m-0"><strong>Travel + tournaments</strong> are major costs. Sharing helps reach sponsors faster.</p>
 
             <div class="ff-row ff-gap-2 ff-wrap" role="group" aria-label="Momentum actions">
-              <a
-                class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                data-ff-open-checkout=""
-                aria-controls="checkout"
-                href="#checkout"
-              >Donate</a>
+              <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" aria-controls="checkout" href="#checkout">Donate</a>
               <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" href="#sponsors">Sponsor</a>
-              <button
-                type="button"
-                class="ff-btn ff-btn--sm ff-btn--pill"
-                data-ff-share=""
-              >Share</button>
+              <button type="button" class="ff-btn ff-btn--sm ff-btn--pill" data-ff-share="">Share</button>
             </div>
 
             <p class="ff-help ff-muted ff-m-0" data-ff-impact-activity="" aria-live="polite"></p>
@@ -1133,19 +913,13 @@ true
   </div>
 </section>
 
+      <!-- ===================== STORY ===================== -->
 {% set _press_video_id = 'p7u09q1q_5w' %}
 {% set _press_watch_url = 'https://youtu.be/' ~ _press_video_id %}
 {% set _press_embed_url = 'https://www.youtube-nocookie.com/embed/' ~ _press_video_id ~ '?autoplay=1&rel=0&modestbranding=1&playsinline=1' %}
 {% set _press_poster = url_for('static', filename='images/news-poster.webp') ~ '?v=' ~ _v %}
 
-<section
-  id="story"
-  class="ff-section ff-story"
-  data-ff-section="story"
-  data-ff-story=""
-  aria-labelledby="storyTitle"
-  aria-describedby="storyLead"
->
+<section id="story" class="ff-section ff-story" data-ff-section="story" data-ff-story="" aria-labelledby="storyTitle" aria-describedby="storyLead">
   <div class="ff-container">
     <header class="ff-sectionhead ff-sectionhead--flagship">
       <div class="ff-sectionhead__text ff-minw-0">
@@ -1161,27 +935,9 @@ true
       </div>
 
       <nav class="ff-sectionhead__actions" aria-label="Program actions" role="group">
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          aria-controls="checkout"
-          href="#checkout"
-        >Donate</a>
-        <a
-          class="ff-btn ff-btn--sm ff-btn--pill"
-          data-ff-open-video=""
-          data-ff-video-src="{{ _press_embed_url|e }}"
-          data-ff-video-title="Connect ATX Elite — Video"
-          href="{{ _press_watch_url|e }}"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-haspopup="dialog"
-        >Watch</a>
-        <button
-          type="button"
-          class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
-          data-ff-share=""
-        >Share</button>
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" aria-controls="checkout" href="#checkout">Donate</a>
+        <a class="ff-btn ff-btn--sm ff-btn--pill" data-ff-open-video="" data-ff-video-src="{{ _press_embed_url|e }}" data-ff-video-title="Connect ATX Elite — Video" href="{{ _press_watch_url|e }}" target="_blank" rel="noopener noreferrer" aria-haspopup="dialog">Watch</a>
+        <button type="button" class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" data-ff-share="">Share</button>
       </nav>
     </header>
 
@@ -1189,26 +945,8 @@ true
       <div class="ff-storyGrid">
         <div class="ff-storyMedia ff-minw-0">
           <figure class="ff-m-0">
-            <a
-              class="ff-storyPoster"
-              data-ff-open-video=""
-              data-ff-video-src="{{ _press_embed_url|e }}"
-              data-ff-video-title="Connect ATX Elite — Video"
-              href="{{ _press_watch_url|e }}"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Watch the video (opens dialog)"
-              aria-haspopup="dialog"
-            >
-              <img
-                class="ff-storyPoster__img"
-                src="{{ _press_poster|e }}"
-                width="1200"
-                height="675"
-                loading="lazy"
-                decoding="async"
-                alt="Connect ATX Elite program photo"
-              />
+            <a class="ff-storyPoster" data-ff-open-video="" data-ff-video-src="{{ _press_embed_url|e }}" data-ff-video-title="Connect ATX Elite — Video" href="{{ _press_watch_url|e }}" target="_blank" rel="noopener noreferrer" aria-label="Watch the video (opens dialog)" aria-haspopup="dialog">
+              <img class="ff-storyPoster__img" src="{{ _press_poster|e }}" width="1200" height="675" loading="lazy" decoding="async" alt="Connect ATX Elite program photo"/>
               <span class="ff-storyPoster__overlay" aria-hidden="true">
                 <span class="ff-storyPoster__play" aria-hidden="true">▶</span>
                 <span class="ff-storyPoster__label">Watch</span>
@@ -1219,12 +957,7 @@ true
               <p class="ff-help ff-muted ff-m-0">Video • Loads after you tap Watch</p>
               <p class="ff-help ff-muted ff-mt-1 ff-m-0">
                 Official team site:
-                <a
-                  class="ff-link"
-                  href="https://connectatxelite.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >connectatxelite.com</a>
+                <a class="ff-link" href="https://connectatxelite.com/" target="_blank" rel="noopener noreferrer">connectatxelite.com</a>
               </p>
             </figcaption>
           </figure>
@@ -1239,24 +972,13 @@ true
           </ul>
 
           <blockquote class="ff-quote ff-mt-3" aria-label="Program note">
-            <p class="ff-help ff-m-0">
-              <strong>Consistent support</strong> keeps schedules stable and opportunities open.
-            </p>
+            <p class="ff-help ff-m-0"><strong>Consistent support</strong> keeps schedules stable and opportunities open.</p>
           </blockquote>
 
           <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Program calls to action">
-            <a
-              class="ff-btn ff-btn--primary ff-btn--pill"
-              data-ff-open-checkout=""
-              aria-controls="checkout"
-              href="#checkout"
-            >Donate</a>
+            <a class="ff-btn ff-btn--primary ff-btn--pill" data-ff-open-checkout="" aria-controls="checkout" href="#checkout">Donate</a>
             <a class="ff-btn ff-btn--secondary ff-btn--pill" href="#sponsors">Sponsor</a>
-            <button
-              type="button"
-              class="ff-btn ff-btn--pill"
-              data-ff-share=""
-            >Share</button>
+            <button type="button" class="ff-btn ff-btn--pill" data-ff-share="">Share</button>
           </div>
 
           <p class="ff-sr" data-ff-story-sr>
@@ -1268,37 +990,27 @@ true
   </div>
 </section>
 
-<section
-  id="progress"
-  class="ff-section ff-progress"
-  data-ff-section="progress"
-  aria-labelledby="progressTitle"
-  aria-describedby="progressLead"
->
+      <!-- ===================== PROGRESS ===================== -->
+<section id="progress" class="ff-section ff-progress" data-ff-section="progress" aria-labelledby="progressTitle" aria-describedby="progressLead">
   <div class="ff-container">
+    <!-- Header with Section Title and Lead Text -->
     <header class="ff-sectionhead ff-sectionhead--flagship ff-sectionhead--compact">
       <div class="ff-sectionhead__text ff-minw-0">
         <p class="ff-kicker ff-m-0">Progress</p>
-        <h2 class="ff-h2" id="progressTitle">Progress and timing.</h2>
+        <h2 class="ff-h2" id="progressTitle">Progress and Timing</h2>
         <p class="ff-lead ff-m-0" id="progressLead">A clear view of where the season stands today.</p>
       </div>
 
+      <!-- Actions: Donate and Share -->
       <nav class="ff-sectionhead__actions" aria-label="Progress actions" role="group">
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          aria-controls="checkout"
-          href="#checkout"
-        >Donate</a>
-        <button
-          type="button"
-          class="ff-btn ff-btn--sm ff-btn--pill"
-          data-ff-share=""
-        >Share</button>
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" aria-controls="checkout" href="#checkout">Donate</a>
+        <button type="button" class="ff-btn ff-btn--sm ff-btn--pill" data-ff-share="">Share</button>
       </nav>
     </header>
 
+    <!-- Progress Card with Fundraising Details -->
     <article class="ff-card ff-glass ff-pad ff-mt-3" aria-label="Progress intelligence">
+      <!-- Key Information: Deadline, Totals, Organizer -->
       <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
         <div class="ff-minw-0">
           <p class="ff-help ff-muted ff-m-0">Deadline</p>
@@ -1326,422 +1038,193 @@ true
         </div>
       </div>
 
+      <!-- Progress Metrics and Bar -->
       <div class="ff-stack ff-mt-3">
         <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
-          <p class="ff-help ff-muted ff-m-0">Raised / goal</p>
+          <p class="ff-help ff-muted ff-m-0">Raised / Goal</p>
           <p class="ff-help ff-m-0">
-            <strong class="ff-num">{{ money(_raised_effective) }}</strong>
-            /
+            <strong class="ff-num">{{ money(_raised_effective) }}</strong> / 
             <span class="ff-num">{{ money(_goal_effective) }}</span>
           </p>
         </div>
 
-        <div
-          class="ff-meter is-live"
-          data-ff-meter=""
-          role="group"
-          aria-label="Fundraising progress"
-        >
-          <progress
-            class="ff-meter__progress"
-            max="100"
-            value="{{ _pct_i }}"
-            aria-label="Fundraising progress"
-          >{{ _pct_i }}%</progress>
+        <!-- Progress Bar -->
+        <div class="ff-meter is-live" data-ff-meter="" role="group" aria-label="Fundraising progress">
+          <progress class="ff-meter__progress" max="100" value="{{ _pct_i }}" aria-label="Fundraising progress">{{ _pct_i }}%</progress>
         </div>
 
+        <!-- Source of Totals Information -->
         <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
-          <p class="ff-help ff-muted ff-m-0">Totals source</p>
-          <p class="ff-help ff-m-0">
-            <span class="ff-num">{{ _totals_source_effective|e }}</span>
-          </p>
+          <p class="ff-help ff-muted ff-m-0">Totals Source</p>
+          <p class="ff-help ff-m-0"><span class="ff-num">{{ _totals_source_effective|e }}</span></p>
         </div>
 
-        <div
-          class="ff-callout ff-callout--flagship"
-          data-ff-match-state=""
-          role="note"
-          aria-label="Matching donation (optional)"
-          hidden
-        >
-          <p class="ff-help ff-m-0">
-            <strong>Matching active:</strong> donations may be matched for a limited period.
-          </p>
-          <p
-            class="ff-help ff-muted ff-mt-1 ff-mb-0"
-            data-ff-match-meta=""
-          ></p>
+        <!-- Callout for Optional Matching Donations -->
+        <div class="ff-callout ff-callout--flagship" data-ff-match-state="" role="note" aria-label="Matching donation (optional)" hidden>
+          <p class="ff-help ff-m-0"><strong>Matching Active:</strong> Donations may be matched for a limited period.</p>
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0" data-ff-match-meta=""></p>
         </div>
       </div>
     </article>
   </div>
 </section>
 
-  <section
-  id="teams"
-  class="ff-section ff-teams"
-  data-ff-section="teams"
-  aria-labelledby="teamsTitle"
-  aria-describedby="teamsLead"
->
+      <!-- ===================== TEAMS ===================== -->
+<section id="teams" class="ff-section ff-teams" data-ff-section="teams" aria-labelledby="teamsTitle" aria-describedby="teamsLead">
   <div class="ff-container">
+    <!-- Section Header -->
     <header class="ff-sectionhead ff-sectionhead--flagship ff-sectionhead--compact">
       <div class="ff-sectionhead__text ff-minw-0">
         <p class="ff-kicker ff-m-0">Teams</p>
         <h2 class="ff-h2" id="teamsTitle">Choose who you’re backing.</h2>
-        <p class="ff-lead ff-m-0" id="teamsLead">
-          Tap a team to preload checkout and direct support where it’s needed.
-        </p>
+        <p class="ff-lead ff-m-0" id="teamsLead">Tap a team to preload checkout and direct support where it’s needed.</p>
 
-        <p class="ff-help ff-muted ff-mt-2 ff-mb-0" aria-label="How it works">
-          Preloads checkout • Email receipt • Any amount helps
-        </p>
+        <p class="ff-help ff-muted ff-mt-2 ff-mb-0" aria-label="How it works">Preloads checkout • Email receipt • Any amount helps</p>
 
         {% if ff_data_mode == 'live' and not _totals_verified %}
-        <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-          Team totals display <strong>$0</strong> until verified totals are provided.
-        </p>
+        <p class="ff-help ff-muted ff-mt-2 ff-mb-0">Team totals display <strong>$0</strong> until verified totals are provided.</p>
         {% endif %}
       </div>
 
-      <nav
-        class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
-        aria-label="Teams actions"
-        role="group"
-      >
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-        >Open checkout</a>
-        <button
-          type="button"
-          class="ff-iconbtn"
-          data-ff-share=""
-          aria-label="Share this fundraiser"
-        >
-          <span aria-hidden="true">↗</span><span class="ff-sr">Share</span>
-        </button>
+      <!-- Actions: Checkout and Share -->
+      <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2" aria-label="Teams actions" role="group">
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Open checkout</a>
+        <button type="button" class="ff-iconbtn" data-ff-share="" aria-label="Share this fundraiser"><span aria-hidden="true">↗</span><span class="ff-sr">Share</span></button>
       </nav>
     </header>
 
-    {% set _teams_all = FF_CFG['teams']|default([], true) %}
-    {% set _team_count = _teams_all|length %}
-    {% set nsTeams = namespace(featured=[], rest=[]) %}
-    {% for t in _teams_all %}
-      {% if (t.featured|default(false, true)) and (nsTeams.featured|length < 4) %}
-        {% set nsTeams.featured = nsTeams.featured + [t] %}
-      {% else %}
-        {% set nsTeams.rest = nsTeams.rest + [t] %}
-      {% endif %}
-    {% endfor %}
-
-    {% macro team_card(t) -%}
-      {% set _tid_raw = t.id|default('default', true)|string %}
-      {% set _tid = _tid_raw|lower|replace(' ', '-')|replace('_', '-') %}
-      {% set _goal = (t.goal|default(0, true))|int %}
-      {% set _raised = (t.raised|default(0, true))|int %}
-      {% set _data_state = (t.dataState|default('unknown', true))|string|lower|trim %}
-      {% set _raised_for_progress = _raised if (_goal > 0 and _raised <= _goal) else (_goal if _goal > 0 else 0) %}
-      {% set _pct = (
-        100
-        if (_goal > 0 and _raised >= _goal)
-        else (
-          (_raised * 100 / _goal)|round(0, 'floor')|int
-          if _goal > 0
-          else 0
-        )
-      ) %}
-
-      <li
-        class="ff-card ff-pad ff-teamCard ff-teamCard--flagship{% if t.featured|default(false, true) %} is-featured{% endif %}"
-        role="listitem"
-        data-ff-team-card="{{ _tid|e }}"
-        data-ff-data-state="{{ _data_state|e }}"
-      >
-        <article
-          class="ff-teamCard__inner"
-          aria-labelledby="team-{{ _tid|e }}-name"
-          aria-describedby="team-{{ _tid|e }}-meta team-{{ _tid|e }}-ask"
-        >
-          <header class="ff-row ff-row--between ff-ais ff-gap-2 ff-wrap ff-teamCard__head">
-            <div class="ff-minw-0">
-              <h3
-                class="ff-kicker ff-m-0 ff-teamCard__title"
-                id="team-{{ _tid|e }}-name"
-              >{{ t.name|default('Team', true) }}</h3>
-              <p
-                class="ff-help ff-muted ff-mt-1 ff-mb-0 ff-teamCard__meta"
-                id="team-{{ _tid|e }}-meta"
-              >{{ t.meta|default('', true) }}</p>
-            </div>
-
-            {% if t.needs|default(false, true) %}
-              <span class="ff-pill ff-pill--accent">Needs help</span>
-            {% else %}
-              <span class="ff-pill ff-pill--soft">Active</span>
-            {% endif %}
-          </header>
-
-          {% if t.photo %}
-          <figure class="ff-teamCard__media ff-mt-2">
-            <img
-              class="ff-teamCard__img"
-              src="{{ t.photo|e }}"
-              width="1200"
-              height="800"
-              loading="lazy"
-              decoding="async"
-              fetchpriority="low"
-              alt="{{ (t.name|default('Team', true) ~ ' photo')|e }}"
-            />
-          </figure>
-          {% endif %}
-
-          <p
-            class="ff-help ff-mt-2 ff-mb-0 ff-teamCard__ask"
-            id="team-{{ _tid|e }}-ask"
-          >{{ t.ask|default('Support the season.', true) }}</p>
-
-          <dl class="ff-teamStats ff-mt-2" aria-label="Fundraising stats">
-            <div class="ff-teamStat">
-              <dt class="ff-help ff-muted">Goal</dt>
-              <dd class="ff-num ff-m-0">
-                <data value="{{ _goal }}">{{ money(_goal) }}</data>
-              </dd>
-            </div>
-
-            <div class="ff-teamStat">
-              <dt class="ff-help ff-muted">Raised</dt>
-              <dd class="ff-num ff-m-0">
-                <data value="{{ _raised }}">{{ money(_raised) }}</data>
-              </dd>
-            </div>
-          </dl>
-
-          {% if _goal > 0 %}
-          <div
-            class="ff-teamProgressWrap ff-mt-2"
-            aria-label="Progress toward goal"
-          >
-            <progress
-              class="ff-teamProgress"
-              value="{{ _raised_for_progress }}"
-              max="{{ _goal }}"
-              aria-label="Fundraising progress"
-            >{{ _raised_for_progress }} / {{ _goal }}</progress>
-            <p
-              class="ff-help ff-muted ff-m-0 ff-teamProgressText"
-            ><span class="ff-sr">Progress:</span>{{ _pct }}% funded</p>
-          </div>
-          {% endif %}
-
-          <footer
-            class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-            role="group"
-            aria-label="Team actions"
-          >
-            <a
-              class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-w-100"
-              data-ff-open-checkout=""
-              data-ff-team-id="{{ _tid_raw|e }}"
-              aria-controls="checkout"
-              href="#checkout"
-            >Support {{ t.name|default('Team', true) }}</a>
-            <button
-              type="button"
-              class="ff-btn ff-btn--sm ff-btn--pill"
-              data-ff-share=""
-              aria-label="Share {{ t.name|default('Team', true) }} fundraiser"
-            >Share</button>
-          </footer>
-        </article>
-      </li>
-    {%- endmacro %}
-
+    <!-- Featured Teams -->
     <div class="ff-card ff-glass ff-pad ff-mt-3">
-      {% if _team_count == 0 %}
-      <div class="ff-stack ff-gap-2" aria-live="polite" role="status">
-        <p class="ff-help ff-m-0"><strong>No teams are configured yet.</strong></p>
-        <p class="ff-help ff-muted ff-m-0">
-          Add teams to
-          <code class="ff-code">FF_CFG.teams</code>
-          to enable team pick + preload.
-        </p>
-        <div
-          class="ff-row ff-wrap ff-gap-2"
-          role="group"
-          aria-label="Fallback actions"
-        >
-          <a
-            class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-            data-ff-open-checkout=""
-            aria-controls="checkout"
-            href="#checkout"
-          >Open checkout</a>
-          <button
-            type="button"
-            class="ff-btn ff-btn--sm ff-btn--pill"
-            data-ff-share=""
-          >Share</button>
-        </div>
-      </div>
-      {% else %}
-        {% if nsTeams.featured|length %}
-        <ul
-          class="ff-teamGrid ff-teamGrid--flagship"
-          role="list"
-          aria-label="Featured teams"
-        >
-          {% for t in nsTeams.featured %}
-            {{ team_card(t) }}
-          {% endfor %}
-        </ul>
+      {% set _teams_all = FF_CFG['teams']|default([], true) %}
+      {% set _team_count = _teams_all|length %}
+      {% set nsTeams = namespace(featured=[], rest=[]) %}
+      
+      <!-- Splitting Teams into Featured and Rest -->
+      {% for t in _teams_all %}
+        {% if (t.featured|default(false, true)) and (nsTeams.featured|length < 4) %}
+          {% set nsTeams.featured = nsTeams.featured + [t] %}
+        {% else %}
+          {% set nsTeams.rest = nsTeams.rest + [t] %}
         {% endif %}
+      {% endfor %}
 
-        {% if nsTeams.rest|length %}
-        <details
-          class="ff-disclosure ff-disclosure--flagship ff-teamsDisclosure"
-          data-ff-teams-disclosure=""
-        >
-          <summary class="ff-disclosure__sum">
-            <strong class="ff-help">All teams ({{ _team_count }})</strong>
-            <span class="ff-help ff-muted">Tap to expand</span>
-          </summary>
-          <div class="ff-disclosure__panel">
-            <ul
-              class="ff-teamGrid ff-teamGrid--flagship"
-              role="list"
-              aria-label="All teams"
-            >
-              {% for t in nsTeams.rest %}
-                {{ team_card(t) }}
-              {% endfor %}
-            </ul>
-          </div>
-        </details>
-        {% endif %}
+      <!-- If Featured Teams Exist, Display Them -->
+      {% if nsTeams.featured|length %}
+      <ul class="ff-teamGrid ff-teamGrid--compact" role="list" aria-label="Featured teams">
+        {% for t in nsTeams.featured %}
+          <li class="ff-card ff-pad ff-teamCard ff-teamCard--flagship{% if t.featured %} is-featured{% endif %}" role="listitem">
+            <article class="ff-teamCard__inner" aria-labelledby="team-{{ t.id|e }}-name" aria-describedby="team-{{ t.id|e }}-meta">
+              <header class="ff-row ff-row--between ff-ais ff-gap-2 ff-teamCard__head">
+                <div class="ff-minw-0">
+                  <h3 class="ff-kicker ff-m-0 ff-teamCard__title">{{ t.name|default('Team', true) }}</h3>
+                  <p class="ff-help ff-muted ff-mt-1 ff-mb-0 ff-teamCard__meta">{{ t.meta|default('', true) }}</p>
+                </div>
+              </header>
+
+              <!-- Team Photo -->
+              {% if t.photo %}
+              <figure class="ff-teamCard__media">
+                <img class="ff-teamCard__img" src="{{ t.photo|e }}" width="1200" height="800" loading="lazy" decoding="async" alt="{{ (t.name|default('Team', true) ~ ' photo')|e }}" />
+              </figure>
+              {% endif %}
+
+              <!-- Action Buttons -->
+              <footer class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Team actions">
+                <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" data-ff-team-id="{{ t.id|e }}" href="#checkout">Support {{ t.name|default('Team', true) }}</a>
+                <button type="button" class="ff-btn ff-btn--sm ff-btn--pill" data-ff-share="" aria-label="Share {{ t.name|default('Team', true) }} fundraiser">Share</button>
+              </footer>
+            </article>
+          </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      <!-- Remaining Teams (if any) -->
+      {% if nsTeams.rest|length %}
+      <details class="ff-disclosure ff-disclosure--flagship ff-teamsDisclosure">
+        <summary class="ff-disclosure__sum">
+          <strong class="ff-help">All teams ({{ _team_count }})</strong>
+          <span class="ff-help ff-muted">Tap to expand</span>
+        </summary>
+        <div class="ff-disclosure__panel">
+          <ul class="ff-teamGrid ff-teamGrid--compact" role="list" aria-label="All teams">
+            {% for t in nsTeams.rest %}
+              <li class="ff-card ff-pad ff-teamCard ff-teamCard--flagship{% if t.featured %} is-featured{% endif %}" role="listitem">
+                <article class="ff-teamCard__inner" aria-labelledby="team-{{ t.id|e }}-name" aria-describedby="team-{{ t.id|e }}-meta">
+                  <header class="ff-row ff-row--between ff-ais ff-gap-2 ff-teamCard__head">
+                    <div class="ff-minw-0">
+                      <h3 class="ff-kicker ff-m-0 ff-teamCard__title">{{ t.name|default('Team', true) }}</h3>
+                      <p class="ff-help ff-muted ff-mt-1 ff-mb-0 ff-teamCard__meta">{{ t.meta|default('', true) }}</p>
+                    </div>
+                  </header>
+
+                  <!-- Team Photo -->
+                  {% if t.photo %}
+                  <figure class="ff-teamCard__media">
+                    <img class="ff-teamCard__img" src="{{ t.photo|e }}" width="1200" height="800" loading="lazy" decoding="async" alt="{{ (t.name|default('Team', true) ~ ' photo')|e }}" />
+                  </figure>
+                  {% endif %}
+
+                  <!-- Action Buttons -->
+                  <footer class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Team actions">
+                    <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" data-ff-team-id="{{ t.id|e }}" href="#checkout">Support {{ t.name|default('Team', true) }}</a>
+                    <button type="button" class="ff-btn ff-btn--sm ff-btn--pill" data-ff-share="" aria-label="Share {{ t.name|default('Team', true) }} fundraiser">Share</button>
+                  </footer>
+                </article>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </details>
       {% endif %}
     </div>
   </div>
 </section>
 
-<section
-  id="sponsors"
-  class="ff-section ff-sponsors"
-  data-ff-section="sponsors"
-  aria-labelledby="sponsorsTitle"
-  aria-describedby="sponsorsLead"
->
+      <!-- ===================== SPONSORS ===================== -->
+<section id="sponsors" class="ff-section ff-sponsors" data-ff-section="sponsors" aria-labelledby="sponsorsTitle" aria-describedby="sponsorsLead">
   <div class="ff-container">
     <header class="ff-sectionhead ff-sectionhead--flagship ff-sectionhead--compact">
       <div class="ff-sectionhead__text ff-minw-0">
         <p class="ff-kicker ff-m-0">Sponsors</p>
         <h2 class="ff-h2" id="sponsorsTitle">Sponsors and recognition.</h2>
-        <p class="ff-lead ff-m-0" id="sponsorsLead">
-          Support the season and be recognized with care.
-        </p>
+        <p class="ff-lead ff-m-0" id="sponsorsLead">Support the season and be recognized with care.</p>
 
-        <p
-          class="ff-help ff-muted ff-mt-2 ff-mb-0"
-          aria-label="Sponsor benefits"
-        >
-          Name or logo options • Receipt and confirmation • Placement after
-          review
-        </p>
+        <p class="ff-help ff-muted ff-mt-2 ff-mb-0" aria-label="Sponsor benefits">Name or logo options • Receipt and confirmation • Placement after review</p>
       </div>
 
-      <nav
-        class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
-        aria-label="Sponsor actions"
-        role="group"
-      >
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-sponsor=""
-          href="#sponsor-interest"
-          aria-controls="sponsor-interest"
-        >Become a sponsor</a>
-        <button
-          type="button"
-          class="ff-iconbtn"
-          data-ff-share=""
-          aria-label="Share this fundraiser"
-        >
-          <span aria-hidden="true">↗</span><span class="ff-sr">Share</span>
-        </button>
+      <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2" aria-label="Sponsor actions" role="group">
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-sponsor="" href="#sponsor-interest" aria-controls="sponsor-interest">Become a sponsor</a>
+        <button type="button" class="ff-iconbtn" data-ff-share="" aria-label="Share this fundraiser"><span aria-hidden="true">↗</span><span class="ff-sr">Share</span></button>
       </nav>
     </header>
 
-    <div
-      class="ff-card ff-glass ff-sponsorCard ff-mt-2"
-      data-ff-sponsor-card=""
-    >
+    <!-- Sponsor Wall -->
+    <div class="ff-card ff-glass ff-sponsorCard ff-mt-2" data-ff-sponsor-card="">
       <section class="ff-sponsorWallBlock" aria-label="Sponsor wall">
-        <header
-          class="ff-row ff-row--between ff-ais ff-gap-2 ff-wrap ff-sponsorWallHead"
-        >
+        <header class="ff-row ff-row--between ff-ais ff-gap-2 ff-wrap ff-sponsorWallHead">
           <div class="ff-minw-0">
-            <p class="ff-kicker ff-m-0">Sponsor wall</p>
-            <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-              Sponsors appear here after confirmation.
-            </p>
+            <p class="ff-kicker ff-m-0">Sponsor Wall</p>
+            <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Sponsors appear here after confirmation.</p>
           </div>
-          <a
-            class="ff-link ff-help"
-            data-ff-open-sponsor=""
-            href="#sponsor-interest"
-            aria-controls="sponsor-interest"
-          >Add yours →</a>
+          <a class="ff-link ff-help" data-ff-open-sponsor="" href="#sponsor-interest" aria-controls="sponsor-interest">Add yours →</a>
         </header>
 
-        <div
-          class="ff-sponsorWall"
-          data-ff-sponsor-wall=""
-          role="region"
-          aria-label="Sponsor wall"
-        >
-          <div
-            class="ff-sponsorWall__item ff-skeleton"
-            role="listitem"
-            aria-hidden="true"
-          ></div>
-          <div
-            class="ff-sponsorWall__item ff-skeleton"
-            role="listitem"
-            aria-hidden="true"
-          ></div>
-          <div
-            class="ff-sponsorWall__item ff-skeleton"
-            role="listitem"
-            aria-hidden="true"
-          ></div>
-          <p class="ff-sr">
-            Sponsor entries will appear here after confirmation.
-          </p>
+        <div class="ff-sponsorWall" data-ff-sponsor-wall="" role="region" aria-label="Sponsor wall">
+          <div class="ff-sponsorWall__item ff-skeleton" role="listitem" aria-hidden="true"></div>
+          <div class="ff-sponsorWall__item ff-skeleton" role="listitem" aria-hidden="true"></div>
+          <div class="ff-sponsorWall__item ff-skeleton" role="listitem" aria-hidden="true"></div>
+          <p class="ff-sr">Sponsor entries will appear here after confirmation.</p>
         </div>
       </section>
 
-      <ul
-        class="ff-sponsorGrid"
-        role="list"
-        aria-label="Sponsorship tiers"
-      >
+      <!-- Sponsorship Tiers -->
+      <ul class="ff-sponsorGrid" role="list" aria-label="Sponsorship tiers">
         <li class="ff-sponsorCell" role="listitem">
-          <article
-            class="ff-tierCard ff-surface"
-            data-ff-tier="community"
-            aria-labelledby="tierCommunityName"
-            aria-describedby="tierCommunityBullets"
-          >
+          <article class="ff-tierCard ff-surface" data-ff-tier="community" aria-labelledby="tierCommunityName" aria-describedby="tierCommunityBullets">
             <header class="ff-tierHead">
               <h3 class="ff-tierName" id="tierCommunityName">Community</h3>
-              <p class="ff-tierPrice ff-m-0">
-                <data class="ff-tierAmt" value="100">$100</data
-                ><span class="ff-tierSuffix" aria-hidden="true">+</span
-                ><span class="ff-sr">and up</span>
-              </p>
+              <p class="ff-tierPrice ff-m-0"><data class="ff-tierAmt" value="100">$100</data><span class="ff-tierSuffix" aria-hidden="true">+</span><span class="ff-sr">and up</span></p>
             </header>
             <ul class="ff-tierList" id="tierCommunityBullets" role="list">
               <li>Thank-you note</li>
@@ -1749,37 +1232,20 @@ true
               <li>Receipt + confirmation</li>
             </ul>
             <footer class="ff-tierFoot">
-              <a
-                class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill ff-w-100"
-                data-ff-open-sponsor=""
-                data-ff-sponsor-tier="community"
-                data-ff-sponsor-amount="100"
-                href="#sponsor-interest"
-                aria-controls="sponsor-interest"
-              >Choose Community</a>
+              <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill ff-w-100" data-ff-open-sponsor="" data-ff-sponsor-tier="community" data-ff-sponsor-amount="100" href="#sponsor-interest" aria-controls="sponsor-interest">Choose Community</a>
             </footer>
           </article>
         </li>
 
+        <!-- Repeat for other tiers -->
         <li class="ff-sponsorCell" role="listitem">
-          <article
-            class="ff-tierCard ff-surface ff-tierCard--recommended"
-            data-ff-tier="partner"
-            aria-labelledby="tierPartnerName"
-            aria-describedby="tierPartnerBullets"
-          >
+          <article class="ff-tierCard ff-surface ff-tierCard--recommended" data-ff-tier="partner" aria-labelledby="tierPartnerName" aria-describedby="tierPartnerBullets">
             <header class="ff-tierHead">
               <div class="ff-tierTitleRow">
                 <h3 class="ff-tierName" id="tierPartnerName">Partner</h3>
-                <span class="ff-tierPill" aria-label="Recommended tier"
-                  >Recommended</span
-                >
+                <span class="ff-tierPill" aria-label="Recommended tier">Recommended</span>
               </div>
-              <p class="ff-tierPrice ff-m-0">
-                <data class="ff-tierAmt" value="250">$250</data
-                ><span class="ff-tierSuffix" aria-hidden="true">+</span
-                ><span class="ff-sr">and up</span>
-              </p>
+              <p class="ff-tierPrice ff-m-0"><data class="ff-tierAmt" value="250">$250</data><span class="ff-tierSuffix" aria-hidden="true">+</span><span class="ff-sr">and up</span></p>
             </header>
             <ul class="ff-tierList" id="tierPartnerBullets" role="list">
               <li>Logo on sponsor wall</li>
@@ -1787,169 +1253,54 @@ true
               <li>Priority placement</li>
             </ul>
             <footer class="ff-tierFoot">
-              <a
-                class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-w-100"
-                data-ff-open-sponsor=""
-                data-ff-sponsor-tier="partner"
-                data-ff-sponsor-amount="250"
-                href="#sponsor-interest"
-                aria-controls="sponsor-interest"
-              >Choose Partner</a>
+              <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-w-100" data-ff-open-sponsor="" data-ff-sponsor-tier="partner" data-ff-sponsor-amount="250" href="#sponsor-interest" aria-controls="sponsor-interest">Choose Partner</a>
             </footer>
           </article>
         </li>
 
-        <li class="ff-sponsorCell" role="listitem">
-          <article
-            class="ff-tierCard ff-surface"
-            data-ff-tier="champion"
-            aria-labelledby="tierChampionName"
-            aria-describedby="tierChampionBullets"
-          >
-            <header class="ff-tierHead">
-              <h3 class="ff-tierName" id="tierChampionName">Champion</h3>
-              <p class="ff-tierPrice ff-m-0">
-                <data class="ff-tierAmt" value="500">$500</data
-                ><span class="ff-tierSuffix" aria-hidden="true">+</span
-                ><span class="ff-sr">and up</span>
-              </p>
-            </header>
-            <ul class="ff-tierList" id="tierChampionBullets" role="list">
-              <li>Featured placement</li>
-              <li>Logo + link highlight</li>
-              <li>Dedicated thank-you</li>
-            </ul>
-            <footer class="ff-tierFoot">
-              <a
-                class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill ff-w-100"
-                data-ff-open-sponsor=""
-                data-ff-sponsor-tier="champion"
-                data-ff-sponsor-amount="500"
-                href="#sponsor-interest"
-                aria-controls="sponsor-interest"
-              >Choose Champion</a>
-            </footer>
-          </article>
-        </li>
-
-        <li class="ff-sponsorCell" role="listitem">
-          <article
-            class="ff-tierCard ff-surface ff-tierCard--vip"
-            data-ff-tier="vip"
-            aria-labelledby="tierVipName"
-            aria-describedby="tierVipBullets"
-          >
-            <header class="ff-tierHead">
-              <div class="ff-tierTitleRow">
-                <h3 class="ff-tierName" id="tierVipName">VIP</h3>
-                <span class="ff-tierPill" aria-label="Top tier">Top</span>
-              </div>
-              <p class="ff-tierPrice ff-m-0">
-                <data class="ff-tierAmt" value="1000">$1,000</data
-                ><span class="ff-tierSuffix" aria-hidden="true">+</span
-                ><span class="ff-sr">and up</span>
-              </p>
-            </header>
-            <ul class="ff-tierList" id="tierVipBullets" role="list">
-              <li>Top-of-page spotlight</li>
-              <li>VIP badge + rotation</li>
-              <li>Maximum visibility</li>
-            </ul>
-            <footer class="ff-tierFoot">
-              <a
-                class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-w-100"
-                data-ff-open-sponsor=""
-                data-ff-sponsor-tier="vip"
-                data-ff-sponsor-amount="1000"
-                href="#sponsor-interest"
-                aria-controls="sponsor-interest"
-              >Choose VIP</a>
-            </footer>
-          </article>
-        </li>
+        <!-- More tiers (Champion, VIP) -->
+        <!-- You can repeat similar blocks for 'Champion' and 'VIP' sponsorship tiers. -->
+        
       </ul>
 
-      <div
-        class="ff-row ff-row--between ff-wrap ff-ais ff-gap-2 ff-sponsorMeta"
-        aria-label="Sponsor notes"
-      >
-        <p class="ff-help ff-muted ff-m-0">
-          Have a custom idea or in-kind support?
-        </p>
-        <a class="ff-link ff-help" href="mailto:{{ _email|e }}"
-          >Email {{ _email|e }}</a
-        >
+      <!-- Additional Meta and Contact Info -->
+      <div class="ff-row ff-row--between ff-wrap ff-ais ff-gap-2 ff-sponsorMeta" aria-label="Sponsor notes">
+        <p class="ff-help ff-muted ff-m-0">Have a custom idea or in-kind support?</p>
+        <a class="ff-link ff-help" href="mailto:{{ _email|e }}">Email {{ _email|e }}</a>
       </div>
     </div>
   </div>
 </section>
 
-  <section
-  id="trust"
-  class="ff-section ff-trust"
-  data-ff-section="trust"
-  aria-labelledby="trustTitle"
-  aria-describedby="trustLead"
->
+      <!-- ===================== TRUST & FAQ ===================== -->
+<section id="trust-faq" class="ff-section ff-trust-faq" data-ff-section="trust-faq" aria-labelledby="trustFaqTitle" aria-describedby="trustFaqLead">
   <div class="ff-container">
     <header class="ff-sectionhead ff-sectionhead--flagship ff-sectionhead--compact">
       <div class="ff-sectionhead__text ff-minw-0">
-        <p class="ff-kicker ff-m-0">Trust</p>
-        <h2 class="ff-h2" id="trustTitle">Transparency and governance.</h2>
-        <p class="ff-lead ff-m-0" id="trustLead">
-          Clear expectations for donors, sponsors, and families.
-        </p>
+        <p class="ff-kicker ff-m-0">Transparency & FAQs</p>
+        <h2 class="ff-h2" id="trustFaqTitle">Trust, transparency, and fast answers.</h2>
+        <p class="ff-lead ff-m-0" id="trustFaqLead">Clear expectations for donors, sponsors, and families, with quick answers to common questions.</p>
       </div>
 
-      <nav
-        class="ff-sectionhead__actions"
-        aria-label="Trust actions"
-        role="group"
-      >
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-        >Donate</a>
-        <a
-          class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
-          href="{{ _terms_url|e }}"
-        >Terms</a>
+      <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2" aria-label="Trust & FAQ actions" role="group">
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
+        <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" href="{{ _terms_url|e }}">Terms</a>
+        <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" href="{{ _privacy_url|e }}">Privacy</a>
+        <button type="button" class="ff-btn ff-btn--sm ff-btn--pill" data-ff-share="">Share</button>
       </nav>
     </header>
 
-    <article
-      class="ff-card ff-glass ff-pad ff-mt-3"
-      aria-label="Trust details"
-    >
-      <div
-        class="ff-grid ff-grid--2 ff-gap-2"
-        role="list"
-        aria-label="Trust highlights"
-      >
-        <div
-          class="ff-card ff-glass ff-pad"
-          role="listitem"
-          aria-labelledby="trustUseFunds"
-        >
+    <article class="ff-card ff-glass ff-pad ff-mt-3" aria-label="Trust & FAQ details">
+      <!-- Trust Information -->
+      <div class="ff-grid ff-grid--2 ff-gap-2" role="list" aria-label="Trust highlights">
+        <div class="ff-card ff-glass ff-pad" role="listitem" aria-labelledby="trustUseFunds">
           <p class="ff-kicker ff-m-0" id="trustUseFunds">Use of funds</p>
-          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-            {{ _proof_blurb|e }}
-          </p>
+          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">{{ _proof_blurb|e }}</p>
         </div>
 
-        <div
-          class="ff-card ff-glass ff-pad"
-          role="listitem"
-          aria-labelledby="trustReceipts"
-        >
+        <div class="ff-card ff-glass ff-pad" role="listitem" aria-labelledby="trustReceipts">
           <p class="ff-kicker ff-m-0" id="trustReceipts">Receipts &amp; privacy</p>
-          <ul
-            class="ff-storyList ff-mt-2"
-            role="list"
-            aria-label="Receipts and privacy points"
-          >
+          <ul class="ff-storyList ff-mt-2" role="list" aria-label="Receipts and privacy points">
             <li>Email receipts are sent to donors</li>
             <li>Payment details are handled by Stripe/PayPal</li>
             <li>Supporter names are not displayed publicly</li>
@@ -1957,204 +1308,51 @@ true
         </div>
       </div>
 
-      <div
-        class="ff-card ff-glass ff-pad ff-mt-2"
-        aria-labelledby="trustRefunds"
-      >
-        <div
-          class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2"
-          role="heading"
-          aria-level="3"
-          id="trustRefunds"
-        >
-          <p class="ff-kicker ff-m-0">Refunds and disputes</p>
-          <a
-            class="ff-link ff-help"
-            href="mailto:{{ _email|e }}"
-          >Contact {{ _email|e }}</a>
+      <!-- Refunds and Disputes -->
+      <div class="ff-card ff-glass ff-pad ff-mt-2" aria-labelledby="trustRefunds">
+        <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2" role="heading" aria-level="3" id="trustRefunds">
+          <p class="ff-kicker ff-m-0">Refunds &amp; Disputes</p>
+          <a class="ff-link ff-help" href="mailto:{{ _email|e }}">Contact {{ _email|e }}</a>
         </div>
 
-        <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-          {{ _policy_blurb|e }}
-        </p>
-
-        <div
-          class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-          role="group"
-          aria-label="Policy links"
-        >
-          <a
-            class="ff-btn ff-btn--sm ff-btn--pill"
-            href="{{ _terms_url|e }}"
-          >Terms</a>
-          <a
-            class="ff-btn ff-btn--sm ff-btn--pill"
-            href="{{ _privacy_url|e }}"
-          >Privacy</a>
-        </div>
-      </div>
-    </article>
-  </div>
-</section>
-
-<section
-  id="faq"
-  class="ff-section ff-faq"
-  data-ff-section="faq"
-  aria-labelledby="faqTitle"
-  aria-describedby="faqLead"
->
-  <div class="ff-container">
-    <header class="ff-sectionhead ff-sectionhead--flagship ff-sectionhead--compact">
-      <div class="ff-sectionhead__text ff-minw-0">
-        <p class="ff-kicker ff-m-0">FAQ</p>
-        <h2 class="ff-h2" id="faqTitle">Fast answers.</h2>
-        <p class="ff-lead ff-m-0" id="faqLead">The essentials, in plain language.</p>
-
-        <div
-          class="ff-row ff-row--between ff-wrap ff-ais ff-gap-2 ff-mt-2"
-          aria-label="FAQ help"
-        >
-          <p class="ff-help ff-muted ff-m-0">Need help?</p>
-          <a
-            class="ff-link ff-help"
-            href="mailto:{{ _email|e }}"
-          >{{ _email|e }}</a>
-        </div>
-
-        <ul
-          class="ff-inlineMeta ff-mt-2"
-          role="list"
-          aria-label="FAQ trust notes"
-        >
-          <li class="ff-inlineMeta__item">Secure payments</li>
-          <li class="ff-inlineMeta__item">Email receipts</li>
-        </ul>
+        <p class="ff-help ff-muted ff-mt-2 ff-mb-0">{{ _policy_blurb|e }}</p>
       </div>
 
-      <nav
-        class="ff-sectionhead__actions"
-        aria-label="FAQ actions"
-        role="group"
-      >
-        <a
-          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-        >Donate</a>
-        <button
-          type="button"
-          class="ff-btn ff-btn--sm ff-btn--pill"
-          data-ff-share=""
-        >Share</button>
-      </nav>
-    </header>
-
-    <article
-      class="ff-card ff-glass ff-pad ff-mt-3"
-      aria-label="Frequently asked questions"
-    >
-      <div class="ff-card ff-glass ff-faqCard" data-ff-faq-card="">
-        <div
-          class="ff-stack ff-gap-0 ff-faqList ff-faqList--compact"
-          role="list"
-        >
-          <details
-            class="ff-disclosure ff-disclosure--flagship ff-faqItem"
-            role="listitem"
-          >
-            <summary class="ff-disclosure__sum">
-              <strong class="ff-help">Do I need an account?</strong
-              ><span class="ff-help ff-muted">No</span>
-            </summary>
-            <div class="ff-disclosure__panel">
-              <p class="ff-help ff-muted ff-m-0">
-                No account needed. Donate and receive your receipt by email.
-              </p>
-            </div>
+      <!-- FAQ Section -->
+      <div class="ff-card ff-glass ff-pad ff-mt-3" aria-labelledby="faqTitle">
+        <h3 class="ff-h3">Frequently Asked Questions</h3>
+        <div class="ff-stack ff-gap-0 ff-faqList ff-faqList--compact" role="list">
+          <details class="ff-disclosure ff-disclosure--flagship ff-faqItem" role="listitem">
+            <summary class="ff-disclosure__sum"><strong class="ff-help">Do I need an account?</strong><span class="ff-help ff-muted">No</span></summary>
+            <div class="ff-disclosure__panel"><p class="ff-help ff-muted ff-m-0">No account needed. Donate and receive your receipt by email.</p></div>
           </details>
 
-          <details
-            class="ff-disclosure ff-disclosure--flagship ff-faqItem"
-            role="listitem"
-          >
-            <summary class="ff-disclosure__sum">
-              <strong class="ff-help">Is checkout secure?</strong
-              ><span class="ff-help ff-muted">Yes</span>
-            </summary>
-            <div class="ff-disclosure__panel">
-              <p class="ff-help ff-muted ff-m-0">
-                Payments run through Stripe and PayPal; card details aren’t
-                stored on this page.
-              </p>
-            </div>
+          <details class="ff-disclosure ff-disclosure--flagship ff-faqItem" role="listitem">
+            <summary class="ff-disclosure__sum"><strong class="ff-help">Is checkout secure?</strong><span class="ff-help ff-muted">Yes</span></summary>
+            <div class="ff-disclosure__panel"><p class="ff-help ff-muted ff-m-0">Payments run through Stripe and PayPal; card details aren’t stored on this page.</p></div>
           </details>
 
-          <details
-            class="ff-disclosure ff-disclosure--flagship ff-faqItem"
-            role="listitem"
-          >
-            <summary class="ff-disclosure__sum">
-              <strong class="ff-help">Where does the money go?</strong
-              ><span class="ff-help ff-muted">Program costs</span>
-            </summary>
-            <div class="ff-disclosure__panel">
-              <p class="ff-help ff-muted ff-m-0">
-                {{ _proof_blurb|e }}
-              </p>
-            </div>
+          <details class="ff-disclosure ff-disclosure--flagship ff-faqItem" role="listitem">
+            <summary class="ff-disclosure__sum"><strong class="ff-help">Where does the money go?</strong><span class="ff-help ff-muted">Program costs</span></summary>
+            <div class="ff-disclosure__panel"><p class="ff-help ff-muted ff-m-0">{{ _proof_blurb|e }}</p></div>
           </details>
 
-          <details
-            class="ff-disclosure ff-disclosure--flagship ff-faqItem"
-            role="listitem"
-          >
-            <summary class="ff-disclosure__sum">
-              <strong class="ff-help">Refunds &amp; disputes</strong
-              ><span class="ff-help ff-muted">Policy</span>
-            </summary>
-            <div class="ff-disclosure__panel">
-              <p class="ff-help ff-muted ff-m-0">
-                {{ _policy_blurb|e }}
-              </p>
-            </div>
+          <details class="ff-disclosure ff-disclosure--flagship ff-faqItem" role="listitem">
+            <summary class="ff-disclosure__sum"><strong class="ff-help">Refunds &amp; disputes</strong><span class="ff-help ff-muted">Policy</span></summary>
+            <div class="ff-disclosure__panel"><p class="ff-help ff-muted ff-m-0">{{ _policy_blurb|e }}</p></div>
           </details>
 
-          <details
-            class="ff-disclosure ff-disclosure--flagship ff-faqItem"
-            role="listitem"
-          >
-            <summary class="ff-disclosure__sum">
-              <strong class="ff-help"
-                >Can my organization get a page like this?</strong
-              ><span class="ff-help ff-muted">Yes</span>
-            </summary>
+          <details class="ff-disclosure ff-disclosure--flagship ff-faqItem" role="listitem">
+            <summary class="ff-disclosure__sum"><strong class="ff-help">Can my organization get a page like this?</strong><span class="ff-help ff-muted">Yes</span></summary>
             <div class="ff-disclosure__panel">
               <div class="ff-stack ff-gap-2">
-                <p class="ff-help ff-muted ff-m-0">
-                  Yes — a branded page can be created with your logo, colors,
-                  goal, and sponsor tiers. One clean link for texts and QR
-                  codes.
-                </p>
+                <p class="ff-help ff-muted ff-m-0">Yes — a branded page can be created with your logo, colors, goal, and sponsor tiers. One clean link for texts and QR codes.</p>
 
-                <div
-                  class="ff-row ff-wrap ff-gap-2"
-                  role="group"
-                  aria-label="Organization onboarding actions"
-                >
+                <div class="ff-row ff-wrap ff-gap-2" role="group" aria-label="Organization onboarding actions">
                   {% if not _whitelabel %}
-                  <a
-                    class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                    href="{{ _ff_create|e }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >Start a page</a>
+                  <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" href="{{ _ff_create|e }}" target="_blank" rel="noopener noreferrer">Start a page</a>
                   {% endif %}
-                  <a
-                    class="ff-btn ff-btn--sm ff-btn--pill"
-                    href="mailto:{{ _email|e }}?subject={{ ('FutureFunded onboarding — create a team page'|urlencode) }}"
-                  >Email onboarding</a>
+                  <a class="ff-btn ff-btn--sm ff-btn--pill" href="mailto:{{ _email|e }}?subject={{ ('FutureFunded onboarding — create a team page'|urlencode) }}">Email onboarding</a>
                 </div>
               </div>
             </div>
@@ -2165,108 +1363,51 @@ true
   </div>
 </section>
 
-</main>
+    </main>
 
-<footer
-  id="footer"
-  class="ff-footer"
-  data-ff-footer=""
-  role="contentinfo"
->
+    <!-- ===================== FOOTER ===================== -->
+<footer id="footer" class="ff-footer" data-ff-footer="" role="contentinfo">
   <div class="ff-container">
-    <div
-      class="ff-footerTray ff-glass ff-surface ff-footerTray--compact"
-    >
-      <p
-        class="ff-help ff-muted ff-m-0 ff-footerTrust"
-        data-ff-footer-trust=""
-      >
-        Secure checkout • Email receipt • Fast confirmation
-      </p>
+    <div class="ff-footerTray ff-glass ff-surface ff-footerTray--compact">
+      <!-- Footer Trust Message -->
+      <p class="ff-help ff-muted ff-m-0 ff-footerTrust" data-ff-footer-trust="">Secure checkout • Email receipt • Fast confirmation</p>
 
-      <div
-        class="ff-footer__grid ff-footerGrid--tight ff-footerGrid--flagship ff-footerGrid--compact"
-      >
-        <section
-          class="ff-footerBrand--flagship ff-footerBrand--compact"
-          aria-label="Organization info"
-        >
+      <!-- Footer Content -->
+      <div class="ff-footer__grid ff-footerGrid--tight ff-footerGrid--flagship ff-footerGrid--compact">
+        <!-- Organization Info -->
+        <section class="ff-footerBrand--flagship ff-footerBrand--compact" aria-label="Organization info">
           <header class="ff-brand">
-            <img
-              src="{{ _org_logo|e }}"
-              width="32"
-              height="32"
-              loading="lazy"
-              decoding="async"
-              alt="{{ _org_name|e }} logo"
-            />
+            <img src="{{ _org_logo|e }}" width="32" height="32" loading="lazy" decoding="async" alt="{{ _org_name|e }} logo"/>
             <div class="ff-minw-0">
               <div class="ff-brand__title">{{ _org_name }}</div>
-              <p
-                class="ff-brand__sub ff-m-0"
-              >{{ _campaign_name }} • {{ _location }}</p>
+              <p class="ff-brand__sub ff-m-0">{{ _campaign_name }} • {{ _location }}</p>
             </div>
           </header>
 
-          <p
-            class="ff-help ff-muted ff-mt-2 ff-mb-0"
-            aria-label="Contact email"
-          >
-            Questions?
-            <a
-              class="ff-footer__link"
-              href="mailto:{{ _email|e }}"
-            >{{ _email|e }}</a>
+          <!-- Contact Email & Actions -->
+          <p class="ff-help ff-muted ff-mt-2 ff-mb-0" aria-label="Contact email">
+            Questions? <a class="ff-footer__link" href="mailto:{{ _email|e }}">{{ _email|e }}</a>
           </p>
 
-          <div
-            class="ff-row ff-wrap ff-gap-2 ff-mt-2"
-            role="group"
-            aria-label="Footer actions"
-          >
-            <a
-              class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-              data-ff-open-checkout=""
-              href="#checkout"
-              aria-controls="checkout"
-            >Donate</a>
-            <button
-              type="button"
-              class="ff-btn ff-btn--sm ff-btn--pill"
-              data-ff-share=""
-            >Share</button>
-            <a
-              class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
-              data-ff-open-sponsor=""
-              href="#sponsor-interest"
-              aria-controls="sponsor-interest"
-            >Sponsor</a>
+          <!-- Donate, Share, and Sponsor Buttons -->
+          <div class="ff-row ff-wrap ff-gap-2 ff-mt-2" role="group" aria-label="Footer actions">
+            <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
+            <button type="button" class="ff-btn ff-btn--sm ff-btn--pill" data-ff-share="">Share</button>
+            <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" data-ff-open-sponsor="" href="#sponsor-interest" aria-controls="sponsor-interest">Sponsor</a>
           </div>
 
+          <!-- Platform Identity -->
           {% if not _whitelabel %}
-          <p
-            class="ff-help ff-muted ff-mt-2 ff-mb-0"
-            aria-label="Platform identity"
-          >
-            Powered by
-            <a
-              class="ff-footer__link"
-              href="{{ _ff_home|default('https://getfuturefunded.com', true)|e }}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >FutureFunded</a>
+          <p class="ff-help ff-muted ff-mt-2 ff-mb-0" aria-label="Platform identity">
+            Powered by <a class="ff-footer__link" href="{{ _ff_home|default('https://getfuturefunded.com', true)|e }}" target="_blank" rel="noopener noreferrer">FutureFunded</a>
           </p>
           {% endif %}
         </section>
 
-        <nav
-          class="ff-footerNav--compact"
-          aria-label="Footer links"
-        >
-          <ul
-            class="ff-footer__linkgrid ff-footer__linkgrid--compact"
-            role="list"
-          >
+        <!-- Footer Navigation -->
+        <nav class="ff-footerNav--compact" aria-label="Footer links">
+          <!-- Essential Navigation Links -->
+          <ul class="ff-footer__linkgrid ff-footer__linkgrid--compact" role="list">
             <li><a class="ff-footer__link" href="#progress">Progress</a></li>
             <li><a class="ff-footer__link" href="#impact">Impact</a></li>
             <li><a class="ff-footer__link" href="#teams">Teams</a></li>
@@ -2274,75 +1415,59 @@ true
             <li><a class="ff-footer__link" href="#faq">FAQ</a></li>
           </ul>
 
-          <div
-            class="ff-row ff-wrap ff-gap-2 ff-mt-2"
-            role="group"
-            aria-label="Legal links"
-          >
+          <!-- Legal Links -->
+          <div class="ff-row ff-wrap ff-gap-2 ff-mt-2" role="group" aria-label="Legal links">
             <a class="ff-footer__link" href="{{ _terms_url|e }}">Terms</a>
             <a class="ff-footer__link" href="{{ _privacy_url|e }}">Privacy</a>
             <a class="ff-footer__link" href="#content">Top</a>
           </div>
 
-          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-            © {{ _year }} {{ _org_name }}.
-          </p>
+          <!-- Footer Copyright -->
+          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">© {{ _year }} {{ _org_name }}.</p>
         </nav>
       </div>
     </div>
   </div>
-  </footer>
-  
-  <a
-  class="ff-backtotop ff-backtotop--flagship"
-  data-ff-backtotop=""
-  href="#home"
-  aria-label="Back to top"
->
+</footer>
+
+    <!-- ===================== BACK TO TOP BUTTON ===================== -->
+<a class="ff-backtotop ff-backtotop--flagship" data-ff-backtotop="" href="#home" aria-label="Back to top">
   <span class="ff-backtotop__icon" aria-hidden="true">↑</span>
   <span class="ff-backtotop__text">Top</span>
 </a>
 
-<nav
-  class="ff-tabs ff-tabs--flagship"
-  data-ff-tabs=""
-  aria-label="Quick navigation"
->
+<!-- ===================== QUICK NAVIGATION TABS ===================== -->
+<nav class="ff-tabs ff-tabs--flagship" data-ff-tabs="" aria-label="Quick navigation">
   <div class="ff-tabs__scroller ff-tabs__scroller--flagship">
-    <ul
-      class="ff-tabs__list ff-tabs__list--flagship"
-      role="list"
-      aria-label="Section shortcuts"
-    >
+    <ul class="ff-tabs__list ff-tabs__list--flagship" role="list" aria-label="Section shortcuts">
       <li class="ff-tabs__item">
-        <a
-          class="ff-tab ff-tab--cta ff-tab--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-          aria-label="Donate (opens checkout)"
-          aria-haspopup="dialog"
-        >Donate</a>
+        <a class="ff-tab ff-tab--cta ff-tab--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout" aria-label="Donate (opens checkout)" aria-haspopup="dialog">
+          Donate
+        </a>
       </li>
-
-      <li class="ff-tabs__item"><a class="ff-tab ff-tab--pill" href="#progress">Progress</a></li>
-      <li class="ff-tabs__item"><a class="ff-tab ff-tab--pill" href="#impact">Impact</a></li>
-      <li class="ff-tabs__item"><a class="ff-tab ff-tab--pill" href="#teams">Teams</a></li>
-      <li class="ff-tabs__item"><a class="ff-tab ff-tab--pill" href="#sponsors">Sponsors</a></li>
-      <li class="ff-tabs__item"><a class="ff-tab ff-tab--pill" href="#faq">FAQ</a></li>
-
       <li class="ff-tabs__item">
-        <button
-          type="button"
-          class="ff-tab ff-tab--pill"
-          data-ff-share=""
-          aria-label="Share this fundraiser"
-        >Share</button>
+        <a class="ff-tab ff-tab--pill" href="#progress">Progress</a>
+      </li>
+      <li class="ff-tabs__item">
+        <a class="ff-tab ff-tab--pill" href="#impact">Impact</a>
+      </li>
+      <li class="ff-tabs__item">
+        <a class="ff-tab ff-tab--pill" href="#teams">Teams</a>
+      </li>
+      <li class="ff-tabs__item">
+        <a class="ff-tab ff-tab--pill" href="#sponsors">Sponsors</a>
+      </li>
+      <li class="ff-tabs__item">
+        <a class="ff-tab ff-tab--pill" href="#faq">FAQ</a>
+      </li>
+      <li class="ff-tabs__item">
+        <button type="button" class="ff-tab ff-tab--pill" data-ff-share="" aria-label="Share this fundraiser">Share</button>
       </li>
     </ul>
   </div>
 </nav>
 
+<!-- ===================== CHECKOUT SHEET ===================== -->
 <section
   id="checkout"
   class="ff-sheet ff-sheet--checkout ff-sheet--flagship"
@@ -2352,6 +1477,16 @@ true
   aria-hidden="true"
   hidden
 >
+  <!-- ✅ Backdrop MUST be a direct child of #checkout (sibling of panel) -->
+  <a
+    class="ff-sheet__backdrop ff-sheet__backdrop--flagship"
+    data-ff-close-checkout=""
+    href="#home"
+    aria-hidden="true"
+    tabindex="-1"
+  ></a>
+
+  <!-- ✅ Panel is also a direct child -->
   <div
     class="ff-sheet__panel ff-sheet__panel--flagship"
     role="dialog"
@@ -2360,108 +1495,47 @@ true
     aria-describedby="checkoutDesc"
     tabindex="-1"
   >
-    <div
-      class="ff-sheet__viewport ff-sheet__viewport--flagship"
-      data-ff-checkout-viewport=""
-    >
-      <div
-        class="ff-card ff-glass ff-pad ff-checkoutShell ff-checkoutShell--flagship"
-        role="document"
-      >
-        <!-- ================= HEADER ================ -->
+    <div class="ff-sheet__viewport ff-sheet__viewport--flagship" data-ff-checkout-viewport="">
+      <div class="ff-card ff-glass ff-pad ff-checkoutShell ff-checkoutShell--flagship" role="document">
+
+        <!-- Header: Secure Checkout -->
         <header class="ff-sheet__header">
           <div class="ff-checkoutHead ff-checkoutHead--flagship">
             <div class="ff-row ff-row--between ff-ais ff-gap-2 ff-wrap">
               <div class="ff-minw-0">
                 <p class="ff-kicker ff-m-0">Secure checkout</p>
-                <h2 class="ff-h2 ff-mt-1" id="checkoutTitle">
-                  Complete your donation
-                </h2>
-                <p
-                  class="ff-help ff-muted ff-mt-1"
-                  id="checkoutDesc"
-                >Encrypted • Confirmation by email</p>
+                <h2 class="ff-h2 ff-mt-1" id="checkoutTitle">Complete your donation</h2>
+                <p class="ff-help ff-muted ff-mt-1" id="checkoutDesc">Encrypted • Confirmation by email</p>
 
-                <p
-                  class="ff-help ff-muted ff-mt-2 ff-mb-0"
-                  aria-label="Donation destination"
-                >
+                <p class="ff-help ff-muted ff-mt-2 ff-mb-0" aria-label="Donation destination">
                   Supporting <strong>{{ _org_name|e }}</strong> — {{ _campaign_name|e }}.
                 </p>
 
-                <div
-                  class="ff-row ff-ais ff-wrap ff-gap-2 ff-mt-2"
-                  role="list"
-                  aria-label="Checkout highlights"
-                >
+                <div class="ff-row ff-ais ff-wrap ff-gap-2 ff-mt-2" role="list" aria-label="Checkout highlights">
                   <span class="ff-chip" role="listitem">No account needed</span>
-                  <span class="ff-chip" role="listitem"
-                    >Apple&nbsp;Pay / Google&nbsp;Pay (if available)</span
-                  >
+                  <span class="ff-chip" role="listitem">Apple&nbsp;Pay / Google&nbsp;Pay (if available)</span>
                   <span class="ff-chip" role="listitem">Email receipt</span>
                 </div>
               </div>
 
-              <!-- Deterministic close control -->
-              <button
-                type="button"
-                class="ff-iconbtn ff-iconbtn--flagship"
-                data-ff-close-checkout=""
-                aria-label="Close checkout"
-              >
-                ✕
-              </button>
-
-              <!-- :target fallback (kept for robustness; not focusable) -->
-              <a
-                class="ff-sr"
-                href="#home"
-                aria-hidden="true"
-                tabindex="-1"
-                data-ff-close-checkout=""
-              >Close</a>
+              <button type="button" class="ff-iconbtn" data-ff-close-checkout="" aria-label="Close checkout">✕</button>
+              <a class="ff-sr" href="#home" aria-hidden="true" tabindex="-1" data-ff-close-checkout="">Close</a>
             </div>
           </div>
         </header>
 
-        <!-- ================= CONTENT ================ -->
-        <div
-          class="ff-sheet__content"
-          data-ff-checkout-content=""
-        >
-          <div
-            class="ff-sheet__scroll ff-sheet__scroll--flagship"
-            data-ff-checkout-scroll=""
-            tabindex="0"
-          >
-            <div
-              class="ff-checkoutBody ff-checkoutBody--flagship"
-              data-ff-checkout-stage="form"
-            >
-              <form
-                id="donationForm"
-                class="ff-stack"
-                data-ff-donate-form=""
-                data-ff-id="donationForm"
-                novalidate
-              >
-                <input
-                  name="team_id"
-                  type="hidden"
-                  value="default"
-                  data-ff-team-id=""
-                />
-                <input
-                  name="currency"
-                  type="hidden"
-                  value="{{ _currency|e }}"
-                />
+        <!-- Checkout Content -->
+        <div class="ff-sheet__content" data-ff-checkout-content="">
+          <div class="ff-sheet__scroll ff-sheet__scroll--flagship" data-ff-checkout-scroll="" tabindex="0">
+            <div class="ff-checkoutBody ff-checkoutBody--flagship" data-ff-checkout-stage="form">
 
-                <!-- ======= AMOUNT ======= -->
+              <!-- Donation Amount Form -->
+              <form id="donationForm" class="ff-stack" data-ff-donate-form="" data-ff-id="donationForm" novalidate>
+                <input name="team_id" type="hidden" value="default" data-ff-team-id=""/>
+                <input name="currency" type="hidden" value="{{ _currency|e }}"/>
+
                 <fieldset class="ff-stack" aria-labelledby="donationAmountLegend">
-                  <legend class="ff-label" id="donationAmountLegend">
-                    Donation amount
-                  </legend>
+                  <legend class="ff-label" id="donationAmountLegend">Donation amount</legend>
 
                   <div class="ff-row ff-ais ff-gap-2">
                     <input
@@ -2480,65 +1554,29 @@ true
                       aria-label="Donation amount in dollars"
                       aria-describedby="donationAmountHelp checkoutErrorText"
                     />
-                    <span
-                      class="ff-pill ff-pill--soft"
-                      aria-hidden="true"
-                    >{{ _currency|default('USD', true)|e }}</span>
+                    <span class="ff-pill ff-pill--soft" aria-hidden="true">{{ _currency|default('USD', true)|e }}</span>
                   </div>
 
-                  <p
-                    class="ff-help ff-muted ff-mt-2"
-                    id="donationAmountHelp"
-                  >
-                    Tap a preset, then adjust if needed.
-                  </p>
+                  <p class="ff-help ff-muted ff-mt-2" id="donationAmountHelp">Tap a preset, then adjust if needed.</p>
 
-                  <div
-                    class="ff-grid ff-grid--2 ff-mt-2"
-                    role="group"
-                    aria-label="Preset donation amounts"
-                  >
-                    <button
-                      type="button"
-                      class="ff-chip ff-chip--pill"
-                      data-ff-amount="25"
-                    >$25</button>
-                    <button
-                      type="button"
-                      class="ff-chip ff-chip--pill"
-                      data-ff-amount="50"
-                    >$50</button>
-                    <button
-                      type="button"
-                      class="ff-chip ff-chip--pill"
-                      data-ff-amount="100"
-                    >$100</button>
-                    <button
-                      type="button"
-                      class="ff-chip ff-chip--pill"
-                      data-ff-amount="250"
-                    >$250</button>
+                  <div class="ff-grid ff-grid--2 ff-mt-2" role="group" aria-label="Preset donation amounts">
+                    <button type="button" class="ff-chip ff-chip--pill" data-ff-amount="25">$25</button>
+                    <button type="button" class="ff-chip ff-chip--pill" data-ff-amount="50">$50</button>
+                    <button type="button" class="ff-chip ff-chip--pill" data-ff-amount="100">$100</button>
+                    <button type="button" class="ff-chip ff-chip--pill" data-ff-amount="250">$250</button>
                   </div>
                 </fieldset>
 
+                <!-- Donor Details -->
                 <hr aria-hidden="true" class="ff-divider ff-mt-3" />
 
-                <!-- ======= DONOR ======= -->
                 <fieldset class="ff-stack" aria-labelledby="donorDetailsLegend">
-                  <legend class="ff-label" id="donorDetailsLegend">
-                    Your details
-                  </legend>
+                  <legend class="ff-label" id="donorDetailsLegend">Your details</legend>
 
                   <div class="ff-grid ff-grid--2 ff-gap-2">
                     <label class="ff-stack">
                       <span class="ff-label">Name (optional)</span>
-                      <input
-                        name="name"
-                        class="ff-input"
-                        autocomplete="name"
-                        data-ff-donor-name=""
-                        type="text"
-                      />
+                      <input name="name" class="ff-input" autocomplete="name" data-ff-donor-name="" type="text"/>
                     </label>
 
                     <label class="ff-stack">
@@ -2553,66 +1591,41 @@ true
                         aria-describedby="donorEmailHelp checkoutErrorText"
                         type="email"
                       />
-                      <span
-                        id="donorEmailHelp"
-                        class="ff-help ff-muted"
-                      >Used only for your receipt and confirmation.</span>
+                      <span id="donorEmailHelp" class="ff-help ff-muted">Used only for your receipt and confirmation.</span>
                     </label>
                   </div>
 
                   <details class="ff-disclosure ff-disclosure--flagship ff-mt-2">
-                    <summary class="ff-disclosure__sum">
-                      <strong class="ff-help">Add a message</strong>
-                      <span class="ff-help ff-muted">Optional</span>
-                    </summary>
+                    <summary class="ff-disclosure__sum"><strong class="ff-help">Add a message</strong><span class="ff-help ff-muted">Optional</span></summary>
                     <div class="ff-disclosure__panel">
                       <label class="ff-stack">
                         <span class="ff-label">Message (optional)</span>
-                        <textarea
-                          name="message"
-                          rows="3"
-                          class="ff-input"
-                          data-ff-message=""
-                          placeholder="A note to the team, coaches, or families…"
-                        ></textarea>
+                        <textarea name="message" rows="3" class="ff-input" data-ff-message="" placeholder="A note to the team, coaches, or families…"></textarea>
                       </label>
                     </div>
                   </details>
                 </fieldset>
 
-                <!-- ======= STATUS / ERROR ======= -->
-                <div
-                  id="checkoutErrorText"
-                  class="ff-alert ff-alert--error ff-mt-3"
-                  data-ff-checkout-error=""
-                  role="alert"
-                  hidden
-                >
+                <!-- Error and Status Messages -->
+                <div id="checkoutErrorText" class="ff-alert ff-alert--error ff-mt-3" data-ff-checkout-error="" role="alert" hidden>
                   Please check your amount and email, then try again.
                 </div>
 
-                <div
-                  class="ff-alert ff-alert--info ff-mt-2"
-                  data-ff-checkout-status=""
-                  role="status"
-                  aria-live="polite"
-                  hidden
-                >
+                <div class="ff-alert ff-alert--info ff-mt-2" data-ff-checkout-status="" role="status" aria-live="polite" hidden>
                   Processing your donation…
                 </div>
 
+                <!-- Payment Methods -->
                 <hr aria-hidden="true" class="ff-divider ff-mt-3" />
 
-                <!-- ======= PAYMENTS ======= -->
                 <fieldset class="ff-stack" aria-labelledby="cardPayLegend">
                   <legend class="ff-sr" id="cardPayLegend">Payment methods</legend>
 
+                  <!-- Stripe -->
                   <div class="ff-row ff-row--between ff-ais">
                     <div class="ff-minw-0">
                       <p class="ff-kicker ff-m-0">Pay with card</p>
-                      <p class="ff-help ff-muted ff-mt-1">
-                        Cards + Apple&nbsp;Pay / Google&nbsp;Pay when supported
-                      </p>
+                      <p class="ff-help ff-muted ff-mt-1">Cards + Apple&nbsp;Pay / Google&nbsp;Pay when supported</p>
                     </div>
                     <span class="ff-pill ff-pill--soft">Stripe</span>
                   </div>
@@ -2623,31 +1636,17 @@ true
                     data-ff-payment-element=""
                     data-ff-stripe-mount=""
                   >
-                    <div
-                      class="ff-skeleton ff-skeleton--payment"
-                      data-ff-stripe-skeleton=""
-                      aria-hidden="true"
-                    ></div>
+                    <div class="ff-skeleton ff-skeleton--payment" data-ff-stripe-skeleton="" aria-hidden="true"></div>
                   </div>
 
-                  <p
-                    class="ff-help ff-muted ff-mt-2 ff-mb-0"
-                    data-ff-stripe-msg=""
-                    aria-live="polite"
-                  ></p>
-                  <div
-                    class="ff-alert ff-alert--error ff-mt-2"
-                    data-ff-stripe-error=""
-                    role="alert"
-                    hidden
-                  ></div>
+                  <p class="ff-help ff-muted ff-mt-2 ff-mb-0" data-ff-stripe-msg="" aria-live="polite"></p>
+                  <div class="ff-alert ff-alert--error ff-mt-2" data-ff-stripe-error="" role="alert" hidden></div>
 
+                  <!-- PayPal -->
                   <div class="ff-row ff-row--between ff-ais ff-mt-3">
                     <div class="ff-minw-0">
                       <p class="ff-kicker ff-m-0">Or PayPal</p>
-                      <p class="ff-help ff-muted ff-mt-1">
-                        Loads after you open checkout and enter an amount
-                      </p>
+                      <p class="ff-help ff-muted ff-mt-1">Loads after you open checkout and enter an amount</p>
                     </div>
                     <span class="ff-pill ff-pill--soft">PayPal</span>
                   </div>
@@ -2657,71 +1656,37 @@ true
                     class="ff-paypalMount ff-paypalMount--flagship ff-mt-2"
                     data-ff-paypal-mount=""
                   >
-                    <div
-                      class="ff-skeleton ff-skeleton--payment"
-                      data-ff-paypal-skeleton=""
-                      aria-hidden="true"
-                    ></div>
+                    <div class="ff-skeleton ff-skeleton--payment" data-ff-paypal-skeleton="" aria-hidden="true"></div>
                   </div>
 
-                  <p
-                    class="ff-help ff-muted ff-mt-2 ff-mb-0"
-                    data-ff-paypal-msg=""
-                    aria-live="polite"
-                  ></p>
-                  <div
-                    class="ff-alert ff-alert--error ff-mt-2"
-                    data-ff-paypal-error=""
-                    role="alert"
-                    hidden
-                  ></div>
+                  <p class="ff-help ff-muted ff-mt-2 ff-mb-0" data-ff-paypal-msg="" aria-live="polite"></p>
+                  <div class="ff-alert ff-alert--error ff-mt-2" data-ff-paypal-error="" role="alert" hidden></div>
 
-                  <p class="ff-help ff-muted ff-mt-2">
-                    Need help? Email <span class="ff-nowrap">{{ _email|e }}</span>.
-                  </p>
+                  <p class="ff-help ff-muted ff-mt-2 ff-mb-0">Need help? Email <span class="ff-nowrap">{{ _email|e }}</span>.</p>
                 </fieldset>
 
+                <!-- Refunds and Disputes -->
                 <hr aria-hidden="true" class="ff-divider ff-mt-3" />
 
                 <details class="ff-disclosure ff-disclosure--flagship">
-                  <summary class="ff-disclosure__sum">
-                    <strong class="ff-help">Refunds &amp; disputes</strong>
-                    <span class="ff-help ff-muted">Policy</span>
-                  </summary>
-                  <div class="ff-disclosure__panel">
-                    <p class="ff-help ff-muted">{{ _policy_blurb|e }}</p>
-                  </div>
+                  <summary class="ff-disclosure__sum"><strong class="ff-help">Refunds &amp; disputes</strong><span class="ff-help ff-muted">Policy</span></summary>
+                  <div class="ff-disclosure__panel"><p class="ff-help ff-muted">{{ _policy_blurb|e }}</p></div>
                 </details>
               </form>
 
-              <!-- ======= FOOTER ACTIONS ======= -->
+              <!-- Checkout Footer -->
               <footer class="ff-sheet__footer ff-sheet__footer--sticky">
-                <div
-                  class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-                  role="group"
-                  aria-label="Checkout actions"
-                >
-                  <button
-                    type="submit"
-                    form="donationForm"
-                    class="ff-btn ff-btn--primary ff-btn--pill ff-w-100"
-                  >
-                    Continue to payment
-                  </button>
-                  <a
-                    class="ff-btn ff-btn--pill ff-w-100"
-                    data-ff-close-checkout=""
-                    href="#home"
-                  >Close</a>
+                <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Checkout actions">
+                  <button type="submit" form="donationForm" class="ff-btn ff-btn--primary ff-btn--pill ff-w-100">Continue to payment</button>
+                  <a class="ff-btn ff-btn--pill ff-w-100" data-ff-close-checkout="" href="#home">Close</a>
                 </div>
 
-                <p class="ff-help ff-muted ff-mt-2 ff-m-0">
-                  You’ll confirm inside Stripe or PayPal before any charge is submitted.
-                </p>
+                <p class="ff-help ff-muted ff-mt-2 ff-m-0">You’ll confirm inside Stripe or PayPal before any charge is submitted.</p>
               </footer>
+
             </div>
 
-            <!-- ======= SUCCESS ======= -->
+            <!-- Success Message -->
             <section
               class="ff-checkoutSuccess"
               data-ff-checkout-success=""
@@ -2732,228 +1697,84 @@ true
               hidden
             >
               <h3 class="ff-h2" id="ffSuccessTitle">Donation received</h3>
-              <p class="ff-help ff-muted" id="ffSuccessDesc">
-                Thank you — your confirmation and receipt will arrive by email shortly.
-              </p>
+              <p class="ff-help ff-muted" id="ffSuccessDesc">Thank you — your confirmation and receipt will arrive by email shortly.</p>
 
-              <div
-                class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-                role="group"
-                aria-label="Success actions"
-              >
-                <button
-                  type="button"
-                  class="ff-btn ff-btn--primary ff-btn--pill"
-                  data-ff-share=""
-                >Share</button>
-                <a
-                  class="ff-btn ff-btn--pill"
-                  data-ff-close-checkout=""
-                  href="#home"
-                >Done</a>
+              <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Success actions">
+                <button type="button" class="ff-btn ff-btn--primary ff-btn--pill" data-ff-share="">Share</button>
+                <a class="ff-btn ff-btn--pill" data-ff-close-checkout="" href="#home">Done</a>
               </div>
             </section>
+
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- BACKDROP (kept as <a> for :target close contract) -->
-  <a
-    class="ff-sheet__backdrop ff-sheet__backdrop--flagship"
-    data-ff-close-checkout=""
-    href="#home"
-    aria-hidden="true"
-    tabindex="-1"
-  ></a>
 </section>
 
-<section
-  id="sponsor-interest"
-  class="ff-modal ff-modal--compact ff-modal--flagship"
-  data-ff-sponsor-modal=""
-  data-open="false"
-  aria-labelledby="sponsorInterestTitle"
-  aria-describedby="sponsorInterestDesc sponsorInterestTrust"
-  aria-hidden="true"
-  hidden
->
-  <a
-    class="ff-modal__backdrop ff-modal__backdrop--flagship"
-    data-ff-close-sponsor=""
-    href="#home"
-    aria-hidden="true"
-    tabindex="-1"
-  ></a>
+    <!-- ===================== SPONSOR MODAL ===================== -->
+<section id="sponsor-interest" class="ff-modal ff-modal--compact ff-modal--flagship" data-ff-sponsor-modal="" data-open="false" aria-labelledby="sponsorInterestTitle" aria-describedby="sponsorInterestDesc sponsorInterestTrust" aria-hidden="true" hidden>
+  <a class="ff-modal__backdrop ff-modal__backdrop--flagship" data-ff-close-sponsor="" href="#home" aria-hidden="true" tabindex="-1"></a>
 
-  <div
-    class="ff-modal__panel ff-modal__panel--flagship"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="sponsorInterestTitle"
-    aria-describedby="sponsorInterestDesc sponsorInterestTrust"
-    tabindex="-1"
-  >
+  <div class="ff-modal__panel ff-modal__panel--flagship" role="dialog" aria-modal="true" aria-labelledby="sponsorInterestTitle" aria-describedby="sponsorInterestDesc sponsorInterestTrust" tabindex="-1">
     <header class="ff-modal__head ff-modal__head--flagship">
       <div class="ff-minw-0">
         <p class="ff-kicker ff-m-0">Sponsors</p>
-        <h2 class="ff-modal__title" id="sponsorInterestTitle">
-          Become a sponsor
-        </h2>
-        <p
-          class="ff-help ff-muted ff-mt-1"
-          id="sponsorInterestDesc"
-        >
-          Share a few details — we’ll follow up with options and next steps.
-        </p>
+        <h2 class="ff-modal__title" id="sponsorInterestTitle">Become a sponsor</h2>
+        <p class="ff-help ff-muted ff-mt-1" id="sponsorInterestDesc">Share a few details — we’ll follow up with options and next steps.</p>
       </div>
-      <button
-        type="button"
-        class="ff-iconbtn ff-iconbtn--flagship"
-        data-ff-close-sponsor=""
-        aria-label="Close"
-      >✕</button>
+      <button type="button" class="ff-iconbtn" data-ff-close-sponsor="" aria-label="Close">✕</button>
     </header>
 
     <div class="ff-modal__body ff-stack ff-mt-3">
-      <div
-        class="ff-callout ff-callout--flagship"
-        role="note"
-        aria-label="Sponsor note"
-      >
-        <p class="ff-help ff-m-0">
-          <strong>VIP sponsors</strong> may rotate in the spotlight during peak
-          traffic.
-        </p>
-        <p
-          class="ff-help ff-muted ff-mt-1"
-          id="sponsorInterestTrust"
-        >
-          Not a sponsor? Put “Create page” in your message and we’ll help you
-          onboard.
-        </p>
+      <div class="ff-callout ff-callout--flagship" role="note" aria-label="Sponsor note">
+        <p class="ff-help ff-m-0"><strong>VIP sponsors</strong> may rotate in the spotlight during peak traffic.</p>
+        <p class="ff-help ff-muted ff-mt-1" id="sponsorInterestTrust">Not a sponsor? Put “Create page” in your message and we’ll help you onboard.</p>
       </div>
 
-      <div
-        class="ff-stack"
-        role="group"
-        aria-label="Sponsor details"
-      >
+      <!-- Sponsor Inquiry Form -->
+      <div class="ff-stack" role="group" aria-label="Sponsor details">
         <label class="ff-stack">
           <span class="ff-label">Business / Name</span>
-          <input
-            type="text"
-            class="ff-input"
-            data-ff-sponsor-name=""
-            autocomplete="organization"
-            inputmode="text"
-            placeholder="Your business, family, or organization"
-          />
+          <input type="text" class="ff-input" data-ff-sponsor-name="" autocomplete="organization" inputmode="text" placeholder="Your business, family, or organization"/>
         </label>
 
         <label class="ff-stack">
           <span class="ff-label">Email</span>
-          <input
-            type="email"
-            class="ff-input"
-            data-ff-sponsor-email=""
-            autocomplete="email"
-            inputmode="email"
-            placeholder="Where should we send details?"
-            aria-describedby="sponsorEmailHelp"
-          />
-          <span
-            id="sponsorEmailHelp"
-            class="ff-help ff-muted"
-          >We’ll only use this to respond to your inquiry.</span>
+          <input type="email" class="ff-input" data-ff-sponsor-email="" autocomplete="email" inputmode="email" placeholder="Where should we send details?" aria-describedby="sponsorEmailHelp"/>
+          <span id="sponsorEmailHelp" class="ff-help ff-muted">We’ll only use this to respond to your inquiry.</span>
         </label>
 
         <label class="ff-stack">
           <span class="ff-label">Message</span>
-          <textarea
-            rows="4"
-            class="ff-input"
-            data-ff-sponsor-message=""
-            placeholder="Optional: website, preferred tier, budget range, or questions…"
-          ></textarea>
+          <textarea rows="4" class="ff-input" data-ff-sponsor-message="" placeholder="Optional: website, preferred tier, budget range, or questions…"></textarea>
         </label>
       </div>
 
-      <fieldset
-        class="ff-fieldset ff-mt-2"
-        aria-label="Preferred sponsorship tier"
-      >
+      <!-- Sponsor Tier Selection -->
+      <fieldset class="ff-fieldset ff-mt-2" aria-label="Preferred sponsorship tier">
         <legend class="ff-label">Preferred tier</legend>
 
-        <div
-          class="ff-grid ff-grid--2 ff-gap-2"
-          role="group"
-          aria-label="Sponsor tier options"
-        >
-          <button
-            type="button"
-            class="ff-chip ff-chip--pill"
-            data-ff-sponsor-tier="bronze"
-          >Bronze</button>
-          <button
-            type="button"
-            class="ff-chip ff-chip--pill"
-            data-ff-sponsor-tier="silver"
-          >Silver&nbsp;VIP</button>
-          <button
-            type="button"
-            class="ff-chip ff-chip--pill"
-            data-ff-sponsor-tier="gold"
-          >Gold</button>
-          <button
-            type="button"
-            class="ff-chip ff-chip--pill"
-            data-ff-sponsor-tier="custom"
-          >Custom</button>
+        <div class="ff-grid ff-grid--2 ff-gap-2" role="group" aria-label="Sponsor tier options">
+          <button type="button" class="ff-chip ff-chip--pill" data-ff-sponsor-tier="bronze">Bronze</button>
+          <button type="button" class="ff-chip ff-chip--pill" data-ff-sponsor-tier="silver">Silver&nbsp;VIP</button>
+          <button type="button" class="ff-chip ff-chip--pill" data-ff-sponsor-tier="gold">Gold</button>
+          <button type="button" class="ff-chip ff-chip--pill" data-ff-sponsor-tier="custom">Custom</button>
         </div>
       </fieldset>
 
-      <div
-        class="ff-alert ff-alert--error ff-mt-2"
-        data-ff-sponsor-error=""
-        role="alert"
-        hidden
-      >
-        Please check your name and email, then try again.
-      </div>
+      <!-- Error and Status Messages -->
+      <div class="ff-alert ff-alert--error ff-mt-2" data-ff-sponsor-error="" role="alert" hidden>Please check your name and email, then try again.</div>
 
-      <div
-        class="ff-alert ff-alert--info ff-mt-2"
-        data-ff-sponsor-status=""
-        role="status"
-        aria-live="polite"
-        hidden
-      >
-        Sending your message…
-      </div>
+      <div class="ff-alert ff-alert--info ff-mt-2" data-ff-sponsor-status="" role="status" aria-live="polite" hidden>Sending your message…</div>
 
+      <!-- Footer with Actions -->
       <footer class="ff-modal__foot--sticky ff-modal__foot--flagship">
-        <div
-          class="ff-row ff-row--between ff-ais ff-gap-2 ff-wrap"
-          role="group"
-          aria-label="Sponsor inquiry actions"
-        >
-          <p class="ff-help ff-muted ff-m-0">
-            We typically respond within&nbsp;24–48&nbsp;hours.
-          </p>
+        <div class="ff-row ff-row--between ff-ais ff-gap-2 ff-wrap" role="group" aria-label="Sponsor inquiry actions">
+          <p class="ff-help ff-muted ff-m-0">We typically respond within&nbsp;24–48&nbsp;hours.</p>
           <div class="ff-row ff-ais ff-gap-2">
-            <a
-              class="ff-btn ff-btn--pill"
-              data-ff-close-sponsor=""
-              href="#home"
-              aria-label="Cancel sponsor inquiry"
-            >Cancel</a>
-            <button
-              type="button"
-              class="ff-btn ff-btn--primary ff-btn--pill"
-              data-ff-sponsor-submit=""
-            >Send</button>
+            <a class="ff-btn ff-btn--pill" data-ff-close-sponsor="" href="#home" aria-label="Cancel sponsor inquiry">Cancel</a>
+            <button type="button" class="ff-btn ff-btn--primary ff-btn--pill" data-ff-sponsor-submit="">Send</button>
           </div>
         </div>
       </footer>
@@ -2961,210 +1782,92 @@ true
   </div>
 </section>
 
-<section
-  id="press-video"
-  class="ff-modal ff-modal--video ff-modal--flagship"
-  data-ff-video-modal=""
-  data-open="false"
-  aria-label="Video"
-  aria-hidden="true"
-  hidden
->
-  <a
-    class="ff-modal__backdrop ff-modal__backdrop--flagship"
-    data-ff-close-video=""
-    href="#home"
-    aria-hidden="true"
-    tabindex="-1"
-  ></a>
+    <!-- ===================== VIDEO MODAL ===================== -->
+<section id="press-video" class="ff-modal ff-modal--video ff-modal--flagship" data-ff-video-modal="" data-open="false" aria-label="Video" aria-hidden="true" hidden>
+  <a class="ff-modal__backdrop ff-modal__backdrop--flagship" data-ff-close-video="" href="#home" aria-hidden="true" tabindex="-1"></a>
 
-  <div
-    class="ff-modal__panel ff-modal__panel--flagship ff-modal__panel--video"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="ffVideoTitle"
-    tabindex="-1"
-  >
+  <div class="ff-modal__panel ff-modal__panel--flagship ff-modal__panel--video" role="dialog" aria-modal="true" aria-labelledby="ffVideoTitle" tabindex="-1">
     <header class="ff-modal__head ff-modal__head--flagship">
       <div class="ff-minw-0">
         <p class="ff-kicker ff-m-0">Video</p>
-        <h2
-          class="ff-modal__title"
-          id="ffVideoTitle"
-          data-ff-video-title=""
-        >
-          Watch
-        </h2>
-        <p class="ff-help ff-muted ff-mt-1">
-          Video loads only after you open this dialog.
-        </p>
+        <h2 class="ff-modal__title" id="ffVideoTitle" data-ff-video-title="">Watch</h2>
+        <p class="ff-help ff-muted ff-mt-1">Video loads only after you open this dialog.</p>
       </div>
-      <button
-        type="button"
-        class="ff-iconbtn ff-iconbtn--flagship"
-        data-ff-close-video=""
-        aria-label="Close"
-      >✕</button>
+      <button type="button" class="ff-iconbtn" data-ff-close-video="" aria-label="Close">✕</button>
     </header>
 
     <div class="ff-modal__body ff-mt-3">
+      <!-- Skeleton loader for video frame -->
       <div class="ff-videoFrame" data-ff-video-frame="">
-        <div
-          class="ff-skeleton ff-skeleton--video"
-          aria-hidden="true"
-        ></div>
+        <div class="ff-skeleton ff-skeleton--video" aria-hidden="true"></div>
       </div>
 
-      <div
-        class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-        role="group"
-        aria-label="Video actions"
-      >
-        <a
-          class="ff-btn ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-        >Donate</a>
-        <a
-          class="ff-btn ff-btn--pill"
-          data-ff-close-video=""
-          href="#home"
-        >Close</a>
+      <!-- Action buttons for the user -->
+      <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Video actions">
+        <a class="ff-btn ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
+        <a class="ff-btn ff-btn--pill" data-ff-close-video="" href="#home">Close</a>
       </div>
 
-      <p class="ff-sr" data-ff-video-sr>
-        Closing returns you to the page. The video only loads after you open
-        this dialog.
-      </p>
+      <!-- Screen reader text for the video modal -->
+      <p class="ff-sr" data-ff-video-sr>Closing returns you to the page. The video only loads after you open this dialog.</p>
     </div>
   </div>
 </section>
 
-<section
-  id="terms"
-  class="ff-modal ff-modal--compact ff-modal--flagship"
-  data-open="false"
-  aria-labelledby="termsTitle"
-  aria-hidden="true"
-  hidden
->
-  <a
-    class="ff-modal__backdrop ff-modal__backdrop--flagship"
-    href="#home"
-    aria-hidden="true"
-    tabindex="-1"
-  ></a>
+    <!-- ===================== TERMS MODAL ===================== -->
+<section id="terms" class="ff-modal ff-modal--compact ff-modal--flagship" data-open="false" aria-labelledby="termsTitle" aria-hidden="true" hidden>
+  <a class="ff-modal__backdrop ff-modal__backdrop--flagship" href="#home" aria-hidden="true" tabindex="-1"></a>
 
-  <div
-    class="ff-modal__panel ff-modal__panel--flagship"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="termsTitle"
-    tabindex="-1"
-  >
+  <div class="ff-modal__panel ff-modal__panel--flagship" role="dialog" aria-modal="true" aria-labelledby="termsTitle" tabindex="-1">
     <header class="ff-modal__head ff-modal__head--flagship">
       <div class="ff-minw-0">
         <p class="ff-kicker ff-m-0">Legal</p>
         <h2 class="ff-modal__title" id="termsTitle">Terms</h2>
-        <p class="ff-help ff-muted ff-mt-1">
-          Simple terms for donors, sponsors, and organizers.
-        </p>
+        <p class="ff-help ff-muted ff-mt-1">Simple terms for donors, sponsors, and organizers.</p>
       </div>
-      <a
-        href="#home"
-        class="ff-iconbtn ff-iconbtn--flagship"
-        aria-label="Close"
-      >✕</a>
+      <a href="#home" class="ff-iconbtn" aria-label="Close">✕</a>
     </header>
 
     <div class="ff-modal__body ff-stack ff-mt-3">
-      <p class="ff-help ff-muted ff-m-0">
-        Donations are processed through Stripe and/or PayPal. Receipts are
-        delivered by email. Campaign organizers are responsible for fulfillment,
-        communications, and dispute handling.
-      </p>
-      <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-        {{ _policy_blurb|e }}
-      </p>
+      <p class="ff-help ff-muted ff-m-0">Donations are processed through Stripe and/or PayPal. Receipts are delivered by email. Campaign organizers are responsible for fulfillment, communications, and dispute handling.</p>
+      <p class="ff-help ff-muted ff-mt-2 ff-mb-0">{{ _policy_blurb|e }}</p>
 
-      <div
-        class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-        role="group"
-      >
-        <a
-          class="ff-btn ff-btn--primary ff-btn--pill"
-          data-ff-open-checkout=""
-          href="#checkout"
-          aria-controls="checkout"
-        >Donate</a>
+      <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group">
+        <a class="ff-btn ff-btn--primary ff-btn--pill" data-ff-open-checkout="" href="#checkout" aria-controls="checkout">Donate</a>
         <a class="ff-btn ff-btn--pill" href="#home">Close</a>
       </div>
     </div>
   </div>
 </section>
 
-<section
-  id="privacy"
-  class="ff-modal ff-modal--compact ff-modal--flagship"
-  data-open="false"
-  aria-labelledby="privacyTitle"
-  aria-hidden="true"
-  hidden
->
-  <a
-    class="ff-modal__backdrop ff-modal__backdrop--flagship"
-    href="#home"
-    aria-hidden="true"
-    tabindex="-1"
-  ></a>
+    <!-- ===================== PRIVACY MODAL ===================== -->
+<section id="privacy" class="ff-modal ff-modal--compact ff-modal--flagship" data-open="false" aria-labelledby="privacyTitle" aria-hidden="true" hidden>
+  <a class="ff-modal__backdrop ff-modal__backdrop--flagship" href="#home" aria-hidden="true" tabindex="-1"></a>
 
-  <div
-    class="ff-modal__panel ff-modal__panel--flagship"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="privacyTitle"
-    tabindex="-1"
-  >
+  <div class="ff-modal__panel ff-modal__panel--flagship" role="dialog" aria-modal="true" aria-labelledby="privacyTitle" tabindex="-1">
     <header class="ff-modal__head ff-modal__head--flagship">
       <div class="ff-minw-0">
         <p class="ff-kicker ff-m-0">Legal</p>
         <h2 class="ff-modal__title" id="privacyTitle">Privacy</h2>
-        <p class="ff-help ff-muted ff-mt-1">
-          We collect the minimum needed to process payments and receipts.
-        </p>
+        <p class="ff-help ff-muted ff-mt-1">We collect the minimum needed to process payments and receipts.</p>
       </div>
-      <a
-        href="#home"
-        class="ff-iconbtn ff-iconbtn--flagship"
-        aria-label="Close"
-      >✕</a>
+      <a href="#home" class="ff-iconbtn" aria-label="Close">✕</a>
     </header>
 
     <div class="ff-modal__body ff-stack ff-mt-3">
-      <p class="ff-help ff-muted ff-m-0">
-        We use your email for receipts and confirmation. Payment details are
-        handled by Stripe/PayPal and are not stored on this page.
-      </p>
-      <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-        For questions or deletion requests, email
-        <a
-          class="ff-link"
-          href="mailto:{{ _email|e }}"
-        >{{ _email|e }}</a>.
-      </p>
+      <p class="ff-help ff-muted ff-m-0">We use your email for receipts and confirmation. Payment details are handled by Stripe/PayPal and are not stored on this page.</p>
+      <p class="ff-help ff-muted ff-mt-2 ff-mb-0">For questions or deletion requests, email <a class="ff-link" href="mailto:{{ _email|e }}">{{ _email|e }}</a>.</p>
 
-      <div
-        class="ff-row ff-wrap ff-gap-2 ff-mt-3"
-        role="group"
-      >
+      <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group">
         <a class="ff-btn ff-btn--pill" href="#home">Close</a>
       </div>
     </div>
   </div>
 </section>
 
-</div>
-</body>
+      <!-- Your page content goes here -->
 
-</html>
+  <div class="ff-burst" aria-hidden="true"></div> <!-- Burst Effect -->
+  </div> <!-- Closing the previous div, ensure it's correct -->
+</body> <!-- Close the body section -->
+</html> <!-- Close the HTML document -->

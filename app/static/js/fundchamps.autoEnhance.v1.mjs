@@ -26,10 +26,8 @@
 
   function preconnectStripe(){
     if(!CFG.features.preconnectStripe) return;
-    const have = !!document.querySelector('link[rel="preconnect"][href="https://js.stripe.com"]');
     if(have) return;
     const l = document.createElement("link");
-    l.rel="preconnect"; l.href="https://js.stripe.com"; l.crossOrigin="anonymous";
     document.head.appendChild(l);
   }
 

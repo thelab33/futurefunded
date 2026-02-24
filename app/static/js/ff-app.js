@@ -1,13 +1,12 @@
 /* ============================================================================
   FutureFunded • Flagship — ff-app.js (FULL DROP-IN • Hook-safe • CSP-safe)
   File: app/static/js/ff-app.js
-  Version: 26.2.1-js.0
+  Version: 26.2.1-js.1
 
-  Key upgrades vs 26.2.0-js.0:
-  - PERF P0: NEVER loads Stripe/PayPal on home automatically (only when checkout is opened + amount > 0)
-  - P0: Amount input now triggers Stripe/PayPal prep live while checkout is open
-  - Fix: Stripe submit button de-dupe (prior object-key trick could collapse incorrectly)
-  - Safety: Removes trailing-arg commas + hardens script loader reuse checks
+  Contracts:
+  - Hook-safe: never assumes optional nodes exist
+  - CSP-safe: nonce-aware dynamic script injection support
+  - Payments lazy-load: Stripe/PayPal load ONLY when checkout open + amount > 0
 ============================================================================ */
 
 (function () {
@@ -17,33 +16,83 @@
      Core helpers
   ----------------------------- */
 
-  var APP_VERSION = "26.2.1-js.0";
+  var APP_VERSION = "26.2.1-js.1";
+
+  function isEl(x) {
+    return !!(x && x.nodeType === 1);
+  }
 
   function qs(sel, root) {
-    return (root || document).querySelector(sel);
+    try {
+      return (root || document).querySelector(sel);
+    } catch (e) {
+      return null;
+    }
   }
+
+  function qsOne(sel, root) {
+    // Alias used by deterministic blocks; returns single node or null.
+    return qs(sel, root);
+  }
+
   function qsa(sel, root) {
-    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+    try {
+      return (root || document).querySelectorAll(sel);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function toArray(nodeList) {
+    // Avoid Array.prototype.slice.call cost on large lists when not needed elsewhere.
+    if (!nodeList || typeof nodeList.length !== "number") return [];
+    var out = [];
+    for (var i = 0; i < nodeList.length; i++) out.push(nodeList[i]);
+    return out;
   }
 
   function safeParseJSON(text) {
+    if (!text || typeof text !== "string") return null;
+    // Trim BOM / whitespace safely
+    var t = text.replace(/^\uFEFF/, "").trim();
+    if (!t) return null;
     try {
-      return JSON.parse(text);
+      return JSON.parse(t);
     } catch (e) {
       return null;
     }
   }
 
   function clamp(n, min, max) {
+    n = Number(n);
+    if (isNaN(n)) n = 0;
     return Math.max(min, Math.min(max, n));
   }
+
   function nowMs() {
     return Date.now ? Date.now() : new Date().getTime();
   }
 
+  function raf() {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(resolve);
+    });
+  }
+
+  function ready(fn) {
+    if (document.readyState === "complete" || document.readyState === "interactive") fn();
+    else document.addEventListener("DOMContentLoaded", fn, { once: true });
+  }
+
   function getMeta(name) {
+    if (!name) return "";
     var el = qs('meta[name="' + name + '"]');
-    return el ? String(el.getAttribute("content") || "").trim() : "";
+    if (!el) return "";
+    try {
+      return String(el.getAttribute("content") || "").trim();
+    } catch (e) {
+      return "";
+    }
   }
 
   function getCSRF() {
@@ -72,8 +121,10 @@
   function fetchJSON(url, opts) {
     var o = opts || {};
     var headers = o.headers || {};
+
     headers["Accept"] = "application/json";
     if (o.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+
     var csrf = getCSRF();
     if (csrf) headers["X-CSRFToken"] = csrf;
 
@@ -83,10 +134,11 @@
     return fetch(url, o).then(function (res) {
       return res.text().then(function (txt) {
         var data = safeParseJSON(txt);
+
         if (!res.ok) {
           var msg =
             data && (data.error || data.message)
-              ? (data.error || data.message)
+              ? String(data.error || data.message)
               : "Request failed (" + res.status + ")";
           var err = new Error(msg);
           err.status = res.status;
@@ -94,35 +146,28 @@
           err.raw = txt;
           throw err;
         }
+
         if (!data) {
           var e = new Error("Server returned non-JSON.");
           e.status = res.status;
           e.raw = txt;
           throw e;
         }
+
         return data;
       });
     });
   }
 
-  function raf() {
-    return new Promise(function (resolve) {
-      requestAnimationFrame(resolve);
-    });
-  }
-
-  function ready(fn) {
-    if (document.readyState === "complete" || document.readyState === "interactive") fn();
-    else document.addEventListener("DOMContentLoaded", fn, { once: true });
-  }
-
   function stripHash(url) {
     try {
-      var u = new URL(url, window.location.origin);
+      var u = new URL(String(url || ""), window.location.origin);
       u.hash = "";
       return u.toString();
     } catch (e) {
-      return String(url || "").split("#")[0] || window.location.href.split("#")[0];
+      var s = String(url || "");
+      if (!s) s = String(window.location.href || "");
+      return s.split("#")[0] || s;
     }
   }
 
@@ -138,269 +183,418 @@
     // Current script nonce (works when ff-app.js is loaded with nonce)
     try {
       var cs = document.currentScript;
-      if (cs && cs.nonce) return cs.nonce;
-      if (cs && cs.getAttribute) {
-        var n = cs.getAttribute("nonce");
-        if (n) return n;
+      if (cs) {
+        if (cs.nonce) return cs.nonce;
+        if (cs.getAttribute) {
+          var n = cs.getAttribute("nonce");
+          if (n) return n;
+        }
       }
     } catch (e) {}
 
-    // Any existing nonce'd script tag
+    // Any existing nonce'd script tag (first match)
     var s = qs("script[nonce]");
     if (s) {
       try {
-        return s.nonce || s.getAttribute("nonce") || "";
+        return s.nonce || (s.getAttribute ? s.getAttribute("nonce") : "") || "";
       } catch (e2) {
         return "";
       }
     }
+
     return "";
   }
 
-  /* -----------------------------
-     Config + Selectors
-  ----------------------------- */
-
-  var cfgEl = qs("#ffConfig");
-  var cfg = cfgEl ? safeParseJSON(cfgEl.textContent || "") : null;
-
-  if (!cfg) {
-    cfg = {
-      env: getMeta("ff-env") || getMeta("ff:env") || "",
-      dataMode: getMeta("ff-data-mode") || getMeta("ff:data-mode") || "live",
-      version: getMeta("ff-version") || getMeta("ff:version") || "",
-      payments: {
-        stripePk: getMeta("ff-stripe-pk") || getMeta("ff:stripe-pk") || "",
-        stripeJs: getMeta("ff-stripe-js") || getMeta("ff:stripe-js") || "https://js.stripe.com/v3/",
-        stripeIntentEndpoint:
-          getMeta("ff-stripe-intent-endpoint") ||
-          getMeta("ff:stripe-intent-endpoint") ||
-          "/payments/stripe/intent",
-        stripeReturnUrl: stripHash(window.location.href),
-        paypalClientId: getMeta("ff-paypal-client-id") || getMeta("ff:paypal-client-id") || "",
-        paypalJs: getMeta("ff-paypal-js") || getMeta("ff:paypal-js") || "https://www.paypal.com/sdk/js",
-        paypalCreateEndpoint:
-          getMeta("ff-paypal-create-endpoint") || getMeta("ff:paypal-create-endpoint") || "/payments/paypal/order",
-        paypalCaptureEndpoint:
-          getMeta("ff-paypal-capture-endpoint") || getMeta("ff:paypal-capture-endpoint") || "/payments/paypal/capture"
-      },
-      fundraiser: { currency: "USD" },
-      support: { email: "support@getfuturefunded.com" },
-      accessibility: { focusRestore: true, ariaLiveToasts: true }
-    };
-  }
-
-  var selectorsEl = qs("#ffSelectors");
-  var selectorsPayload = selectorsEl ? safeParseJSON(selectorsEl.textContent || "") : null;
-  var hooks = selectorsPayload && selectorsPayload.hooks ? selectorsPayload.hooks : {};
-  function hookSel(key, fallback) {
-    return hooks && hooks[key] ? hooks[key] : (fallback || "");
-  }
+  /* ... continue with your script loader / config / DOM cache / overlays ... */
 
   /* -----------------------------
-     Runtime state + public API
-  ----------------------------- */
+   Config + Selectors (deterministic)
+----------------------------- */
 
-  var rootEl = document.documentElement;
+var cfgEl = qsOne("#ffConfig");
+var cfg = null;
 
-  var state = {
-    version: APP_VERSION,
-    cfg: cfg,
-    hooks: hooks,
-    startedAt: nowMs(),
-    cspNonce: getCSPNonce(),
-    openStack: [], // stack of { id, root, panel, restoreEl, trap }
-    openMap: {}, // id -> true when open (prevents duplicate push)
-    stripe: {
-      pk: cfg && cfg.payments && cfg.payments.stripePk ? String(cfg.payments.stripePk || "") : "",
-      intentEndpoint:
-        cfg && cfg.payments && cfg.payments.stripeIntentEndpoint
-          ? String(cfg.payments.stripeIntentEndpoint || "")
-          : "/payments/stripe/intent",
-      returnUrl:
-        cfg && cfg.payments && cfg.payments.stripeReturnUrl
-          ? String(cfg.payments.stripeReturnUrl || "")
-          : stripHash(window.location.href),
-      jsUrl:
-        cfg && cfg.payments && cfg.payments.stripeJs
-          ? String(cfg.payments.stripeJs || "")
-          : "https://js.stripe.com/v3/",
-      stripe: null,
-      elements: null,
-      paymentEl: null,
-      mounted: false,
-      preparing: false,
-      submitting: false,
-      loadPromise: null,
-      clientSecret: "",
-      intentAmount: 0,
-      amount: 0
+/* 1) Parse embedded JSON config (preferred) */
+if (cfgEl) {
+  cfg = safeParseJSON(cfgEl.textContent || "");
+}
+
+/* 2) Fallback to meta-driven config (guaranteed shape) */
+if (!cfg || typeof cfg !== "object") {
+  cfg = {
+    env: getMeta("ff-env") || getMeta("ff:env") || "",
+    dataMode: getMeta("ff-data-mode") || getMeta("ff:data-mode") || "live",
+    version: getMeta("ff-version") || getMeta("ff:version") || "",
+    payments: {
+      stripePk: getMeta("ff-stripe-pk") || getMeta("ff:stripe-pk") || "",
+      stripeJs:
+        getMeta("ff-stripe-js") ||
+        getMeta("ff:stripe-js") ||
+        "https://js.stripe.com/v3/",
+      stripeIntentEndpoint:
+        getMeta("ff-stripe-intent-endpoint") ||
+        getMeta("ff:stripe-intent-endpoint") ||
+        "/payments/stripe/intent",
+      stripeReturnUrl: stripHash(window.location.href),
+
+      paypalClientId:
+        getMeta("ff-paypal-client-id") ||
+        getMeta("ff:paypal-client-id") ||
+        "",
+      paypalJs:
+        getMeta("ff-paypal-js") ||
+        getMeta("ff:paypal-js") ||
+        "https://www.paypal.com/sdk/js",
+      paypalCreateEndpoint:
+        getMeta("ff-paypal-create-endpoint") ||
+        getMeta("ff:paypal-create-endpoint") ||
+        "/payments/paypal/order",
+      paypalCaptureEndpoint:
+        getMeta("ff-paypal-capture-endpoint") ||
+        getMeta("ff:paypal-capture-endpoint") ||
+        "/payments/paypal/capture"
     },
-    paypal: {
-      clientId:
-        cfg && cfg.payments && cfg.payments.paypalClientId ? String(cfg.payments.paypalClientId || "") : "",
-      jsUrl:
-        cfg && cfg.payments && cfg.payments.paypalJs
-          ? String(cfg.payments.paypalJs || "")
-          : "https://www.paypal.com/sdk/js",
-      createEndpoint:
-        cfg && cfg.payments && cfg.payments.paypalCreateEndpoint
-          ? String(cfg.payments.paypalCreateEndpoint || "")
-          : "/payments/paypal/order",
-      captureEndpoint:
-        cfg && cfg.payments && cfg.payments.paypalCaptureEndpoint
-          ? String(cfg.payments.paypalCaptureEndpoint || "")
-          : "/payments/paypal/capture",
-      loaded: false,
-      rendered: false,
-      loadPromise: null
+    fundraiser: { currency: "USD" },
+    support: { email: "support@getfuturefunded.com" },
+    accessibility: {
+      focusRestore: true,
+      ariaLiveToasts: true
     }
   };
+}
 
-  /* -----------------------------
-     DOM cache
-  ----------------------------- */
+/* Freeze shallow config to prevent mutation bugs */
+try {
+  Object.freeze(cfg);
+  Object.freeze(cfg.payments || {});
+} catch (_) {}
 
-  var amountInput = qs("#donationAmount");
-  var stripeSkeleton = qs("[data-ff-stripe-skeleton]");
-  var paypalSkeleton = qs("[data-ff-paypal-skeleton]");
-  var paymentMount = qs("[data-ff-stripe-mount]");
-  var paypalMount = qs("[data-ff-paypal-mount]");
-  var stripeErr = qs("[data-ff-stripe-error]");
-  var paypalErr = qs("[data-ff-paypal-error]");
+/* -----------------------------
+   Selector payload (never null)
+----------------------------- */
 
-  // Optional status elements (do NOT require markup changes)
-  var stripeMsg = qs("[data-ff-stripe-msg]") || qs("[data-ff-stripe-status]") || qs("[data-ff-payment-msg]");
-  var paypalMsg = qs("[data-ff-paypal-msg]") || qs("[data-ff-paypal-status]") || qs("[data-ff-paypal-message]");
+var selectorsEl = qsOne("#ffSelectors");
+var selectorsPayload = selectorsEl
+  ? safeParseJSON(selectorsEl.textContent || "")
+  : null;
 
-  var checkoutSheet = qs("#checkout");
-  var checkoutPanel = checkoutSheet ? qs(".ff-sheet__panel", checkoutSheet) : null;
+var hooks =
+  selectorsPayload &&
+  typeof selectorsPayload === "object" &&
+  selectorsPayload.hooks &&
+  typeof selectorsPayload.hooks === "object"
+    ? selectorsPayload.hooks
+    : {};
 
-  var drawer = qs("#drawer");
-  var drawerPanel = drawer ? qs(".ff-drawer__panel", drawer) : null;
+/* Safe selector accessor */
+function hookSel(key, fallback) {
+  if (!key) return fallback || "";
+  return hooks && hooks[key] ? hooks[key] : (fallback || "");
+}
 
-  var sponsorModal = qs("#sponsor-interest");
-  var sponsorPanel = sponsorModal ? qs(".ff-modal__panel", sponsorModal) : null;
+/* Optional dev warning (non-fatal) */
+if (
+  cfg &&
+  cfg.env !== "production" &&
+  selectorsEl &&
+  (!selectorsPayload || !selectorsPayload.hooks)
+) {
+  try {
+    console.warn("[ff] ffSelectors present but hooks missing or invalid");
+  } catch (_) {}
+}
 
-  var videoModal = qs("#press-video");
-  var videoPanel = videoModal ? qs(".ff-modal__panel", videoModal) : null;
+/* -----------------------------
+   Runtime state + public API
+----------------------------- */
 
-  var burst = qs(".ff-burst");
+var rootEl = document.documentElement;
 
-  // Support both legacy and new toast host classes
-  var toastHost = qs(".ff-toastHost") || qs(".ff-toasts");
+var state = {
+  version: typeof APP_VERSION !== "undefined" ? APP_VERSION : "",
+  cfg: cfg,
+  hooks: hooks,
+  startedAt: nowMs(),
+  cspNonce: getCSPNonce(),
 
-  /* -----------------------------
-     Tiny UI helpers
-  ----------------------------- */
+  /* Overlay stack */
+  openStack: [], // [{ id, root, panel, restoreEl, trap }]
+  openMap: Object.create(null), // id -> true when open
 
-  function setHidden(el, hidden) {
-    if (!el) return;
-    if (hidden) el.setAttribute("hidden", "");
-    else el.removeAttribute("hidden");
+  /* Stripe state */
+  stripe: {
+    pk:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.stripePk
+        ? String(cfg.payments.stripePk)
+        : "",
+    intentEndpoint:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.stripeIntentEndpoint
+        ? String(cfg.payments.stripeIntentEndpoint)
+        : "/payments/stripe/intent",
+    returnUrl:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.stripeReturnUrl
+        ? String(cfg.payments.stripeReturnUrl)
+        : stripHash(window.location.href),
+    jsUrl:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.stripeJs
+        ? String(cfg.payments.stripeJs)
+        : "https://js.stripe.com/v3/",
+
+    stripe: null,
+    elements: null,
+    paymentEl: null,
+
+    mounted: false,
+    preparing: false,
+    submitting: false,
+
+    loadPromise: null,
+    clientSecret: "",
+    intentAmount: 0,
+    amount: 0
+  },
+
+  /* PayPal state */
+  paypal: {
+    clientId:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.paypalClientId
+        ? String(cfg.payments.paypalClientId)
+        : "",
+    jsUrl:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.paypalJs
+        ? String(cfg.payments.paypalJs)
+        : "https://www.paypal.com/sdk/js",
+    createEndpoint:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.paypalCreateEndpoint
+        ? String(cfg.payments.paypalCreateEndpoint)
+        : "/payments/paypal/order",
+    captureEndpoint:
+      cfg &&
+      cfg.payments &&
+      cfg.payments.paypalCaptureEndpoint
+        ? String(cfg.payments.paypalCaptureEndpoint)
+        : "/payments/paypal/capture",
+
+    loaded: false,
+    rendered: false,
+    loadPromise: null
   }
+};
+/* -----------------------------
+   DOM cache (late-bound + duplicate-safe)
+----------------------------- */
 
-  function setOpenAttrs(root, isOpen) {
-    if (!root) return;
-    root.setAttribute("data-open", isOpen ? "true" : "false");
-    root.setAttribute("aria-hidden", isOpen ? "false" : "true");
-    if (isOpen) root.classList.add("is-open");
-    else root.classList.remove("is-open");
-    setHidden(root, !isOpen);
+function qsaSafe(sel, root) {
+  try {
+    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  } catch (_) {
+    return [];
   }
+}
 
-  function isRootOpen(root) {
-    if (!root) return false;
-    return (
-      root.getAttribute("data-open") === "true" ||
-      root.classList.contains("is-open") ||
-      root.getAttribute("aria-hidden") === "false"
-    );
+function qsOne(sel, root) {
+  var list = qsaSafe(sel, root);
+  return list.length ? list[0] : null;
+}
+
+/* Payment / amount */
+var amountInput = qsOne("#donationAmount");
+
+var stripeSkeleton = qsOne("[data-ff-stripe-skeleton]");
+var paypalSkeleton = qsOne("[data-ff-paypal-skeleton]");
+var paymentMount = qsOne("[data-ff-stripe-mount]");
+var paypalMount = qsOne("[data-ff-paypal-mount]");
+var stripeErr = qsOne("[data-ff-stripe-error]");
+var paypalErr = qsOne("[data-ff-paypal-error]");
+
+/* Optional status elements (never required) */
+var stripeMsg =
+  qsOne("[data-ff-stripe-msg]") ||
+  qsOne("[data-ff-stripe-status]") ||
+  qsOne("[data-ff-payment-msg]");
+
+var paypalMsg =
+  qsOne("[data-ff-paypal-msg]") ||
+  qsOne("[data-ff-paypal-status]") ||
+  qsOne("[data-ff-paypal-message]");
+
+/* Overlays (guard against duplicates) */
+var checkoutSheet = qsaSafe('[data-ff-checkout-sheet], #checkout')[0] || null;
+var checkoutPanel = checkoutSheet ? qsOne(".ff-sheet__panel", checkoutSheet) : null;
+
+var drawer = qsaSafe("#drawer")[0] || null;
+var drawerPanel = drawer ? qsOne(".ff-drawer__panel", drawer) : null;
+
+var sponsorModal = qsaSafe("#sponsor-interest")[0] || null;
+var sponsorPanel = sponsorModal ? qsOne(".ff-modal__panel", sponsorModal) : null;
+
+var videoModal = qsaSafe("#press-video")[0] || null;
+var videoPanel = videoModal ? qsOne(".ff-modal__panel", videoModal) : null;
+
+/* Visuals */
+var burst = qsOne(".ff-burst");
+
+/* Toast host (legacy + new) */
+var toastHost = qsOne(".ff-toastHost") || qsOne(".ff-toasts");
+
+/* -----------------------------
+   Tiny UI helpers (contract-aligned)
+----------------------------- */
+
+function setHidden(el, hidden) {
+  if (!el) return;
+  if (hidden) {
+    el.hidden = true;
+    el.setAttribute("hidden", "");
+  } else {
+    el.hidden = false;
+    el.removeAttribute("hidden");
   }
+}
 
-  function lockScroll(locked) {
-    try {
-      document.body.style.overflow = locked ? "hidden" : "";
-      document.body.style.touchAction = locked ? "none" : "";
-    } catch (e) {}
-  }
+function setOpenAttrs(root, isOpen) {
+  if (!root) return;
 
-  function toast(kind, msg) {
-    if (!toastHost) return;
+  root.setAttribute("data-open", isOpen ? "true" : "false");
+  root.setAttribute("aria-hidden", isOpen ? "false" : "true");
 
-    var t = document.createElement("div");
-    t.className = "ff-toast ff-toast--" + String(kind || "info");
-    t.setAttribute("role", "status");
+  root.classList.toggle("is-open", !!isOpen);
+  setHidden(root, !isOpen);
+}
 
-    var inner = document.createElement("div");
-    inner.className = "ff-toast__inner";
+function isRootOpen(root) {
+  if (!root) return false;
+  return (
+    root.getAttribute("data-open") === "true" ||
+    root.classList.contains("is-open") ||
+    root.getAttribute("aria-hidden") === "false" ||
+    root.hidden === false
+  );
+}
 
-    var m = document.createElement("div");
-    m.className = "ff-toast__msg";
-    m.textContent = String(msg || "");
+/* Scroll lock (stack-aware) */
+var _scrollLocks = 0;
 
-    var btn = document.createElement("button");
-    btn.className = "ff-toast__x";
-    btn.type = "button";
-    btn.setAttribute("aria-label", "Dismiss");
-    btn.textContent = "✕";
-    btn.addEventListener("click", function () {
-      try {
-        toastHost.removeChild(t);
-      } catch (e) {}
-    });
+function lockScroll(on) {
+  try {
+    if (on) _scrollLocks++;
+    else _scrollLocks = Math.max(0, _scrollLocks - 1);
 
-    inner.appendChild(m);
-    inner.appendChild(btn);
-    t.appendChild(inner);
+    if (_scrollLocks > 0) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+  } catch (_) {}
+}
 
-    toastHost.appendChild(t);
+/* -----------------------------
+   Toasts (non-fatal, safe)
+----------------------------- */
+
+function toast(kind, msg) {
+  if (!toastHost) return;
+
+  var t = document.createElement("div");
+  t.className = "ff-toast ff-toast--" + String(kind || "info");
+  t.setAttribute("role", "status");
+
+  var inner = document.createElement("div");
+  inner.className = "ff-toast__inner";
+
+  var m = document.createElement("div");
+  m.className = "ff-toast__msg";
+  m.textContent = String(msg || "");
+
+  var btn = document.createElement("button");
+  btn.className = "ff-toast__x";
+  btn.type = "button";
+  btn.setAttribute("aria-label", "Dismiss");
+  btn.textContent = "✕";
+  btn.onclick = function () {
+    try { toastHost.removeChild(t); } catch (_) {}
+  };
+
+  inner.appendChild(m);
+  inner.appendChild(btn);
+  t.appendChild(inner);
+  toastHost.appendChild(t);
+
+  setTimeout(function () {
+    try { toastHost.removeChild(t); } catch (_) {}
+  }, 5200);
+}
+
+/* -----------------------------
+   State markers
+----------------------------- */
+
+function markLoading(on) {
+  if (rootEl) rootEl.classList.toggle("is-loading", !!on);
+}
+
+function markReady() {
+  if (rootEl) rootEl.classList.add("is-ready");
+}
+
+function markError() {
+  if (rootEl) rootEl.classList.add("is-error");
+}
+
+/* -----------------------------
+   Burst (one-shot, no overlap)
+----------------------------- */
+
+function burstOnce() {
+  if (!burst || burst.classList.contains("is-open")) return;
+
+  try {
+    burst.classList.add("is-open");
+    burst.setAttribute("data-open", "true");
+    burst.setAttribute("aria-hidden", "false");
 
     setTimeout(function () {
       try {
-        toastHost.removeChild(t);
-      } catch (e) {}
-    }, 5200);
-  }
+        burst.classList.remove("is-open");
+        burst.setAttribute("data-open", "false");
+        burst.setAttribute("aria-hidden", "true");
+      } catch (_) {}
+    }, 900);
+  } catch (_) {}
+}
 
-  function markLoading(on) {
-    if (rootEl) rootEl.classList.toggle("is-loading", !!on);
-  }
-  function markReady() {
-    if (rootEl) rootEl.classList.add("is-ready");
-  }
-  function markError() {
-    if (rootEl) rootEl.classList.add("is-error");
-  }
+/* -----------------------------
+   Provider mount safety
+----------------------------- */
 
-  function burstOnce() {
-    if (!burst) return;
-    try {
-      burst.classList.add("is-open");
-      burst.setAttribute("data-open", "true");
-      burst.setAttribute("aria-hidden", "false");
-      setTimeout(function () {
-        try {
-          burst.classList.remove("is-open");
-          burst.setAttribute("data-open", "false");
-          burst.setAttribute("aria-hidden", "true");
-        } catch (e) {}
-      }, 900);
-    } catch (e2) {}
-  }
+function ensureInnerWrapper(mountEl, name) {
+  if (!mountEl) return null;
 
-  function ensureInnerWrapper(mountEl, name) {
-    // P0: Never wipe mount node; mount providers into a stable child wrapper.
-    if (!mountEl) return null;
-    var sel = '[data-ff-inner-mount="' + name + '"]';
-    var inner = qs(sel, mountEl);
-    if (inner) return inner;
+  var sel = '[data-ff-inner-mount="' + name + '"]';
+  var inner = qsOne(sel, mountEl);
+  if (inner) return inner;
 
-    inner = document.createElement("div");
-    inner.setAttribute("data-ff-inner-mount", name);
-    mountEl.appendChild(inner);
-    return inner;
-  }
+  inner = document.createElement("div");
+  inner.setAttribute("data-ff-inner-mount", name);
+  mountEl.appendChild(inner);
+  return inner;
+}
 
   /* -----------------------------
      Focus trap (lightweight, robust)
@@ -475,217 +669,221 @@
     };
   }
 
-  /* -----------------------------
-     Overlay manager (sheet/modals/drawer + hash targets)
-  ----------------------------- */
+/* -----------------------------
+   Overlay manager (sheet / modals / drawer + hash targets)
+   Contract-safe • deterministic • test-stable
+----------------------------- */
 
-  function pushOpen(id, root, panel) {
-    if (state.openMap[id]) return; // prevents duplicate stacking
-    state.openMap[id] = true;
+function pushOpen(id, root, panel) {
+  if (state.openMap[id]) return;
 
-    var restore = document.activeElement;
-    var entry = { id: id, root: root, panel: panel, restoreEl: restore, trap: null };
-    state.openStack.push(entry);
+  state.openMap[id] = true;
 
-    lockScroll(true);
+  var restore = document.activeElement;
+  var entry = { id: id, root: root, panel: panel, restoreEl: restore, trap: null };
+  state.openStack.push(entry);
 
-    if (panel) {
-      entry.trap = trapFocus(panel, function () {
-        closeById(id);
-      });
-      raf().then(function () {
-        try {
-          panel.focus({ preventScroll: true });
-        } catch (e) {}
-      });
-    }
-  }
+  lockScroll(true);
 
-  function popOpen(id) {
-    if (!state.openMap[id]) {
-      if (!state.openStack.length) lockScroll(false);
-      return;
-    }
-
-    state.openMap[id] = false;
-
-    for (var i = state.openStack.length - 1; i >= 0; i--) {
-      if (state.openStack[i].id === id) {
-        var entry = state.openStack.splice(i, 1)[0];
-        if (entry && entry.trap) entry.trap.destroy();
-        if (
-          cfg &&
-          cfg.accessibility &&
-          cfg.accessibility.focusRestore &&
-          entry &&
-          entry.restoreEl &&
-          entry.restoreEl.focus
-        ) {
-          raf().then(function () {
-            try {
-              entry.restoreEl.focus({ preventScroll: true });
-            } catch (e2) {}
-          });
-        }
-        break;
-      }
-    }
-
-    if (!state.openStack.length) lockScroll(false);
-  }
-
-  function openRoot(id, root, panel) {
-    if (!root) return;
-    if (!isRootOpen(root)) setOpenAttrs(root, true);
-    pushOpen(id, root, panel);
-  }
-
-  function closeRoot(id, root) {
-    if (!root) return;
-    if (isRootOpen(root) || state.openMap[id]) setOpenAttrs(root, false);
-    popOpen(id);
-  }
-
-  function closeById(id) {
-    if (id === "checkout") closeCheckout(true);
-    else if (id === "drawer") closeDrawer(true);
-    else if (id === "sponsor-interest") closeSponsor(true);
-    else if (id === "press-video") closeVideo(true);
-    else if (id === "terms") closeLegal("terms");
-    else if (id === "privacy") closeLegal("privacy");
-  }
-
-  function setHash(hash) {
-    if (typeof hash !== "string") return;
-    if (hash && hash.charAt(0) !== "#") hash = "#" + hash;
-
-    var cur = window.location.hash || "";
-    var next = hash || "#home";
-
-    if (cur === next) {
-      onHashChange();
-      return;
-    }
-
-    try {
-      history.pushState(null, "", next);
-    } catch (e) {
-      window.location.hash = next;
-      return;
-    }
-    onHashChange();
-  }
-
-  function currentHashId() {
-    var h = window.location.hash || "";
-    if (!h || h === "#") return "";
-    return h.replace("#", "").trim();
-  }
-
-  function openCheckout() {
-    setHash("checkout");
-  }
-  function closeCheckout(useHome) {
-    setHash(useHome ? "home" : "");
-  }
-  function openDrawer() {
-    setHash("drawer");
-  }
-  function closeDrawer(useHome) {
-    setHash(useHome ? "home" : "");
-  }
-  function openSponsor() {
-    setHash("sponsor-interest");
-  }
-  function closeSponsor(useHome) {
-    setHash(useHome ? "home" : "");
-  }
-  function openVideo() {
-    setHash("press-video");
-  }
-  function closeVideo(useHome) {
-    setHash(useHome ? "home" : "");
-  }
-  function closeLegal(which) {
-    setHash("home");
-  }
-
-  function onHashChange() {
-    var id = currentHashId();
-
-    if (checkoutSheet) {
-      if (id === "checkout") openRoot("checkout", checkoutSheet, checkoutPanel);
-      else closeRoot("checkout", checkoutSheet);
-    }
-
-    if (drawer) {
-      if (id === "drawer") openRoot("drawer", drawer, drawerPanel);
-      else closeRoot("drawer", drawer);
-    }
-
-    if (sponsorModal) {
-      if (id === "sponsor-interest") openRoot("sponsor-interest", sponsorModal, sponsorPanel);
-      else closeRoot("sponsor-interest", sponsorModal);
-    }
-
-    if (videoModal) {
-      if (id === "press-video") openRoot("press-video", videoModal, videoPanel);
-      else closeRoot("press-video", videoModal);
-    }
-
-    var terms = qs("#terms");
-    var privacy = qs("#privacy");
-    if (terms) {
-      if (id === "terms") openRoot("terms", terms, qs(".ff-modal__panel", terms) || terms);
-      else closeRoot("terms", terms);
-    }
-    if (privacy) {
-      if (id === "privacy") openRoot("privacy", privacy, qs(".ff-modal__panel", privacy) || privacy);
-      else closeRoot("privacy", privacy);
-    }
-  }
-
-  window.addEventListener("hashchange", onHashChange);
-
-  // Global ESC closes top overlay even if focus is outside panel
-  window.addEventListener("keydown", function (e) {
-    var key = e.key || e.keyCode;
-    if (key !== "Escape" && key !== "Esc" && key !== 27) return;
-    if (!state.openStack || !state.openStack.length) return;
-    var top = state.openStack[state.openStack.length - 1];
-    if (top && top.id) closeById(top.id);
-  });
-
-  /* -----------------------------
-     Backdrop click-to-close (contract-safe, no new hooks required)
-  ----------------------------- */
-
-  function initBackdropClose() {
-    document.addEventListener("click", function (e) {
-      var t = e.target;
-
-      if (t && t.classList && t.classList.contains("ff-sheet__backdrop")) {
-        e.preventDefault();
-        closeCheckout(true);
-        return;
-      }
-
-      if (t && t.classList && t.classList.contains("ff-modal__backdrop")) {
-        e.preventDefault();
-        var id = currentHashId();
-        if (id === "sponsor-interest") closeSponsor(true);
-        else if (id === "press-video") closeVideo(true);
-        else if (id === "terms") closeLegal("terms");
-        else if (id === "privacy") closeLegal("privacy");
-        return;
-      }
-
-      if (t && t.classList && t.classList.contains("ff-drawer__backdrop")) {
-        e.preventDefault();
-        closeDrawer(true);
-      }
+  if (panel) {
+    entry.trap = trapFocus(panel, function () {
+      closeById(id);
+    });
+    raf().then(function () {
+      try {
+        panel.focus({ preventScroll: true });
+      } catch (_) {}
     });
   }
+}
+
+function popOpen(id) {
+  if (!state.openMap[id]) {
+    if (!state.openStack.length) lockScroll(false);
+    return;
+  }
+
+  state.openMap[id] = false;
+
+  for (var i = state.openStack.length - 1; i >= 0; i--) {
+    if (state.openStack[i].id === id) {
+      var entry = state.openStack.splice(i, 1)[0];
+      if (entry && entry.trap) entry.trap.destroy();
+
+      if (
+        !(cfg && cfg.accessibility && cfg.accessibility.focusRestore === false) &&
+        entry &&
+        entry.restoreEl &&
+        entry.restoreEl.focus
+      ) {
+        raf().then(function () {
+          try {
+            entry.restoreEl.focus({ preventScroll: true });
+          } catch (_) {}
+        });
+      }
+      break;
+    }
+  }
+
+  if (!state.openStack.length) lockScroll(false);
+}
+
+function openRoot(id, root, panel) {
+  if (!root) return;
+  if (!isRootOpen(root)) setOpenAttrs(root, true);
+  pushOpen(id, root, panel);
+}
+
+function closeRoot(id, root) {
+  if (!root) return;
+
+  if (isRootOpen(root) || state.openMap[id]) {
+    setOpenAttrs(root, false);
+  }
+
+  popOpen(id);
+}
+
+/* -----------------------------
+   Hash helpers (SINGLE SOURCE OF TRUTH)
+----------------------------- */
+
+function setHash(next) {
+  if (typeof next !== "string") return;
+
+  if (next && next.charAt(0) !== "#") next = "#" + next;
+  if (!next || next === "#") next = "#home";
+
+  var cur = window.location.hash || "";
+
+  if (cur === next) {
+    onHashChange();
+    return;
+  }
+
+  try {
+    history.pushState(null, "", next);
+  } catch (_) {
+    window.location.hash = next;
+    return;
+  }
+
+  onHashChange();
+}
+
+function currentHashId() {
+  var h = window.location.hash || "";
+  if (!h || h === "#") return "";
+  return h.slice(1).trim();
+}
+
+/* -----------------------------
+   Public open / close API
+----------------------------- */
+
+function openCheckout() { setHash("checkout"); }
+function closeCheckout(useHome) { setHash(useHome ? "home" : ""); }
+
+function openDrawer() { setHash("drawer"); }
+function closeDrawer(useHome) { setHash(useHome ? "home" : ""); }
+
+function openSponsor() { setHash("sponsor-interest"); }
+function closeSponsor(useHome) { setHash(useHome ? "home" : ""); }
+
+function openVideo() { setHash("press-video"); }
+function closeVideo(useHome) { setHash(useHome ? "home" : ""); }
+
+function closeLegal(_) { setHash("home"); }
+
+/* -----------------------------
+   Central hash router
+----------------------------- */
+
+function onHashChange() {
+  var id = currentHashId();
+
+  if (checkoutSheet) {
+    if (id === "checkout") openRoot("checkout", checkoutSheet, checkoutPanel);
+    else closeRoot("checkout", checkoutSheet);
+  }
+
+  if (drawer) {
+    if (id === "drawer") openRoot("drawer", drawer, drawerPanel);
+    else closeRoot("drawer", drawer);
+  }
+
+  if (sponsorModal) {
+    if (id === "sponsor-interest") openRoot("sponsor-interest", sponsorModal, sponsorPanel);
+    else closeRoot("sponsor-interest", sponsorModal);
+  }
+
+  if (videoModal) {
+    if (id === "press-video") openRoot("press-video", videoModal, videoPanel);
+    else closeRoot("press-video", videoModal);
+  }
+
+  var terms = qs("#terms");
+  if (terms) {
+    if (id === "terms") openRoot("terms", terms, qs(".ff-modal__panel", terms) || terms);
+    else closeRoot("terms", terms);
+  }
+
+  var privacy = qs("#privacy");
+  if (privacy) {
+    if (id === "privacy") openRoot("privacy", privacy, qs(".ff-modal__panel", privacy) || privacy);
+    else closeRoot("privacy", privacy);
+  }
+}
+
+window.addEventListener("hashchange", onHashChange);
+
+/* -----------------------------
+   Global ESC: close top overlay
+----------------------------- */
+
+window.addEventListener("keydown", function (e) {
+  var key = e.key || e.keyCode;
+  if (key !== "Escape" && key !== "Esc" && key !== 27) return;
+  if (!state.openStack.length) return;
+
+  var top = state.openStack[state.openStack.length - 1];
+  if (top && top.id) closeById(top.id);
+});
+/* -----------------------------
+   Backdrop click-to-close (contract-safe, ancestor-safe)
+----------------------------- */
+
+function initBackdropClose() {
+  document.addEventListener("click", function (e) {
+    // Checkout backdrop (MUST work even if click lands on child)
+    var checkoutBackdrop = e.target.closest(".ff-sheet__backdrop[data-ff-close-checkout]");
+    if (checkoutBackdrop) {
+      e.preventDefault();
+      closeCheckout(true); // MUST clear hash + state
+      return;
+    }
+
+    // Modal backdrops (sponsor, video, legal)
+    var modalBackdrop = e.target.closest(".ff-modal__backdrop");
+    if (modalBackdrop) {
+      e.preventDefault();
+      var id = currentHashId();
+      if (id === "sponsor-interest") closeSponsor(true);
+      else if (id === "press-video") closeVideo(true);
+      else if (id === "terms") closeLegal("terms");
+      else if (id === "privacy") closeLegal("privacy");
+      return;
+    }
+
+    // Drawer backdrop
+    var drawerBackdrop = e.target.closest(".ff-drawer__backdrop");
+    if (drawerBackdrop) {
+      e.preventDefault();
+      closeDrawer(true);
+    }
+  });
+}
 
   /* -----------------------------
      Payments: Stripe / PayPal
@@ -1694,3 +1892,78 @@
     }
   });
 })();
+
+
+;(() => {
+  /* FF_HOTFIX_PAYMENT_MOUNT_VISIBLE_JS_V1
+     Ensure payment mounts are visible whenever checkout is open (even if Stripe isn't configured).
+     Scope: only affects elements inside #checkout.
+  */
+  function isCheckoutOpen(root) {
+    if (!root) return false;
+    if (root.classList && root.classList.contains("is-open")) return true;
+    const d = root.getAttribute && root.getAttribute("data-open");
+    const a = root.getAttribute && root.getAttribute("aria-hidden");
+    if (d === "true" || a === "false") return true;
+    if (root.id && window.location && window.location.hash === "#" + root.id) return true;
+    return false;
+  }
+
+  function forceVisible(el) {
+    if (!el || !(el instanceof HTMLElement)) return;
+    // Remove HTML hidden if present
+    if (el.hasAttribute("hidden")) el.removeAttribute("hidden");
+    // Force visibility inline (beats weird cascade)
+    el.style.display = "grid";
+    el.style.visibility = "visible";
+    el.style.opacity = "1";
+    if (!el.style.minHeight) el.style.minHeight = "74px";
+  }
+
+  function fix() {
+    const root = document.querySelector("#checkout");
+    if (!root || !isCheckoutOpen(root)) return;
+
+    const mounts = root.querySelectorAll(
+      ".ff-paymentMount, #paymentElement, [data-ff-payment-element], [data-ff-stripe-mount], .ff-paypalMount, [data-ff-paypal-mount]"
+    );
+
+    mounts.forEach((el) => {
+      // Unhide a shallow chain if something wrapped it with [hidden]
+      let n = el;
+      for (let i = 0; i < 6 && n && n instanceof HTMLElement; i++) {
+        if (n === root) break;
+        if (n.hasAttribute("hidden")) n.removeAttribute("hidden");
+        n = n.parentElement;
+      }
+      forceVisible(el);
+    });
+  }
+
+  // Run after common open triggers
+  window.addEventListener("hashchange", () => setTimeout(fix, 0), { passive: true });
+  document.addEventListener("click", (e) => {
+    const t = e && e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('[data-ff-open-checkout]')) setTimeout(fix, 0);
+  }, true);
+
+  // Mutation observer catches class/data-open flips
+  const boot = () => {
+    const root = document.querySelector("#checkout");
+    if (!root) return;
+    const mo = new MutationObserver(() => fix());
+    mo.observe(root, { attributes: true, subtree: true, attributeFilter: ["class", "data-open", "aria-hidden", "hidden"] });
+    // Initial + delayed passes
+    fix();
+    setTimeout(fix, 200);
+    setTimeout(fix, 800);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+})();
+

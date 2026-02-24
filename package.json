@@ -38,6 +38,13 @@
     "test:ff:all": "npm-run-all test:ff:contract test:ff:checkout test:ff:payments",
     "test:ff:all:strict": "npm-run-all test:ff:contract test:ff:checkout test:ff:payments:strict",
     "test:ff:perf": "cross-env BASE_URL=http://127.0.0.1:5000 npx playwright test -c tools/playwright.ff.config.mjs ff_perf_budget.spec.mjs",
+    "//e2e": "E2E suites (new flagship harness)",
+    "e2e": "npx playwright test",
+    "e2e:smoke": "npx playwright test --grep @smoke",
+    "e2e:prod": "npx playwright test --grep @prod",
+    "e2e:payments": "npx playwright test --grep @payments",
+    "e2e:ui": "npx playwright test --ui",
+    "e2e:report": "npx playwright show-report",
     "health:strict": "npm-run-all check test:ff:all:strict audit:a11y:axe audit:lighthouse audit:deps:prod",
     "//audits": "Audits",
     "audit:deps:prod": "npm audit --omit=dev --audit-level=high",
@@ -59,6 +66,7 @@
     "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.58.2",
     "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
     "eslint": "^10.0.1",
     "eslint-formatter-unix": "^9.0.1",
     "globals": "^16.5.0",
@@ -77,7 +85,8 @@
     "stylelint": "^16.26.1",
     "stylelint-config-recess-order": "^7.4.0",
     "stylelint-config-standard": "^39.0.1",
-    "stylelint-order": "^7.0.1"
+    "stylelint-order": "^7.0.1",
+    "typescript": "^5.9.3"
   },
   "lint-staged": {
     "app/static/css/ff.css": [

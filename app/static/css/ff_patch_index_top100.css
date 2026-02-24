@@ -1,0 +1,341 @@
+/* ============================================================================
+   FutureFunded — INDEX Top-100 Patch (drop-in)
+   Purpose: pragmatic structural and accessibility rules to fix missing selectors
+   Scope: index.html only (targeted), mobile-first, low-specificity, safe fallbacks
+   Author: generated patch (cofounder assistant)
+   Notes: merge permanent styles into ff.css long-term. Remove this file after merge.
+   ============================================================================ */
+
+/* --- fallback tokens (safe, will not override if app defines them) --- */
+:root {
+  --ff-bg: #0b0f14;
+  --ff-surface: rgba(255,255,255,0.03);
+  --ff-surface-2: rgba(255,255,255,0.02);
+  --ff-accent: #ff8a36;
+  --ff-muted: rgba(255,255,255,0.65);
+  --ff-quiet: rgba(255,255,255,0.35);
+  --ff-radius: 12px;
+  --ff-gap: 0.75rem;
+  --ff-stack: 1.15;
+  --ff-focus: rgba(127,127,127,0.95);
+  --ff-glass: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  --ff-transition: 240ms cubic-bezier(.2,.9,.3,1);
+}
+
+/* --- base reset within patch scope --- */
+[data-ff-body], .ff-body, body {
+  color: inherit;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* --- small utilities commonly missing on index --- */
+.ff-hidden, [hidden], .hidden { display:none !important; }
+.ff-center { display:flex; align-items:center; justify-content:center; }
+.ff-minw-0 { min-width:0; }
+.ff-m-0 { margin:0; padding:0; }
+.ff-gap { gap:var(--ff-gap); }
+.ff-ais { align-items:center; }
+
+/* focus ring (accessible) */
+:where(button, a, input, [role="button"]):focus { outline:3px solid var(--ff-focus); outline-offset:3px; }
+
+/* -------------------------------------------------------------------------- 
+   HERO / PANELS / TITLES
+   Keep hero readable, ensure meter & progress are visible
+   -------------------------------------------------------------------------- */
+#heroTitle, #heroPanelTitle, .heroLead, #heroLead, .ff-heroHeader, .ff-heroPanelHead,
+.ff-hero, .ff-heroPanel, .ff-hero__title, .ff-heroPanelHead {
+  display:block;
+  line-height:var(--ff-stack);
+  color: #fff;
+  -webkit-font-smoothing:antialiased;
+}
+
+#heroAccentLine { display:block; height:3px; width:6rem; border-radius:999px; background:var(--ff-accent); margin:.5rem 0; }
+
+/* hero metrics and meter */
+[data-ff-meter], .fc-meter, .fundraiser-meter, .ff-fundraiser-meter, .fc-progress {
+  width:100%;
+  height:12px;
+  background:var(--ff-surface-2);
+  border-radius:999px;
+  overflow:hidden;
+  display:block;
+}
+.fc-meter__fill, .fundraiser-meter__fill, [data-ff-pct] {
+  display:block;
+  height:100%;
+  width:0%;
+  min-width:0;
+  transition: width 420ms ease;
+  background:var(--ff-accent);
+}
+
+/* hero small stats */
+.ff-kpi__label, .ff-kpi__value, .fc-kpi__label, .fc-kpi__val, .ff-kpi__value {
+  display:block;
+  font-weight:600;
+  color:var(--ff-muted);
+  font-size:.95rem;
+}
+
+/* hero CTA / buttons */
+.ff-cta, .ff-btn, .btn-donate, .cta, .cta-row, .btn-brand, .donate-primary-cta,
+.ff-hero-cta, .ff-cta-primary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.5rem;
+  padding:.55rem .9rem;
+  border-radius:10px;
+  cursor:pointer;
+  text-decoration:none;
+  background:var(--ff-accent);
+  color: #0b0f14;
+  font-weight:700;
+  transition: transform var(--ff-transition), box-shadow var(--ff-transition);
+}
+.ff-cta:active, .ff-btn:active { transform:translateY(1px); }
+
+/* hero rail thumbnails */
+[data-ff-hero-rail], .ff-hero-rail, .hero-rail { display:flex; gap:.5rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+/* -------------------------------------------------------------------------- 
+   SHEETS / MODALS / DRAWERS
+   Basic contract to make them visible and usable
+   -------------------------------------------------------------------------- */
+.ff-modal--flagship, .ff-modal--video, .ff-sheet, .ff-sheet__panel, .drawer__panel,
+.ff-drawer, .drawer__head, .drawer__foot, [data-ff-drawer], [data-ff-checkout-sheet] {
+  box-sizing:border-box;
+  max-width:980px;
+  width:100%;
+  padding:1rem;
+  margin:0 auto;
+  background:var(--ff-glass);
+  border-radius:var(--ff-radius);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* backdrop / scrim */
+.ff-sheet__backdrop, .drawer__scrim, .ff-sheet__scrim { position:fixed; inset:0; background:rgba(0,0,0,0.45); }
+
+/* scrollable panel variant for flagship */
+.ff-sheet__scroll--flagship, .ff-sheet__scroll { overflow:auto; max-height:80vh; padding-right:calc(1rem + 12px); }
+
+/* sticky footer area inside sheets */
+.ff-sheet__footer--sticky { position:sticky; bottom:0; background:linear-gradient(180deg,transparent, rgba(0,0,0,0.15)); padding:.75rem 1rem; }
+
+/* modal header */
+.ff-modal__head, .ff-modal__head--flagship, .ff-modal__head--video { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+
+/* modal close */
+.ff-sheet__close, .ff-drawer__close, .dlg-close { cursor:pointer; background:transparent; border:none; color:var(--ff-muted); }
+
+/* -------------------------------------------------------------------------- 
+   TEAMS / TEAM CARDS / PROGRESS
+   Ensure team cards show progress and ask text
+   -------------------------------------------------------------------------- */
+.ff-teamCard__head, .ff-teamCard__title, .ff-teamCard__meta, .ff-teamCard__ask,
+.ff-teamCard, .ff-teamCard__progress, [data-ff-team-card], [data-ff-team-id] {
+  display:block;
+  background:var(--ff-surface);
+  border-radius:10px;
+  padding:.6rem;
+  color:#fff;
+}
+.ff-teamProgressText { font-size:.95rem; color:var(--ff-muted); display:block; }
+
+/* team progress bar */
+.ff-teamCard__bar, .team-progress, .ff-meter__fill { height:10px; border-radius:999px; overflow:hidden; background:var(--ff-surface-2); }
+.ff-teamCard__bar > span { display:block; height:100%; background:var(--ff-accent); transition: width var(--ff-transition); }
+
+/* choose / share buttons */
+.ff-teamCard__actions, .ff-teamCard__share { display:flex; gap:.5rem; align-items:center; }
+
+/* -------------------------------------------------------------------------- 
+   SPONSORS / TIER CARDS / LEADERBOARD
+   -------------------------------------------------------------------------- */
+.ff-sponsorCell, .ff-sponsor-card, .ff-sponsorCard, .sponsor-card, .sponsor-tile,
+[data-ff-sponsor-card], [data-ff-sponsor-name], [data-ff-sponsor-amount], .ff-sponsor-name {
+  display:flex;
+  gap:.6rem;
+  align-items:center;
+  padding:.6rem;
+  border-radius:10px;
+  background:var(--ff-surface-2);
+  color:#fff;
+}
+
+/* sponsor spotlight / vip */
+.ff-vipSpotlight, .is-featured, .is-live { border-radius:12px; padding:.6rem; box-shadow:0 6px 18px rgba(0,0,0,0.45); }
+
+/* sponsor leaderboard */
+.ff-sponsor-leaderboard, .ff-sponsor-list, .ff-sponsorWall { display:grid; gap:.5rem; }
+
+/* sponsor CTA */
+.ff-sponsor-cta, .ffx-cta-payreq { display:inline-flex; padding:.5rem .8rem; border-radius:8px; background:var(--ff-accent); color:#0b0f14; font-weight:700; }
+
+/* -------------------------------------------------------------------------- 
+   FAQ / TABS / EXPANDABLES
+   -------------------------------------------------------------------------- */
+.ff-faqList, .ff-faqItem, .ff-faqHead, .ff-faqBody, .ff-faqCard, [data-ff-faq-card], .ff-faqList--compact {
+  display:block;
+  margin-bottom:.5rem;
+  padding:.65rem;
+  border-radius:10px;
+  background:var(--ff-surface);
+  color:#fff;
+}
+.ff-faqHead { font-weight:700; }
+.ff-faqItem[aria-expanded="true"] { box-shadow:0 8px 24px rgba(0,0,0,0.45); }
+
+/* tabs */
+.ff-tabs, .ff-tabs__item, [data-ff-tabs] { display:flex; gap:.4rem; align-items:center; }
+
+/* -------------------------------------------------------------------------- 
+   FOOTER / TRUST / LINKS
+   tight footer compact grid
+   -------------------------------------------------------------------------- */
+.ff-footer, .ff-foot, .ff-footerTray, .ff-footerBrand--compact, .ff-footerGrid--compact,
+.ff-footerGrid--tight, .ff-footer__linkgrid--compact, [data-ff-footer], [data-ff-footer-trust],
+[data-ff-footer] {
+  width:100%;
+  color:var(--ff-muted);
+  background:transparent;
+  padding:.8rem 1rem;
+}
+.ff-footer__grid, .ff-footerGrid--flagship {
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:.5rem;
+}
+@media (min-width:768px) {
+  .ff-footer__grid { grid-template-columns:repeat(4, 1fr); }
+}
+.ff-footer__link { color:var(--ff-muted); text-decoration:underline; text-underline-offset:3px; }
+
+/* footer trust compact */
+.ff-footerTrust, .ff-footer__trust, .ff-help { font-size:.92rem; color:var(--ff-quiet); }
+
+/* -------------------------------------------------------------------------- 
+   DONATE / AMOUNT INPUT / CHECKOUT
+   Ensures donation widgets show and stripe/paypal mount points are visible
+   -------------------------------------------------------------------------- */
+#donationAmount, #donationAmountHelp, #donationAmountLegend, [data-ff-amount-input],
+.ff-amount-display, #amount, [data-ff-amount] {
+  display:block;
+  width:100%;
+  padding:.5rem;
+  border-radius:8px;
+  background:transparent;
+  color:#fff;
+  box-sizing:border-box;
+}
+
+/* checkout container & states */
+.ff-checkoutHead, .ff-checkoutHead--flagship, .ff-checkout, [data-ff-checkout-content],
+[data-ff-checkout-stage], [data-ff-checkout-viewport] {
+  display:block;
+  padding:.8rem;
+  background:var(--ff-surface);
+  border-radius:10px;
+  color:#fff;
+}
+[data-ff-stripe-mount], [data-ff-paypal-mount], [data-ff-paypal-skeleton], [data-ff-stripe-skeleton] {
+  display:block;
+  min-height:48px;
+}
+
+/* paypal / stripe messages */
+[data-ff-paypal-msg], [data-ff-stripe-msg], [data-ff-stripe-error], [data-ff-paypal-error] {
+  display:block; color:var(--ff-muted); margin-top:.5rem; font-size:.95rem;
+}
+
+/* checkout error/status */
+#checkoutErrorText, #checkoutDesc, #checkoutTitle { display:block; color:var(--ff-muted); }
+
+/* cover fees toggle */
+#coverFees, [data-ff-cover-fees] { display:inline-flex; align-items:center; gap:.4rem; }
+
+/* -------------------------------------------------------------------------- 
+   TOASTS / ANNOUNCEMENTS / TICKERS
+   -------------------------------------------------------------------------- */
+[data-ff-toasts], .ff-toasts, [data-ff-announcement], .ff-announcement, .donation-ticker,
+.ff-donor-ticker, [data-ff-ticker-track], .donor-feed { display:block; }
+
+/* ticker entry */
+.donor-entry, .donor-feed-link { display:flex; gap:.5rem; align-items:center; padding:.35rem .5rem; }
+
+/* announcement compact */
+.ff-announce, .ff-announce__cta, .ff-announce-rail { display:flex; gap:.5rem; align-items:center; }
+
+/* -------------------------------------------------------------------------- 
+   STORIES / MEDIA / VIDEO MODAL
+   -------------------------------------------------------------------------- */
+.ff-story, .ff-storyCopy, .ff-storyMedia, .ff-storyMeta, [data-ff-story], [data-ff-video-modal],
+[data-ff-open-video], [data-ff-video-frame], [data-ff-video-src], [data-ff-video-title] {
+  display:block;
+  color:#fff;
+}
+
+/* video sr / hidden content for screen readers */
+[data-ff-video-sr], .ff-video-sr { position:absolute !important; left:-9999px !important; top:auto !important; width:1px !important; height:1px !important; overflow:hidden; }
+
+/* press video / watch button */
+#press-video, .ff-video-open, .ff-video-button { display:inline-flex; gap:.5rem; align-items:center; }
+
+/* -------------------------------------------------------------------------- 
+   MISC LAYOUT / GRID / UTILITIES (to avoid collapse)
+   -------------------------------------------------------------------------- */
+.container-elite, .ff-container, .ff-row, .ff-row--between, .ff-stack, .fc-deck,
+.fc-tiles, .fc-rail--compact, .deck {
+  display:grid;
+  gap:.6rem;
+  grid-template-columns:1fr;
+}
+@media(min-width:640px){
+  .fc-tiles, .deck { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
+}
+
+/* small cards */
+.card__body, .card__footer, .fcx-card, .sponsor-card { display:flex; flex-direction:column; gap:.5rem; padding:.8rem; }
+
+/* chips and badges */
+.chipset, .chip-cta, .badge-dot, .brand-pill, .brandmark { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .45rem; border-radius:999px; }
+
+/* empty state */
+.empty, .empty .copy, .ff-empty { text-align:center; padding:1.25rem; color:var(--ff-quiet); }
+
+/* scrollbar helper */
+[data-ff-scrollbar] { scrollbar-width:thin; -ms-overflow-style:-ms-autohiding-scrollbar; }
+
+/* -------------------------------------------------------------------------- 
+   IDs and special elements referenced by index
+   -------------------------------------------------------------------------- */
+#content, #home, #story, #impactTitle, #impactLead, #teamsTitle, #teamsLead,
+#sponsorsTitle, #faqTitle, #faqLead, #footer, #paymentElement, #paypalButtons,
+#checkoutTitle, #checkoutDesc, #checkoutErrorText, #donorDetailsLegend, #donorEmailHelp,
+#create, #createTitle, #createLead {
+  display:block;
+  color:#fff;
+}
+
+/* polite reduced motion respect and small transitions */
+@media (prefers-reduced-motion: reduce) {
+  * { transition:none !important; animation:none !important; }
+}
+
+/* little polish: clickable rows, hover lifts */
+.ff-row--clickable, .ff-card--clickable { cursor:pointer; transition: transform var(--ff-transition), box-shadow var(--ff-transition); }
+.ff-row--clickable:hover, .ff-card--clickable:hover { transform: translateY(-3px); box-shadow:0 10px 30px rgba(0,0,0,0.45); }
+
+/* last-resort print-safe */
+@media print { .no-print, [data-ff-hide-print] { display:none !important; } }
+
+/* -------------------------------------------------------------------------- 
+   End of patch
+   ============================================================================ */# (paste the CSS below exactly)

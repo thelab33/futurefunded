@@ -1,0 +1,30 @@
+# Tailwind / utility common tokens
+hidden
+block
+inline
+inline-block
+flex
+grid
+absolute
+relative
+fixed
+sticky
+items-center
+justify-center
+mx-auto
+w-full
+h-full
+container
+prose
+sr-only
+
+# attributes we allow to exist without CSS attribute selectors
+data-ff-lazy
+data-ff-prefill-amount
+data-ff-stripe-mount
+data-ff-paypal-mount
+ff-tier*
+ff-story*
+ff-video*
+ff-hero*
+ff-topbar*

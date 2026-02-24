@@ -1,0 +1,89 @@
+/* app/static/css/ff-compat-overrides.css
+   FutureFunded — Compat Overrides (tiny, hook-safe)
+   Purpose: prevent 404 + a few cross-browser safety tweaks.
+   Version: 26.2.16 (“Compat+ • iOS Zoom Guard • Tap-Safe Backdrops • :has Fallback”)
+*/
+
+@layer ff.utilities {
+
+  /* Safari/iOS: keep font sizes stable */
+  html { -webkit-text-size-adjust: 100%; }
+
+  /* iOS Safari: prevent input zoom-on-focus (keep >=16px) */
+  @supports (-webkit-touch-callout: none) {
+    input, select, textarea { font-size: 16px; }
+  }
+
+  /* Firefox/Safari overflow-x oddities: be conservative */
+  .ff-wrap, .ff-main, .ff-shell, .ff-page, .ff-container { min-width: 0; }
+
+  /* Prevent accidental horizontal scroll from large media */
+  img, svg, video, canvas { max-width: 100%; height: auto; }
+
+  /* Safer default overflow clamp (only for your scoped body) */
+  body.ff-body { overflow-x: clip; }
+  @supports not (overflow: clip) {
+    body.ff-body { overflow-x: hidden; }
+  }
+
+  /* Safe-area helpers */
+  .ff-safe-bottom { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .ff-safe-top    { padding-top: max(12px, env(safe-area-inset-top)); }
+  .ff-safe-x {
+    padding-left:  max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  /* iOS/Safari: reduce tap highlight + mitigate tap-through weirdness */
+  .ff-sheet__backdrop,
+  .ff-modal__backdrop,
+  .ff-drawer__backdrop {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Backdrop-filter fallback: if blur unsupported, increase opacity a touch */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .ff-sheet__backdrop,
+    .ff-modal__backdrop,
+    .ff-drawer__backdrop { background: rgba(0,0,0,.72); }
+
+    html[data-theme="light"] .ff-sheet__backdrop,
+    html[data-theme="light"] .ff-modal__backdrop,
+    html[data-theme="light"] .ff-drawer__backdrop { background: rgba(10,15,30,.42); }
+  }
+
+  /* Scroll-lock fallback for browsers without :has() support
+     Best practice: JS can toggle body.ff-noScroll on open/close (optional). */
+  @supports not selector(html:has(*)) {
+    body.ff-body.ff-noScroll { overflow: hidden !important; }
+
+    /* CSS-only fallback (works when :target is used for #checkout/#sponsor-interest)
+       Harmless if structure doesn't match; treated as best-effort. */
+    #checkout:target ~ .ff-shell body,
+    #sponsor-interest:target ~ .ff-shell body { overflow: hidden; }
+
+    /* Presence selectors only (no-op). Kept as documentation + future gating. */
+    .ff-sheet.is-open,
+    .ff-modal.is-open,
+    .ff-sheet[data-open="true"],
+    .ff-modal[data-open="true"],
+    .ff-sheet[aria-hidden="false"],
+    .ff-modal[aria-hidden="false"],
+    .ff-drawer.is-open,
+    .ff-drawer[data-open="true"],
+    .ff-drawer[aria-hidden="false"],
+    .ff-drawer:not([hidden]) { }
+  }
+
+  /* Reduced motion: hard stop (extra belt) */
+  @media (prefers-reduced-motion: reduce) {
+    .ff-sheet__panel,
+    .ff-modal__panel,
+    .ff-drawer__panel {
+      transition: none !important;
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+}

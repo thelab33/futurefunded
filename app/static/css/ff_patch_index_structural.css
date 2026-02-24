@@ -1,0 +1,43 @@
+/* app/static/css/ff_patch_index_structural.css
+   Index-only structural patch (layout + spacing only)
+   Safe for dev/staging — move into ff.css properly later.
+*/
+
+@layer ff.pages {
+  .ff-container,
+  .fc-container,
+  .fcx-hero__container,
+  .fcx-hero__content { box-sizing: border-box; max-width: 1180px; margin-left:auto; margin-right:auto; padding-left:1rem; padding-right:1rem; width:100%; }
+
+  .ff-section, .fc-section, .fcx-section { padding-top:1.25rem; padding-bottom:1.25rem; }
+
+  .fc-hero, .fcx-hero, .fcx-hero__content, .fc-hero__container { display:flex; flex-direction:column; gap:0.75rem; align-items:stretch; justify-content:center; min-height:220px; }
+  .fc-hero .fc-hero-goal, .fc-hero-goal { font-weight:600; font-size:1rem; }
+
+  .fc-tiles, .fc-rail--compact, .agency-tiles, .deck, .fc-tiles .fc-tile { display:grid; gap:0.6rem; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); align-items:start; }
+
+  .fc-meter, .fundraiser-meter, .fc-progress { width:100%; height:12px; background:transparent; border-radius:999px; overflow:hidden; }
+  .fc-meter__fill, .fundraiser-meter__fill { height:100%; width:0%; min-width:0; display:block; transition: width 420ms ease; background: currentColor; }
+
+  .donor-feed, .donor-feed-wrapper, .donor, .donor-entry { display:block; width:100%; }
+  .donor-entry, .donor-feed-link { display:flex; gap:0.5rem; align-items:center; padding:0.35rem 0.5rem; }
+
+  .cta, .cta-row, .cta-text, .btn-brand, .btn-donate, .donate-primary-cta, .fc-hero-cta { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.55rem 0.95rem; border-radius:10px; text-decoration:none; white-space:nowrap; cursor:pointer; }
+
+  .ff-sheet, .fc-sheet, .drawer__panel, .fc-sheet__panel, .ff-drawer, .drawer__head, .drawer__foot { box-sizing:border-box; max-width:940px; width:100%; padding:1rem; margin:0 auto; background:transparent; }
+  .drawer__scrim { position:fixed; inset:0; pointer-events:none; }
+
+  .sponsor-card, .sponsor-tile, .fcx-card, .card__body, .card__footer { display:flex; flex-direction:column; gap:0.5rem; padding:0.8rem; }
+
+  .fc-foot, .fc-footer--slim, .ff-footer, .ff-foot, .footer { padding-top:0.6rem; padding-bottom:0.6rem; font-size:0.92rem; }
+
+  .chipset, .chip-cta, .badge-dot, .brand-pill, .brandmark { display:inline-flex; align-items:center; gap:0.35rem; padding:0.25rem 0.45rem; border-radius:999px; }
+
+  .empty, .empty .copy { text-align:center; padding:1.25rem; }
+
+  :where(.btn-donate, .donate-primary-cta, .cta, a, button):focus { outline:3px solid #7f7f7f; outline-offset:3px; }
+
+  @media (min-width: 768px) {
+    .fc-hero, .fcx-hero { min-height:320px; gap:1rem; }
+  }
+}
