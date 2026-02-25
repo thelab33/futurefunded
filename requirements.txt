@@ -100,3 +100,4 @@ isort==5.13.2                    # Import sorting (CI-ready)
 
 faker
 Flask-Mail==0.9.1
+playwright==1.58.0

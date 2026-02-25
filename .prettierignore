@@ -1,0 +1,17 @@
+# Generated / bundled / minified
+app/static/css/*.min.css
+app/static/css/*bundle*.css
+app/static/css/_stubs.generated.css
+
+# Files that contain Jinja/template artifacts (not valid CSS for prettier)
+app/static/css/app.min.css
+app/static/css/fc-app.css
+app/static/css/fundchampsV1.css
+app/static/css/input.css
+
+# This file contains literal </style> (should be fixed, but ignore for now)
+app/static/css/futurefunded_ConnectATXElte.css
+
+# JS files with template extraction artifacts
+app/static/js/extracted/**
+app/static/js/donation.js

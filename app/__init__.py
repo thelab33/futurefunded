@@ -20,6 +20,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from flask import Blueprint, Flask, abort, g, jsonify, render_template, request, send_file, url_for
+from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -61,6 +62,11 @@ try:
 except Exception:  # pragma: no cover
     sentry_sdk = None  # type: ignore
 
+try:
+    from jinja2 import Undefined  # type: ignore
+except Exception:  # pragma: no cover
+    Undefined = type("Undefined", (), {})  # type: ignore
+
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -86,8 +92,27 @@ def _resolve_config(target: Optional[ConfigLike]) -> ConfigLike:
     return target
 
 
+def _module_exists(dotted: str) -> bool:
+    try:
+        return importlib.util.find_spec(dotted) is not None
+    except Exception:
+        return False
+
+
+def _is_prod(app: Flask) -> bool:
+    return str(app.config.get("ENV") or "development").lower() == "production"
+
+
+def _iter_candidates(x: Union[str, Iterable[str]]) -> List[str]:
+    if isinstance(x, str) and "|" in x:
+        return [p.strip() for p in x.split("|") if p.strip()]
+    if isinstance(x, str):
+        return [x]
+    return list(x)
+
+
 def _json_error(message: str, status: int, **extra: Any):
-    payload: Dict[str, Any] = {"ok": False, "error": {"code": status, "message": message}}
+    payload: Dict[str, Any] = {"ok": False, "error": {"code": int(status), "message": str(message)}}
     rid = extra.pop("request_id", None)
     if rid:
         payload["error"]["request_id"] = rid
@@ -95,7 +120,7 @@ def _json_error(message: str, status: int, **extra: Any):
         payload["error"].update(extra)
 
     resp = jsonify(payload)
-    resp.status_code = status
+    resp.status_code = int(status)
     return resp
 
 
@@ -104,7 +129,7 @@ def _wants_json_response() -> bool:
     if path.startswith(("/api/", "/payments/", "/metrics/", "/_diag")):
         return True
     accept = (request.headers.get("Accept") or "").lower()
-    return "application/json" in accept or request.is_json
+    return ("application/json" in accept) or bool(request.is_json)
 
 
 def _parse_cors_origins(env: str) -> Union[str, List[str]]:
@@ -117,23 +142,27 @@ def _parse_cors_origins(env: str) -> Union[str, List[str]]:
     return raw
 
 
-def _iter_candidates(x: Union[str, Iterable[str]]) -> List[str]:
-    if isinstance(x, str) and "|" in x:
-        return [p.strip() for p in x.split("|") if p.strip()]
-    if isinstance(x, str):
-        return [x]
-    return list(x)
+def json_sanitize(x: Any) -> Any:
+    """
+    Recursively convert common non-JSON types into JSON-safe equivalents.
+    This prevents `|tojson` from crashing on Undefined / Decimal / datetime, etc.
+    """
+    from datetime import date, datetime
+    from decimal import Decimal
 
-
-def _module_exists(dotted: str) -> bool:
-    try:
-        return importlib.util.find_spec(dotted) is not None
-    except Exception:
-        return False
-
-
-def _is_prod(app: Flask) -> bool:
-    return (app.config.get("ENV") or "development").lower() == "production"
+    if isinstance(x, Undefined):
+        return None
+    if x is None or isinstance(x, (str, int, float, bool)):
+        return x
+    if isinstance(x, Decimal):
+        return float(x)
+    if isinstance(x, (datetime, date)):
+        return x.isoformat()
+    if isinstance(x, dict):
+        return {str(k): json_sanitize(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [json_sanitize(v) for v in x]
+    return str(x)
 
 
 # -----------------------------------------------------------------------------
@@ -163,13 +192,13 @@ def _configure_logging(app: Flask) -> None:
             if not getattr(h, "formatter", None) or "%(request_id)s" not in getattr(h.formatter, "_fmt", ""):
                 h.setFormatter(logging.Formatter(fmt))
 
-    root.setLevel(app.config.get("LOG_LEVEL", "INFO"))
-    logging.getLogger("werkzeug").setLevel(app.config.get("WERKZEUG_LOG_LEVEL", "WARNING"))
+    root.setLevel(str(app.config.get("LOG_LEVEL", "INFO")).upper())
+    logging.getLogger("werkzeug").setLevel(str(app.config.get("WERKZEUG_LOG_LEVEL", "WARNING")).upper())
     app.logger.info("Loaded config: ENV=%s DEBUG=%s", app.config.get("ENV", "?"), app.debug)
 
 
 # -----------------------------------------------------------------------------
-# Jinja helpers: static_url + CSP nonce attr
+# Jinja helpers: static_url + CSP nonce attr + json_sanitize
 # -----------------------------------------------------------------------------
 def static_url(path: str) -> str:
     if not path:
@@ -189,14 +218,30 @@ def _register_jinja_helpers(app: Flask) -> None:
         except Exception:
             return "$0"
 
-    def nonce_attr() -> str:
+    def nonce_attr() -> Markup:
         n = getattr(g, "csp_nonce", "") or ""
-        return f' nonce="{n}"' if n else ""
+        if not n:
+            return Markup("")
+        return Markup(f' nonce="{escape(n)}"')
 
     app.jinja_env.filters["usd"] = money
+    app.jinja_env.filters["json_sanitize"] = json_sanitize
+
     app.jinja_env.globals.setdefault("money", money)
     app.jinja_env.globals.setdefault("static_url", static_url)
     app.jinja_env.globals.setdefault("nonce_attr", nonce_attr)
+
+
+def _register_default_template_context(app: Flask) -> None:
+    """
+    Ensure templates never see missing FF_CFG (prevents Undefined -> tojson crashes).
+    Explicit render_template(..., FF_CFG=...) still overrides this default.
+    """
+    @app.context_processor
+    def _defaults():
+        return {
+            "FF_CFG": {},
+        }
 
 
 # -----------------------------------------------------------------------------
@@ -212,16 +257,17 @@ def _apply_proxyfix(app: Flask) -> None:
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
     app.logger.info("ProxyFix enabled (trusting X-Forwarded-* headers).")
+    # Hint for url_for outside request context (actual scheme comes from ProxyFix inside requests)
     app.config["PREFERRED_URL_SCHEME"] = "https"
 
 
 # -----------------------------------------------------------------------------
-# Static assets: make /static/ff-app.js and /static/ff.css always resolvable
+# Static assets: make /static/<file> always resolvable
 # -----------------------------------------------------------------------------
 def _discover_static_roots() -> List[Path]:
     """
     Ordered search roots for /static/<file>.
-    We include common build output folders + your existing app/static.
+    Includes common build output folders + app/static. Keeps it deterministic.
     """
     candidates = [
         BASE_DIR / "app" / "static",
@@ -230,33 +276,54 @@ def _discover_static_roots() -> List[Path]:
         BASE_DIR / "dist",
         BASE_DIR / "build",
         BASE_DIR / "frontend" / "static",
-        BASE_DIR / "app" / "templates" / "static",
     ]
+
     roots: List[Path] = []
     for p in candidates:
         if p.is_dir():
             roots.append(p)
 
-    # If ff assets exist elsewhere, add their parent dirs as last-resort roots
+    # Optional extra roots from env (pipe or comma separated)
+    extra = (os.getenv("FF_STATIC_ROOTS") or "").strip()
+    if extra:
+        for chunk in extra.replace(",", "|").split("|"):
+            c = chunk.strip()
+            if not c:
+                continue
+            pp = Path(c).expanduser()
+            if pp.is_dir():
+                roots.append(pp)
+
+    # If ff assets exist elsewhere, add their parent dirs as last-resort roots (bounded)
+    # NOTE: bounded and deterministic: only checks a small set of known filenames.
     for name in ("ff-app.js", "ff.css"):
         try:
-            # rglob can be expensive; keep it bounded by only doing it for two filenames.
-            hits = list(BASE_DIR.rglob(name))
-            for h in hits[:10]:
-                if h.is_file():
-                    parent = h.parent
-                    if parent not in roots:
-                        roots.append(parent)
+            # Shallow-ish search: check common repo paths first; avoid unbounded rglob cost.
+            for guess in (
+                BASE_DIR / "app" / "static",
+                BASE_DIR / "static",
+                BASE_DIR / "dist",
+                BASE_DIR / "build",
+                BASE_DIR / "public",
+            ):
+                hit = guess / name
+                if hit.is_file():
+                    if hit.parent not in roots:
+                        roots.append(hit.parent)
         except Exception:
             pass
 
-    # Ensure uniqueness while preserving order
-    seen = set()
+    # Unique, order-preserving
+    seen: set[str] = set()
     out: List[Path] = []
     for r in roots:
-        rp = r.resolve()
-        if str(rp) not in seen:
-            seen.add(str(rp))
+        try:
+            rp = r.resolve()
+        except Exception:
+            continue
+        key = str(rp)
+        if key not in seen:
+            seen.add(key)
             out.append(rp)
     return out
 
@@ -269,8 +336,7 @@ def _static_max_age(app: Flask, filename: str) -> int:
     """
     if not _is_prod(app):
         return 0
-    fn = filename.lower()
-    # crude but effective: versioned/hashy filenames get long cache
+    fn = (filename or "").lower()
     if any(tok in fn for tok in (".min.", "-v", "_v", ".hash.", ".chunk.")) or (
         len(fn) >= 16 and any(c in "abcdef0123456789" for c in fn[-16:])
     ):
@@ -281,19 +347,28 @@ def _static_max_age(app: Flask, filename: str) -> int:
 def _register_static_routes(app: Flask) -> None:
     roots = _discover_static_roots()
     app.config["FF_STATIC_ROOTS"] = [str(r) for r in roots]
+    app.logger.info("Static roots: %s", ", ".join(app.config["FF_STATIC_ROOTS"]) or "(none)")
 
     @app.get("/static/<path:filename>", endpoint="static")
     def _static(filename: str):
-        # Basic traversal guard
-        if not filename or ".." in Path(filename).parts:
+        if not filename:
+            abort(404)
+
+        # traversal guard (fast)
+        parts = Path(filename).parts
+        if ".." in parts:
             abort(404)
 
         for root_s in app.config.get("FF_STATIC_ROOTS", []):
             root = Path(root_s)
-            full = (root / filename).resolve()
             try:
-                # Ensure full is under root
-                full.relative_to(root.resolve())
+                base = root.resolve()
+            except Exception:
+                continue
+
+            full = (base / filename).resolve()
+            try:
+                full.relative_to(base)
             except Exception:
                 continue
 
@@ -376,7 +451,7 @@ def _register_blueprints(app: Flask) -> None:
             "  bp = Blueprint('payments', __name__)\n"
         )
 
-    # Main web routes: prefer your existing blueprint if present; otherwise we’ll render index.html ourselves.
+    # Main web routes
     if _module_exists("app.routes.main"):
         _safe_register(app, "app.routes.main", "main_bp|bp", "/")
 
@@ -420,7 +495,7 @@ def _init_talisman(app: Flask) -> None:
 
 
 def _init_cors(app: Flask, cors_origins: Union[str, List[str]]) -> None:
-    if not cors:
+    if cors is None:
         return
     supports_credentials = (os.getenv("CORS_SUPPORTS_CREDENTIALS", "")).strip().lower() in {"1", "true", "yes", "on"}
     if cors_origins == "*":
@@ -441,7 +516,7 @@ def _init_cors(app: Flask, cors_origins: Union[str, List[str]]) -> None:
 
 
 def _init_socketio(app: Flask, cors_origins: Union[str, List[str]]) -> None:
-    if not socketio:
+    if socketio is None:
         return
     app.socketio = socketio  # type: ignore[attr-defined]
     socketio.init_app(app, cors_allowed_origins=cors_origins if cors_origins else "*")
@@ -500,7 +575,7 @@ def _register_error_handlers(app: Flask) -> None:
 
 
 def _register_csrf_cookie(app: Flask) -> None:
-    if not csrf or not generate_csrf:
+    if csrf is None or generate_csrf is None:
         return
 
     skip_prefixes = ("/payments/", "/api/", "/metrics/", "/healthz", "/version")
@@ -509,7 +584,7 @@ def _register_csrf_cookie(app: Flask) -> None:
     def _inject_csrf_cookie(resp):
         try:
             path = request.path or ""
-            if not path.startswith(skip_prefixes) and request.method == "GET":
+            if request.method == "GET" and not path.startswith(skip_prefixes):
                 resp.set_cookie(
                     "csrf_token",
                     generate_csrf(),
@@ -572,7 +647,7 @@ def _enforce_stripe_live_keys_if_required(app: Flask) -> None:
 def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     template_root = BASE_DIR / "app" / "templates"
 
-    # Disable Flask’s built-in static so we can guarantee /static/ff-app.js + /static/ff.css resolution
+    # Disable Flask’s built-in static so we can guarantee /static/<file> resolution
     app = Flask(
         __name__,
         static_folder=None,
@@ -590,7 +665,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
         else:
             raise RuntimeError(f"Invalid FLASK_CONFIG '{cfg}': {exc}")
 
-    env = (app.config.get("ENV") or "development").lower()
+    env = str(app.config.get("ENV") or "development").lower()
     app.url_map.strict_slashes = False
 
     # ---- Canonical public base URL
@@ -621,6 +696,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     # ---- Logging / Jinja helpers / Static routes
     _configure_logging(app)
     _register_jinja_helpers(app)
+    _register_default_template_context(app)
     _register_static_routes(app)
 
     # ---- Optional integrations
@@ -629,7 +705,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     _init_cors(app, _parse_cors_origins(env))
 
     # ---- Core extensions
-    if csrf:
+    if csrf is not None:
         csrf.init_app(app)
 
     db.init_app(app)
@@ -649,7 +725,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     _register_csrf_cookie(app)
 
     # ---- Auth + i18n (graceful)
-    if login_manager:
+    if login_manager is not None:
         login_manager.init_app(app)
         login_manager.login_view = "main.home"
 
@@ -662,7 +738,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
         def load_user(uid: str):
             return User.query.get(int(uid)) if User else None
 
-    if babel:
+    if babel is not None:
         babel.init_app(app)
 
     # ---- Blueprints + health
@@ -673,7 +749,8 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     if not any(rule.rule == "/" for rule in app.url_map.iter_rules()):
         @app.get("/")
         def _index():
-            return render_template("index.html")
+            # FF_CFG default is injected via context processor; keep explicit empty dict anyway.
+            return render_template("index.html", FF_CFG={})
 
     # ---- Scanner mitigation
     @app.get("/.git/<path:_any>")
@@ -691,7 +768,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
         pass
 
     try:
-        from turnkey import init_turnkey
+        from turnkey import init_turnkey  # type: ignore
     except Exception as e:
         app.logger.warning("Turnkey import unavailable: %s", e)
     else:
@@ -699,4 +776,5 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
             init_turnkey(app)
         except Exception as e:
             app.logger.warning("Turnkey init failed: %s", e)
+
     return app

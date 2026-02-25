@@ -1,2831 +1,1624 @@
-/*! ff-app.js — FutureFunded Flagship v15.0.1 PRO (drop-in replacement)
-  PATCH NOTES (v15.0.1-pro):
-    - Stripe “card incomplete” fix (no element resets on submit; mount once per clientSecret)
-    - Adds elements.submit() before confirmPayment()
-    - Intent request de-dupe + stale-response protection
-    - PayPal loader hardened (script ID + src handling)
-    - metaBool parsing hardened (true/1/yes/on)
-    - Fixes fees merge bug (removes accidental assignment side-effect)
-    - Supports BOTH meta endpoints: ff-stripe-intent-endpoint AND ff-checkout-endpoint
-    - CSRF header hardened (X-CSRF-Token + X-CSRFToken)
-    - Keeps v13/v14 selectors + contract exports intact
-*/
-(() => {
+/* ============================================================================
+ * FutureFunded • Flagship — ff-app.js (FULL DROP-IN • Hook-safe • CSP-safe)
+ * File: app/static/js/ff-app.js
+ * Version: 17.0.0-ff (overlay-deterministic • focus-correct • payments-lazy)
+ *
+ * Contracts honored:
+ * - Hook-safe: never assumes optional nodes exist
+ * - Selector map: uses #ffSelectors JSON hooks if present (with sane fallbacks)
+ * - Overlay contract: open via :target / .is-open / [data-open="true"] / [aria-hidden="false"]
+ *                    close via [hidden] / [data-open="false"] / [aria-hidden="true"]
+ * - Deterministic checkout UX: opens/closes + focuses into dialog + Esc closes
+ * - CSP-safe: nonce-aware dynamic script injection (Stripe/PayPal)
+ * - Payments lazy-load: Stripe/PayPal load ONLY when checkout is open AND amount > 0
+ * ========================================================================== */
+
+(function () {
   "use strict";
 
-  // Prevent double-init (v13/v14/v15 compat)
-  if (
-    window.__FF_APP_V15_LOADED ||
-    window.__FF_APP_V14_2_LOADED ||
-    window.__FF_APP_V14_LOADED ||
-    window.__FF_APP_V13_LOADED
-  )
-    return;
+  /* --------------------------------------------------------------------------
+   * Boot guard (prevents double init)
+   * ------------------------------------------------------------------------ */
+  var BOOT_KEY = "__FF_APP_BOOT__";
+  if (window[BOOT_KEY]) return;
+  window[BOOT_KEY] = { at: Date.now(), v: "17.0.0-ff" };
 
-  window.__FF_APP_V15_LOADED = true;
-  window.__FF_APP_V14_2_LOADED = true;
-  window.__FF_APP_V14_LOADED = true;
-  window.__FF_APP_V13_LOADED = true;
+  /* --------------------------------------------------------------------------
+   * Tiny utilities (no dependencies)
+   * ------------------------------------------------------------------------ */
+  function isEl(x) { return !!(x && x.nodeType === 1); }
 
-  /* ---------------------------------------------
-   * Utilities
-   * -------------------------------------------*/
-  const qs = (sel, root = document) => root.querySelector(sel);
-  const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const on = (el, ev, fn, opt) => el && el.addEventListener(ev, fn, opt);
-  const safeText = (v) => (v == null ? "" : String(v));
-  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
-  const toInt = (v, def = 0) => {
-    const n = Number.parseInt(String(v ?? ""), 10);
-    return Number.isFinite(n) ? n : def;
-  };
-  const toNum = (v, def = 0) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : def;
-  };
-  const now = () => Date.now();
-
-  const parseJSON = (txt, fallback) => {
-    try {
-      return JSON.parse(txt);
-    } catch {
-      return fallback;
-    }
-  };
-
-  const decodeMaybeBase64Json = (txt, fallback) => {
-    const s = safeText(txt).trim();
-    if (!s) return fallback;
-    if (s.startsWith("{") || s.startsWith("[")) return parseJSON(s, fallback);
-    try {
-      const decoded = atob(s);
-      return parseJSON(decoded, fallback);
-    } catch {
-      return fallback;
-    }
-  };
-
-  const debounce = (fn, ms = 150) => {
-    let t = null;
-    return (...args) => {
+  function qs(sel, root) {
+    try { return (root || document).querySelector(sel); } catch (_) { return null; }
+  }
+  function qsa(sel, root) {
+    try { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); } catch (_) { return []; }
+  }
+  function on(el, ev, fn, opts) {
+    try { if (el) el.addEventListener(ev, fn, opts || false); } catch (_) {}
+  }
+  function safeJson(txt, fallback) {
+    try { return JSON.parse(String(txt || "")); } catch (_) { return fallback; }
+  }
+  function clamp(n, a, b) { return Math.min(b, Math.max(a, n)); }
+  function debounce(fn, ms) {
+    var t = 0;
+    return function () {
+      var args = arguments;
       clearTimeout(t);
-      t = setTimeout(() => fn(...args), ms);
+      t = setTimeout(function () { fn.apply(null, args); }, ms || 0);
     };
-  };
+  }
 
-  const prefersReducedMotion = () => {
+  function meta(name) {
     try {
-      return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      return false;
-    }
-  };
-
-  const safeUrl = (raw) => {
-    const s = safeText(raw).trim();
-    if (!s) return "";
-    try {
-      const u = new URL(s, window.location.origin);
-      const p = (u.protocol || "").toLowerCase();
-      if (p === "http:" || p === "https:" || p === "mailto:" || p === "tel:") return u.toString();
-      return "";
-    } catch {
+      var el = document.querySelector('meta[name="' + String(name).replace(/"/g, '\\"') + '"]');
+      return (el && el.getAttribute("content") ? String(el.getAttribute("content")) : "").trim();
+    } catch (_) {
       return "";
     }
-  };
+  }
 
-  // Images: allow http/https, blob, and data:image/* EXCEPT svg
-  const safeImgUrl = (raw) => {
-    const s = safeText(raw).trim();
-    if (!s) return "";
+  function getNonce() {
+    // Reuse any existing nonce that Flask/Jinja already placed.
     try {
-      if (s.startsWith("data:image/svg")) return "";
-      if (s.startsWith("data:image/")) return s;
-      const u = new URL(s, window.location.origin);
-      const p = (u.protocol || "").toLowerCase();
-      if (p === "http:" || p === "https:" || p === "blob:") return u.toString();
-      return "";
-    } catch {
+      var s = document.querySelector("script[nonce]");
+      var n = s ? s.getAttribute("nonce") : "";
+      if (n) return n;
+
+      // Some stacks place nonce in a meta tag; support both conventions.
+      var m = document.querySelector('meta[name="csp-nonce"], meta[property="csp-nonce"]');
+      var c = m ? (m.getAttribute("content") || "") : "";
+      return String(c || "").trim();
+    } catch (_) {
       return "";
     }
-  };
+  }
 
-  const cssEscape = (s) => {
-    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(s);
-    return safeText(s).replace(/[^a-zA-Z0-9_\-]/g, "\\$&");
-  };
+  function fetchWithTimeout(url, opts, timeoutMs) {
+    var ms = Number(timeoutMs || 15000);
+    var ctrl = null;
+    try { ctrl = new AbortController(); } catch (_) { ctrl = null; }
 
-  const parseMoneyToCents = (raw) => {
-    const s = safeText(raw).trim();
-    if (!s) return 0;
-    const cleaned = s.replace(/[^\d.]/g, "");
-    if (!cleaned) return 0;
-    const parts = cleaned.split(".");
-    const whole = parts[0] || "0";
-    const frac = (parts[1] || "").slice(0, 2).padEnd(2, "0");
-    const cents = toInt(whole, 0) * 100 + toInt(frac, 0);
-    return Math.max(0, cents);
-  };
+    var t = setTimeout(function () {
+      try { if (ctrl) ctrl.abort(); } catch (_) {}
+    }, ms);
 
-  const formatCurrency = (cents, currency = "USD", locale = "en-US", exact = false) => {
-    const n = (toNum(cents, 0) / 100) || 0;
+    var o = opts || {};
+    if (ctrl) o.signal = ctrl.signal;
+
+    return fetch(url, o).finally(function () {
+      clearTimeout(t);
+    });
+  }
+
+  function parseMoneyToCents(val) {
+    var raw = String(val == null ? "" : val).trim();
+    if (!raw) return 0;
+    // "$1,200.50" -> "1200.50"
+    var cleaned = raw.replace(/,/g, "").replace(/[^\d.]/g, "");
+    var n = Number(cleaned);
+    if (!isFinite(n) || n <= 0) return 0;
+    return Math.max(0, Math.round(n * 100));
+  }
+
+  function isEmail(s) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
+  }
+
+  function formatMoney(cents, currency, locale) {
+    var c = Number(cents || 0);
+    var cur = String(currency || "USD");
+    var loc = String(locale || "en-US");
     try {
-      return new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency,
-        minimumFractionDigits: exact ? 2 : 0,
-        maximumFractionDigits: exact ? 2 : 0,
-      }).format(n);
-    } catch {
-      return `$${exact ? n.toFixed(2) : Math.round(n).toLocaleString("en-US")}`;
+      return new Intl.NumberFormat(loc, { style: "currency", currency: cur }).format(c / 100);
+    } catch (_) {
+      return "$" + (c / 100).toFixed(2);
     }
-  };
+  }
 
-  const parseISO = (iso) => {
-    if (!iso) return null;
-    const d = new Date(iso);
-    return Number.isFinite(d.getTime()) ? d : null;
-  };
+  function setText(el, txt) {
+    try { if (el) el.textContent = String(txt == null ? "" : txt); } catch (_) {}
+  }
 
-  const humanCountdown = (ms) => {
-    const s = Math.max(0, Math.floor(ms / 1000));
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    if (d >= 7) return `${d}d`;
-    if (d > 0) return `${d}d ${h}h`;
-    if (h > 0) return `${h}h ${m}m`;
-    if (m > 0) return `${m}m`;
-    return "soon";
-  };
+  function announce(txt) {
+    var live = DOM.live();
+    if (!live) return;
+    // Force SR announcement even if same text repeats.
+    try {
+      live.textContent = "";
+      setTimeout(function () { live.textContent = String(txt || ""); }, 10);
+    } catch (_) {}
+  }
 
-  const deepMerge = (a, b) => {
-    if (!b || typeof b !== "object") return a;
-    const out = Array.isArray(a) ? [...a] : { ...(a || {}) };
-    for (const [k, v] of Object.entries(b)) {
-      if (
-        v &&
-        typeof v === "object" &&
-        !Array.isArray(v) &&
-        out[k] &&
-        typeof out[k] === "object" &&
-        !Array.isArray(out[k])
-      ) {
-        out[k] = deepMerge(out[k], v);
-      } else {
-        out[k] = v;
+  /* --------------------------------------------------------------------------
+   * Selector hooks (reads your #ffSelectors contract if present)
+   * ------------------------------------------------------------------------ */
+  var HOOKS = (function () {
+    // Supports:
+    // - window.__FF_SELECTORS__ = { hooks: { ... } } or { ...hooks }
+    // - <script id="ffSelectors" type="application/json">{ "hooks": {...} }</script>
+    var raw = null;
+
+    try {
+      if (window.__FF_SELECTORS__ && typeof window.__FF_SELECTORS__ === "object") raw = window.__FF_SELECTORS__;
+    } catch (_) {}
+
+    if (!raw) {
+      var s = document.getElementById("ffSelectors");
+      if (s && String(s.type || "").indexOf("json") !== -1) {
+        raw = safeJson(String(s.textContent || "").trim(), null);
       }
     }
-    return out;
-  };
 
-  // PATCH: tolerant JSON fetch (handles non-JSON errors)
-  const fetchJson = async (
-    url,
-    { method = "GET", headers = {}, body = null, credentials = "same-origin" } = {}
-  ) => {
-    const res = await fetch(url, { method, headers, body, credentials });
-    const text = await res.text().catch(() => "");
-    const data = parseJSON(text, null) || {};
-    if (!res.ok) throw new Error(data?.error || data?.message || text || `HTTP ${res.status}`);
-    return data;
-  };
+    var hooks = (raw && raw.hooks && typeof raw.hooks === "object") ? raw.hooks : (raw && typeof raw === "object" ? raw : {});
+    hooks = hooks && typeof hooks === "object" ? hooks : {};
 
-  const copyToClipboard = async (txt) => {
-    const s = safeText(txt);
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(s);
-        return true;
-      }
-    } catch {}
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = s;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      return !!ok;
-    } catch {
-      return false;
+    function get(key, fallbackSel) {
+      var v = hooks[key];
+      if (typeof v === "string" && v.trim()) return v.trim();
+      return String(fallbackSel || "");
     }
-  };
 
-  /* ---------------------------------------------
-   * DOM builder helpers (no innerHTML)
-   * -------------------------------------------*/
-  const clearChildren = (host) => {
-    if (!host) return;
-    while (host.firstChild) host.removeChild(host.firstChild);
-  };
-  const textNode = (v) => document.createTextNode(v == null ? "" : String(v));
+    return { get: get };
+  })();
 
-  const h = (tag, attrs = {}, kids = null) => {
-    const el = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs || {})) {
-      if (v == null) continue;
-      if (k === "class") el.className = String(v);
-      else if (k === "text") el.textContent = String(v);
-      else if (k === "style") el.style.cssText = String(v);
-      else if (k === "dataset" && v && typeof v === "object") Object.assign(el.dataset, v);
-      else if (k === "aria" && v && typeof v === "object")
-        for (const [ak, av] of Object.entries(v)) el.setAttribute(`aria-${ak}`, String(av));
-      else if (k === "role") el.setAttribute("role", String(v));
-      else if (k === "tabindex") el.tabIndex = Number(v);
-      else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
-      else if (typeof v === "boolean") {
-        if (v) el.setAttribute(k, "");
-      } else el.setAttribute(k, String(v));
+  /* --------------------------------------------------------------------------
+   * DOM getters (hook-safe)
+   * ------------------------------------------------------------------------ */
+  var DOM = (function () {
+    // Checkout
+    function checkoutSheet() { return qs(HOOKS.get("checkoutSheet", "#checkout,[data-ff-checkout-sheet]")); }
+    function checkoutPanel() {
+      var sheet = checkoutSheet();
+      if (!sheet) return null;
+      return qs(".ff-sheet__panel,[role='dialog']", sheet);
     }
-    if (kids != null) {
-      const add = (child) => {
-        if (child == null) return;
-        if (Array.isArray(child)) child.forEach(add);
-        else if (child instanceof Node) el.appendChild(child);
-        else el.appendChild(textNode(child));
-      };
-      add(kids);
-    }
-    return el;
-  };
 
-  const setChildren = (host, kids) => {
-    if (!host) return;
-    clearChildren(host);
-    const add = (child) => {
-      if (child == null) return;
-      if (Array.isArray(child)) child.forEach(add);
-      else host.appendChild(child instanceof Node ? child : textNode(child));
+    function openCheckoutTriggers() { return qsa(HOOKS.get("openCheckout", "[data-ff-open-checkout]")); }
+    function closeCheckoutTriggers() { return qsa(HOOKS.get("closeCheckout", "[data-ff-close-checkout]")); }
+
+    function donationForm() { return qs(HOOKS.get("donationForm", "#donationForm,form[data-ff-donate-form]")); }
+    function amountInput() { return qs(HOOKS.get("amountInput", "[data-ff-amount-input]")); }
+    function emailInput() { return qs(HOOKS.get("email", "[data-ff-email]")); }
+    function teamIdInput() { return qs(HOOKS.get("teamId", 'input[data-ff-team-id][name="team_id"]')); }
+
+    // Amount chips across the page
+    function amountChips() { return qsa(HOOKS.get("amountChip", "[data-ff-amount]")); }
+
+    // Toast + live
+    function toasts() { return qs(HOOKS.get("toasts", "[data-ff-toasts]")); }
+    function live() { return qs(HOOKS.get("live", "[data-ff-live],#ffLive")); }
+
+    // Theme toggle
+    function themeToggle() { return qs(HOOKS.get("themeToggle", "[data-ff-theme-toggle]")); }
+
+    // Drawer
+    function drawer() { return qs(HOOKS.get("drawer", "[data-ff-drawer],#drawer")); }
+
+    // Sponsor modal
+    function sponsorModal() { return qs(HOOKS.get("sponsorModal", "[data-ff-sponsor-modal],#sponsor-interest")); }
+
+    // Video modal
+    function videoModal() { return qs(HOOKS.get("videoModal", "[data-ff-video-modal],#press-video")); }
+    function videoFrame() {
+      var m = videoModal();
+      return m ? qs(HOOKS.get("videoFrame", "[data-ff-video-frame]"), m) : null;
+    }
+
+    // Payment mounts/messages
+    function stripeMount() { return qs("[data-ff-stripe-mount],[data-ff-payment-element],#paymentElement"); }
+    function stripeSkeleton() { return qs("[data-ff-stripe-skeleton]"); }
+    function stripeMsg() { return qs("[data-ff-stripe-msg]"); }
+    function stripeErr() { return qs("[data-ff-stripe-error]"); }
+
+    function paypalMount() { return qs("[data-ff-paypal-mount],#paypalButtons"); }
+    function paypalSkeleton() { return qs("[data-ff-paypal-skeleton]"); }
+    function paypalMsg() { return qs("[data-ff-paypal-msg]"); }
+    function paypalErr() { return qs("[data-ff-paypal-error]"); }
+
+    // Checkout status/error areas
+    function checkoutError() { return qs("[data-ff-checkout-error],#checkoutErrorText"); }
+    function checkoutStatus() { return qs("[data-ff-checkout-status]"); }
+    function checkoutSuccess() { return qs("[data-ff-checkout-success]"); }
+
+    // Sponsor submit (optional)
+    function sponsorSubmit() { return qs("[data-ff-sponsor-submit]"); }
+
+    // Share buttons
+    function shareButtons() { return qsa(HOOKS.get("share", "[data-ff-share]")); }
+
+    return {
+      checkoutSheet: checkoutSheet,
+      checkoutPanel: checkoutPanel,
+      openCheckoutTriggers: openCheckoutTriggers,
+      closeCheckoutTriggers: closeCheckoutTriggers,
+      donationForm: donationForm,
+      amountInput: amountInput,
+      emailInput: emailInput,
+      teamIdInput: teamIdInput,
+      amountChips: amountChips,
+      toasts: toasts,
+      live: live,
+      themeToggle: themeToggle,
+      drawer: drawer,
+      sponsorModal: sponsorModal,
+      videoModal: videoModal,
+      videoFrame: videoFrame,
+      stripeMount: stripeMount,
+      stripeSkeleton: stripeSkeleton,
+      stripeMsg: stripeMsg,
+      stripeErr: stripeErr,
+      paypalMount: paypalMount,
+      paypalSkeleton: paypalSkeleton,
+      paypalMsg: paypalMsg,
+      paypalErr: paypalErr,
+      checkoutError: checkoutError,
+      checkoutStatus: checkoutStatus,
+      checkoutSuccess: checkoutSuccess,
+      sponsorSubmit: sponsorSubmit,
+      shareButtons: shareButtons
     };
-    add(kids);
-  };
+  })();
 
-  /* ---------------------------------------------
-   * Meta tags (payments/endpoints only) — PATCHED
-   * -------------------------------------------*/
-  const meta = (name) => (qs(`meta[name="${name}"]`)?.content || "").trim();
-  const metaBool = (name, def = false) => {
-    const v = meta(name);
-    if (!v) return def;
-    const s = String(v).trim().toLowerCase();
-    return s === "true" || s === "1" || s === "yes" || s === "y" || s === "on";
-  };
-
-  const captureMode = document.documentElement.getAttribute("data-ff-capture") === "true";
-
-  // PATCH: CSRF meta supports both names
-  const csrfToken = meta("ff-csrf-token") || meta("csrf-token") || "";
-
-  const stripePk = meta("ff-stripe-pk");
-  const stripeJsSrc = meta("ff-stripe-js") || "https://js.stripe.com/v3/";
-
-  // PATCH: supports both meta keys (your old HTML used ff-checkout-endpoint)
-  const stripeIntentEndpoint =
-    meta("ff-stripe-intent-endpoint") || meta("ff-checkout-endpoint") || "/payments/stripe/intent";
-
-  const stripeReturnUrl = meta("ff-stripe-return-url") || window.location.href;
-  const stripeThemeMeta = meta("ff-stripe-theme") || "";
-  const stripeAutoload = metaBool("ff-stripe-autoload", false);
-
-  const paypalClientId = meta("ff-paypal-client-id");
-  const paypalCurrency = meta("ff-paypal-currency") || "USD";
-  const paypalIntent = meta("ff-paypal-intent") || "capture";
-  const paypalCreateEndpoint = meta("ff-paypal-create-endpoint") || "/payments/paypal/order";
-  const paypalCaptureEndpoint = meta("ff-paypal-capture-endpoint") || "/payments/paypal/capture";
-
-  const qrEndpoint = meta("ff-qr-endpoint") || "https://api.qrserver.com/v1/create-qr-code/";
-
-  const payloadShape = meta("ff-payments-payload-shape") || "nested_donor_v1";
-  const payloadExtra = decodeMaybeBase64Json(meta("ff-payments-extra-json") || "", {});
-  const coverFeesExact = metaBool("ff-cover-fees-exact", false);
-  const requireEmail = metaBool("ff-require-email", false);
-
-  /* ---------------------------------------------
-   * Shell env (from best [data-ff-shell])
-   * -------------------------------------------*/
-  const pickShellEl = () => {
-    const els = qsa("[data-ff-shell]");
-    if (!els.length) return null;
-    let best = els[0];
-    let bestScore = -1;
-    for (const el of els) {
-      const d = el.dataset || {};
-      const score =
-        (d.ffOrg ? 1 : 0) +
-        (d.ffCampaign ? 1 : 0) +
-        (d.ffTier ? 1 : 0) +
-        (d.ffEnv ? 1 : 0) +
-        (d.ffVersion ? 1 : 0) +
-        (d.ffEmbed ? 1 : 0) +
-        (d.ffWhitelabel ? 1 : 0) +
-        (d.ffPage ? 1 : 0);
-      if (score > bestScore) {
-        bestScore = score;
-        best = el;
-      }
-    }
-    return best;
-  };
-
-  const shellEl = pickShellEl();
-  const shellEnv = {
-    orgId: safeText(shellEl?.dataset?.ffOrg || "default"),
-    campaignId: safeText(shellEl?.dataset?.ffCampaign || "season"),
-    tier: safeText(shellEl?.dataset?.ffTier || "standard"),
-    env: safeText(shellEl?.dataset?.ffEnv || "prod"),
-    version: safeText(shellEl?.dataset?.ffVersion || "15.0.1-pro"),
-    embed: safeText(shellEl?.dataset?.ffEmbed || "false") === "true",
-    whiteLabel: safeText(shellEl?.dataset?.ffWhitelabel || "false") === "true",
-    page: safeText(shellEl?.dataset?.ffPage || "fundraiser"),
-  };
-
-  /* ---------------------------------------------
-   * Config (UI/content only) from #ffConfig
-   * -------------------------------------------*/
-  const readConfigFromScript = () => {
-    const scripts = qsa('script#ffConfig[type="application/json"]');
-    if (!scripts.length) return {};
-    for (let i = scripts.length - 1; i >= 0; i--) {
-      const raw = (scripts[i].textContent || "").trim();
-      if (!raw) continue;
-      const parsed = parseJSON(raw, null);
-      if (parsed && typeof parsed === "object") return parsed;
-    }
-    return {};
-  };
-
-  const DEFAULTS = {
-    org: {
-      name: "Organization",
-      meta: "City • State",
-      seasonPill: "Season Fund",
-      sportPill: "Youth program",
-      heroAccentLine: "Keep kids playing.",
-      footerTagline: "Fuel the season. Fund the future.",
-      announcement: "",
-    },
-    fundraiser: {
-      goalAmount: 25000,
-      raisedAmount: null,
-      deadlineISO: "",
-      updatedISO: "",
-      allocationUpdatedISO: "",
-      match: null,
-      allocation: [
-        { label: "Gym time + training", pct: 35 },
-        { label: "Tournaments + fees", pct: 30 },
-        { label: "Travel support", pct: 25 },
-        { label: "Scholarships", pct: 10 },
-      ],
-      impact: [],
-      sponsorTiers: [],
-      sponsors: [],
-      recentGifts: [],
-      popularAmountCents: 7500,
-      fees: { enabledCoverFees: true, percent: 0.029, fixedCents: 30, maxCents: 0 },
-    },
-    teams: [],
-    gallery: { enabled: false, items: [] },
-    flagship: {
-      features: { shareAttribution: true, gallery: true },
-      defaults: { currency: "USD", locale: "en-US", timezone: "America/Chicago" },
-      analytics: { utm: { enabled: true, sourceParam: "src", campaignParam: "cmp" } },
-      accessibility: { reducedMotionRespect: true, focusRestore: true, ariaLiveToasts: true },
-    },
-  };
-
-  const C = deepMerge(DEFAULTS, readConfigFromScript() || {});
-  const locale = safeText(C?.flagship?.defaults?.locale || "en-US");
-  const currency = safeText(C?.flagship?.defaults?.currency || "USD");
-
-  /* ---------------------------------------------
-   * DOM cache
-   * -------------------------------------------*/
-  const ensureToastsHost = () => {
-    let host = qs("[data-ff-toasts]");
+  /* --------------------------------------------------------------------------
+   * Toasts (safe, minimal)
+   * ------------------------------------------------------------------------ */
+  function ensureToastHost() {
+    var host = DOM.toasts();
     if (host) return host;
+
     host = document.createElement("div");
     host.className = "ff-toasts";
-    host.setAttribute("data-ff-toasts", "true");
-    document.body.appendChild(host);
+    host.setAttribute("data-ff-toasts", "");
+    host.setAttribute("role", "status");
+    host.setAttribute("aria-live", "polite");
+    host.setAttribute("aria-relevant", "additions removals");
+    try { document.body.appendChild(host); } catch (_) {}
     return host;
-  };
+  }
 
-  const cacheDom = () => ({
-    orgName: qs("#orgName"),
-    orgMeta: qs("#orgMeta"),
-    footerOrgName: qs("#footerOrgName"),
-    footerOrgMeta: qs("#footerOrgMeta"),
-    seasonPill: qs("#seasonPill"),
-    sportPill: qs("#sportPill"),
-    heroAccentLine: qs("#heroAccentLine"),
-    heroOrgLine: qs("#heroOrgLine"),
+  function toast(msg, kind, ms) {
+    var m = String(msg || "").trim();
+    if (!m) return;
 
-    topbar: qs("[data-ff-topbar], #ffTopbar"),
-    topbarRaised: qs("#topbarRaised"),
-    topbarGoal: qs("#topbarGoal"),
-    topbarDeadline: qs("#topbarDeadline"),
-    topbarCountdown: qs("#topbarCountdown"),
-    topbarMatchStrip: qs("[data-ff-match-strip]"),
-    topbarMatchText: qs("#topbarMatchText"),
-    topbarMatchRemaining: qs("#topbarMatchRemaining"),
-    topbarDismiss: qs("[data-ff-topbar-dismiss]"),
-
-    heroCountdown: qs("#heroCountdown"),
-    heroEventPill: qs("#heroEventPill, [data-ff-event-pill]"),
-
-    raisedBig: qs("#raisedBig"),
-    remainingText: qs("#remainingText"),
-    deadlineText: qs("#deadlineText"),
-    lastUpdatedText: qs("#lastUpdatedText"),
-    goalPill: qs("#goalPill"),
-    raisedRow: qs("#raisedRow"),
-    goalRow: qs("#goalRow"),
-    pctText: qs("#pctText"),
-    overallBar: qs("#overallBar"),
-    scrollProgressBar: qs("#scrollProgressBar"),
-
-    donorCount: qs("#donorCount"),
-    avgGift: qs("#avgGift"),
-    topGift: qs("#topGift"),
-
-    heroMatchPill: qs("#heroMatchPill"),
-    matchDetailRow: qs("[data-ff-match-details]"),
-    matchRemainingPill: qs("#matchRemainingPill"),
-    matchEndsPill: qs("#matchEndsPill"),
-    matchStatus: qs("#matchStatus"),
-    sponsorMatchPill: qs("[data-ff-sponsor-match-pill]"),
-    matchCallout: qs("[data-ff-match-callout]"),
-    matchCalloutText: qs("[data-ff-match-callout-text]"),
-
-    announce: qs("[data-ff-announcement]"),
-    announcementText: qs("#announcementText"),
-    announceDismiss: qs("[data-ff-announcement-dismiss]"),
-
-    shareLink: qs("#shareLink"),
-    shareCopyBtns: qsa("[data-ff-copy-link], [data-ff-copy-share]"),
-    shareNativeBtns: qsa("[data-ff-native-share]"),
-    shareOpenBtns: qsa("[data-ff-share-open]"),
-    smsShareBtns: qsa("[data-ff-sms-share]"),
-    emailShareBtns: qsa("[data-ff-email-share]"),
-    copyCaptionBtns: qsa("[data-ff-copy-caption]"),
-    proofCaption: qs("#proofCaption"),
-    proofDonorName: qs("#proofDonorName"),
-    proofAmount: qs("#proofAmount"),
-    qrImgs: qsa("[data-ff-qr]"),
-    downloadQrBtns: qsa("[data-ff-download-qr]"),
-
-    allocationList: qs("[data-ff-allocation-list]"),
-    allocationUpdated: qs("[data-ff-allocation-updated]"),
-    allocationUpdatedText: qs("[data-ff-allocation-updated-text]"),
-
-    impactGrid: qs("[data-ff-impact-grid]"),
-    impactEmpty: qs("[data-ff-impact-empty]"),
-    impactSearch: qs("[data-ff-impact-search]"),
-    impactFilterBtns: qsa("[data-ff-impact-filter]"),
-
-    sponsorTiersHost: qs("[data-ff-sponsor-tiers]"),
-    sponsorPodium: qs("[data-ff-sponsor-podium]"),
-    sponsorList: qs("[data-ff-sponsor-leaderboard]"),
-    sponsorSortBtns: qsa("[data-ff-sponsor-sort] [data-ff-sort]"),
-    sponsorWall: qs("[data-ff-sponsor-wall]"),
-    sponsorWallViewBtns: qsa("[data-ff-sponsor-wall-view] [data-ff-wall]"),
-    refreshSponsorsBtn: qs("[data-ff-refresh-sponsors]"),
-
-    teamsGrid: qs("[data-ff-teams-grid], #teamsGrid"),
-    teamsStatus: qs("[data-ff-teams-status]"),
-    teamSearch: qs("[data-ff-team-search]"),
-    teamSortBtns: qsa("[data-ff-team-sort] [data-ff-sort]"),
-    attribBox: qs("[data-ff-attrib-box]"),
-    attribTitle: qs("[data-ff-attrib-title]"),
-    attribHelp: qs("[data-ff-attrib-help]"),
-    attribClearBtns: qsa("[data-ff-attrib-clear]"),
-    summaryTeamRow: qs("#summaryTeamRow"),
-    summaryTeam: qs("#summaryTeam"),
-
-    donationForm: qs("#donationForm"),
-    amount: qs("#amount"),
-    email: qs("#email"),
-    fullName: qs("#fullName"),
-    message: qs("#message"),
-    anonymous: qs("#anonymous"),
-    coverFees: qs("#coverFees"),
-    payBtn: qs("#payBtn"),
-    payError: qs("#payError"),
-    payErrorText: qs("#payErrorText"),
-    paySuccess: qs("#paySuccess"),
-    paySuccessText: qs("#paySuccessText"),
-    summaryAmount: qs("#summaryAmount"),
-    summaryFees: qs("#summaryFees"),
-    summaryTotal: qs("#summaryTotal"),
-    receiptEmail: qs("#receiptEmail"),
-    checkoutStatusText: qs("#checkoutStatusText"),
-    checkoutMethodPill: qs("[data-ff-payment-method]"),
-    checkoutMethodText: qs("#checkoutMethodText"),
-
-    // PATCH: prefer explicit mount id first
-    paymentElementHost:
-      qs("#paymentElement") ||
-      qs("#stripeMount") ||
-      qs("[data-ff-stripe-host]") ||
-      qs("[data-ff-stripe-element]") ||
-      qs("#stripeElement"),
-    stripeMount: qs("#stripeMount"),
-    paypalMount: qs("#paypalMount"),
-    paypalButtonsHost: qs("[data-ff-paypal-buttons], #paypalButtons, #paypalButtonsHost"),
-    paymentLive: qs("[data-ff-payment-live]"),
-
-    recognitionBtns: qsa("[data-ff-recognition]"),
-    recognitionPreviewText: qs("#recognitionPreviewText"),
-
-    quickAmountBtns: qsa("[data-ff-quick-amount], [data-quick-amount]"),
-    clearAmountBtn: qs("[data-ff-clear-amount]"),
-    popularAmountPill: qs("[data-ff-popular-amount]"),
-    popularAmountText: qs("#popularAmountText"),
-    sponsorCtas: qsa("[data-ff-sponsor-cta]"),
-    prefills: qsa("[data-ff-prefill]"),
-
-    recentGiftsHost: qs("[data-ff-recent-gifts]"),
-    refreshBtns: qsa("[data-ff-refresh]"),
-
-    backToTopBtn: qs(".ff-backtotop, [data-ff-backtotop], #backToTop"),
-    tabLinks: qsa('[data-ff-tab][href^="#"]'),
-    anchorLinks: qsa('a[href^="#"]:not([href="#"])'),
-
-    toasts: ensureToastsHost(),
-
-    themeToggle: qs("[data-ff-theme-toggle]"),
-    drawer: qs("[data-ff-drawer], #mobileDrawer"),
-    drawerOpenBtns: qsa("[data-ff-drawer-open]"),
-    drawerCloseBtns: qsa("[data-ff-drawer-close]"),
-
-    proofOpenBtns: qsa("[data-ff-proof-open]"),
-    policyOpenBtns: qsa("[data-ff-policy-open]"),
-
-    galleryGrid: qs("[data-ff-gallery-grid]"),
-    galleryAll: qs("[data-ff-gallery-all]"),
-    galleryOpenBtns: qsa("[data-ff-gallery-open]"),
-
-    stickySupport: qs('[data-ff-sticky="support"], .ff-sticky, #ffStickySupport'),
-    stickyRaised: qs("#stickyRaised"),
-    stickyGoal: qs("#stickyGoal"),
-  });
-
-  let D = cacheDom();
-
-  /* ---------------------------------------------
-   * Toasts
-   * -------------------------------------------*/
-  const toast = (msg, kind = "info") => {
-    if (captureMode) return;
-    D = D || cacheDom();
-    const host = D.toasts;
+    var host = ensureToastHost();
     if (!host) return;
 
-    const ariaLive = C?.flagship?.accessibility?.ariaLiveToasts !== false;
+    var el = document.createElement("div");
+    el.className = "ff-toast ff-toast--" + (kind || "info");
+    el.textContent = m;
 
-    const t = h("div", {
-      class: `ff-toast ff-toast--${kind}`,
-      role: "status",
-      aria: ariaLive ? { live: "polite" } : {},
-      style: "opacity:0;transform:translateY(6px);",
-    });
+    // If CSS doesn't include toast styling yet, keep it readable anyway.
+    el.style.pointerEvents = "auto";
+    el.style.padding = "10px 12px";
+    el.style.borderRadius = "14px";
+    el.style.border = "1px solid rgba(255,255,255,0.14)";
+    el.style.backdropFilter = "blur(10px)";
+    el.style.webkitBackdropFilter = "blur(10px)";
+    el.style.background = (kind === "error") ? "rgba(251,113,133,0.16)" : "rgba(12,14,22,0.70)";
+    el.style.color = "inherit";
 
-    t.appendChild(h("div", { class: "ff-kicker", text: safeText(kind) }));
-    t.appendChild(h("div", { class: "ff-help", text: safeText(msg) }));
-    host.appendChild(t);
+    host.appendChild(el);
 
-    requestAnimationFrame(() => {
-      t.style.opacity = "1";
-      t.style.transform = "translateY(0)";
-    });
+    var dur = clamp(Number(ms || 2600), 1200, 9000);
+    setTimeout(function () { try { el.remove(); } catch (_) {} }, dur);
+  }
 
-    setTimeout(() => {
-      t.style.opacity = "0";
-      t.style.transform = "translateY(-2px)";
-    }, 2400);
-
-    setTimeout(() => {
-      try {
-        host.removeChild(t);
-      } catch {}
-    }, 2900);
-  };
-
-  /* ---------------------------------------------
-   * State
-   * -------------------------------------------*/
-  const S = {
-    org: {
-      name: safeText(C.org?.name),
-      meta: safeText(C.org?.meta),
-      seasonPill: safeText(C.org?.seasonPill),
-      sportPill: safeText(C.org?.sportPill),
-      heroAccentLine: safeText(C.org?.heroAccentLine),
-      footerTagline: safeText(C.org?.footerTagline),
-    },
-    fundraiser: {
-      goalCents: toInt(C.fundraiser?.goalAmount, 0) * 100,
-      deadlineISO: safeText(C.fundraiser?.deadlineISO || ""),
-      updatedISO: safeText(C.fundraiser?.updatedISO || ""),
-      allocationUpdatedISO: safeText(C.fundraiser?.allocationUpdatedISO || ""),
-      match: C.fundraiser?.match || null,
-      allocation: Array.isArray(C.fundraiser?.allocation) ? C.fundraiser.allocation : DEFAULTS.fundraiser.allocation,
-      impact: Array.isArray(C.fundraiser?.impact) ? C.fundraiser.impact : [],
-      sponsorTiers: Array.isArray(C.fundraiser?.sponsorTiers) ? C.fundraiser.sponsorTiers : [],
-      sponsors: Array.isArray(C.fundraiser?.sponsors) ? C.fundraiser.sponsors : [],
-      recentGifts: Array.isArray(C.fundraiser?.recentGifts) ? C.fundraiser.recentGifts : [],
-      popularAmountCents: toInt(C.fundraiser?.popularAmountCents, DEFAULTS.fundraiser.popularAmountCents),
-
-      // PATCH: correct merge (no assignment side effects)
-      fees: deepMerge(DEFAULTS.fundraiser.fees, C?.fundraiser?.fees || {}),
-
-      raisedCents: 0,
-    },
-    teams: Array.isArray(C.teams) ? C.teams.slice() : [],
-    gallery: deepMerge(DEFAULTS.gallery, C.gallery || {}),
-    ui: {
-      impactFilter: "all",
-      impactQuery: "",
-      sponsorSort: "rank",
-      sponsorWall: "logos",
-      teamSort: "featured",
-      teamQuery: "",
-      selectedTeamId: "",
-      selectedTeamName: "",
-      purpose: "donation",
-      sku: "",
-      impactId: "",
-      recognition: "public",
-      amountCents: 0,
-      coverFees: false,
-
-      stripe: null,
-      elements: null,
-      paymentElement: null,
-      paymentElementReady: false,
-      clientSecret: "",
-      stripeMounted: false,
-      stripeBusy: false,
-      stripeUserInteracted: false,
-      intentPricingKey: "",
-      __stripeKey: "",
-      __stripeInitInFlight: null,
-      __intentReqId: 0,
-
-      // PATCH: intent de-dupe
-      __intentInFlightKey: "",
-      __intentInFlightPromise: null,
-
-      paypalReady: false,
-
-      __lastActiveEl: null,
-      __activeModal: null,
-    },
-    utm: {},
-  };
-
-  /* ---------------------------------------------
-   * Normalizers
-   * -------------------------------------------*/
-  const normalizeTeams = () => {
-    const raw = Array.isArray(S.teams) ? S.teams : [];
-    return raw
-      .filter((t) => t && t.id && t.name)
-      .map((t) => {
-        const goal = toInt(t.goal, 0) * 100;
-        const raised = toInt(t.raised, 0) * 100;
-        const pct = goal > 0 ? clamp(Math.round((raised / goal) * 100), 0, 999) : 0;
-        return {
-          id: safeText(t.id),
-          name: safeText(t.name),
-          meta: safeText(t.meta || ""),
-          goalCents: goal,
-          raisedCents: raised,
-          pct,
-          featured: !!t.featured,
-          needs: !!t.needs,
-          restricted: !!t.restricted,
-          photo: safeText(t.photo || ""),
-          ask: safeText(t.ask || ""),
-          ts: parseISO(t.tsISO || t.timestamp || "")?.getTime() || 0,
-        };
-      });
-  };
-
-  const normalizeImpactList = () => {
-    const cats = new Set(["gear", "travel", "fees", "scholarship"]);
-    const items = Array.isArray(S.fundraiser.impact) ? S.fundraiser.impact : [];
-    return items
-      .filter((x) => x && x.id && x.title)
-      .map((x) => ({
-        id: safeText(x.id),
-        cat: cats.has(safeText(x.cat)) ? safeText(x.cat) : "gear",
-        title: safeText(x.title),
-        desc: safeText(x.desc || ""),
-        amountCents: toInt(x.amountCents ?? (toInt(x.amount, 0) * 100), 0),
-      }));
-  };
-
-  const normalizeSponsors = () => {
-    const raw = Array.isArray(S.fundraiser.sponsors) ? S.fundraiser.sponsors : [];
-    return raw
-      .map((s) => ({
-        name: safeText(s.name || "Sponsor"),
-        amountCents: toInt(s.amountCents ?? (toInt(s.amount, 0) * 100), 0),
-        logo: safeText(s.logo || ""),
-        url: safeUrl(s.url || ""),
-        ts: parseISO(s.tsISO || s.timestamp || "")?.getTime() || 0,
-      }))
-      .filter((x) => x.amountCents > 0);
-  };
-
-  const normalizeGifts = () => {
-    const raw = Array.isArray(S.fundraiser.recentGifts) ? S.fundraiser.recentGifts : [];
-    return raw
-      .map((g) => ({
-        name: safeText(g.name || "Supporter"),
-        anon: !!g.anon || !!g.anonymous,
-        amountCents: toInt(g.amountCents ?? (toInt(g.amount, 0) * 100), 0),
-        ts: parseISO(g.tsISO || g.timestamp || "")?.getTime() || 0,
-      }))
-      .filter((x) => x.amountCents > 0);
-  };
-
-  /* ---------------------------------------------
-   * Exports (contract)
-   * -------------------------------------------*/
-  window.FF = window.FF || {};
-  window.FF.toast = toast;
-
-  /* ---------------------------------------------
-   * Small helpers
-   * -------------------------------------------*/
-  const setHidden = (el, v) => {
-    if (!el) return;
-    el.hidden = !!v;
-    el.setAttribute("aria-hidden", v ? "true" : "false");
-  };
-
-  /* ---------------------------------------------
-   * Attribution / UTM
-   * -------------------------------------------*/
-  const setSelectedTeam = (teamId, { silent } = { silent: false }) => {
-    D = cacheDom();
-
-    const id = safeText(teamId || "");
-    S.ui.selectedTeamId = id;
-
-    const team = normalizeTeams().find((t) => t.id === id);
-    S.ui.selectedTeamName = team ? team.name : "";
-
-    const has = !!S.ui.selectedTeamId;
-    if (D.attribBox) setHidden(D.attribBox, !has);
-    if (D.attribTitle) D.attribTitle.textContent = "Supporting a team";
-    if (D.attribHelp)
-      D.attribHelp.textContent = has
-        ? `This donation will credit ${S.ui.selectedTeamName}.`
-        : "This donation will credit the selected group.";
-
-    if (D.summaryTeamRow) setHidden(D.summaryTeamRow, !has);
-    if (D.summaryTeam) D.summaryTeam.textContent = has ? S.ui.selectedTeamName : "Team";
-
-    setShareFields();
-    updateProofKit();
-    updateSummaryUI();
-    renderTeams();
-    onPricingInputsChanged();
-
-    if (!silent) toast(has ? `Team selected: ${S.ui.selectedTeamName}` : "Team cleared.", "info");
-  };
-
-  const setPrefill = (opts, { silent } = { silent: false }) => {
-    D = cacheDom();
-
-    const amountCents = toInt(opts?.amountCents, 0);
-    S.ui.amountCents = Math.max(0, amountCents);
-
-    S.ui.purpose = safeText(opts?.purpose || "donation");
-    S.ui.sku = safeText(opts?.sku || "");
-    S.ui.impactId = safeText(opts?.impactId || "");
-
-    if (D.amount) D.amount.value = amountCents > 0 ? String(Math.round(amountCents / 100)) : "";
-
-    updateSummaryUI();
-    updateProofKit();
-    renderImpact();
-    onPricingInputsChanged();
-
-    if (!silent) toast("Prefilled.", "success");
-  };
-
-  const readUtm = () => {
-    const url = new URL(window.location.href);
-    const p = url.searchParams;
-
-    const utm = {};
-    for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"])
-      if (p.has(k)) utm[k] = p.get(k) || "";
-
-    const srcParam = safeText(C?.flagship?.analytics?.utm?.sourceParam || "src");
-    const cmpParam = safeText(C?.flagship?.analytics?.utm?.campaignParam || "cmp");
-    if (p.has(srcParam)) utm[srcParam] = p.get(srcParam) || "";
-    if (p.has(cmpParam)) utm[cmpParam] = p.get(cmpParam) || "";
-
-    const teamId = p.get("team") || p.get("t") || "";
-    if (teamId) utm.team = teamId;
-
-    const needId = p.get("need") || "";
-    if (needId) utm.need = needId;
+  /* --------------------------------------------------------------------------
+   * Overlay primitives (contract-first)
+   * ------------------------------------------------------------------------ */
+  function setOpen(el, open) {
+    if (!isEl(el)) return;
 
     try {
-      const ref = document.referrer || "";
-      if (ref) utm.referrer = ref;
-    } catch {}
-
-    S.utm = utm;
-
-    if (utm.team) setSelectedTeam(utm.team, { silent: true });
-    if (utm.need) {
-      const impact = normalizeImpactList().find((x) => x.id === utm.need);
-      if (impact) setPrefill({ amountCents: impact.amountCents, purpose: "impact", impactId: impact.id }, { silent: true });
-    }
-
-    try {
-      const key = `ff_attrib_${shellEnv.orgId}_${shellEnv.campaignId}`;
-      localStorage.setItem(key, JSON.stringify({ ts: new Date().toISOString(), utm }));
-    } catch {}
-  };
-
-  /* ---------------------------------------------
-   * Share URL + QR
-   * -------------------------------------------*/
-  const buildShareUrl = (overrides = {}) => {
-    const url = new URL(window.location.href);
-    for (const k of ["payment_intent", "payment_intent_client_secret", "redirect_status"])
-      url.searchParams.delete(k);
-
-    const shareAttrib = !!C?.flagship?.features?.shareAttribution;
-    if (shareAttrib && (overrides.teamId || S.ui.selectedTeamId))
-      url.searchParams.set("team", overrides.teamId || S.ui.selectedTeamId);
-    else url.searchParams.delete("team");
-
-    if (overrides.needId) url.searchParams.set("need", overrides.needId);
-    else url.searchParams.delete("need");
-
-    const srcParam = safeText(C?.flagship?.analytics?.utm?.sourceParam || "src");
-    const cmpParam = safeText(C?.flagship?.analytics?.utm?.campaignParam || "cmp");
-    if (S.utm[srcParam] && !url.searchParams.get(srcParam)) url.searchParams.set(srcParam, S.utm[srcParam]);
-    if (S.utm[cmpParam] && !url.searchParams.get(cmpParam)) url.searchParams.set(cmpParam, S.utm[cmpParam]);
-
-    return url.toString();
-  };
-
-  const buildQrSrc = (dataUrl, size = 180) => {
-    const ep = qrEndpoint;
-    if (ep.includes("?")) {
-      return (
-        ep +
-        (ep.endsWith("&") || ep.endsWith("?") ? "" : "&") +
-        `size=${size}x${size}&data=${encodeURIComponent(dataUrl)}`
-      );
-    }
-    const u = new URL(ep, window.location.origin);
-    u.searchParams.set("size", `${size}x${size}`);
-    u.searchParams.set("data", dataUrl);
-    return u.toString();
-  };
-
-  const setShareFields = () => {
-    D = cacheDom();
-    const url = buildShareUrl();
-    if (D.shareLink) {
-      if ("value" in D.shareLink) D.shareLink.value = url;
-      else D.shareLink.textContent = url;
-    }
-    const src = buildQrSrc(url, 180);
-    for (const img of D.qrImgs) if (img && img.getAttribute("src") !== src) img.setAttribute("src", src);
-  };
-
-  const buildProofCaption = () => {
-    const url = buildShareUrl();
-    return [
-      `Supporting ${S.org.name} this season 🎯`,
-      ``,
-      `Help us cover travel, gym time, fees, and gear. Secure checkout + instant receipt:`,
-      url,
-      ``,
-      `#FutureFunded #YouthSports #Community`,
-    ].join("\n");
-  };
-
-  const updateProofKit = () => {
-    D = cacheDom();
-    const donorName = safeText(D.fullName?.value || "").trim() || "Your name";
-    const anon = !!D.anonymous?.checked || S.ui.recognition !== "public";
-    const label = anon ? "Anonymous" : donorName;
-
-    const amt = toInt(S.ui.amountCents, 0);
-    const fallback = toInt(S.fundraiser.popularAmountCents, 7500);
-    const amtText = amt > 0 ? formatCurrency(amt, currency, locale) : formatCurrency(fallback, currency, locale);
-
-    if (D.proofDonorName) D.proofDonorName.textContent = label;
-    if (D.proofAmount) D.proofAmount.textContent = amtText;
-
-    if (D.proofCaption) {
-      const cap = buildProofCaption();
-      if ("value" in D.proofCaption) D.proofCaption.value = cap;
-      else D.proofCaption.textContent = cap;
-    }
-  };
-
-  window.FF.buildShareUrl = buildShareUrl;
-  window.FF.setShareFields = setShareFields;
-
-  // Compatibility aliases (safe)
-  window.FF.setSelectedTeam = setSelectedTeam;
-  window.FF.selectTeam = setSelectedTeam;
-  window.FF.setPrefill = setPrefill;
-  window.FF.prefill = setPrefill;
-
-  /* ---------------------------------------------
-   * Modal helper (minimal)
-   * -------------------------------------------*/
-  const findModal = (kind) => {
-    const k = safeText(kind);
-    const byId =
-      qs(`#ff${k[0]?.toUpperCase() || ""}${k.slice(1)}Modal`) ||
-      qs(`#${k}Modal`) ||
-      qs(`#ff-${k}-modal`) ||
-      null;
-    return byId || qs(`[data-ff-modal="${k}"]`) || qs(`[data-ff-${k}-modal]`) || null;
-  };
-
-  const getFocusable = (root) => {
-    const sels = [
-      "a[href]",
-      "button:not([disabled])",
-      "input:not([disabled])",
-      "select:not([disabled])",
-      "textarea:not([disabled])",
-      "[tabindex]:not([tabindex='-1'])",
-    ];
-    return qsa(sels.join(","), root).filter((el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length));
-  };
-
-  let __globalEscapeBound = false;
-
-  const openModal = (el) => {
-    if (!el || captureMode) return false;
-    S.ui.__lastActiveEl = document.activeElement || null;
-    S.ui.__activeModal = el;
-    setHidden(el, false);
-    try {
-      if (el.id) qsa(`[aria-controls="${el.id}"]`).forEach((btn) => btn.setAttribute("aria-expanded", "true"));
-    } catch {}
-    const f = getFocusable(el)[0];
-    try {
-      (f || el).focus?.();
-    } catch {}
-    return true;
-  };
-
-  const closeModal = (el) => {
-    if (!el) return;
-    setHidden(el, true);
-    try {
-      if (el.id) qsa(`[aria-controls="${el.id}"]`).forEach((btn) => btn.setAttribute("aria-expanded", "false"));
-    } catch {}
-    if (C?.flagship?.accessibility?.focusRestore !== false) {
-      try {
-        S.ui.__lastActiveEl?.focus?.();
-      } catch {}
-    }
-    if (S.ui.__activeModal === el) S.ui.__activeModal = null;
-  };
-
-  const bindModalCloseWiring = (modalEl) => {
-    if (!modalEl || modalEl.__ffModalBound) return;
-    modalEl.__ffModalBound = true;
-
-    on(modalEl, "click", (e) => {
-      const t = e.target;
-      if (!t || !(t instanceof Element)) return;
-      if (
-        t.matches(
-          "[data-ff-modal-close], [data-ff-share-close], [data-ff-gallery-close], [data-ff-proof-close], [data-ff-policy-close]"
-        )
-      ) {
-        e.preventDefault();
-        closeModal(modalEl);
-        return;
-      }
-      if (t.matches(".ff-modal__backdrop, .ff-drawer__backdrop, [data-ff-backdrop]")) {
-        e.preventDefault();
-        closeModal(modalEl);
-      }
-    });
-
-    if (!__globalEscapeBound) {
-      __globalEscapeBound = true;
-      on(document, "keydown", (e) => {
-        if (e.key !== "Escape") return;
-        const active = S.ui.__activeModal;
-        if (active && !active.hidden) closeModal(active);
-      });
-    }
-
-    on(modalEl, "keydown", (e) => {
-      if (e.key !== "Tab") return;
-      if (modalEl.hidden) return;
-
-      const focusables = getFocusable(modalEl);
-      if (!focusables.length) return;
-
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement;
-
-      if (e.shiftKey) {
-        if (active === first || !modalEl.contains(active)) {
-          e.preventDefault();
-          last.focus?.();
-        }
+      if (open) {
+        el.hidden = false;
+        el.removeAttribute("hidden");
+        el.setAttribute("data-open", "true");
+        el.setAttribute("aria-hidden", "false");
+        el.classList.add("is-open");
       } else {
-        if (active === last) {
-          e.preventDefault();
-          first.focus?.();
-        }
+        el.setAttribute("data-open", "false");
+        el.setAttribute("aria-hidden", "true");
+        el.classList.remove("is-open");
+        el.hidden = true;
+        el.setAttribute("hidden", "");
       }
-    });
-  };
+    } catch (_) {}
+  }
 
-  /* ---------------------------------------------
-   * Rendering: Branding + Announcement
-   * -------------------------------------------*/
-  const applyBrand = () => {
-    D = cacheDom();
-    if (D.orgName) D.orgName.textContent = S.org.name;
-    if (D.orgMeta) D.orgMeta.textContent = S.org.meta;
-    if (D.footerOrgName) D.footerOrgName.textContent = S.org.name;
-    if (D.footerOrgMeta) D.footerOrgMeta.textContent = S.org.meta;
-    if (D.seasonPill) D.seasonPill.textContent = S.org.seasonPill;
-    if (D.sportPill) D.sportPill.textContent = S.org.sportPill;
-    if (D.heroAccentLine) D.heroAccentLine.textContent = S.org.heroAccentLine;
-    if (D.heroOrgLine) D.heroOrgLine.textContent = `${S.org.name} • Fundraiser`;
-  };
-
-  const applyAnnouncement = () => {
-    D = cacheDom();
-    if (!D.announce || !D.announcementText) return;
-
-    const ann = safeText(C?.org?.announcement || C?.fundraiser?.announcement || "");
-    if (!ann) return setHidden(D.announce, true);
-
-    const key = `ff_announce_dismiss_${shellEnv.orgId}_${shellEnv.campaignId}`;
+  function isOpen(el) {
+    if (!isEl(el)) return false;
     try {
-      if (localStorage.getItem(key)) return setHidden(D.announce, true);
-    } catch {}
-
-    D.announcementText.textContent = ann;
-    setHidden(D.announce, false);
-
-    if (D.announceDismiss) {
-      on(D.announceDismiss, "click", () => {
-        setHidden(D.announce, true);
-        try {
-          localStorage.setItem(key, String(now()));
-        } catch {}
-      });
+      if (el.hidden) return false;
+      if (el.getAttribute("data-open") === "true") return true;
+      if (el.getAttribute("aria-hidden") === "false") return true;
+      if (el.classList.contains("is-open")) return true;
+      return false;
+    } catch (_) {
+      return false;
     }
-  };
+  }
 
-  /* ---------------------------------------------
-   * Fundraising math + progress UI
-   * -------------------------------------------*/
-  const deriveRaisedCents = () => {
-    const explicit = C?.fundraiser?.raisedAmount;
-    if (explicit != null) return toInt(explicit, 0) * 100;
-
-    if (Array.isArray(S.teams) && S.teams.length)
-      return S.teams.reduce((sum, t) => sum + toInt(t.raised, 0) * 100, 0);
-
-    let sum = 0;
-    for (const s of S.fundraiser.sponsors || [])
-      sum += toInt(s.amountCents ?? (toInt(s.amount, 0) * 100), 0);
-    for (const g of S.fundraiser.recentGifts || [])
-      sum += toInt(g.amountCents ?? (toInt(g.amount, 0) * 100), 0);
-    return sum;
-  };
-
-  const applyUpdated = () => {
-    D = cacheDom();
-    if (!D.lastUpdatedText) return;
-    const d = parseISO(S.fundraiser.updatedISO) || new Date();
-    let label = "Updated — just now";
+  function findFocusable(root) {
+    if (!isEl(root)) return null;
     try {
-      const mins = Math.max(0, Math.round((now() - d.getTime()) / 60000));
-      if (mins < 2) label = "Updated — just now";
-      else if (mins < 60) label = `Updated — ${mins}m ago`;
-      else {
-        const hrs = Math.round(mins / 60);
-        label =
-          hrs < 24
-            ? `Updated — ${hrs}h ago`
-            : `Updated — ${d.toLocaleDateString(locale, { month: "short", day: "numeric" })}`;
-      }
-    } catch {
-      label = `Updated — ${d.toISOString().slice(0, 10)}`;
-    }
-    D.lastUpdatedText.textContent = label;
-  };
-
-  const setProgressUI = () => {
-    D = cacheDom();
-    const raised = toInt(S.fundraiser.raisedCents, 0);
-    const goal = toInt(S.fundraiser.goalCents, 0);
-    const pct = goal > 0 ? clamp(Math.round((raised / goal) * 100), 0, 999) : 0;
-    const remaining = Math.max(0, goal - raised);
-
-    const raisedTxt = formatCurrency(raised, currency, locale);
-    const goalTxt = formatCurrency(goal, currency, locale);
-
-    if (D.raisedBig) D.raisedBig.textContent = raisedTxt;
-    if (D.raisedRow) D.raisedRow.textContent = raisedTxt;
-    if (D.goalRow) D.goalRow.textContent = goalTxt;
-    if (D.goalPill) D.goalPill.textContent = goalTxt;
-
-    if (D.remainingText) D.remainingText.textContent = formatCurrency(remaining, currency, locale);
-    if (D.pctText) D.pctText.textContent = String(pct);
-
-    if (D.overallBar) {
-      const w = clamp(goal > 0 ? (raised / goal) * 100 : 0, 0, 100);
-      D.overallBar.style.width = `${w.toFixed(2)}%`;
-      const meter = qs('[data-ff-meter="overall"]');
-      if (meter) {
-        meter.setAttribute("aria-valuenow", String(clamp(pct, 0, 100)));
-        meter.setAttribute("aria-valuetext", `${clamp(pct, 0, 100)}% funded`);
-      }
-    }
-
-    if (D.topbarRaised) D.topbarRaised.textContent = raisedTxt;
-    if (D.topbarGoal) D.topbarGoal.textContent = goalTxt;
-
-    if (D.stickyRaised) D.stickyRaised.textContent = raisedTxt;
-    if (D.stickyGoal) D.stickyGoal.textContent = goalTxt;
-  };
-
-  const applyKpis = () => {
-    D = cacheDom();
-    if (!D.donorCount && !D.avgGift && !D.topGift) return;
-
-    const gifts = normalizeGifts();
-    const sponsors = normalizeSponsors();
-    const contribs = gifts.map((g) => g.amountCents).concat(sponsors.map((s) => s.amountCents));
-
-    const count = contribs.length;
-    const top = contribs.reduce((m, x) => Math.max(m, toInt(x, 0)), 0);
-    const avg = count > 0 ? Math.round(contribs.reduce((a, x) => a + toInt(x, 0), 0) / count) : 0;
-
-    if (D.donorCount) D.donorCount.textContent = String(count);
-    if (D.topGift) D.topGift.textContent = formatCurrency(top, currency, locale);
-    if (D.avgGift) D.avgGift.textContent = formatCurrency(avg, currency, locale);
-  };
-
-  /* ---------------------------------------------
-   * Deadline / Countdown
-   * -------------------------------------------*/
-  let countdownTimer = null;
-
-  const startDeadlineLoop = () => {
-    D = cacheDom();
-    const deadline = parseISO(S.fundraiser.deadlineISO);
-
-    const deadlineLabel = (() => {
-      if (!deadline) return "—";
-      try {
-        return deadline.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
-      } catch {
-        return deadline.toISOString().slice(0, 10);
-      }
-    })();
-
-    if (D.deadlineText) D.deadlineText.textContent = deadline ? deadlineLabel : "No deadline";
-    if (D.topbarDeadline) D.topbarDeadline.textContent = deadline ? deadlineLabel : "—";
-    if (!deadline) return;
-
-    const tick = () => {
-      const ms = deadline.getTime() - now();
-      const label = ms <= 0 ? "Ended" : humanCountdown(ms);
-      if (D.heroCountdown) D.heroCountdown.textContent = label;
-      if (D.topbarCountdown) D.topbarCountdown.textContent = label;
-    };
-
-    tick();
-    clearInterval(countdownTimer);
-    countdownTimer = setInterval(tick, 15000);
-  };
-
-  /* ---------------------------------------------
-   * Event pill (optional)
-   * -------------------------------------------*/
-  const applyEventPill = () => {
-    D = cacheDom();
-    const pill = D.heroEventPill;
-    if (!pill) return;
-
-    const ev = C?.event || C?.fundraiser?.event || null;
-    const starts = parseISO(ev?.startsISO || ev?.startISO || "");
-    const title = safeText(ev?.title || ev?.name || "Next event");
-
-    if (!starts) return setHidden(pill, true);
-
-    const tick = () => {
-      const ms = starts.getTime() - now();
-      const t = ms <= 0 ? "Now" : humanCountdown(ms);
-      pill.textContent = `${title} • ${t}`;
-      setHidden(pill, false);
-    };
-    tick();
-    setInterval(tick, 15000);
-  };
-
-  /* ---------------------------------------------
-   * Match UI
-   * -------------------------------------------*/
-  const applyMatch = () => {
-    D = cacheDom();
-    const m = S.fundraiser.match;
-    const isActive = !!m?.active;
-
-    if (D.heroMatchPill) setHidden(D.heroMatchPill, !isActive);
-    if (D.sponsorMatchPill) setHidden(D.sponsorMatchPill, !isActive);
-    if (D.matchDetailRow) setHidden(D.matchDetailRow, !isActive);
-    if (D.matchStatus) D.matchStatus.textContent = isActive ? "On" : "Off";
-    if (D.topbarMatchStrip) setHidden(D.topbarMatchStrip, !isActive);
-    if (D.matchCallout) setHidden(D.matchCallout, !isActive);
-
-    if (!isActive) return;
-
-    const remainingCents = toInt(m.remainingCents ?? (toInt(m.remaining, 0) * 100), 0);
-    const ends = parseISO(m.endsISO || "");
-
-    if (D.matchRemainingPill) D.matchRemainingPill.textContent = `Remaining ${formatCurrency(remainingCents, currency, locale)}`;
-    if (D.matchEndsPill) D.matchEndsPill.textContent = ends ? `Ends ${humanCountdown(ends.getTime() - now())}` : "Ends —";
-
-    if (D.topbarMatchText) D.topbarMatchText.textContent = "Active";
-    if (D.topbarMatchRemaining) D.topbarMatchRemaining.textContent = formatCurrency(remainingCents, currency, locale);
-
-    if (D.matchCalloutText)
-      D.matchCalloutText.textContent = ends
-        ? `until ${ends.toLocaleDateString(locale, { month: "short", day: "numeric" })}`
-        : "doubling gifts";
-  };
-
-  /* ---------------------------------------------
-   * Allocation / Impact / Sponsors / Teams / Gifts / Gallery
-   * -------------------------------------------*/
-  const renderAllocation = () => {
-    D = cacheDom();
-    if (!D.allocationList) return;
-    const items = Array.isArray(S.fundraiser.allocation) ? S.fundraiser.allocation : [];
-    if (!items.length)
-      return setChildren(D.allocationList, h("div", { class: "ff-help", text: "Allocation coming soon." }));
-
-    const total = items.reduce((a, x) => a + toNum(x.pct, 0), 0) || 100;
-    const nodes = items.map((x) => {
-      const pct = clamp(Math.round((toNum(x.pct, 0) / total) * 100), 0, 100);
-      return h("div", { class: "ff-slimitem" }, [
-        h("span", { class: "ff-help", text: safeText(x.label || "") }),
-        h("strong", { class: "ff-help ff-num", text: `${pct}%` }),
-      ]);
-    });
-    setChildren(D.allocationList, nodes);
-
-    if (D.allocationUpdated && D.allocationUpdatedText) {
-      const upd = safeText(S.fundraiser.allocationUpdatedISO || S.fundraiser.updatedISO || "");
-      if (upd) {
-        setHidden(D.allocationUpdated, false);
-        const d = parseISO(upd);
-        D.allocationUpdatedText.textContent = d ? d.toLocaleDateString(locale, { month: "short", day: "numeric" }) : upd;
-      } else setHidden(D.allocationUpdated, true);
-    }
-  };
-
-  const renderImpact = () => {
-    D = cacheDom();
-    if (!D.impactGrid) return;
-
-    const all = normalizeImpactList();
-    const q = safeText(S.ui.impactQuery || "").trim().toLowerCase();
-    const filter = safeText(S.ui.impactFilter || "all");
-    const filtered = all.filter((x) => {
-      if (filter !== "all" && x.cat !== filter) return false;
-      if (!q) return true;
-      return (x.title + " " + x.desc).toLowerCase().includes(q);
-    });
-
-    if (D.impactEmpty) setHidden(D.impactEmpty, filtered.length > 0);
-
-    const card = (x) => {
-      const amount = x.amountCents > 0 ? formatCurrency(x.amountCents, currency, locale) : "Custom";
-      const btn = h("button", { class: "ff-btn ff-btn--sm", type: "button", text: "Fund this" });
-      on(btn, "click", () => {
-        if (x.amountCents > 0) setPrefill({ amountCents: x.amountCents, purpose: "impact", impactId: x.id }, { silent: true });
-        else setPrefill({ purpose: "impact", impactId: x.id }, { silent: true });
-        toast("Impact selected.", "success");
-        scrollToDonate();
-      });
-
-      return h("div", { class: "ff-card ff-impact" }, [
-        h("div", { class: "ff-kicker", text: x.cat.toUpperCase() }),
-        h("div", { class: "ff-title", text: x.title }),
-        x.desc ? h("div", { class: "ff-help", text: x.desc }) : null,
-        h("div", { class: "ff-row ff-row--space" }, [
-          h("strong", { class: "ff-num", text: amount }),
-          btn,
-        ]),
-      ]);
-    };
-
-    setChildren(
-      D.impactGrid,
-      filtered.length ? filtered.map(card) : h("div", { class: "ff-help", text: "No matching needs right now." })
-    );
-  };
-
-  const renderSponsorTiers = () => {
-    D = cacheDom();
-    if (!D.sponsorTiersHost) return;
-
-    const tiers = Array.isArray(S.fundraiser.sponsorTiers) ? S.fundraiser.sponsorTiers : [];
-    if (!tiers.length) return setChildren(D.sponsorTiersHost, h("div", { class: "ff-help", text: "Sponsor tiers coming soon." }));
-
-    const norm = tiers
-      .filter((t) => t && (t.name || t.title))
-      .map((t) => ({
-        name: safeText(t.name || t.title || "Tier"),
-        amountCents: toInt(t.amountCents ?? (toInt(t.amount, 0) * 100), 0),
-        perks: Array.isArray(t.perks) ? t.perks.map((p) => safeText(p)).filter(Boolean) : [],
-      }))
-      .sort((a, b) => b.amountCents - a.amountCents);
-
-    const node = (t) =>
-      h("div", { class: "ff-card ff-tier" }, [
-        h("div", { class: "ff-row ff-row--space" }, [
-          h("div", { class: "ff-title", text: t.name }),
-          h("strong", { class: "ff-num", text: t.amountCents ? formatCurrency(t.amountCents, currency, locale) : "—" }),
-        ]),
-        t.perks.length ? h("ul", { class: "ff-list" }, t.perks.map((p) => h("li", { class: "ff-help", text: p }))) : null,
-      ]);
-
-    setChildren(D.sponsorTiersHost, norm.map(node));
-  };
-
-  const renderSponsorBoard = () => {
-    D = cacheDom();
-    const sponsors = normalizeSponsors();
-
-    // sort
-    const sort = safeText(S.ui.sponsorSort || "rank");
-    const sorted = sponsors.slice().sort((a, b) => {
-      if (sort === "new") return (b.ts || 0) - (a.ts || 0);
-      if (sort === "amount") return b.amountCents - a.amountCents;
-      return b.amountCents - a.amountCents; // rank defaults to amount
-    });
-
-    // podium (top 3)
-    if (D.sponsorPodium) {
-      const top3 = sorted.slice(0, 3);
-      const podiumCard = (s, idx) => {
-        const logo = safeImgUrl(s.logo);
-        const nameNode = s.url
-          ? h("a", { class: "ff-title", href: s.url, target: "_blank", rel: "noopener", text: s.name })
-          : h("div", { class: "ff-title", text: s.name });
-
-        return h("div", { class: `ff-card ff-sponsor ff-sponsor--podium ff-sponsor--${idx + 1}` }, [
-          h("div", { class: "ff-kicker", text: idx === 0 ? "TOP SPONSOR" : `#${idx + 1}` }),
-          logo ? h("img", { class: "ff-logo", src: logo, alt: `${s.name} logo`, loading: "lazy" }) : null,
-          nameNode,
-          h("strong", { class: "ff-num", text: formatCurrency(s.amountCents, currency, locale) }),
-        ]);
-      };
-      setChildren(
-        D.sponsorPodium,
-        top3.length ? top3.map(podiumCard) : h("div", { class: "ff-help", text: "Be the first sponsor." })
+      return root.querySelector(
+        "[data-ff-close-checkout], [data-ff-close-sponsor], [data-ff-close-video], " +
+          "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), " +
+          "[tabindex]:not([tabindex='-1'])"
       );
-    }
-
-    // wall/list
-    if (D.sponsorWall) {
-      const view = safeText(S.ui.sponsorWall || "logos");
-      const list = sorted.slice(0, 30);
-
-      if (view === "list") {
-        const row = (s, i) =>
-          h("div", { class: "ff-row ff-row--space ff-sponsor-row" }, [
-            h("div", { class: "ff-row ff-row--gap" }, [
-              h("strong", { class: "ff-num ff-rank", text: `#${i + 1}` }),
-              s.url
-                ? h("a", { class: "ff-help", href: s.url, target: "_blank", rel: "noopener", text: s.name })
-                : h("span", { class: "ff-help", text: s.name }),
-            ]),
-            h("strong", { class: "ff-num", text: formatCurrency(s.amountCents, currency, locale) }),
-          ]);
-        setChildren(D.sponsorWall, list.length ? list.map(row) : h("div", { class: "ff-help", text: "No sponsors yet." }));
-      } else {
-        const tile = (s) => {
-          const logo = safeImgUrl(s.logo);
-          const inner = h("div", { class: "ff-sponsor-tile" }, [
-            logo ? h("img", { class: "ff-logo", src: logo, alt: `${s.name} logo`, loading: "lazy" }) : null,
-            h("div", { class: "ff-help", text: s.name }),
-            h("strong", { class: "ff-num", text: formatCurrency(s.amountCents, currency, locale) }),
-          ]);
-          if (s.url) {
-            const a = h("a", { class: "ff-sponsor-tilelink", href: s.url, target: "_blank", rel: "noopener" }, [inner]);
-            return a;
-          }
-          return inner;
-        };
-        setChildren(
-          D.sponsorWall,
-          list.length ? h("div", { class: "ff-grid ff-grid--logos" }, list.map(tile)) : h("div", { class: "ff-help", text: "No sponsors yet." })
-        );
-      }
-    }
-
-    // legacy leaderboard host
-    if (D.sponsorList && !D.sponsorWall) {
-      const list = sorted.slice(0, 20);
-      const row = (s, i) =>
-        h("div", { class: "ff-row ff-row--space ff-sponsor-row" }, [
-          h("div", { class: "ff-row ff-row--gap" }, [
-            h("strong", { class: "ff-num ff-rank", text: `#${i + 1}` }),
-            s.url
-              ? h("a", { class: "ff-help", href: s.url, target: "_blank", rel: "noopener", text: s.name })
-              : h("span", { class: "ff-help", text: s.name }),
-          ]),
-          h("strong", { class: "ff-num", text: formatCurrency(s.amountCents, currency, locale) }),
-        ]);
-      setChildren(D.sponsorList, list.length ? list.map(row) : h("div", { class: "ff-help", text: "No sponsors yet." }));
-    }
-  };
-
-  const renderTeams = () => {
-    D = cacheDom();
-    if (!D.teamsGrid) return;
-
-    const all = normalizeTeams();
-    const q = safeText(S.ui.teamQuery || "").trim().toLowerCase();
-    const sort = safeText(S.ui.teamSort || "featured");
-
-    let filtered = all.filter((t) => {
-      if (!q) return true;
-      return (t.name + " " + t.meta).toLowerCase().includes(q);
-    });
-
-    filtered.sort((a, b) => {
-      if (sort === "raised") return b.raisedCents - a.raisedCents;
-      if (sort === "name") return a.name.localeCompare(b.name);
-      if (sort === "new") return (b.ts || 0) - (a.ts || 0);
-      // featured default
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      return b.raisedCents - a.raisedCents;
-    });
-
-    if (D.teamsStatus) D.teamsStatus.textContent = `${filtered.length} groups`;
-
-    const card = (t) => {
-      const selected = t.id === S.ui.selectedTeamId;
-      const barPct = clamp(t.goalCents > 0 ? (t.raisedCents / t.goalCents) * 100 : 0, 0, 100);
-      const img = safeImgUrl(t.photo);
-
-      const chooseBtn = h("button", {
-        class: `ff-btn ff-btn--sm ${selected ? "is-selected" : ""}`,
-        type: "button",
-        text: selected ? "Selected" : "Support this team",
-        aria: { pressed: selected ? "true" : "false" },
-      });
-
-      on(chooseBtn, "click", (e) => {
-        e.preventDefault();
-        if (selected) setSelectedTeam("", {});
-        else setSelectedTeam(t.id, {});
-        scrollToDonate();
-      });
-
-      return h("div", { class: `ff-card ff-team ${selected ? "is-selected" : ""}`, dataset: { ffTeamId: t.id } }, [
-        img ? h("img", { class: "ff-photo", src: img, alt: `${t.name} photo`, loading: "lazy" }) : null,
-        h("div", { class: "ff-title", text: t.name }),
-        t.meta ? h("div", { class: "ff-help", text: t.meta }) : null,
-        h("div", { class: "ff-row ff-row--space" }, [
-          h("div", { class: "ff-help", text: `Raised ${formatCurrency(t.raisedCents, currency, locale)}` }),
-          t.goalCents ? h("div", { class: "ff-help", text: `Goal ${formatCurrency(t.goalCents, currency, locale)}` }) : null,
-        ]),
-        h("div", { class: "ff-meter", role: "progressbar", aria: { valuenow: String(Math.round(barPct)), valuemin: "0", valuemax: "100" } }, [
-          h("div", { class: "ff-meter__bar", style: `width:${barPct.toFixed(2)}%` }),
-        ]),
-        h("div", { class: "ff-row ff-row--space" }, [h("strong", { class: "ff-num", text: `${t.pct}%` }), chooseBtn]),
-        t.ask ? h("div", { class: "ff-help", text: t.ask }) : null,
-      ]);
-    };
-
-    setChildren(D.teamsGrid, filtered.length ? filtered.map(card) : h("div", { class: "ff-help", text: "No groups found." }));
-  };
-
-  const renderRecentGifts = () => {
-    D = cacheDom();
-    if (!D.recentGiftsHost) return;
-
-    const gifts = normalizeGifts().sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 10);
-    const row = (g) => {
-      const name = g.anon ? "Anonymous" : g.name;
-      return h("div", { class: "ff-row ff-row--space ff-gift" }, [
-        h("div", { class: "ff-help", text: name }),
-        h("strong", { class: "ff-num", text: formatCurrency(g.amountCents, currency, locale) }),
-      ]);
-    };
-    setChildren(D.recentGiftsHost, gifts.length ? gifts.map(row) : h("div", { class: "ff-help", text: "Be the first supporter." }));
-  };
-
-  const renderGallery = () => {
-    D = cacheDom();
-    const enabled = !!S.gallery?.enabled && !!C?.flagship?.features?.gallery;
-    const items = Array.isArray(S.gallery?.items) ? S.gallery.items : [];
-
-    if (D.galleryGrid) setHidden(D.galleryGrid, !enabled || !items.length);
-    if (D.galleryAll) setHidden(D.galleryAll, !enabled || !items.length);
-
-    if (!enabled || !items.length) return;
-
-    const norm = items
-      .map((it) => ({
-        src: safeImgUrl(it.src || it.url || ""),
-        caption: safeText(it.caption || it.alt || ""),
-      }))
-      .filter((x) => !!x.src);
-
-    const tile = (x) =>
-      h("div", { class: "ff-gallery-tile" }, [
-        h("img", { class: "ff-gallery-img", src: x.src, alt: x.caption || "Gallery image", loading: "lazy" }),
-        x.caption ? h("div", { class: "ff-help", text: x.caption }) : null,
-      ]);
-
-    if (D.galleryGrid) {
-      setChildren(D.galleryGrid, norm.slice(0, 6).map(tile));
-    }
-    if (D.galleryAll) {
-      setChildren(D.galleryAll, norm.map(tile));
-    }
-  };
-
-  const bindImpactControls = () => {
-    D = cacheDom();
-    if (D.impactSearch) {
-      on(
-        D.impactSearch,
-        "input",
-        debounce(() => {
-          S.ui.impactQuery = safeText(D.impactSearch.value || "");
-          renderImpact();
-        }, 120)
-      );
-    }
-    for (const btn of D.impactFilterBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        const f = safeText(btn.getAttribute("data-ff-impact-filter") || btn.getAttribute("data-filter") || "all");
-        S.ui.impactFilter = f;
-        for (const b of D.impactFilterBtns) b.classList.toggle("is-selected", b === btn);
-        renderImpact();
-      });
-    }
-  };
-
-  const bindSponsorControls = () => {
-    D = cacheDom();
-
-    for (const btn of D.sponsorSortBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        const sort = safeText(btn.getAttribute("data-ff-sort") || "rank");
-        S.ui.sponsorSort = sort;
-        for (const b of D.sponsorSortBtns) b.classList.toggle("is-selected", b === btn);
-        renderSponsorBoard();
-      });
-    }
-
-    for (const btn of D.sponsorWallViewBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        const view = safeText(btn.getAttribute("data-ff-wall") || "logos");
-        S.ui.sponsorWall = view;
-        for (const b of D.sponsorWallViewBtns) b.classList.toggle("is-selected", b === btn);
-        renderSponsorBoard();
-      });
-    }
-
-    if (D.refreshSponsorsBtn) on(D.refreshSponsorsBtn, "click", (e) => (e.preventDefault(), renderSponsorBoard()));
-  };
-
-  const bindTeamControls = () => {
-    D = cacheDom();
-
-    if (D.teamSearch) {
-      on(
-        D.teamSearch,
-        "input",
-        debounce(() => {
-          S.ui.teamQuery = safeText(D.teamSearch.value || "");
-          renderTeams();
-        }, 120)
-      );
-    }
-
-    for (const btn of D.teamSortBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        const sort = safeText(btn.getAttribute("data-ff-sort") || "featured");
-        S.ui.teamSort = sort;
-        for (const b of D.teamSortBtns) b.classList.toggle("is-selected", b === btn);
-        renderTeams();
-      });
-    }
-
-    for (const btn of D.attribClearBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        setSelectedTeam("", {});
-      });
-    }
-  };
-
-  /* ---------------------------------------------
-   * Scroll / anchors
-   * -------------------------------------------*/
-  const scrollToDonate = () => {
-    const el = qs("#donate");
-    if (!el) return;
-    el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-    const focusTarget = D?.amount || D?.email || D?.fullName || null;
-    try {
-      if (focusTarget && typeof focusTarget.focus === "function")
-        setTimeout(() => focusTarget.focus(), prefersReducedMotion() ? 0 : 250);
-    } catch {}
-  };
-
-  window.FF.scrollToDonate = scrollToDonate;
-
-  const applyScrollUI = () => {
-    D = cacheDom();
-    const bar = D.scrollProgressBar;
-    const back = D.backToTopBtn;
-    const sticky = D.stickySupport;
-
-    const doc = document.documentElement;
-    const scrolled = window.scrollY || doc.scrollTop || document.body.scrollTop || 0;
-    const max = Math.max(1, (doc.scrollHeight || 1) - (doc.clientHeight || 1));
-    const pct = clamp((scrolled / max) * 100, 0, 100);
-    if (bar) bar.style.width = `${pct.toFixed(2)}%`;
-
-    const showBack = scrolled > 700;
-    if (back) {
-      if (back.hasAttribute("hidden")) back.hidden = !showBack;
-      back.classList.toggle("is-visible", showBack);
-      back.setAttribute("aria-hidden", showBack ? "false" : "true");
-    }
-    if (sticky) {
-      const showSticky = scrolled > 320;
-      if (sticky.hasAttribute("hidden")) sticky.hidden = !showSticky;
-      sticky.classList.toggle("is-visible", showSticky);
-      sticky.setAttribute("aria-hidden", showSticky ? "false" : "true");
-    }
-  };
-
-  const bindScrollUI = () => {
-    const tick = debounce(applyScrollUI, 50);
-    on(window, "scroll", tick, { passive: true });
-    on(window, "resize", tick);
-    tick();
-
-    if (D.backToTopBtn)
-      on(D.backToTopBtn, "click", (e) =>
-        (e.preventDefault(), window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" }))
-      );
-    if (D.stickySupport) {
-      qsa('[data-ff-sticky-cta="donate"], [data-ff-sticky-donate]', D.stickySupport).forEach((btn) =>
-        on(btn, "click", (e) => (e.preventDefault(), scrollToDonate()))
-      );
-    }
-  };
-
-  const bindAnchors = () => {
-    D = cacheDom();
-    for (const a of D.anchorLinks) {
-      on(a, "click", (e) => {
-        const href = a.getAttribute("href") || "";
-        if (!href.startsWith("#") || href === "#") return;
-        const id = href.slice(1);
-        const target = qs(`#${cssEscape(id)}`);
-        if (!target) return;
-        e.preventDefault();
-        try {
-          target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
-        } catch {
-          window.location.hash = href;
-        }
-        if (D.drawer && !D.drawer.hidden) closeModal(D.drawer);
-      });
-    }
-  };
-
-  /* ---------------------------------------------
-   * Theme + Drawer
-   * -------------------------------------------*/
-  const themeKey = `ff_theme_${shellEnv.orgId}_${shellEnv.campaignId}`;
-  const getTheme = () => {
-    const attr = document.documentElement.getAttribute("data-theme");
-    if (attr) return attr;
-    try {
-      const saved = localStorage.getItem(themeKey);
-      if (saved) return saved;
-    } catch {}
-    return "";
-  };
-  const setTheme = (t) => {
-    const theme = safeText(t);
-    if (theme) document.documentElement.setAttribute("data-theme", theme);
-    else document.documentElement.removeAttribute("data-theme");
-    try {
-      if (theme) localStorage.setItem(themeKey, theme);
-      else localStorage.removeItem(themeKey);
-    } catch {}
-    if (D.themeToggle) D.themeToggle.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
-  };
-
-  const bindThemeToggle = () => {
-    D = cacheDom();
-    if (!D.themeToggle) return;
-    const cur = getTheme();
-    if (cur) setTheme(cur);
-    on(D.themeToggle, "click", () => {
-      const curTheme = getTheme() || "";
-      const next = curTheme === "dark" ? "light" : "dark";
-      setTheme(next);
-      toast(next === "dark" ? "Dark mode" : "Light mode", "info");
-    });
-  };
-
-  const bindDrawer = () => {
-    D = cacheDom();
-    if (!D.drawer) return;
-    bindModalCloseWiring(D.drawer);
-    for (const btn of D.drawerOpenBtns) on(btn, "click", (e) => (e.preventDefault(), openModal(D.drawer)));
-    for (const btn of D.drawerCloseBtns) on(btn, "click", (e) => (e.preventDefault(), closeModal(D.drawer)));
-    qsa('a[href^="#"]', D.drawer).forEach((a) => on(a, "click", () => closeModal(D.drawer)));
-  };
-
-  /* ---------------------------------------------
-   * Share + Aux modals
-   * -------------------------------------------*/
-  const bindShare = () => {
-    D = cacheDom();
-    setShareFields();
-
-    for (const btn of D.shareCopyBtns) {
-      on(btn, "click", async () => {
-        const url = buildShareUrl();
-        const ok = await copyToClipboard(url);
-        toast(ok ? "Link copied." : "Copy failed.", ok ? "success" : "error");
-      });
-    }
-
-    for (const btn of D.shareNativeBtns) {
-      on(btn, "click", async () => {
-        const url = buildShareUrl();
-        if (navigator.share) {
-          try {
-            await navigator.share({ title: document.title, text: "Support our fundraiser.", url });
-            toast("Shared.", "success");
-            return;
-          } catch {}
-        }
-        const ok = await copyToClipboard(url);
-        toast(ok ? "Link copied." : "Copy failed.", ok ? "success" : "error");
-      });
-    }
-
-    for (const btn of D.copyCaptionBtns || []) {
-      on(btn, "click", async () => {
-        updateProofKit();
-        const cap =
-          "value" in (D.proofCaption || {}) ? D.proofCaption?.value || "" : D.proofCaption?.textContent || "";
-        const ok = await copyToClipboard(cap);
-        toast(ok ? "Caption copied." : "Copy failed.", ok ? "success" : "error");
-      });
-    }
-
-    for (const btn of D.smsShareBtns || []) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        updateProofKit();
-        const body = encodeURIComponent(buildProofCaption());
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "");
-        window.location.href = isIOS ? `sms:&body=${body}` : `sms:?&body=${body}`;
-      });
-    }
-
-    for (const btn of D.emailShareBtns || []) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        updateProofKit();
-        const subject = encodeURIComponent(`Support ${S.org.name}`);
-        const body = encodeURIComponent(buildProofCaption());
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
-      });
-    }
-
-    const shareModal = findModal("share");
-    if (shareModal) bindModalCloseWiring(shareModal);
-
-    for (const btn of D.shareOpenBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        if (shareModal) {
-          openModal(shareModal);
-          setShareFields();
-          updateProofKit();
-        } else toast("Share tools not available.", "info");
-      });
-    }
-
-    for (const btn of D.downloadQrBtns) {
-      on(btn, "click", async (e) => {
-        e.preventDefault();
-        const url = buildShareUrl();
-        const src = buildQrSrc(url, 480);
-        try {
-          const res = await fetch(src);
-          const blob = await res.blob();
-          const objUrl = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = objUrl;
-          a.download = `qr-${shellEnv.orgId}-${shellEnv.campaignId}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(objUrl), 2000);
-          toast("QR downloaded.", "success");
-        } catch {
-          toast("QR download failed.", "error");
-        }
-      });
-    }
-  };
-
-  const bindAuxModals = () => {
-    const proof = findModal("proof");
-    const policy = findModal("policy");
-    const gallery = findModal("gallery");
-
-    if (proof) bindModalCloseWiring(proof);
-    if (policy) bindModalCloseWiring(policy);
-    if (gallery) bindModalCloseWiring(gallery);
-
-    for (const btn of D.proofOpenBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        if (!proof) return;
-        updateProofKit();
-        openModal(proof);
-      });
-    }
-
-    for (const btn of D.policyOpenBtns) on(btn, "click", (e) => (e.preventDefault(), policy && openModal(policy)));
-    for (const btn of D.galleryOpenBtns) on(btn, "click", (e) => (e.preventDefault(), gallery && openModal(gallery)));
-
-    if (D.fullName) on(D.fullName, "input", debounce(updateProofKit, 100));
-    if (D.amount) on(D.amount, "input", debounce(updateProofKit, 140));
-    if (D.anonymous) on(D.anonymous, "change", updateProofKit);
-  };
-
-  /* ---------------------------------------------
-   * Recognition
-   * -------------------------------------------*/
-  const applyRecognitionPreview = () => {
-    D = cacheDom();
-    const el = D.recognitionPreviewText;
-    if (!el) return;
-
-    if (el.dataset.ffPrefix == null) {
-      const initial = (el.textContent || "").trim();
-      const m = initial.match(/^(.*?:)\s+/);
-      el.dataset.ffPrefix = m ? m[1] + " " : "Shown as: ";
-    }
-
-    const name = safeText(D.fullName?.value || "Supporter").trim() || "Supporter";
-    const anon = !!D.anonymous?.checked || S.ui.recognition !== "public";
-    const label = anon ? "Anonymous" : name;
-    el.textContent = (el.dataset.ffPrefix || "Shown as: ") + label;
-  };
-
-  const bindRecognition = () => {
-    D = cacheDom();
-    for (const btn of D.recognitionBtns) {
-      on(btn, "click", () => {
-        const modeRaw = btn.getAttribute("data-ff-recognition") || "public";
-        const modeNorm = modeRaw === "private" ? "anonymous" : modeRaw;
-        S.ui.recognition = modeNorm === "public" ? "public" : "anonymous";
-
-        for (const b of D.recognitionBtns) {
-          const selected = b === btn;
-          b.classList.toggle("is-selected", selected);
-          b.setAttribute("aria-pressed", selected ? "true" : "false");
-        }
-
-        if (D.anonymous) D.anonymous.checked = S.ui.recognition !== "public";
-        applyRecognitionPreview();
-        updateProofKit();
-      });
-    }
-
-    if (D.anonymous) {
-      on(D.anonymous, "change", () => {
-        S.ui.recognition = D.anonymous.checked ? "anonymous" : "public";
-        applyRecognitionPreview();
-        updateProofKit();
-      });
-    }
-
-    if (D.fullName) on(D.fullName, "input", debounce(() => (applyRecognitionPreview(), updateProofKit()), 90));
-  };
-
-  /* ---------------------------------------------
-   * Fees + Summary — PATCHED
-   * -------------------------------------------*/
-  const computeFees = (amountCents) => {
-    const fees = S.fundraiser.fees || {};
-    const enabled = fees.enabledCoverFees !== false;
-    if (!enabled) return { feeCents: 0, totalCents: amountCents };
-
-    const pct = toNum(fees.percent, 0);
-    const fixed = toInt(fees.fixedCents, 0);
-    const max = toInt(fees.maxCents, 0);
-
-    let feeCents = Math.max(0, Math.round(amountCents * pct) + fixed);
-
-    if (coverFeesExact && pct > 0 && pct < 1) {
-      const total = Math.ceil((amountCents + fixed) / (1 - pct));
-      feeCents = Math.max(0, total - amountCents);
-    }
-
-    if (max > 0) feeCents = Math.min(feeCents, max);
-    const totalCents = amountCents + (S.ui.coverFees ? feeCents : 0);
-    return { feeCents, totalCents };
-  };
-
-  const updateSummaryUI = () => {
-    D = cacheDom();
-    const amountCents = Math.max(0, toInt(S.ui.amountCents, 0));
-    const { feeCents, totalCents } = computeFees(amountCents);
-
-    if (D.summaryAmount) D.summaryAmount.textContent = formatCurrency(amountCents, currency, locale, true);
-    const showFee = !!S.ui.coverFees && feeCents > 0;
-    if (D.summaryFees)
-      D.summaryFees.textContent = showFee
-        ? `+ ${formatCurrency(feeCents, currency, locale, true)}`
-        : formatCurrency(0, currency, locale, true);
-    if (D.summaryTotal) D.summaryTotal.textContent = formatCurrency(totalCents, currency, locale, true);
-
-    if (D.receiptEmail) {
-      const email = safeText(D.email?.value || "").trim();
-      D.receiptEmail.textContent = email || "—";
-    }
-
-    if (D.checkoutMethodText) {
-      let method = "Card";
-      if (!stripePk && paypalClientId) method = "PayPal";
-      D.checkoutMethodText.textContent = method;
-    }
-  };
-
-  const setAmountCents = (cents) => {
-    const v = Math.max(0, toInt(cents, 0));
-    S.ui.amountCents = v;
-    if (D.amount) D.amount.value = v > 0 ? String(Math.round(v / 100)) : "";
-    updateSummaryUI();
-    updateProofKit();
-    onPricingInputsChanged();
-  };
-
-  const bindAmountControls = () => {
-    D = cacheDom();
-
-    for (const btn of D.quickAmountBtns) {
-      on(btn, "click", () => {
-        const raw = btn.getAttribute("data-ff-quick-amount") || btn.getAttribute("data-quick-amount") || "";
-        const cents = parseMoneyToCents(raw);
-        if (cents > 0) setAmountCents(cents);
-        scrollToDonate();
-        toast("Amount selected.", "success");
-      });
-    }
-
-    if (D.clearAmountBtn) on(D.clearAmountBtn, "click", () => (setAmountCents(0), toast("Amount cleared.", "info")));
-
-    if (D.amount) {
-      on(
-        D.amount,
-        "input",
-        debounce(() => {
-          S.ui.amountCents = parseMoneyToCents(D.amount.value);
-          updateSummaryUI();
-          updateProofKit();
-
-          // PATCH: if Stripe already mounted, and pricing changed, remount *now* (not on submit)
-          onPricingInputsChanged();
-
-          // Safe autoload: only if not mounted yet (never remount while user is typing card unless pricing changed)
-          if (stripeAutoload && stripePk) maybePrepareStripeUI().catch(() => {});
-        }, 180)
-      );
-    }
-
-    if (D.coverFees) {
-      on(D.coverFees, "change", () => {
-        S.ui.coverFees = !!D.coverFees.checked;
-        updateSummaryUI();
-        updateProofKit();
-        onPricingInputsChanged();
-        if (stripeAutoload && stripePk) maybePrepareStripeUI().catch(() => {});
-      });
-      S.ui.coverFees = !!D.coverFees.checked;
-    }
-
-    if (D.popularAmountPill && D.popularAmountText) {
-      const popular = toInt(S.fundraiser.popularAmountCents, 0);
-      if (popular > 0) {
-        D.popularAmountText.textContent = formatCurrency(popular, currency, locale);
-        setHidden(D.popularAmountPill, false);
-        on(D.popularAmountPill, "click", () => (setAmountCents(popular), toast("Popular amount selected.", "success")));
-      } else setHidden(D.popularAmountPill, true);
-    }
-
-    if (D.email) on(D.email, "input", debounce(() => (updateSummaryUI(), updateProofKit()), 140));
-  };
-
-  /* ---------------------------------------------
-   * Prefills from DOM
-   * -------------------------------------------*/
-  const bindPrefills = () => {
-    D = cacheDom();
-    for (const el of D.prefills) {
-      on(el, "click", (e) => {
-        e.preventDefault();
-        const cents = toInt(el.getAttribute("data-ff-amount-cents") || el.getAttribute("data-amount-cents"), 0);
-        const amount = toInt(el.getAttribute("data-ff-amount") || el.getAttribute("data-amount"), 0) * 100;
-        const purpose = el.getAttribute("data-ff-purpose") || "donation";
-        const sku = el.getAttribute("data-ff-sku") || "";
-        const impactId = el.getAttribute("data-ff-impact-id") || "";
-        const amt = cents > 0 ? cents : amount;
-        setPrefill({ amountCents: amt, purpose, sku, impactId }, { silent: true });
-        scrollToDonate();
-        toast("Checkout prefilled.", "success");
-      });
-    }
-  };
-
-  /* ---------------------------------------------
-   * Payment UI helpers
-   * -------------------------------------------*/
-  const setPayError = (msg) => {
-    D = cacheDom();
-    if (D.payError && D.payErrorText) {
-      D.payErrorText.textContent = safeText(msg || "");
-      setHidden(D.payError, !msg);
-    }
-    if (D.paymentLive) D.paymentLive.textContent = safeText(msg || "");
-  };
-
-  const setPaySuccess = (msg) => {
-    D = cacheDom();
-    if (D.paySuccess && D.paySuccessText) {
-      D.paySuccessText.textContent = safeText(msg || "");
-      setHidden(D.paySuccess, !msg);
-    }
-    if (D.paymentLive) D.paymentLive.textContent = safeText(msg || "");
-  };
-
-  const setBusy = (busy) => {
-    D = cacheDom();
-    S.ui.stripeBusy = !!busy;
-    if (D.payBtn) {
-      D.payBtn.disabled = !!busy;
-      D.payBtn.setAttribute("aria-busy", busy ? "true" : "false");
-    }
-  };
-
-  const validateDonation = () => {
-    const amountCents = toInt(S.ui.amountCents, 0);
-    if (amountCents <= 0) return { ok: false, message: "Enter an amount." };
-
-    const email = safeText(D.email?.value || "").trim();
-    if (requireEmail && !email) return { ok: false, message: "Email is required for a receipt." };
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, message: "Enter a valid email." };
-
-    return { ok: true, message: "" };
-  };
-
-  /* ---------------------------------------------
-   * Payload shaping (locked)
-   * -------------------------------------------*/
-  const buildPaymentPayload = () => {
-    D = cacheDom();
-
-    const amountCents = Math.max(0, toInt(S.ui.amountCents, 0));
-    const { feeCents, totalCents } = computeFees(amountCents);
-
-    const donorName = safeText(D.fullName?.value || "").trim();
-    const donorEmail = safeText(D.email?.value || "").trim();
-    const donorMessage = safeText(D.message?.value || "").trim();
-
-    const anon = !!D.anonymous?.checked || S.ui.recognition !== "public";
-
-    const base = {
-      org_id: shellEnv.orgId,
-      campaign_id: shellEnv.campaignId,
-      tier: shellEnv.tier,
-      env: shellEnv.env,
-      version: shellEnv.version,
-      page: shellEnv.page,
-
-      purpose: safeText(S.ui.purpose || "donation"),
-      sku: safeText(S.ui.sku || ""),
-      impact_id: safeText(S.ui.impactId || ""),
-
-      team_id: safeText(S.ui.selectedTeamId || ""),
-
-      amount_cents: amountCents,
-      cover_fees: !!S.ui.coverFees,
-      fee_cents: feeCents,
-      total_cents: totalCents,
-
-      recognition: anon ? "anonymous" : "public",
-      utm: S.utm || {},
-    };
-
-    const donorNested = { donor: { name: donorName, email: donorEmail, message: donorMessage, anonymous: anon } };
-    const donorFlat = {
-      donor_name: donorName,
-      donor_email: donorEmail,
-      donor_message: donorMessage,
-      donor_anonymous: anon,
-    };
-
-    const shaped = payloadShape === "flat_donor_v1" ? { ...base, ...donorFlat } : { ...base, ...donorNested };
-    return deepMerge(shaped, payloadExtra && typeof payloadExtra === "object" ? payloadExtra : {});
-  };
-
-  /* ---------------------------------------------
-   * Script loader (PATCHED: id+src aware)
-   * -------------------------------------------*/
-  const loadScriptOnce = (src, { id = "" } = {}) =>
-    new Promise((resolve, reject) => {
-      if (!src) return resolve(false);
-
-      if (id) {
-        const existing = document.getElementById(id);
-        if (existing) {
-          const existingSrc = existing.getAttribute("src") || "";
-          if (!existingSrc || existingSrc === src) return resolve(true);
-          // If id exists but src differs, keep existing and load a new one (avoid clobber)
-        }
-      } else {
-        const existing = qsa("script").find((s) => (s.getAttribute("src") || "") === src);
-        if (existing) return resolve(true);
-      }
-
-      const s = document.createElement("script");
-      if (id) s.id = id;
-      s.src = src;
-      s.async = true;
-      s.onload = () => resolve(true);
-      s.onerror = () => reject(new Error(`Failed to load ${src}`));
-      document.head.appendChild(s);
-    });
-
-  /* ---------------------------------------------
-   * Stripe — PATCHED lifecycle
-   * -------------------------------------------*/
-  const pendingKey = `ff_pending_${shellEnv.orgId}_${shellEnv.campaignId}`;
-
-  const writePendingPayment = (obj) => {
-    try {
-      localStorage.setItem(pendingKey, JSON.stringify({ ...obj, ts: new Date().toISOString() }));
-    } catch {}
-  };
-  const readPendingPayment = () => {
-    try {
-      return parseJSON(localStorage.getItem(pendingKey) || "", null);
-    } catch {
+    } catch (_) {
       return null;
     }
-  };
-  const clearPendingPayment = () => {
+  }
+
+  function focusInto(panel) {
+    if (!isEl(panel)) return;
+
+    // Ensure panel can always be focused as a fallback.
+    try { if (!panel.hasAttribute("tabindex")) panel.setAttribute("tabindex", "-1"); } catch (_) {}
+
+    var target = null;
+
+    // Prefer: close control, then amount input, then first focusable, then panel.
     try {
-      localStorage.removeItem(pendingKey);
-    } catch {}
-  };
-
-  const ensureStripeClient = async () => {
-    if (!stripePk) throw new Error("Stripe not configured.");
-    await loadScriptOnce(stripeJsSrc, { id: "ffStripeJs" });
-    if (!window.Stripe) throw new Error("Stripe.js unavailable.");
-    const key = stripePk;
-    if (!S.ui.stripe || S.ui.__stripeKey !== key) {
-      S.ui.__stripeKey = key;
-      S.ui.stripe = window.Stripe(key, locale ? { locale } : undefined);
-    }
-    return S.ui.stripe;
-  };
-
-  const pricingKey = () => {
-    const p = buildPaymentPayload();
-    // stable key: things that affect amount/intent
-    return [
-      p.org_id,
-      p.campaign_id,
-      p.purpose,
-      p.sku,
-      p.impact_id,
-      p.team_id,
-      String(p.amount_cents),
-      p.cover_fees ? "1" : "0",
-      String(p.fee_cents),
-      String(p.total_cents),
-    ].join("|");
-  };
-
-  const ensureStripeIntent = async () => {
-    const v = validateDonation();
-    if (!v.ok) throw new Error(v.message);
-
-    const payload = buildPaymentPayload();
-    const key = pricingKey();
-
-    // PATCH: intent request de-dupe
-    if (S.ui.__intentInFlightPromise && S.ui.__intentInFlightKey === key) {
-      const existing = await S.ui.__intentInFlightPromise;
-      return existing;
+      target =
+        panel.querySelector("[data-ff-close-checkout]") ||
+        panel.querySelector("[data-ff-amount-input]") ||
+        findFocusable(panel) ||
+        panel;
+    } catch (_) {
+      target = panel;
     }
 
-    const headers = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
-    if (csrfToken) {
-      // PATCH: send both common CSRF header spellings
-      headers["X-CSRF-Token"] = csrfToken;
-      headers["X-CSRFToken"] = csrfToken;
+    function doFocus() {
+      try { target.focus({ preventScroll: true }); }
+      catch (_) { try { target.focus(); } catch (_2) {} }
     }
 
-    const reqId = (S.ui.__intentReqId = (S.ui.__intentReqId || 0) + 1);
-
-    const promise = (async () => {
-      const data = await fetchJson(stripeIntentEndpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-        credentials: "same-origin",
-      });
-      const clientSecret = safeText(data?.client_secret || data?.clientSecret || "");
-      if (!clientSecret) throw new Error("Missing Stripe client secret.");
-      // stale response guard
-      if (reqId !== S.ui.__intentReqId) return null;
-
-      S.ui.clientSecret = clientSecret;
-      S.ui.intentPricingKey = key;
-      return clientSecret;
-    })();
-
-    S.ui.__intentInFlightKey = key;
-    S.ui.__intentInFlightPromise = promise;
-
-    try {
-      return await promise;
-    } finally {
-      // clear only if still the same promise
-      if (S.ui.__intentInFlightPromise === promise) {
-        S.ui.__intentInFlightPromise = null;
-        S.ui.__intentInFlightKey = "";
-      }
-    }
-  };
-
-  const mountStripePaymentElement = async ({ forceNewIntent = false, reason = "" } = {}) => {
-    D = cacheDom();
-    if (captureMode) return false;
-    if (!stripePk) return false;
-    const host = D.paymentElementHost || D.stripeMount;
-    if (!host) return false;
-
-    if (S.ui.__stripeInitInFlight) return S.ui.__stripeInitInFlight;
-
-    S.ui.__stripeInitInFlight = (async () => {
-      const stripe = await ensureStripeClient();
-
-      const currentKey = pricingKey();
-      const alreadyMounted =
-        !!S.ui.elements && !!S.ui.paymentElement && !!S.ui.clientSecret && S.ui.stripeMounted;
-
-      // If mounted but pricing changed, we *must* remount now (not on submit) to avoid charging wrong amount.
-      if (alreadyMounted && S.ui.intentPricingKey && S.ui.intentPricingKey !== currentKey) {
-        forceNewIntent = true;
-        reason = reason || "Pricing changed";
-      }
-
-      if (alreadyMounted && !forceNewIntent) return true;
-
-      const clientSecret = await ensureStripeIntent();
-      if (!clientSecret) return false;
-
-      const appearance = {};
-      if (stripeThemeMeta) appearance.theme = stripeThemeMeta;
-
-      S.ui.elements = stripe.elements({
-        clientSecret,
-        appearance: Object.keys(appearance).length ? appearance : undefined,
-      });
-
-      // clear + mount target
-      clearChildren(host);
-      const mountTarget = h("div", { class: "ff-stripe-element-host" });
-      host.appendChild(mountTarget);
-
-      S.ui.paymentElementReady = false;
-      S.ui.stripeUserInteracted = false;
-      S.ui.paymentElement = S.ui.elements.create("payment", { layout: "tabs" });
-
-      if (D.payBtn) D.payBtn.disabled = true;
-
-      S.ui.paymentElement.on("ready", () => {
-        S.ui.paymentElementReady = true;
-        D = cacheDom();
-        if (D.payBtn && !S.ui.stripeBusy) D.payBtn.disabled = false;
-        if (reason) toast(`${reason}: payment form refreshed.`, "info");
-      });
-
-      S.ui.paymentElement.on("change", (e) => {
-        // PATCH: track interaction to avoid unexpected resets (we still remount if pricing changes)
-        if (e && typeof e.empty === "boolean" && e.empty === false) S.ui.stripeUserInteracted = true;
-        if (e?.error?.message) setPayError(e.error.message);
-        else setPayError("");
-      });
-
-      S.ui.paymentElement.mount(mountTarget);
-
-      S.ui.stripeMounted = true;
-      return true;
-    })();
-
-    try {
-      return await S.ui.__stripeInitInFlight;
-    } finally {
-      S.ui.__stripeInitInFlight = null;
-    }
-  };
-
-  const confirmStripePayment = async () => {
-    if (!S.ui.stripe || !S.ui.elements) throw new Error("Stripe not initialized.");
-
-    const payload = buildPaymentPayload();
-    writePendingPayment({
-      amount_cents: payload.amount_cents,
-      total_cents: payload.total_cents,
-      team_id: payload.team_id,
-      purpose: payload.purpose,
-      impact_id: payload.impact_id,
+    // Multi-phase focus settle: rAF + short timeout (beats transitions/layout churn)
+    requestAnimationFrame(function () {
+      doFocus();
+      setTimeout(function () {
+        try {
+          var ae = document.activeElement;
+          if (!(ae && panel.contains(ae))) doFocus();
+        } catch (_) {}
+      }, 60);
     });
+  }
 
-    // PATCH: required validation step for Payment Element
-    const { error: submitError } = await S.ui.elements.submit();
-    if (submitError) throw new Error(submitError.message || "Check your payment details.");
+  function trapTab(e, container) {
+    if (!container) return;
+    if (e.key !== "Tab") return;
 
-    const res = await S.ui.stripe.confirmPayment({
-      elements: S.ui.elements,
-      confirmParams: { return_url: stripeReturnUrl || window.location.href },
-      redirect: "if_required",
-    });
-
-    if (res?.error) throw new Error(res.error.message || "Payment failed.");
-    return res;
-  };
-
-  const handleStripeRedirectStatus = () => {
-    const url = new URL(window.location.href);
-    const status = url.searchParams.get("redirect_status") || "";
-    if (!status) return;
-
+    var items = [];
     try {
-      for (const k of ["payment_intent", "payment_intent_client_secret", "redirect_status"])
-        url.searchParams.delete(k);
-      window.history.replaceState({}, document.title, url.toString());
-    } catch {}
-
-    D = cacheDom();
-    if (D.checkoutStatusText) {
-      const label =
-        status === "succeeded"
-          ? "Payment succeeded."
-          : status === "processing"
-          ? "Payment processing."
-          : status === "requires_payment_method"
-          ? "Payment failed. Try another method."
-          : `Payment status: ${status}`;
-      D.checkoutStatusText.textContent = label;
+      items = qsa(
+        "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        container
+      ).filter(function (el) {
+        try { return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length); }
+        catch (_) { return false; }
+      });
+    } catch (_) {
+      items = [];
     }
 
-    if (status === "succeeded") {
-      setPaySuccess("Thanks! Your payment was successful.");
-      toast("Donation received.", "success");
+    if (!items.length) return;
 
-      const pending = readPendingPayment();
-      if (pending?.amount_cents) {
-        S.fundraiser.raisedCents += toInt(pending.amount_cents, 0);
-        setProgressUI();
+    var first = items[0];
+    var last = items[items.length - 1];
+    var ae = document.activeElement;
+
+    if (e.shiftKey && ae === first) {
+      e.preventDefault();
+      try { last.focus(); } catch (_) {}
+    } else if (!e.shiftKey && ae === last) {
+      e.preventDefault();
+      try { first.focus(); } catch (_) {}
+    }
+  }
+
+  /* --------------------------------------------------------------------------
+   * Checkout (deterministic open/close + hash sync + focus)
+   * ------------------------------------------------------------------------ */
+  var Checkout = (function () {
+    var returnFocusEl = null;
+
+    function sheet() { return DOM.checkoutSheet(); }
+    function panel() { return DOM.checkoutPanel(); }
+
+    function open(opts) {
+      var s = sheet();
+      if (!s) return;
+
+      if (!isOpen(s)) {
+        returnFocusEl = document.activeElement;
       }
-      clearPendingPayment();
-      renderSponsorBoard();
-      renderRecentGifts();
-    } else if (status === "processing") {
-      toast("Payment processing.", "info");
-    } else {
-      setPayError("Payment did not complete. Please try again.");
-      clearPendingPayment();
+
+      setOpen(s, true);
+
+      var p = panel();
+      if (p) focusInto(p);
+
+      // Payments only load if open + amount>0 (handled by Payments module),
+      // but we can nudge evaluation after open for snappy UX.
+      Payments.queueEvaluate(true);
+
+      if (!(opts && opts.quiet)) {
+        announce("Checkout opened");
+      }
     }
 
-    if (D.checkoutMethodPill) setHidden(D.checkoutMethodPill, false);
-  };
+    function close(opts) {
+      var s = sheet();
+      if (!s) return;
 
-  const maybePrepareStripeUI = async () => {
-    if (!stripeAutoload) return false;
-    if (!stripePk) return false;
-    if (S.ui.stripeMounted && S.ui.clientSecret) return true;
+      setOpen(s, false);
 
-    const v = validateDonation();
-    if (!v.ok) return false;
-
-    return mountStripePaymentElement({ forceNewIntent: true, reason: "" });
-  };
-
-  // PATCH: remount Stripe when pricing inputs change (so you never charge the wrong amount)
-  const onPricingInputsChanged = debounce(() => {
-    if (!stripePk) return;
-    if (!S.ui.stripeMounted) return;
-    if (!S.ui.clientSecret) return;
-    const cur = pricingKey();
-    if (S.ui.intentPricingKey && S.ui.intentPricingKey !== cur) {
-      // remount now; this may clear entered details, but prevents mismatched charge.
-      mountStripePaymentElement({ forceNewIntent: true, reason: "Amount updated" }).catch(() => {});
-    }
-  }, 220);
-
-  /* ---------------------------------------------
-   * PayPal (PATCHED loader id/src behavior)
-   * -------------------------------------------*/
-  const paypalSdkSrc = () => {
-    const base = "https://www.paypal.com/sdk/js";
-    const u = new URL(base);
-    u.searchParams.set("client-id", paypalClientId);
-    u.searchParams.set("currency", paypalCurrency || "USD");
-    u.searchParams.set("intent", paypalIntent || "capture");
-    u.searchParams.set("components", "buttons");
-    return u.toString();
-  };
-
-  const initPayPal = async () => {
-    D = cacheDom();
-    if (!paypalClientId) return false;
-    const host = D.paypalButtonsHost || D.paypalMount;
-    if (!host) return false;
-    if (captureMode) return false;
-
-    const src = paypalSdkSrc();
-    await loadScriptOnce(src, { id: "ffPaypalSdk" });
-    if (!window.paypal || !window.paypal.Buttons) throw new Error("PayPal SDK unavailable.");
-
-    clearChildren(host);
-    const container = h("div", { "data-ff-paypal-buttons": "true" });
-    host.appendChild(container);
-
-    const headers = { "Content-Type": "application/json", Accept: "application/json" };
-    if (csrfToken) {
-      headers["X-CSRF-Token"] = csrfToken;
-      headers["X-CSRFToken"] = csrfToken;
-    }
-
-    window.paypal
-      .Buttons({
-        style: { layout: "vertical" },
-        createOrder: async () => {
-          const v = validateDonation();
-          if (!v.ok) throw new Error(v.message);
-          const payload = buildPaymentPayload();
-          const data = await fetchJson(paypalCreateEndpoint, { method: "POST", headers, body: JSON.stringify(payload) });
-          const id = safeText(data?.id || data?.order_id || data?.orderID || "");
-          if (!id) throw new Error("Missing PayPal order id.");
-          return id;
-        },
-        onApprove: async (data) => {
-          const orderId = safeText(data?.orderID || data?.orderId || "");
-          if (!orderId) throw new Error("Missing PayPal order id.");
-
-          setBusy(true);
-          setPayError("");
-          setPaySuccess("");
-
-          const payload = buildPaymentPayload();
-          payload.order_id = orderId;
-
-          const captured = await fetchJson(paypalCaptureEndpoint, { method: "POST", headers, body: JSON.stringify(payload) });
-
-          setPaySuccess("Thanks! Your payment was successful.");
-          toast("Donation received.", "success");
-
-          const amountCents = toInt(payload.amount_cents, 0);
-          if (amountCents > 0) {
-            S.fundraiser.raisedCents += amountCents;
-            setProgressUI();
-          }
-          renderSponsorBoard();
-          renderRecentGifts();
-
-          if (D.checkoutStatusText) D.checkoutStatusText.textContent = "Payment succeeded.";
-          setBusy(false);
-          return captured;
-        },
-        onCancel: () => toast("PayPal cancelled.", "info"),
-        onError: (err) => {
-          const msg = safeText(err?.message || err || "PayPal error.");
-          setPayError(msg);
-          toast("Payment error.", "error");
-          setBusy(false);
-        },
-      })
-      .render(container);
-
-    S.ui.paypalReady = true;
-    return true;
-  };
-
-  window.FF.initPayPal = initPayPal;
-
-  /* ---------------------------------------------
-   * Payment provider visibility
-   * -------------------------------------------*/
-  const bindPaymentProviderVisibility = () => {
-    D = cacheDom();
-
-    if (stripePk) {
-      if (D.stripeMount) setHidden(D.stripeMount, false);
-      if (D.paymentElementHost) setHidden(D.paymentElementHost, false);
-      if (D.paypalMount) setHidden(D.paypalMount, !paypalClientId);
-      if (D.paypalButtonsHost) setHidden(D.paypalButtonsHost, !paypalClientId);
-      if (D.checkoutMethodText) D.checkoutMethodText.textContent = "Card";
-      return;
-    }
-
-    if (paypalClientId) {
-      if (D.stripeMount) setHidden(D.stripeMount, true);
-      if (D.paymentElementHost) setHidden(D.paymentElementHost, true);
-      if (D.paypalMount) setHidden(D.paypalMount, false);
-      if (D.paypalButtonsHost) setHidden(D.paypalButtonsHost, false);
-      if (D.checkoutMethodText) D.checkoutMethodText.textContent = "PayPal";
-      return;
-    }
-
-    if (D.stripeMount) setHidden(D.stripeMount, true);
-    if (D.paymentElementHost) setHidden(D.paymentElementHost, true);
-    if (D.paypalMount) setHidden(D.paypalMount, true);
-    if (D.paypalButtonsHost) setHidden(D.paypalButtonsHost, true);
-  };
-
-  /* ---------------------------------------------
-   * Payment submission — PATCHED (NO reset on submit)
-   * -------------------------------------------*/
-  const bindPaymentSubmit = () => {
-    D = cacheDom();
-    if (!D.donationForm && !D.payBtn) return;
-
-    const submit = async (e) => {
-      if (e) e.preventDefault();
-      if (captureMode) return;
-
-      D = cacheDom();
-      setPayError("");
-      setPaySuccess("");
-
-      const v = validateDonation();
-      if (!v.ok) return (setPayError(v.message), toast(v.message, "error"));
-
-      setBusy(true);
-
+      // Reset success state if present (do not assume markup exists)
       try {
-        if (stripePk) {
-          // PATCH: do NOT reset elements/paymentElement/clientSecret here.
-          // Only mount if missing; remount happens on pricing changes (not on submit).
-          await mountStripePaymentElement({ forceNewIntent: !S.ui.clientSecret });
+        var succ = DOM.checkoutSuccess();
+        if (succ) succ.hidden = true;
 
-          // Guard: if pricing changed and remount is pending, block instead of charging wrong amount.
-          const cur = pricingKey();
-          if (S.ui.intentPricingKey && S.ui.intentPricingKey !== cur) {
-            setPayError("Amount changed—refreshing payment form. Please re-check your payment details.");
-            await mountStripePaymentElement({ forceNewIntent: true, reason: "Amount updated" });
-            throw new Error("Payment form refreshed. Please submit again.");
-          }
+        var stage = qs("[data-ff-checkout-stage='form']", s);
+        if (stage) stage.hidden = false;
+      } catch (_) {}
 
-          const res = await confirmStripePayment();
-
-          // If no redirect required, Stripe may return paymentIntent
-          const piStatus = res?.paymentIntent?.status || "";
-          if (piStatus === "succeeded") {
-            setPaySuccess("Thanks! Your payment was successful.");
-            if (D.checkoutStatusText) D.checkoutStatusText.textContent = "Payment succeeded.";
-
-            const payload = buildPaymentPayload();
-            const amountCents = toInt(payload.amount_cents, 0);
-            if (amountCents > 0) {
-              S.fundraiser.raisedCents += amountCents;
-              setProgressUI();
-            }
-            renderSponsorBoard();
-            renderRecentGifts();
-            toast("Donation received.", "success");
-            clearPendingPayment();
-          } else if (piStatus === "processing") {
-            toast("Payment processing.", "info");
-          }
-        } else if (paypalClientId) {
-          toast("Use the PayPal buttons to complete payment.", "info");
-          scrollToDonate();
-        } else {
-          throw new Error("No payment provider configured.");
+      // If we're currently at #checkout, move hash away so :target doesn't fight us.
+      try {
+        if (location.hash === "#checkout") {
+          try { history.replaceState(null, "", "#home"); }
+          catch (_) { location.hash = "#home"; }
         }
-      } catch (err) {
-        const msg = safeText(err?.message || err || "Payment failed.");
-        setPayError(msg);
-        toast(msg, "error");
-      } finally {
-        setBusy(false);
+      } catch (_) {}
+
+      if (!(opts && opts.keepFocus)) {
+        try { if (returnFocusEl && returnFocusEl.focus) returnFocusEl.focus(); } catch (_) {}
       }
-    };
+      returnFocusEl = null;
 
-    if (D.donationForm) on(D.donationForm, "submit", submit);
-    if (D.payBtn) on(D.payBtn, "click", submit);
-  };
+      if (!(opts && opts.quiet)) {
+        announce("Checkout closed");
+      }
+    }
 
-  /* ---------------------------------------------
-   * Topbar + refresh
-   * -------------------------------------------*/
-  const bindTopbar = () => {
-    D = cacheDom();
-    if (!D.topbar) return;
+    function syncFromHash() {
+      // Canonical: hash controls the sheet too.
+      if (location.hash === "#checkout") open({ quiet: true });
+      else {
+        // Only force-close if it's actually open (prevents meddling if not used)
+        var s = sheet();
+        if (s && isOpen(s)) close({ quiet: true, keepFocus: true });
+      }
+    }
 
-    const key = `ff_topbar_dismiss_${shellEnv.orgId}_${shellEnv.campaignId}`;
-    try {
-      if (localStorage.getItem(key)) {
-        setHidden(D.topbar, true);
+    function init() {
+      // Click open
+      on(document, "click", function (e) {
+        try {
+          var t = e.target;
+          if (!t || !t.closest) return;
+
+          var opener = t.closest(HOOKS.get("openCheckout", "[data-ff-open-checkout]"));
+          if (opener) {
+            // Do NOT preventDefault for anchors (#checkout) so URL remains shareable.
+            // But do open immediately for determinism.
+            open({ quiet: true });
+
+            // If opener is not an anchor / doesn't navigate, ensure hash goes to #checkout.
+            var href = "";
+            try { href = String(opener.getAttribute("href") || ""); } catch (_) { href = ""; }
+            if (!href || href.charAt(0) !== "#") {
+              try { location.hash = "#checkout"; } catch (_) {}
+            }
+
+            // Team attribution (if present on the opener)
+            try {
+              var tid = opener.getAttribute("data-ff-team-id");
+              if (tid && DOM.teamIdInput()) DOM.teamIdInput().value = String(tid);
+            } catch (_) {}
+
+            return;
+          }
+
+          var closer = t.closest(HOOKS.get("closeCheckout", "[data-ff-close-checkout]"));
+          if (closer) {
+            // Close immediately (even if href changes hash) to satisfy UX + tests.
+            close({ quiet: true });
+            return;
+          }
+        } catch (_) {}
+      }, true);
+
+      // Esc closes
+      on(document, "keydown", function (e) {
+        try {
+          if (e.key !== "Escape") return;
+          var s = sheet();
+          if (!s || !isOpen(s)) return;
+          close({ quiet: true });
+        } catch (_) {}
+      }, true);
+
+      // Focus trap while open (keyboard UX)
+      on(document, "keydown", function (e) {
+        try {
+          var s = sheet();
+          if (!s || !isOpen(s)) return;
+          trapTab(e, panel() || s);
+        } catch (_) {}
+      }, true);
+
+      // Hash sync (supports /#checkout deep link + backdrop href="#home")
+      on(window, "hashchange", syncFromHash, { passive: true });
+
+      // Boot sync
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", syncFromHash, { once: true });
+      } else {
+        syncFromHash();
+      }
+    }
+
+    return { init: init, open: open, close: close, syncFromHash: syncFromHash };
+  })();
+
+  /* --------------------------------------------------------------------------
+   * Amount chips + quick attribution
+   * - data-ff-amount="25" sets checkout amount input and opens checkout
+   * - data-ff-team-id on an open-checkout trigger sets hidden team_id
+   * ------------------------------------------------------------------------ */
+  function initPrefill() {
+    on(document, "click", function (e) {
+      try {
+        var t = e.target;
+        if (!t || !t.closest) return;
+
+        var chip = t.closest("[data-ff-amount]");
+        if (chip) {
+          var v = String(chip.getAttribute("data-ff-amount") || "").trim();
+          if (!v) return;
+
+          var amt = DOM.amountInput();
+          if (amt) {
+            amt.value = v;
+            try { amt.dispatchEvent(new Event("input", { bubbles: true })); } catch (_) {}
+          }
+
+          // Open checkout (hash-driven + immediate open)
+          Checkout.open({ quiet: true });
+          try { location.hash = "#checkout"; } catch (_) {}
+
+          toast("Amount set", "success", 1600);
+          return;
+        }
+      } catch (_) {}
+    }, true);
+  }
+
+  /* --------------------------------------------------------------------------
+   * Theme toggle (light/dark)
+   * - writes html[data-theme], persists in localStorage
+   * ------------------------------------------------------------------------ */
+  var Theme = (function () {
+    var KEY = "ff_theme";
+
+    function getSaved() {
+      try {
+        var v = String(localStorage.getItem(KEY) || "").toLowerCase();
+        if (v === "light" || v === "dark") return v;
+      } catch (_) {}
+      return "";
+    }
+
+    function setSaved(v) {
+      try { localStorage.setItem(KEY, String(v)); } catch (_) {}
+    }
+
+    function apply(v) {
+      var root = document.documentElement;
+      var mode = (v === "dark" || v === "light") ? v : "";
+      if (!mode) return;
+
+      try { root.setAttribute("data-theme", mode); } catch (_) {}
+      try { root.style.colorScheme = mode; } catch (_) {}
+
+      var btn = DOM.themeToggle();
+      if (btn) {
+        try { btn.setAttribute("aria-pressed", mode === "dark" ? "true" : "false"); } catch (_) {}
+      }
+    }
+
+    function toggle() {
+      var root = document.documentElement;
+      var cur = String(root.getAttribute("data-theme") || "").toLowerCase();
+      if (cur !== "dark" && cur !== "light") cur = "dark";
+      var next = (cur === "dark") ? "light" : "dark";
+      setSaved(next);
+      apply(next);
+
+      // Re-theme Stripe appearance on next evaluation (without forcing remount unless open)
+      Payments.queueEvaluate(true);
+    }
+
+    function init() {
+      // Apply saved theme if present (do not override server default unless user has set one)
+      var saved = getSaved();
+      if (saved) apply(saved);
+
+      on(document, "click", function (e) {
+        try {
+          var t = e.target;
+          if (!t || !t.closest) return;
+          var btn = t.closest(HOOKS.get("themeToggle", "[data-ff-theme-toggle]"));
+          if (!btn) return;
+          e.preventDefault();
+          toggle();
+        } catch (_) {}
+      }, true);
+    }
+
+    return { init: init };
+  })();
+
+  /* --------------------------------------------------------------------------
+   * Share (data-ff-share)
+   * - tries native share, else copies URL
+   * ------------------------------------------------------------------------ */
+  var Share = (function () {
+    function canonicalUrl() {
+      // Prefer canonical meta if present; otherwise current URL without hash noise.
+      var u = meta("ff:stripe-return-url") || meta("ff-stripe-return-url") || "";
+      if (u) return u;
+      try {
+        var url = new URL(window.location.href);
+        url.hash = "";
+        return url.toString();
+      } catch (_) {
+        return window.location.origin + window.location.pathname;
+      }
+    }
+
+    function copyText(text) {
+      var v = String(text || "");
+      if (!v) return Promise.resolve(false);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(v).then(function () { return true; }).catch(function () { return false; });
+      }
+
+      // Fallback
+      return new Promise(function (resolve) {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = v;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand("copy"); } catch (_) {}
+          ta.remove();
+          resolve(true);
+        } catch (_) {
+          resolve(false);
+        }
+      });
+    }
+
+    function doShare() {
+      var url = canonicalUrl();
+      var title = document.title || "FutureFunded";
+      var text = "Support this fundraiser: " + url;
+
+      if (navigator.share) {
+        return navigator.share({ title: title, text: text, url: url }).catch(function () {});
+      }
+
+      return copyText(url).then(function (ok) {
+        if (ok) toast("Link copied", "success", 1800);
+        else toast("Could not copy link", "error", 2600);
+      });
+    }
+
+    function init() {
+      on(document, "click", function (e) {
+        try {
+          var t = e.target;
+          if (!t || !t.closest) return;
+          var b = t.closest(HOOKS.get("share", "[data-ff-share]"));
+          if (!b) return;
+          e.preventDefault();
+          doShare();
+        } catch (_) {}
+      }, true);
+    }
+
+    return { init: init };
+  })();
+
+  /* --------------------------------------------------------------------------
+   * Payments (Stripe + PayPal) — lazy-loaded
+   * Conditions to load:
+   *  - checkout open
+   *  - amount > 0
+   * ------------------------------------------------------------------------ */
+  var Payments = (function () {
+    var MIN_CENTS = 100; // $1
+    var evalQueued = false;
+
+    // Stripe state
+    var stripeJsPromise = null;
+    var stripePkPromise = null;
+    var stripe = null;
+    var elements = null;
+    var paymentEl = null;
+    var mountedKey = "";
+    var intentAbort = null;
+
+    // PayPal state
+    var paypalJsPromise = null;
+    var paypalReady = false;
+    var paypalRenderedKey = "";
+
+    function isCheckoutOpen() {
+      var s = DOM.checkoutSheet();
+      return !!(s && isOpen(s));
+    }
+
+    function readAmountCents() {
+      var a = DOM.amountInput();
+      return a ? parseMoneyToCents(a.value) : 0;
+    }
+
+    function readCurrency() {
+      // Template also emits ff-currency in meta; prefer that.
+      var c = meta("ff-currency") || meta("ff:currency") || "USD";
+      return String(c || "USD").trim().toUpperCase();
+    }
+
+    function readEmail() {
+      var e = DOM.emailInput();
+      return e ? String(e.value || "").trim() : "";
+    }
+
+    function readTeamId() {
+      var i = DOM.teamIdInput();
+      return i ? String(i.value || "default").trim() : "default";
+    }
+
+    function csrfHeader() {
+      var csrf = meta("csrf-token");
+      return csrf ? { "X-CSRFToken": csrf } : {};
+    }
+
+    function setStripeMessage(txt) { setText(DOM.stripeMsg(), txt || ""); }
+    function setStripeError(txt) {
+      var box = DOM.stripeErr();
+      if (!box) return;
+      if (txt) { box.hidden = false; box.textContent = String(txt); }
+      else { box.hidden = true; box.textContent = ""; }
+    }
+
+    function setPayPalMessage(txt) { setText(DOM.paypalMsg(), txt || ""); }
+    function setPayPalError(txt) {
+      var box = DOM.paypalErr();
+      if (!box) return;
+      if (txt) { box.hidden = false; box.textContent = String(txt); }
+      else { box.hidden = true; box.textContent = ""; }
+    }
+
+    function injectScript(src, attrs) {
+      return new Promise(function (resolve, reject) {
+        try {
+          var existing = qsa("script").find(function (s) { return String(s.src || "") === String(src || ""); });
+          if (existing) {
+            if (existing.getAttribute("data-ff-loaded") === "true") return resolve(existing);
+            on(existing, "load", function () { existing.setAttribute("data-ff-loaded", "true"); resolve(existing); }, { once: true });
+            on(existing, "error", function () { reject(new Error("Script failed to load")); }, { once: true });
+            return;
+          }
+
+          var s = document.createElement("script");
+          s.src = src;
+          s.async = true;
+          s.defer = true;
+          s.setAttribute("data-ff-dyn", "1");
+
+          var nonce = getNonce();
+          if (nonce) s.setAttribute("nonce", nonce);
+
+          if (attrs && typeof attrs === "object") {
+            Object.keys(attrs).forEach(function (k) {
+              try { s.setAttribute(k, String(attrs[k])); } catch (_) {}
+            });
+          }
+
+          s.onload = function () { s.setAttribute("data-ff-loaded", "true"); resolve(s); };
+          s.onerror = function () { reject(new Error("Script failed to load")); };
+
+          document.head.appendChild(s);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    /* ---------------- Stripe ---------------- */
+
+    function stripePkFromMeta() {
+      var pk = meta("ff-stripe-pk") || meta("ff:stripe-pk") || "";
+      pk = String(pk || "").trim();
+      if (!pk || pk.toLowerCase() === "none" || pk.toLowerCase() === "null") return "";
+      return pk;
+    }
+
+    function stripeConfigEndpoint() {
+      return meta("ff-payments-config-endpoint") || meta("ff:payments-config-endpoint") || "/payments/config";
+    }
+
+    function stripeIntentEndpoint() {
+      return meta("ff-stripe-intent-endpoint") || meta("ff:stripe-intent-endpoint") || "/payments/stripe/intent";
+    }
+
+    function stripeReturnUrl() {
+      var u = meta("ff-stripe-return-url") || meta("ff:stripe-return-url") || "";
+      if (!u) {
+        try {
+          var url = new URL(window.location.href);
+          url.hash = "";
+          u = url.toString();
+        } catch (_) {
+          u = window.location.origin + window.location.pathname;
+        }
+      }
+      // Ensure https if site is https.
+      if (window.location.protocol === "https:" && String(u).indexOf("http://") === 0) {
+        u = "https://" + String(u).slice(7);
+      }
+      return String(u);
+    }
+
+    function loadStripeJs() {
+      if (window.Stripe) return Promise.resolve(true);
+      if (stripeJsPromise) return stripeJsPromise;
+
+      var src = meta("ff-stripe-js") || meta("ff:stripe-js") || "https://js.stripe.com/v3/";
+      stripeJsPromise = injectScript(src, { "data-ff-stripe": "1" }).then(function () {
+        return !!window.Stripe;
+      });
+      return stripeJsPromise;
+    }
+
+    function fetchStripePk() {
+      var pkMeta = stripePkFromMeta();
+      if (pkMeta) return Promise.resolve(pkMeta);
+      if (stripePkPromise) return stripePkPromise;
+
+      stripePkPromise = fetchWithTimeout(stripeConfigEndpoint(), { credentials: "same-origin" }, 12000)
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (j) {
+          var pk =
+            (j && (j.publishableKey || j.publishable_key || j.stripePublishableKey || j.pk)) ?
+              String(j.publishableKey || j.publishable_key || j.stripePublishableKey || j.pk).trim() : "";
+          if (!pk) throw new Error("Stripe publishable key missing");
+          return pk;
+        });
+
+      return stripePkPromise;
+    }
+
+    function buildStripePayload(amountCents) {
+      var currency = readCurrency().toLowerCase();
+      var email = readEmail();
+      var teamId = readTeamId();
+
+      // Keep payload tolerant; backend can ignore fields it doesn't use.
+      return {
+        amount_cents: Number(amountCents || 0) | 0,
+        currency: currency,
+        donor: { email: String(email || "").trim().toLowerCase() },
+        attribution: { team_id: teamId },
+        return_url: stripeReturnUrl()
+      };
+    }
+
+    function intentKey(amountCents) {
+      var theme = String(document.documentElement.getAttribute("data-theme") || "");
+      var team = readTeamId();
+      var email = readEmail().toLowerCase();
+      return String(amountCents || 0) + "|" + team + "|" + email + "|" + theme + "|" + readCurrency();
+    }
+
+    function teardownStripe() {
+      try { if (intentAbort) intentAbort.abort(); } catch (_) {}
+      intentAbort = null;
+
+      try { if (paymentEl && paymentEl.unmount) paymentEl.unmount(); } catch (_) {}
+      paymentEl = null;
+      elements = null;
+      mountedKey = "";
+
+      var host = DOM.stripeMount();
+      if (host) {
+        try { host.replaceChildren(); } catch (_) {}
+        var skel = DOM.stripeSkeleton();
+        if (skel) {
+          try { host.appendChild(skel.cloneNode(true)); } catch (_) {}
+        }
+      }
+      setStripeError("");
+      setStripeMessage("");
+    }
+
+    function createStripeIntent(amountCents) {
+      // Abort any in-flight intent when amount changes.
+      try { if (intentAbort) intentAbort.abort(); } catch (_) {}
+      intentAbort = null;
+
+      var ctrl = null;
+      try { ctrl = new AbortController(); } catch (_) { ctrl = null; }
+      intentAbort = ctrl;
+
+      var payload = buildStripePayload(amountCents);
+
+      var headers = { "Content-Type": "application/json" };
+      var ch = csrfHeader();
+      Object.keys(ch).forEach(function (k) { headers[k] = ch[k]; });
+
+      return fetchWithTimeout(
+        stripeIntentEndpoint(),
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: headers,
+          body: JSON.stringify(payload),
+          signal: ctrl ? ctrl.signal : undefined
+        },
+        15000
+      )
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok) {
+              var msg = (j && j.error && j.error.message) ? j.error.message : ("Stripe intent failed (" + r.status + ")");
+              throw new Error(msg);
+            }
+            if (j && j.ok === false) {
+              var m = (j.error && j.error.message) ? j.error.message : (j.message || "Stripe intent failed");
+              throw new Error(String(m));
+            }
+            var cs = j.client_secret || j.clientSecret;
+            if (!cs) throw new Error("Missing Stripe client_secret");
+            return { clientSecret: String(cs), publishableKey: String(j.publishable_key || j.publishableKey || "").trim() };
+          });
+        });
+    }
+
+    function mountStripe(amountCents, force) {
+      if (!isCheckoutOpen()) return Promise.resolve(false);
+
+      var host = DOM.stripeMount();
+      if (!host) return Promise.resolve(false);
+
+      var amt = Number(amountCents || 0) | 0;
+      if (amt < MIN_CENTS) {
+        teardownStripe();
+        return Promise.resolve(false);
+      }
+
+      var key = intentKey(amt);
+      if (!force && mountedKey === key && host.childElementCount > 0) return Promise.resolve(true);
+
+      setStripeError("");
+      setStripeMessage("Loading…");
+      try {
+        // Show skeleton if provided
+        var sk = DOM.stripeSkeleton();
+        if (sk) {
+          host.replaceChildren(sk.cloneNode(true));
+        }
+      } catch (_) {}
+
+      return Promise.all([loadStripeJs(), fetchStripePk()])
+        .then(function (res) {
+          if (!res[0]) throw new Error("Stripe.js unavailable");
+          var pk = res[1];
+
+          if (!stripe || stripe.__ffPk !== pk) {
+            stripe = window.Stripe(pk);
+            // tag to avoid rebuilding if pk unchanged
+            try { stripe.__ffPk = pk; } catch (_) {}
+          }
+
+          return createStripeIntent(amt).then(function (intent) {
+            var pk2 = intent.publishableKey || pk;
+            if (pk2 && stripe && stripe.__ffPk !== pk2) {
+              stripe = window.Stripe(pk2);
+              try { stripe.__ffPk = pk2; } catch (_) {}
+            }
+
+            elements = stripe.elements({
+              clientSecret: intent.clientSecret,
+              appearance: { theme: (String(document.documentElement.getAttribute("data-theme") || "dark") === "dark") ? "night" : "stripe" }
+            });
+
+            try { host.replaceChildren(); } catch (_) {}
+
+            paymentEl = elements.create("payment", { layout: "tabs" });
+            paymentEl.mount(host);
+
+            mountedKey = key;
+            setStripeMessage("Ready");
+            return true;
+          });
+        })
+        .catch(function (e) {
+          setStripeMessage("");
+          setStripeError((e && e.message) ? e.message : "Stripe failed to load");
+          return false;
+        });
+    }
+
+    function confirmStripePayment() {
+      if (!stripe || !elements) return Promise.resolve(false);
+
+      setStripeError("");
+      setStripeMessage("Processing…");
+
+      return stripe
+        .confirmPayment({
+          elements: elements,
+          redirect: "if_required",
+          confirmParams: { return_url: stripeReturnUrl() }
+        })
+        .then(function (res) {
+          if (res && res.error) throw new Error(res.error.message || "Payment failed");
+          setStripeMessage("Complete");
+          return true;
+        })
+        .catch(function (e) {
+          setStripeMessage("");
+          setStripeError((e && e.message) ? e.message : "Payment failed");
+          return false;
+        });
+    }
+
+    /* ---------------- PayPal ---------------- */
+
+    function paypalClientId() {
+      var id = meta("ff-paypal-client-id") || meta("ff:paypal-client-id") || "";
+      id = String(id || "").trim();
+      if (!id || id.toLowerCase() === "none" || id.toLowerCase() === "null") return "";
+      return id;
+    }
+
+    function paypalCurrency() {
+      return (meta("ff-paypal-currency") || meta("ff:paypal-currency") || readCurrency() || "USD").toUpperCase();
+    }
+
+    function paypalIntent() {
+      return (meta("ff-paypal-intent") || meta("ff:paypal-intent") || "capture").toLowerCase();
+    }
+
+    function paypalCreateEndpoint() {
+      return meta("ff-paypal-create-endpoint") || meta("ff:paypal-create-endpoint") || "/payments/paypal/order";
+    }
+
+    function paypalCaptureEndpoint() {
+      return meta("ff-paypal-capture-endpoint") || meta("ff:paypal-capture-endpoint") || "/payments/paypal/capture";
+    }
+
+    function loadPayPalJs() {
+      if (paypalReady && window.paypal && window.paypal.Buttons) return Promise.resolve(true);
+      if (paypalJsPromise) return paypalJsPromise;
+
+      var cid = paypalClientId();
+      if (!cid) return Promise.resolve(false);
+
+      var cur = encodeURIComponent(paypalCurrency());
+      var intent = encodeURIComponent(paypalIntent());
+      var src = "https://www.paypal.com/sdk/js?client-id=" + encodeURIComponent(cid) + "&currency=" + cur + "&intent=" + intent;
+
+      paypalJsPromise = injectScript(src, { "data-ff-paypal": "1" }).then(function () {
+        paypalReady = !!(window.paypal && window.paypal.Buttons);
+        return paypalReady;
+      });
+
+      return paypalJsPromise;
+    }
+
+    function buildPayPalPayload(amountCents) {
+      return {
+        amount_cents: Number(amountCents || 0) | 0,
+        currency: paypalCurrency(),
+        donor: { email: String(readEmail() || "").trim().toLowerCase() },
+        attribution: { team_id: readTeamId() }
+      };
+    }
+
+    function paypalKey(amountCents) {
+      var team = readTeamId();
+      var email = readEmail().toLowerCase();
+      return String(amountCents || 0) + "|" + team + "|" + email + "|" + paypalCurrency();
+    }
+
+    function renderPayPal(amountCents, force) {
+      if (!isCheckoutOpen()) return Promise.resolve(false);
+
+      var host = DOM.paypalMount();
+      if (!host) return Promise.resolve(false);
+
+      var amt = Number(amountCents || 0) | 0;
+      if (amt < MIN_CENTS) {
+        try { host.replaceChildren(); } catch (_) {}
+        setPayPalMessage("");
+        setPayPalError("");
+        paypalRenderedKey = "";
+        return Promise.resolve(false);
+      }
+
+      var key = paypalKey(amt);
+      if (!force && paypalRenderedKey === key && host.childElementCount > 0) return Promise.resolve(true);
+
+      setPayPalError("");
+      setPayPalMessage("Loading…");
+      try {
+        var sk = DOM.paypalSkeleton();
+        if (sk) {
+          host.replaceChildren(sk.cloneNode(true));
+        } else {
+          host.replaceChildren();
+        }
+      } catch (_) {}
+
+      return loadPayPalJs()
+        .then(function (ok) {
+          if (!ok) {
+            setPayPalMessage("");
+            setPayPalError("PayPal unavailable");
+            return false;
+          }
+
+          // Clear and render buttons
+          try { host.replaceChildren(); } catch (_) {}
+
+          var headers = { "Content-Type": "application/json" };
+          var ch = csrfHeader();
+          Object.keys(ch).forEach(function (k) { headers[k] = ch[k]; });
+
+          var payload = buildPayPalPayload(amt);
+
+          var buttons = window.paypal.Buttons({
+            createOrder: function () {
+              return fetchWithTimeout(
+                paypalCreateEndpoint(),
+                {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: headers,
+                  body: JSON.stringify(payload)
+                },
+                15000
+              )
+                .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
+                  if (!r.ok || (j && j.ok === false)) {
+                    var msg = (j && j.error && j.error.message) ? j.error.message : (j.message || ("PayPal create failed (" + r.status + ")"));
+                    throw new Error(msg);
+                  }
+                  var id = j.id || j.orderID || j.order_id || (j.data && (j.data.id || j.data.orderID));
+                  if (!id) throw new Error("Missing PayPal order id");
+                  return String(id);
+                }); });
+            },
+            onApprove: function (data) {
+              var orderID = String((data && (data.orderID || data.id)) || "");
+              if (!orderID) throw new Error("Missing PayPal order id");
+
+              return fetchWithTimeout(
+                paypalCaptureEndpoint(),
+                {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: headers,
+                  body: JSON.stringify({ order_id: orderID, orderID: orderID })
+                },
+                15000
+              )
+                .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
+                  if (!r.ok || (j && j.ok === false)) {
+                    var msg = (j && j.error && j.error.message) ? j.error.message : (j.message || ("PayPal capture failed (" + r.status + ")"));
+                    throw new Error(msg);
+                  }
+                  return true;
+                }); })
+                .then(function () {
+                  setPayPalMessage("Complete");
+                  return true;
+                })
+                .catch(function (e) {
+                  setPayPalMessage("");
+                  setPayPalError((e && e.message) ? e.message : "PayPal failed");
+                  return false;
+                });
+            },
+            onError: function (err) {
+              setPayPalMessage("");
+              setPayPalError((err && err.message) ? err.message : "PayPal error");
+            }
+          });
+
+          buttons.render(host);
+
+          paypalRenderedKey = key;
+          setPayPalMessage("Ready");
+          return true;
+        })
+        .catch(function (e) {
+          setPayPalMessage("");
+          setPayPalError((e && e.message) ? e.message : "PayPal failed to load");
+          return false;
+        });
+    }
+
+    /* ---------------- Evaluation loop ---------------- */
+
+    function evaluate(force) {
+      evalQueued = false;
+
+      // Only evaluate when checkout is open
+      if (!isCheckoutOpen()) return;
+
+      var amt = readAmountCents();
+      // Lazy-load only when amount > 0
+      if (amt < MIN_CENTS) {
+        teardownStripe();
+        try {
+          var pm = DOM.paypalMount();
+          if (pm) pm.replaceChildren();
+        } catch (_) {}
+        setPayPalMessage("");
+        setPayPalError("");
+        paypalRenderedKey = "";
         return;
       }
-    } catch {}
 
-    if (D.topbarDismiss) {
-      on(D.topbarDismiss, "click", (e) => {
-        e.preventDefault();
-        setHidden(D.topbar, true);
-        try {
-          localStorage.setItem(key, String(now()));
-        } catch {}
+      // Stripe mount (best-effort)
+      mountStripe(amt, !!force);
+
+      // PayPal render (best-effort)
+      renderPayPal(amt, !!force);
+    }
+
+    function queueEvaluate(force) {
+      if (!isCheckoutOpen()) return;
+      if (evalQueued) return;
+      evalQueued = true;
+
+      requestAnimationFrame(function () {
+        evaluate(!!force);
       });
     }
-  };
 
-  const bindRefreshButtons = () => {
-    D = cacheDom();
-    for (const btn of D.refreshBtns) {
-      on(btn, "click", (e) => {
-        e.preventDefault();
-        S.fundraiser.raisedCents = deriveRaisedCents();
-        setProgressUI();
-        applyUpdated();
-        applyKpis();
-        applyMatch();
-        renderSponsorBoard();
-        renderRecentGifts();
-        renderTeams();
-        renderImpact();
-        renderAllocation();
-        renderGallery();
-        setShareFields();
-        updateProofKit();
-        toast("Refreshed.", "success");
+    function init() {
+      // Re-evaluate when amount/email changes (but only if checkout open)
+      var deb = debounce(function () { queueEvaluate(false); }, 300);
+
+      var a = DOM.amountInput();
+      if (a) on(a, "input", deb);
+
+      var e = DOM.emailInput();
+      if (e) on(e, "input", deb);
+
+      // When checkout opens, evaluate immediately
+      on(window, "hashchange", function () {
+        if (location.hash === "#checkout") queueEvaluate(true);
       });
-    }
-  };
 
-  /* ---------------------------------------------
-   * Bind all
-   * -------------------------------------------*/
-  const bindAll = () => {
-    D = cacheDom();
-    bindTopbar();
-    bindAnchors();
-    bindScrollUI();
-    bindThemeToggle();
-    bindDrawer();
+      // Form submit: prefer Stripe Payment Element if mounted; PayPal has its own buttons.
+      var form = DOM.donationForm();
+      if (form) {
+        on(form, "submit", function (ev) {
+          try { ev.preventDefault(); } catch (_) {}
 
-    bindShare();
-    bindAuxModals();
-    bindRecognition();
-    bindAmountControls();
-    bindPrefills();
+          // Basic validation (keeps UX clean)
+          var amt = readAmountCents();
+          var em = readEmail();
+          var errBox = DOM.checkoutError();
+          var stBox = DOM.checkoutStatus();
 
-    bindImpactControls();
-    bindSponsorControls();
-    bindTeamControls();
-    bindRefreshButtons();
+          if (errBox) errBox.hidden = true;
+          if (stBox) stBox.hidden = true;
 
-    bindPaymentProviderVisibility();
-    bindPaymentSubmit();
-  };
+          if (amt < MIN_CENTS) {
+            if (errBox) { errBox.hidden = false; errBox.textContent = "Please enter an amount of at least $1."; }
+            toast("Enter an amount first", "info", 1800);
+            return;
+          }
 
-  /* ---------------------------------------------
-   * Boot / Hydrate
-   * -------------------------------------------*/
-  const hydrateInitial = () => {
-    readUtm();
-    S.fundraiser.raisedCents = deriveRaisedCents();
+          if (em && !isEmail(em)) {
+            if (errBox) { errBox.hidden = false; errBox.textContent = "Please enter a valid email for your receipt."; }
+            toast("Enter a valid email", "info", 1800);
+            return;
+          }
 
-    applyBrand();
-    applyAnnouncement();
-    applyUpdated();
-    setProgressUI();
-    applyKpis();
+          // If Stripe is mounted, proceed with Stripe confirmation.
+          // Otherwise, let the user use PayPal buttons (no-op here).
+          if (stripe && elements) {
+            if (stBox) { stBox.hidden = false; stBox.textContent = "Processing your donation…"; }
+            confirmStripePayment().then(function (ok) {
+              if (!ok) return;
+              toast("Payment complete ✅", "success", 2200);
 
-    startDeadlineLoop();
-    applyEventPill();
-    applyMatch();
+              // Swap success state if markup provides it
+              try {
+                var sheet = DOM.checkoutSheet();
+                var succ = DOM.checkoutSuccess();
+                if (succ) {
+                  succ.hidden = false;
+                  // Hide form stage if present
+                  var stage = sheet ? qs("[data-ff-checkout-stage='form']", sheet) : null;
+                  if (stage) stage.hidden = true;
+                }
+              } catch (_) {}
+            }).finally(function () {
+              if (stBox) stBox.hidden = true;
+            });
 
-    renderAllocation();
-    renderImpact();
-    renderSponsorTiers();
-    renderSponsorBoard();
-    renderTeams();
-    renderRecentGifts();
-    renderGallery();
+            return;
+          }
 
-    setShareFields();
-    updateSummaryUI();
-    applyRecognitionPreview();
-    updateProofKit();
-
-    handleStripeRedirectStatus();
-  };
-
-  const initPayments = async () => {
-    if (paypalClientId) {
-      try {
-        await initPayPal();
-      } catch (e) {
-        setPayError(safeText(e?.message || "PayPal failed to initialize."));
+          toast("Choose Stripe or PayPal to complete", "info", 2200);
+        }, true);
       }
     }
 
-    if (stripeAutoload && stripePk) {
+    return {
+      init: init,
+      queueEvaluate: queueEvaluate
+    };
+  })();
+
+  /* --------------------------------------------------------------------------
+   * Sponsor modal + Video modal (hash-aware, hook-safe)
+   * ------------------------------------------------------------------------ */
+  var Overlays = (function () {
+    function openById(id) {
+      if (id === "checkout") { Checkout.open({ quiet: true }); return; }
+
+      if (id === "drawer") {
+        var d = DOM.drawer();
+        if (d) setOpen(d, true);
+        return;
+      }
+
+      if (id === "sponsor-interest") {
+        var s = DOM.sponsorModal();
+        if (s) setOpen(s, true);
+        var p = s ? qs(".ff-modal__panel,[role='dialog']", s) : null;
+        if (p) focusInto(p);
+        return;
+      }
+
+      if (id === "press-video") {
+        var v = DOM.videoModal();
+        if (v) setOpen(v, true);
+        var vp = v ? qs(".ff-modal__panel,[role='dialog']", v) : null;
+        if (vp) focusInto(vp);
+        return;
+      }
+
+      if (id === "terms" || id === "privacy") {
+        var m = document.getElementById(id);
+        if (m) setOpen(m, true);
+        var mp = m ? qs(".ff-modal__panel,[role='dialog']", m) : null;
+        if (mp) focusInto(mp);
+        return;
+      }
+    }
+
+    function closeAllModalsButCheckout() {
+      // Don’t close checkout here; hash sync handles it.
+      var ids = ["drawer", "sponsor-interest", "press-video", "terms", "privacy"];
+      ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && isOpen(el)) setOpen(el, false);
+      });
+    }
+
+    function syncFromHash() {
+      var h = String(location.hash || "").replace("#", "");
+      if (!h) {
+        closeAllModalsButCheckout();
+        return;
+      }
+
+      // Open only what hash points to; close other modals.
+      closeAllModalsButCheckout();
+      openById(h);
+    }
+
+    function init() {
+      // Click open sponsor/video/drawer (do not block anchors; open immediately for determinism)
+      on(document, "click", function (e) {
+        try {
+          var t = e.target;
+          if (!t || !t.closest) return;
+
+          var openDrawer = t.closest(HOOKS.get("openDrawer", "[data-ff-open-drawer]"));
+          if (openDrawer) {
+            var d = DOM.drawer();
+            if (d) setOpen(d, true);
+            // If trigger is not an anchor, we still prefer hash semantics.
+            try { location.hash = "#drawer"; } catch (_) {}
+            return;
+          }
+
+          var closeDrawer = t.closest(HOOKS.get("closeDrawer", "[data-ff-close-drawer]"));
+          if (closeDrawer) {
+            var dd = DOM.drawer();
+            if (dd) setOpen(dd, false);
+            if (location.hash === "#drawer") {
+              try { history.replaceState(null, "", "#home"); } catch (_) { location.hash = "#home"; }
+            }
+            return;
+          }
+
+          var openSponsor = t.closest(HOOKS.get("openSponsor", "[data-ff-open-sponsor]"));
+          if (openSponsor) {
+            var s = DOM.sponsorModal();
+            if (s) setOpen(s, true);
+            try { location.hash = "#sponsor-interest"; } catch (_) {}
+            return;
+          }
+
+          var closeSponsor = t.closest(HOOKS.get("closeSponsor", "[data-ff-close-sponsor]"));
+          if (closeSponsor) {
+            var sm = DOM.sponsorModal();
+            if (sm) setOpen(sm, false);
+            if (location.hash === "#sponsor-interest") {
+              try { history.replaceState(null, "", "#home"); } catch (_) { location.hash = "#home"; }
+            }
+            return;
+          }
+
+          var openVideo = t.closest(HOOKS.get("openVideo", "[data-ff-open-video]"));
+          if (openVideo) {
+            var vm = DOM.videoModal();
+            if (vm) setOpen(vm, true);
+
+            // If a src is provided, lazy mount iframe into the frame container.
+            try {
+              var src = openVideo.getAttribute("data-ff-video-src") || "";
+              var title = openVideo.getAttribute("data-ff-video-title") || "Video";
+              var frame = DOM.videoFrame();
+              if (frame && src) {
+                frame.replaceChildren(); // remove skeleton
+                var ifr = document.createElement("iframe");
+                ifr.src = String(src);
+                ifr.title = String(title);
+                ifr.allow = "autoplay; encrypted-media; picture-in-picture";
+                ifr.allowFullscreen = true;
+                ifr.loading = "lazy";
+                ifr.referrerPolicy = "strict-origin-when-cross-origin";
+                ifr.style.width = "100%";
+                ifr.style.height = "100%";
+                ifr.style.border = "0";
+                frame.appendChild(ifr);
+              }
+            } catch (_) {}
+
+            try { location.hash = "#press-video"; } catch (_) {}
+            return;
+          }
+
+          var closeVideo = t.closest(HOOKS.get("closeVideo", "[data-ff-close-video]"));
+          if (closeVideo) {
+            var vv = DOM.videoModal();
+            if (vv) setOpen(vv, false);
+
+            // Remove iframe to stop playback
+            try {
+              var fr = DOM.videoFrame();
+              if (fr) fr.replaceChildren();
+            } catch (_) {}
+
+            if (location.hash === "#press-video") {
+              try { history.replaceState(null, "", "#home"); } catch (_) { location.hash = "#home"; }
+            }
+            return;
+          }
+        } catch (_) {}
+      }, true);
+
+      // Escape closes the topmost open modal/drawer (checkout handled separately)
+      on(document, "keydown", function (e) {
+        try {
+          if (e.key !== "Escape") return;
+
+          // If checkout is open, Checkout module owns Esc behavior.
+          var c = DOM.checkoutSheet();
+          if (c && isOpen(c)) return;
+
+          var ids = ["press-video", "sponsor-interest", "drawer", "terms", "privacy"];
+          for (var i = 0; i < ids.length; i++) {
+            var el = document.getElementById(ids[i]);
+            if (el && isOpen(el)) {
+              setOpen(el, false);
+              if (location.hash === "#" + ids[i]) {
+                try { history.replaceState(null, "", "#home"); } catch (_) { location.hash = "#home"; }
+              }
+              break;
+            }
+          }
+        } catch (_) {}
+      }, true);
+
+      on(window, "hashchange", syncFromHash, { passive: true });
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", syncFromHash, { once: true });
+      } else {
+        syncFromHash();
+      }
+    }
+
+    return { init: init };
+  })();
+
+  /* --------------------------------------------------------------------------
+   * Sponsor submit (optional best-effort; does NOT assume backend)
+   * ------------------------------------------------------------------------ */
+  function initSponsorSubmit() {
+    on(document, "click", function (e) {
       try {
-        await maybePrepareStripeUI();
-      } catch {}
-    }
-  };
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var btn = t.closest("[data-ff-sponsor-submit]");
+        if (!btn) return;
 
-  const boot = async () => {
-    if (captureMode) return;
+        // Best-effort UX only; real submit is backend-specific.
+        toast("Sponsor request sent (demo)", "success", 2200);
+        announce("Sponsor request sent");
+      } catch (_) {}
+    }, true);
+  }
+
+  /* --------------------------------------------------------------------------
+   * App init
+   * ------------------------------------------------------------------------ */
+  function init() {
     try {
-      bindAll();
-      hydrateInitial();
-      await initPayments();
-      applyScrollUI();
+      // Core UX
+      Checkout.init();
+      initPrefill();
+
+      // Global affordances
+      Theme.init();
+      Share.init();
+
+      // Other overlays
+      Overlays.init();
+
+      // Optional
+      Payments.init();
+      initSponsorSubmit();
+
+      // Quiet readiness signal for audits / tests
+      document.documentElement.classList.add("ff-js");
+      announce("Ready");
     } catch (e) {
-      console.error("[ff-app] boot error:", e);
-      toast("Some features failed to load.", "error");
+      try { console.error("[FF] init failed", e); } catch (_) {}
+      toast("App failed to initialize. Refresh the page.", "error", 6000);
     }
-  };
+  }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
 })();
-
