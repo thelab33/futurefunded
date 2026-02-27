@@ -13,3 +13,5 @@ node_modules/
 .vscode/
 *.db
 chrome/
+chrome/
+*.bak
