@@ -52,3 +52,11 @@ app/data/*.sqlite*
 
 # local tooling scratch
 /tools/ff_contrast_audit.py
+
+.env
+.env.*
+!.env.example
+
+.env
+.env.*
+!.env.example
