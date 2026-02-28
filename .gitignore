@@ -35,3 +35,8 @@ tools/.artifacts/**/*.tmp
 Thumbs.db
 .vscode/
 .idea/
+
+# Project backup folders (historical)
+app/templates_backup/
+app/static/css_backup/
+app/static/js/extracted/
