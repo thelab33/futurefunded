@@ -49,3 +49,6 @@ app/data/*.sqlite*
 
 # FF patch backups
 *.bak_cookie_secure
+
+# local tooling scratch
+/tools/ff_contrast_audit.py
