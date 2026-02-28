@@ -1,8 +1,5 @@
-
 {# FF: Logo fallback helper #}
 {% set _org_logo = _org_logo|default(url_for('static', filename='images/fundchamps-fc.svg')) %}
-
-
 <!--
 💎 FUTUREFUNDED GO-LIVE CHECKLIST (UI/UX)
 
@@ -13,41 +10,39 @@
 5. PWA icons + manifest verified
 6. No overflow / no bleed / theme verified
 -->
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en"
       class="antialiased selection:bg-yellow-300/25"
       data-theme="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0a0f19" id="meta-theme-color">
-  <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="robots" content="index,follow">
-  <meta name="csp-nonce" content="{{ NONCE }}">
-
-  <title>{% block title %}{{ PAGE_TITLE }}{% endblock %}</title>
-  <meta name="description" content="{{ PAGE_DESC }}">
-
-  {# Social (OG / Twitter) #}
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="{{ BRAND_NAME }}">
-  <meta property="og:title" content="{{ PAGE_TITLE }}">
-  <meta property="og:description" content="{{ PAGE_DESC }}">
-  <meta property="og:image" content="{{ static_url(OG_IMG) }}">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ PAGE_TITLE }}">
-  <meta name="twitter:description" content="{{ PAGE_DESC }}">
-  <meta name="twitter:image" content="{{ static_url(OG_IMG) }}">
-
-  <script {{ nonce_attr()|safe }}>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport"
+              content="width=device-width,initial-scale=1,viewport-fit=cover">
+        <meta name="color-scheme" content="dark light">
+        <meta name="theme-color" content="#0a0f19" id="meta-theme-color">
+        <meta name="referrer" content="strict-origin-when-cross-origin">
+        <meta name="robots" content="index,follow">
+        <meta name="csp-nonce" content="{{ NONCE }}">
+        <title>
+            {% block title %}{{ PAGE_TITLE }}{% endblock %}
+        </title>
+        <meta name="description" content="{{ PAGE_DESC }}">
+        {# Social (OG / Twitter) #}
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ BRAND_NAME }}">
+        <meta property="og:title" content="{{ PAGE_TITLE }}">
+        <meta property="og:description" content="{{ PAGE_DESC }}">
+        <meta property="og:image" content="{{ static_url(OG_IMG) }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ PAGE_TITLE }}">
+        <meta name="twitter:description" content="{{ PAGE_DESC }}">
+        <meta name="twitter:image" content="{{ static_url(OG_IMG) }}">
+        <script {{ nonce_attr()|safe }}>
     // Expose CSP nonce for any inline modules that need it
     window.__CSP_NONCE = {{ NONCE|tojson }};
-  </script>
-
-  {# ---- Early theme bootstrap (prevents flash, syncs with system / local choice) ---- #}
-  <script {{ nonce_attr()|safe }}>
+        </script>
+        {# ---- Early theme bootstrap (prevents flash, syncs with system / local choice) ---- #}
+        <script {{ nonce_attr()|safe }}>
     (function () {
       try {
         var root   = document.documentElement;
@@ -67,40 +62,33 @@
         // If anything fails, fallback to server-rendered data-theme
       }
     })();
-  </script>
-
-  {# ---- LCP-first image preloads ---- #}
-  <link rel="preload"
-        as="image"
-        href="{{ HERO_IMG }}"
-        {% if HERO_IMG_AVIF or HERO_IMG_WEBP %}
-          imagesrcset="{% if HERO_IMG_AVIF %}{{ HERO_IMG_AVIF }} type(image/avif){% endif %}{% if HERO_IMG_AVIF and HERO_IMG_WEBP %}, {% endif %}{% if HERO_IMG_WEBP %}{{ HERO_IMG_WEBP }} type(image/webp){% endif %}"
-        {% endif %}
-        imagesizes="(max-width: 980px) 100vw, 52vw"
-        fetchpriority="high">
-
-  <link rel="preload"
-        as="image"
-        href="{{ LOGO_SRC }}"
-        fetchpriority="high">
-
-  <link rel="preload"
-        as="font"
-        href="{{ static_url('fonts/Inter-roman.var.woff2') }}"
-        type="font/woff2"
-        crossorigin>
-
-  {# Perf hints for Stripe #}
-  <link rel="preconnect" href="https://js.stripe.com" crossorigin>
-  <link rel="dns-prefetch" href="https://js.stripe.com">
-
-  <link rel="icon" type="image/png" href="{{ static_url('favicon.png') }}">
-  <link rel="apple-touch-icon" href="{{ static_url('apple-touch-icon.png') }}">
-
-  <link rel="stylesheet" href="{{ static_url('css/tailwind.min.css') }}">
-
-  {# ---- Core tokens + base styles (single, nonce’d, deduped) ---- #}
-  <style {{ nonce_attr()|safe }}>
+        </script>
+        {# ---- LCP-first image preloads ---- #}
+        <link rel="preload"
+              as="image"
+              href="{{ HERO_IMG }}"
+              {% if HERO_IMG_AVIF or HERO_IMG_WEBP %} imagesrcset="{% if HERO_IMG_AVIF %}{{ HERO_IMG_AVIF }} type(image/avif){% endif %}
+              {% if HERO_IMG_AVIF and HERO_IMG_WEBP %},{% endif %}
+              {% if HERO_IMG_WEBP %}{{ HERO_IMG_WEBP }} type(image/webp){% endif %}
+              "
+              {% endif %}
+              imagesizes="(max-width: 980px) 100vw, 52vw"
+              fetchpriority="high">
+        <link rel="preload" as="image" href="{{ LOGO_SRC }}" fetchpriority="high">
+        <link rel="preload"
+              as="font"
+              href="{{ static_url('fonts/Inter-roman.var.woff2') }}"
+              type="font/woff2"
+              crossorigin>
+        {# Perf hints for Stripe #}
+        <link rel="preconnect" href="https://js.stripe.com" crossorigin>
+        <link rel="dns-prefetch" href="https://js.stripe.com">
+        <link rel="icon" type="image/png" href="{{ static_url('favicon.png') }}">
+        <link rel="apple-touch-icon"
+              href="{{ static_url('apple-touch-icon.png') }}">
+        <link rel="stylesheet" href="{{ static_url('css/tailwind.min.css') }}">
+        {# ---- Core tokens + base styles (single, nonce’d, deduped) ---- #}
+        <style {{ nonce_attr()|safe }}>
     :root{
       /* brand/tokens */
       --accent: {{ BRAND_COLOR|default('#facc15') }};
@@ -368,35 +356,24 @@
       #donorTicker { font-size: .85rem; }
       .fc-topbar .w-[2px] { display: none; }
     }
-  </style>
-
-  {% block extra_head %}{% endblock %}
-</head>
-
-<body
-
-<!-- FF: Accessibility Skip Link -->
-<a href="#main" class="ff-skiplink">Skip to main content</a>
- class="min-h-screen scroll-smooth"
-      style="--accent: {{ BRAND_COLOR }}">
-  <a class="u-sr-only focus-visible:not-sr-only skip-link"
-     href="#main"
-     tabindex="0">
-    Skip to content
-  </a>
-
-  <div id="sr-announcer" class="u-sr-only" aria-live="polite"></div>
-
-  {# Intentionally empty: one-pager owns header/announcement #}
-
-  <main id="main" role="main" tabindex="-1">
-    {% block content %}{% endblock %}
-  </main>
-
-  {# Intentionally empty: one-pager owns modals and footer #}
-
-  {% if USE_SOCKETIO and WS_URL %}
-  <script {{ nonce_attr()|safe }}>
+        </style>
+        {% block extra_head %}{% endblock %}
+    </head>
+    <body <!-- FF: Accessibility Skip Link -->
+        <a href="#main" class="ff-skiplink">Skip to main content</a>
+        class="min-h-screen scroll-smooth"
+        style="--accent: {{ BRAND_COLOR }}">
+        <a class="u-sr-only focus-visible:not-sr-only skip-link"
+           href="#main"
+           tabindex="0">Skip to content</a>
+        <div id="sr-announcer" class="u-sr-only" aria-live="polite"></div>
+        {# Intentionally empty: one-pager owns header/announcement #}
+        <main id="main" role="main" tabindex="-1">
+            {% block content %}{% endblock %}
+        </main>
+        {# Intentionally empty: one-pager owns modals and footer #}
+        {% if USE_SOCKETIO and WS_URL %}
+            <script {{ nonce_attr()|safe }}>
     (function () {
       "use strict";
       try {
@@ -412,40 +389,42 @@
         // Fail quietly; real-time updates are gravy, not core.
       }
     })();
-  </script>
-  {% endif %}
-
-  <script {{ nonce_attr()|safe }} defer src="{{ static_url('js/bundle.min.js') }}"></script>
-  <script {{ nonce_attr()|safe }} defer src="{{ static_url('js/fc-ui.js') }}"></script>
-
-  {% block extra_js %}{% endblock %}
-
-  <noscript>
-    <div style="background:#111;color:#fff;padding:1rem;text-align:center;position:fixed;bottom:0;width:100%;">
-      JavaScript is disabled. You can still
-      <a href="{{ HREF_DONATE }}" style="color:var(--accent);font-weight:700;text-decoration:underline">
-        donate here
-      </a>.
-    </div>
-  </noscript>
-
-  <!-- Cookie banner -->
-  <div id="cookie-banner"
-       class="cookie-banner"
-       role="region"
-       aria-label="Cookie notice"
-       hidden>
-    We use cookies to improve your experience.
-    <a href="/privacy">Learn more</a>.
-    <button id="cookie-accept"
-            class="btn btn--ghost"
-            type="button"
-            aria-label="Accept cookies">
-      Accept
-    </button>
-  </div>
-
-  <script {{ nonce_attr()|safe }}>
+            </script>
+        {% endif %}
+        <script {{ nonce_attr()|safe }}
+                defer
+                src="{{ static_url('js/bundle.min.js') }}"></script>
+        <script {{ nonce_attr()|safe }} defer src="{{ static_url('js/fc-ui.js') }}"></script>
+        {% block extra_js %}{% endblock %}
+        <noscript>
+            <div style="background:#111;
+                        color:#fff;
+                        padding:1rem;
+                        text-align:center;
+                        position:fixed;
+                        bottom:0;
+                        width:100%">
+                JavaScript is disabled. You can still
+                <a href="{{ HREF_DONATE }}"
+                   style="color:var(--accent);
+                          font-weight:700;
+                          text-decoration:underline">donate here</a>.
+            </div>
+        </noscript>
+        <!-- Cookie banner -->
+        <div id="cookie-banner"
+             class="cookie-banner"
+             role="region"
+             aria-label="Cookie notice"
+             hidden>
+            We use cookies to improve your experience.
+            <a href="/privacy">Learn more</a>.
+            <button id="cookie-accept"
+                    class="btn btn--ghost"
+                    type="button"
+                    aria-label="Accept cookies">Accept</button>
+        </div>
+        <script {{ nonce_attr()|safe }}>
     (function () {
       "use strict";
       var banner = document.getElementById("cookie-banner");
@@ -476,10 +455,9 @@
         banner.hidden = false;
       }
     })();
-  </script>
-
-  {# Base micro-module: UTM propagation, last-visit delta, reveal, theme sync, scroll reset #}
-  <script {{ nonce_attr()|safe }}>
+        </script>
+        {# Base micro-module: UTM propagation, last-visit delta, reveal, theme sync, scroll reset #}
+        <script {{ nonce_attr()|safe }}>
     (function () {
       "use strict";
       if (window.__fcBaseWired) return;
@@ -596,14 +574,13 @@
         hydrate: hydrate
       };
     })();
-  </script>
-
-<!-- FF: Powered by badge -->
-<div class="ff-poweredby">
-  Powered by <strong>FutureFunded</strong>
-</div>
-
-  <script {{ nonce_attr() }} src="{{ url_for('static', filename='js/ff-app.js') }}" defer></script>
-</body>
+        </script>
+        <!-- FF: Powered by badge -->
+        <div class="ff-poweredby">
+            Powered by <strong>FutureFunded</strong>
+        </div>
+        <script {{ nonce_attr() }}
+                src="{{ url_for('static', filename='js/ff-app.js') }}"
+                defer></script>
+    </body>
 </html>
-
