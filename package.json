@@ -40,8 +40,10 @@
     "prepare": "husky",
     "onboard": "node -e \"console.log('FutureFunded ready → npm run serve')\"",
     "premium:verify": "node -e \"console.log('Premium mode verified: flags, Stripe, CSP, analytics.')\"",
-    "audit:prod": "python tools/ff_no_slashsemi_gate.py && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
-    "audit:fast": "node tools/smoke_dom.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json"
+    "audit:prod": ".venv/bin/python tools/ff_no_slashsemi_gate.py && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
+    "audit:fast": "node tools/smoke_dom.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json",
+    "test:pw": "PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npx playwright test --project=chromium --reporter=line",
+    "gate:smoke": "node tools/smoke_dom.js && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts"
   },
   "devDependencies": {
     "@axe-core/cli": "^4.11.0",

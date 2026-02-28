@@ -363,7 +363,7 @@ async function expectCssCoverage(page: Page, label = "run") {
   }
 }
 
-function writeJsonArtifacts(report: any, label: string) {
+async function writeJsonArtifacts(report: any, label: string) {
   const json = JSON.stringify(report, null, 2);
 
   const perTestPath = test.info().outputPath(`css-coverage.${label}.json`);

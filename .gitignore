@@ -40,3 +40,9 @@ Thumbs.db
 app/templates_backup/
 app/static/css_backup/
 app/static/js/extracted/
+
+# Local databases
+app/data/*.db
+app/data/*.sqlite*
+*.db
+*.sqlite*
