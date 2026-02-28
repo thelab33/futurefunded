@@ -2547,3 +2547,212 @@ FF_CHECKOUT_TOPMOST_HARDEN_V2 (Playwright gate fix)
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+/* ============================================================================
+  FutureFunded • Flagship Feature Pack (v1.0 “Premium Ten”)
+  INSERT INSIDE the existing @layer ff.utilities { ... } block.
+  Hook-safe • AA+ mindful • Reduced-motion safe • No extra @layer blocks.
+============================================================================ */
+
+/* ---------------------------------------------------------------------------
+  1) Optional “micro-noise” realism on glass surfaces
+     Enable with: .ff-root[data-noise="true"]
+--------------------------------------------------------------------------- */
+.ff-root[data-noise="true"] .ff-body :where(.ff-glass, .ff-card.ff-glass, .ff-tabs__scroller, .ff-sheet__panel, .ff-modal__panel) {
+  position: relative;
+  isolation: isolate;
+}
+.ff-root[data-noise="true"] .ff-body :where(.ff-glass, .ff-card.ff-glass, .ff-tabs__scroller, .ff-sheet__panel, .ff-modal__panel)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: .06;
+  background:
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.70), transparent 60%),
+    radial-gradient(1px 1px at 28% 82%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(1px 1px at 64% 26%, rgba(255,255,255,.60), transparent 60%),
+    radial-gradient(1px 1px at 86% 68%, rgba(255,255,255,.50), transparent 60%),
+    radial-gradient(1px 1px at 44% 46%, rgba(255,255,255,.46), transparent 60%);
+}
+.ff-root[data-theme="dark"][data-noise="true"] .ff-body :where(.ff-glass, .ff-card.ff-glass, .ff-tabs__scroller, .ff-sheet__panel, .ff-modal__panel)::after {
+  opacity: .08;
+}
+
+/* ---------------------------------------------------------------------------
+  2) Hero primary CTA “sheen” (subtle premium sweep)
+--------------------------------------------------------------------------- */
+.ff-body .ff-heroCtas :where(.ff-btn--primary) {
+  position: relative;
+  isolation: isolate;
+}
+.ff-body .ff-heroCtas :where(.ff-btn--primary)::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.18) 22%,
+    rgba(255,255,255,0) 44%,
+    rgba(255,255,255,0) 100%
+  );
+  transform: translateX(-60%);
+  opacity: .85;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ff-body .ff-heroCtas :where(.ff-btn--primary):hover::before { animation: ff-sheen 900ms var(--ff-ease) 1; }
+}
+@keyframes ff-sheen {
+  0% { transform: translateX(-60%); }
+  100% { transform: translateX(60%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-body .ff-heroCtas :where(.ff-btn--primary)::before { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+  3) Tier cards: “flagship” gradient border without mask-composite (Firefox-safe)
+--------------------------------------------------------------------------- */
+.ff-body :where(.ff-tierCard--recommended, .ff-tierCard[data-ff-tier="partner"]) {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg, rgba(249,115,22,.36), rgba(59,130,246,.20), rgba(249,115,22,.10)) border-box,
+    rgba(2,6,23,.02) padding-box;
+  background-clip: border-box, padding-box;
+}
+.ff-root[data-theme="dark"] .ff-body :where(.ff-tierCard--recommended, .ff-tierCard[data-ff-tier="partner"]) {
+  background:
+    linear-gradient(135deg, rgba(249,115,22,.38), rgba(59,130,246,.22), rgba(249,115,22,.12)) border-box,
+    rgba(255,255,255,.05) padding-box;
+}
+
+.ff-body .ff-tierCard[data-ff-tier="vip"] {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg, rgba(59,130,246,.36), rgba(249,115,22,.18), rgba(59,130,246,.12)) border-box,
+    rgba(2,6,23,.02) padding-box;
+  background-clip: border-box, padding-box;
+}
+.ff-root[data-theme="dark"] .ff-body .ff-tierCard[data-ff-tier="vip"] {
+  background:
+    linear-gradient(135deg, rgba(59,130,246,.40), rgba(249,115,22,.20), rgba(59,130,246,.14)) border-box,
+    rgba(255,255,255,.05) padding-box;
+}
+
+/* ---------------------------------------------------------------------------
+  4) Nav + tabs feel more “product”: tighter hit confidence + crisp active
+--------------------------------------------------------------------------- */
+.ff-body :where(.ff-nav__link, .ff-tab) {
+  letter-spacing: -0.005em;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ff-body .ff-tabs__scroller { border-color: var(--ff-outline-2); }
+  .ff-body .ff-tab:hover { border-color: var(--ff-outline-2); }
+}
+.ff-body :where(.ff-tab, .ff-nav__link):focus-visible {
+  outline: none;
+  box-shadow: var(--ff-focus-ring);
+}
+
+/* ---------------------------------------------------------------------------
+  5) Checkout sheet: more “native” feel (edge + overscroll containment)
+--------------------------------------------------------------------------- */
+.ff-body #checkout .ff-sheet__panel {
+  border-left-color: var(--ff-outline-2);
+}
+.ff-body #checkout .ff-sheet__scroll,
+.ff-body #checkout [data-ff-checkout-scroll] {
+  overscroll-behavior: contain;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-body #checkout .ff-sheet__scroll,
+  .ff-body #checkout [data-ff-checkout-scroll] { scroll-behavior: auto; }
+}
+
+/* ---------------------------------------------------------------------------
+  6) Optional overlay entrance (gated)
+     Enable with: .ff-root[data-motion="true"]
+--------------------------------------------------------------------------- */
+.ff-root[data-motion="true"] .ff-body :where(.ff-sheet__panel, .ff-modal__panel) {
+  opacity: .98;
+  transform: translateY(6px);
+}
+.ff-root[data-motion="true"] .ff-body :where(
+  .ff-sheet:target .ff-sheet__panel,
+  .ff-sheet.is-open .ff-sheet__panel,
+  .ff-sheet[data-open="true"] .ff-sheet__panel,
+  .ff-sheet[aria-hidden="false"] .ff-sheet__panel,
+  .ff-modal:target .ff-modal__panel,
+  .ff-modal.is-open .ff-modal__panel,
+  .ff-modal[data-open="true"] .ff-modal__panel,
+  .ff-modal[aria-hidden="false"] .ff-modal__panel
+) {
+  animation: ff-panel-in 180ms var(--ff-ease) 1;
+  transform: translateY(0);
+  opacity: 1;
+}
+@keyframes ff-panel-in {
+  from { transform: translateY(10px); opacity: .92; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-root[data-motion="true"] .ff-body :where(.ff-sheet__panel, .ff-modal__panel) { animation: none !important; transform: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+  7) Toasts: clean entrance (no jank, reduced-motion safe)
+--------------------------------------------------------------------------- */
+.ff-body .ff-toasts .ff-toast {
+  animation: ff-toast-in 180ms var(--ff-ease) 1;
+}
+@keyframes ff-toast-in {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-body .ff-toasts .ff-toast { animation: none !important; transform: none !important; opacity: 1 !important; }
+}
+
+/* ---------------------------------------------------------------------------
+  8) Enterprise validation: aria-invalid + native invalid
+--------------------------------------------------------------------------- */
+.ff-body :where(.ff-input, textarea.ff-input)[aria-invalid="true"] {
+  border-color: rgba(239,68,68,.52);
+  box-shadow: 0 0 0 3px rgba(239,68,68,.14);
+}
+.ff-body .ff-input:invalid:not(:placeholder-shown) {
+  border-color: rgba(239,68,68,.44);
+}
+.ff-body .ff-input:invalid:not(:placeholder-shown):focus {
+  box-shadow: 0 0 0 3px rgba(239,68,68,.14);
+}
+
+/* ---------------------------------------------------------------------------
+  9) Media polish: subtle rendering upgrades (scoped)
+--------------------------------------------------------------------------- */
+.ff-body img { image-rendering: auto; }
+.ff-body :where(.ff-railcard__img, .ff-teamCard__img, .ff-storyPoster__img) { transform: translateZ(0); }
+
+/* ---------------------------------------------------------------------------
+  10) Print / “receipt” mode: clean PDF and screenshots
+--------------------------------------------------------------------------- */
+@media print {
+  .ff-body { padding-bottom: 0 !important; background: #fff !important; }
+  .ff-body :where(.ff-tabs, .ff-backtotop, .ff-chrome, .ff-toasts, .ff-burst) { display: none !important; }
+  .ff-body :where(.ff-sheet, .ff-modal) { display: none !important; }
+  .ff-body :where(.ff-card, .ff-glass, .ff-surface) {
+    box-shadow: none !important;
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+  }
+  .ff-body :where(a.ff-link, a.ff-footer__link) {
+    text-decoration: underline !important;
+    text-decoration-color: #333 !important;
+  }
+}
+
+/* EOF: FutureFunded • Flagship Feature Pack (v1.0 “Premium Ten”) */

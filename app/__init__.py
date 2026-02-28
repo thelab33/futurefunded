@@ -76,20 +76,68 @@ def _env_bool(name: str) -> Optional[bool]:
     if v is None:
         return None
     s = str(v).strip().lower()
-    if s in {"1", "true", "yes", "y", "on"}:
+    if s in {"1", "true", "t", "yes", "y", "on"}:
         return True
-    if s in {"0", "false", "no", "n", "off"}:
+    if s in {"0", "false", "f", "no", "n", "off"}:
         return False
     return None
 
 
+def _env_bool_or(name: str, default: bool) -> bool:
+    v = _env_bool(name)
+    return default if v is None else bool(v)
+
+
+def _env_mode(app: Optional[Flask] = None) -> str:
+    """
+    Determine environment mode deterministically.
+    Priority:
+      1) app.config["ENV"] (if present and meaningful)
+      2) FF_ENV / ENV / FLASK_ENV env vars
+      3) default "development"
+    """
+    try:
+        if app is not None:
+            v = app.config.get("ENV")
+            if v and str(v).strip() and str(v).strip() != "?":
+                return str(v).strip().lower()
+    except Exception:
+        pass
+
+    for key in ("FF_ENV", "ENV", "FLASK_ENV"):
+        val = (os.getenv(key) or "").strip().lower()
+        if val:
+            # normalize common aliases
+            if val in {"prod"}:
+                return "production"
+            if val in {"dev"}:
+                return "development"
+            return val
+
+    return "development"
+
+
 def _resolve_config(target: Optional[ConfigLike]) -> ConfigLike:
-    if target is None:
-        target = os.getenv("FLASK_CONFIG", "app.config.DevelopmentConfig")
-    # legacy typo normalization
-    if isinstance(target, str) and target == "app.config.config.DevelopmentConfig":
-        return "app.config.DevelopmentConfig"
-    return target
+    """
+    Choose config class/module path.
+    - If explicitly provided, respect it.
+    - Else if FLASK_CONFIG is set, use it.
+    - Else choose ProductionConfig when env indicates production; otherwise DevelopmentConfig.
+    """
+    if target is not None:
+        # legacy typo normalization
+        if isinstance(target, str) and target == "app.config.config.DevelopmentConfig":
+            return "app.config.DevelopmentConfig"
+        return target
+
+    explicit = (os.getenv("FLASK_CONFIG") or "").strip()
+    if explicit:
+        if explicit == "app.config.config.DevelopmentConfig":
+            return "app.config.DevelopmentConfig"
+        return explicit
+
+    env = _env_mode(None)
+    return "app.config.ProductionConfig" if env == "production" else "app.config.DevelopmentConfig"
 
 
 def _module_exists(dotted: str) -> bool:
@@ -100,7 +148,7 @@ def _module_exists(dotted: str) -> bool:
 
 
 def _is_prod(app: Flask) -> bool:
-    return str(app.config.get("ENV") or "development").lower() == "production"
+    return _env_mode(app) == "production"
 
 
 def _iter_candidates(x: Union[str, Iterable[str]]) -> List[str]:
@@ -140,6 +188,37 @@ def _parse_cors_origins(env: str) -> Union[str, List[str]]:
     if "," in raw:
         return [o.strip() for o in raw.split(",") if o.strip()]
     return raw
+
+
+def _ff_is_https_request(req) -> bool:
+    """
+    True if the *client* connection is HTTPS (even if origin is HTTP behind CF Tunnel).
+    Uses:
+      - req.is_secure (ProxyFix-aware)
+      - X-Forwarded-Proto
+      - Cloudflare CF-Visitor hint
+    """
+    try:
+        if getattr(req, "is_secure", False):
+            return True
+    except Exception:
+        pass
+
+    try:
+        xfproto = (req.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
+        if xfproto == "https":
+            return True
+    except Exception:
+        pass
+
+    try:
+        cfv = req.headers.get("CF-Visitor") or ""
+        if '"scheme":"https"' in cfv:
+            return True
+    except Exception:
+        pass
+
+    return False
 
 
 def json_sanitize(x: Any) -> Any:
@@ -237,6 +316,7 @@ def _register_default_template_context(app: Flask) -> None:
     Ensure templates never see missing FF_CFG (prevents Undefined -> tojson crashes).
     Explicit render_template(..., FF_CFG=...) still overrides this default.
     """
+
     @app.context_processor
     def _defaults():
         return {
@@ -298,7 +378,6 @@ def _discover_static_roots() -> List[Path]:
     # NOTE: bounded and deterministic: only checks a small set of known filenames.
     for name in ("ff-app.js", "ff.css"):
         try:
-            # Shallow-ish search: check common repo paths first; avoid unbounded rglob cost.
             for guess in (
                 BASE_DIR / "app" / "static",
                 BASE_DIR / "static",
@@ -354,7 +433,6 @@ def _register_static_routes(app: Flask) -> None:
         if not filename:
             abort(404)
 
-        # traversal guard (fast)
         parts = Path(filename).parts
         if ".." in parts:
             abort(404)
@@ -419,7 +497,6 @@ def _safe_register(app: Flask, dotted: str, attr: Union[str, Iterable[str]], url
 
 
 def _register_blueprints(app: Flask) -> None:
-    # Register "optional core" routes if they exist in your repo
     core: List[Tuple[str, str, Optional[str]]] = [
         ("app.diag", "bp", "/_diag"),
         ("app.routes.api", "bp|api_bp", "/api"),
@@ -433,7 +510,6 @@ def _register_blueprints(app: Flask) -> None:
         if _module_exists(dotted):
             _safe_register(app, dotted, attr, prefix)
 
-    # Strict, canonical payments blueprint
     payments_module = "app.blueprints.payments"
     legacy = ["app.routes.payments", "app.blueprints.fc_payments"]
     legacy_found = [m for m in legacy if _module_exists(m)]
@@ -451,11 +527,9 @@ def _register_blueprints(app: Flask) -> None:
             "  bp = Blueprint('payments', __name__)\n"
         )
 
-    # Main web routes
     if _module_exists("app.routes.main"):
         _safe_register(app, "app.routes.main", "main_bp|bp", "/")
 
-    # Guardrail: only one endpoint should own "/"
     root_owners = [rule.endpoint for rule in app.url_map.iter_rules() if rule.rule == "/"]
     if len(root_owners) > 1:
         raise RuntimeError("Multiple endpoints are registered at '/':\n" + "\n".join(f"  - {ep}" for ep in root_owners))
@@ -490,7 +564,6 @@ def _init_sentry(app: Flask) -> None:
 def _init_talisman(app: Flask) -> None:
     if not _is_prod(app) or not Talisman:
         return
-    # CSP often handled at edge; keep this light to avoid breaking inline scripts.
     Talisman(app, content_security_policy=None)
 
 
@@ -565,7 +638,6 @@ def _register_error_handlers(app: Flask) -> None:
     def _uncaught(err: Exception):
         app.logger.exception("Unhandled error")
 
-        # Stripe should retry webhooks; do not swallow unknown failures.
         if (request.path or "").startswith("/payments/stripe/webhook"):
             return ("", 500)
 
@@ -585,11 +657,13 @@ def _register_csrf_cookie(app: Flask) -> None:
         try:
             path = request.path or ""
             if request.method == "GET" and not path.startswith(skip_prefixes):
+                want_secure = bool(app.config.get("SESSION_COOKIE_SECURE", False))
+                secure_cookie = True if (want_secure and _ff_is_https_request(request)) else False
                 resp.set_cookie(
                     "csrf_token",
                     generate_csrf(),
-                    samesite="Lax",
-                    secure=_is_prod(app),
+                    samesite=str(app.config.get("SESSION_COOKIE_SAMESITE", "Lax")),
+                    secure=secure_cookie,
                     httponly=False,
                 )
         except Exception:
@@ -625,7 +699,20 @@ def _register_health_endpoints(app: Flask) -> None:
 # Production guardrails (Stripe live key enforcement can be toggled)
 # -----------------------------------------------------------------------------
 def _enforce_stripe_live_keys_if_required(app: Flask) -> None:
+    """
+    Enforce LIVE keys only when explicitly requested.
+    This avoids bricking prod while you’re still wiring live-mode.
+
+    Enable enforcement by setting either:
+      - STRIPE_MODE=live
+      - FF_STRIPE_ENFORCE_LIVE_KEYS=true
+    """
     if not _is_prod(app):
+        return
+
+    enforce = _env_bool_or("FF_STRIPE_ENFORCE_LIVE_KEYS", False)
+    mode = (os.getenv("STRIPE_MODE") or "").strip().lower()
+    if not enforce and mode != "live":
         return
 
     allow_test = _env_bool("FF_STRIPE_ALLOW_TEST_KEYS")
@@ -647,7 +734,6 @@ def _enforce_stripe_live_keys_if_required(app: Flask) -> None:
 def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     template_root = BASE_DIR / "app" / "templates"
 
-    # Disable Flask’s built-in static so we can guarantee /static/<file> resolution
     app = Flask(
         __name__,
         static_folder=None,
@@ -665,7 +751,15 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
         else:
             raise RuntimeError(f"Invalid FLASK_CONFIG '{cfg}': {exc}")
 
-    env = str(app.config.get("ENV") or "development").lower()
+    # ---- Normalize environment (do NOT leave ENV=?)
+    env = _env_mode(app)
+    if not app.config.get("ENV") or str(app.config.get("ENV")).strip() in {"", "?"}:
+        app.config["ENV"] = env
+
+    # If env indicates prod but config accidentally left DEBUG on, force-off unless allowed.
+    if env == "production" and bool(app.config.get("DEBUG", False)) is True and not _env_bool_or("FF_ALLOW_DEBUG_IN_PROD", False):
+        app.config["DEBUG"] = False
+
     app.url_map.strict_slashes = False
 
     # ---- Canonical public base URL
@@ -673,16 +767,19 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     if public_base:
         app.config["PUBLIC_BASE_URL"] = public_base
 
-    # ---- Cookie + JSON defaults
+    # ---- Cookie + JSON defaults (ENV-aware, do not break existing config)
     app.config.setdefault("JSON_SORT_KEYS", False)
     app.config.setdefault("JSON_AS_ASCII", False)
     app.config.setdefault("PROPAGATE_EXCEPTIONS", False)
 
     app.config.setdefault("SECRET_KEY", os.getenv("SECRET_KEY") or secrets.token_urlsafe(32))
     app.config.setdefault("SESSION_COOKIE_NAME", os.getenv("SESSION_COOKIE_NAME", "futurefunded"))
-    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
-    app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
-    app.config.setdefault("SESSION_COOKIE_SECURE", env == "production")
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", os.getenv("SESSION_COOKIE_SAMESITE", "Lax"))
+    app.config.setdefault("SESSION_COOKIE_HTTPONLY", _env_bool_or("SESSION_COOKIE_HTTPONLY", True))
+
+    # IMPORTANT: secure cookies should be ON in production, but still env-overridable.
+    app.config.setdefault("SESSION_COOKIE_SECURE", _env_bool_or("SESSION_COOKIE_SECURE", env == "production"))
+
     app.config.setdefault("PREFERRED_URL_SCHEME", "https" if env == "production" else "http")
     app.config.setdefault("AUTO_CREATE_SQLITE", True)
 
@@ -747,9 +844,9 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
     # ---- If nobody registered "/", render templates/index.html deterministically
     if not any(rule.rule == "/" for rule in app.url_map.iter_rules()):
+
         @app.get("/")
         def _index():
-            # FF_CFG default is injected via context processor; keep explicit empty dict anyway.
             return render_template("index.html", FF_CFG={})
 
     # ---- Scanner mitigation
@@ -763,6 +860,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     # ---- Optional CLI commands (graceful)
     try:
         from app.cli.seed_orgs import seed_orgs  # type: ignore
+
         app.cli.add_command(seed_orgs)
     except Exception:
         pass
@@ -778,3 +876,5 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
             app.logger.warning("Turnkey init failed: %s", e)
 
     return app
+
+
