@@ -1,0 +1,64 @@
+name: Checkout UX Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  checkout-gate:
+    name: Checkout UX must pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+          npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Flask app
+        run: |
+          . .venv/bin/activate
+          FLASK_ENV=production \
+          FLASK_DEBUG=0 \
+          python -m flask run --host=127.0.0.1 --port=5000 &
+          sleep 4
+
+      - name: Checkout delegation gate
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5000
+        run: |
+          npx playwright test \
+            tests/ff_checkout_delegation.spec.ts \
+            --project=chromium \
+            --reporter=line
+
+      - name: Checkout UX v2 gate
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5000
+        run: |
+          npx playwright test \
+            tests/ff_checkout_ux_v2.spec.ts \
+            --project=chromium \
+            --reporter=line

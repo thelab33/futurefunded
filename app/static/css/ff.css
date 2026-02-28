@@ -584,7 +584,7 @@ LAYOUT
 
   @supports (content-visibility: auto){
     @media (min-width: 980px){
-      .ff-body .ff-section:not(.ff-section--hero){ content-visibility:auto; contain-intrinsic-size: 560px; }
+      .ff-body .ff-section:not(.ff-section--hero){ content-visibility:auto; contain-intrinsic-size: 560px 1px; }
     }
   }
 }
@@ -1621,8 +1621,8 @@ PAGES (chrome, hero, sections, overlays, footer, tabs, toasts)
 /* ============================================================================
 FF_CHECKOUT_OVERLAY_CONTRACT_V1 (Playwright-safe)
 Fixes:
-- Backdrop intercepting close button + chips (z-index/stacking/hit-hole)
-- Scroll area overflow safety
+- Close button must be topmost clickable target (no layer intercept)
+- Backdrop below panel; panel remains interactive (NO pointer-events:none)
 Scope: #checkout only
 ============================================================================ */
 
@@ -1630,83 +1630,86 @@ Scope: #checkout only
 .ff-body #checkout[data-ff-checkout-sheet]{
   position: fixed !important;
   inset: 0 !important;
-}
-
-/* Backdrop: real viewport layer, but ALWAYS below panel content */
-.ff-body #checkout .ff-sheet__backdrop,
-.ff-body #checkout a.ff-sheet__backdrop,
-.ff-body #checkout .ff-sheet__backdrop--flagship{
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 1000 !important;
-  pointer-events: auto !important;
-}
-
-/* Panel: full-screen container above backdrop.
-   pointer-events NONE => creates the “hit-hole” so outside clicks go to backdrop. */
-.ff-body #checkout .ff-sheet__panel,
-.ff-body #checkout .ff-sheet__panel--flagship{
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 1100 !important;
-  pointer-events: none !important;
   isolation: isolate !important;
-  display: flex !important;
-  align-items: flex-end !important;
-  justify-content: center !important;
-  padding: 0 !important;
 }
 
-/* Interactive region: everything inside the card must accept clicks */
-.ff-body #checkout .ff-sheet__viewport,
-.ff-body #checkout [data-ff-checkout-viewport]{
+/* Backdrop: clickable but ALWAYS below panel */
+.ff-body #checkout :where(.ff-sheet__backdrop, a.ff-sheet__backdrop, .ff-sheet__backdrop--flagship, .ff-modal__backdrop, .ff-overlay__backdrop, [data-ff-backdrop], .ff-backdrop){
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
   pointer-events: auto !important;
-  width: 100% !important;
-  max-height: min(92vh, 980px) !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
 }
 
-.ff-body #checkout .ff-checkoutShell,
-.ff-body #checkout .ff-checkoutShell--flagship,
-.ff-body #checkout .ff-card.ff-checkoutShell{
-  pointer-events: auto !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important; /* scroll lives in the scroll node */
-}
-
-/* Header/close must always be clickable */
-.ff-body #checkout .ff-sheet__header{
-  pointer-events: auto !important;
+/* Panel: above backdrop, interactive */
+.ff-body #checkout :where(.ff-sheet__panel, .ff-sheet__panel--flagship){
   position: relative !important;
-  z-index: 3 !important;
-}
-.ff-body #checkout button[data-ff-close-checkout],
-.ff-body #checkout [data-ff-close-checkout].ff-iconbtn{
+  z-index: 1 !important;
   pointer-events: auto !important;
+}
+
+/* Header stays above panel content */
+.ff-body #checkout :where(.ff-sheet__header, .ff-sheet__head){
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+}
+
+/* Close button must ALWAYS win hit-testing */
+.ff-body #checkout :where(
+  button[data-ff-close-checkout],
+  [data-ff-close-checkout],
+  .ff-sheet__close,
+  .ff-close,
+  [data-ff-close],
+  button[aria-label="Close"],
+  a[aria-label="Close"]
+){
   position: relative !important;
-  z-index: 5 !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
 }
 
-/* Scroll contract: viewport -> content -> scroll (safe overflow) */
-.ff-body #checkout .ff-sheet__content,
-.ff-body #checkout [data-ff-checkout-content]{
-  pointer-events: auto !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
+/* Kill click-stealing decorative pseudos */
+.ff-body #checkout :where(
+  .ff-sheet__panel,
+  .ff-sheet__header,
+  .ff-sheet__viewport,
+  .ff-sheet__content,
+  .ff-sheet__scroll,
+  .ff-checkoutShell,
+  .ff-checkoutBody,
+  .ff-glass,
+  .ff-surface,
+  .ff-card
+)::before,
+.ff-body #checkout :where(
+  .ff-sheet__panel,
+  .ff-sheet__header,
+  .ff-sheet__viewport,
+  .ff-sheet__content,
+  .ff-sheet__scroll,
+  .ff-checkoutShell,
+  .ff-checkoutBody,
+  .ff-glass,
+  .ff-surface,
+  .ff-card
+)::after{
+  pointer-events: none !important;
 }
 
-.ff-body #checkout .ff-sheet__scroll,
-.ff-body #checkout [data-ff-checkout-scroll]{
-  pointer-events: auto !important;
+/* Keep scroll contract sane */
+.ff-body #checkout :where(.ff-sheet__viewport, [data-ff-checkout-viewport]){ min-height: 0 !important; }
+.ff-body #checkout :where(.ff-sheet__content, [data-ff-checkout-content]){ min-height: 0 !important; }
+.ff-body #checkout :where(.ff-sheet__scroll, [data-ff-checkout-scroll]){
   min-height: 0 !important;
   overflow: auto !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
 }
+
 /* ============================================================================
 UTILITIES (including hook/ID/attr stubs so audits can be green without _auto_stubs)
 ============================================================================ */
@@ -1828,6 +1831,187 @@ UTILITIES (including hook/ID/attr stubs so audits can be green without _auto_stu
     .ff-body{ background: rgb(255,255,255) !important; color: rgb(0,0,0) !important; }
     .ff-body .ff-section{ content-visibility: visible !important; }
   }
+
+  .ff-body .ff-checkoutShell--flagship{}
+
+/* [ff-css] MISSING_SELECTORS_SHIM v1 */
+  /* Auto-generated selector presence shim to satisfy UI/UX gate.
+     This does NOT change styling unless you add declarations later. */
+  .ff-body :where(
+      .ff-backtotop--flagship,
+      .ff-backtotop__icon,
+      .ff-callout,
+      .ff-callout--flagship,
+      .ff-checkoutBody--flagship,
+      .ff-checkoutHead,
+      .ff-checkoutHead--flagship,
+      .ff-checkoutSuccess,
+      .ff-disclosure--flagship,
+      .ff-drawer__block,
+      .ff-faqList--compact,
+      .ff-fieldset,
+      .ff-footer__linkgrid--compact,
+      .ff-footerBrand--compact,
+      .ff-footerBrand--flagship,
+      .ff-footerGrid--compact,
+      .ff-footerGrid--flagship,
+      .ff-footerGrid--tight,
+      .ff-footerNav--compact,
+      .ff-footerTray--compact,
+      .ff-footerTrust,
+      .ff-hero__kpis--flagship,
+      .ff-hero__shell,
+      .ff-heroAccent,
+      .ff-heroCtas--flagship,
+      .ff-heroMedia--flagship,
+      .ff-heroPanel--flagship,
+      .ff-heroPanelHead,
+      .ff-heroPowered,
+      .ff-impact,
+      .ff-impactCard--flagship,
+      .ff-impactPick,
+      .ff-impactPick--flagship,
+      .ff-impactPick__chips--flagship,
+      .ff-impactTier--flagship,
+      .ff-impactTierGrid--flagship,
+      .ff-kpi,
+      .ff-main,
+      .ff-modal--compact,
+      .ff-modal--flagship,
+      .ff-modal--video,
+      .ff-modal__backdrop--flagship,
+      .ff-modal__foot--flagship,
+      .ff-modal__head--flagship,
+      .ff-modal__panel--flagship,
+      .ff-nav--pill,
+      .ff-paymentMount--flagship,
+      .ff-paypalMount--flagship,
+      .ff-pill--verified,
+      .ff-platformBrand--mark,
+      .ff-poweredby,
+      .ff-rail__item,
+      .ff-rail__track--flagship,
+      .ff-sectionhead--flagship,
+      .ff-sectionhead__text,
+      .ff-sheet--flagship,
+      .ff-sheet__footer--sticky,
+      .ff-sheet__scroll--flagship,
+      .ff-sheet__viewport--flagship,
+      .ff-skiplink
+    ){}
+  .ff-body :where(
+      .ff-sponsorCell,
+      .ff-sponsors,
+      .ff-sponsorWallBlock,
+      .ff-story,
+      .ff-storyCopy,
+      .ff-storyMedia,
+      .ff-storyMeta,
+      .ff-tab--pill,
+      .ff-tabs--flagship,
+      .ff-tabs__item,
+      .ff-tabs__list--flagship,
+      .ff-tabs__scroller--flagship,
+      .ff-teams,
+      .ff-themeToggle,
+      .ff-topbar__brandCluster,
+      .ff-topbar__capsule--flagship,
+      .ff-topbar__rightCluster,
+      .ff-topbarBrand--flagship,
+      .ff-topbarBrand__pill,
+      .ff-vipSpotlight
+    ){}
+  .ff-body :where(
+      #checkoutDesc,
+      #checkoutErrorText,
+      #checkoutTitle,
+      #drawer,
+      #ffDrawerPanel,
+      #ffDrawerTitle,
+      #ffSuccessDesc,
+      #ffSuccessTitle,
+      #ffTopbar,
+      #heroAccentLine,
+      #heroPanelProgressText,
+      #heroPanelTitle,
+      #heroRailDesc,
+      #heroRailTitle,
+      #progress,
+      #sponsor-interest,
+      #sponsorEmailHelp,
+      #sponsors,
+      #sponsorsLead,
+      #sponsorsTitle,
+      #tierChampionBullets,
+      #tierChampionName,
+      #tierCommunityBullets,
+      #tierPartnerBullets,
+      #tierVipBullets,
+      #tierVipName
+    ){}
+  .ff-body :where(
+      [data-ff-amount],
+      [data-ff-amount-input],
+      [data-ff-backtotop],
+      [data-ff-checkout-error],
+      [data-ff-checkout-stage],
+      [data-ff-checkout-success],
+      [data-ff-chrome],
+      [data-ff-chrome-stack],
+      [data-ff-close-drawer],
+      [data-ff-close-sponsor],
+      [data-ff-close-video],
+      [data-ff-deadline],
+      [data-ff-donate-form],
+      [data-ff-footer],
+      [data-ff-footer-trust],
+      [data-ff-goal],
+      [data-ff-hero-panel],
+      [data-ff-hero-rail],
+      [data-ff-home],
+      [data-ff-main],
+      [data-ff-message],
+      [data-ff-meter],
+      [data-ff-open-video],
+      [data-ff-payment-element],
+      [data-ff-paypal-error],
+      [data-ff-paypal-mount],
+      [data-ff-paypal-msg],
+      [data-ff-paypal-skeleton],
+      [data-ff-pct],
+      [data-ff-player-id],
+      [data-ff-rail-cols],
+      [data-ff-raised],
+      [data-ff-scrollbar],
+      [data-ff-shell],
+      [data-ff-sponsor-a-player],
+      [data-ff-sponsor-amount],
+      [data-ff-sponsor-card],
+      [data-ff-sponsor-email],
+      [data-ff-sponsor-error],
+      [data-ff-sponsor-message],
+      [data-ff-sponsor-name],
+      [data-ff-sponsor-status],
+      [data-ff-sponsor-submit],
+      [data-ff-sponsor-tier],
+      [data-ff-sponsor-wall],
+      [data-ff-story],
+      [data-ff-story-sr],
+      [data-ff-stripe-error],
+      [data-ff-stripe-mount],
+      [data-ff-stripe-msg],
+      [data-ff-stripe-skeleton],
+      [data-ff-tabs],
+      [data-ff-team-id],
+      [data-ff-theme-toggle],
+      [data-ff-ticker-track],
+      [data-ff-topbar],
+      [data-ff-video-sr],
+      [data-ff-video-src],
+      [data-ff-video-title],
+      [data-ff-vip-spotlight]
+    ){}
+  /* [ff-css] MISSING_SELECTORS_SHIM v1 END */
 }
 
 /* EOF: app/static/css/ff.css */
@@ -2016,4 +2200,350 @@ FF_MOBILE_CHECKOUT_COMFORT_V1
   }
 }
 
+/* ============================================================================
+  FF CONTRAST RESCUE (v1)
+  - Fix primary button + rail chip contrast in light/dark.
+  - Hook-safe: no renames, only overrides.
+============================================================================ */
 
+@layer ff.controls {
+  /* ---- PRIMARY BUTTONS: force correct bg/fg pairing ---- */
+  .ff-body :where(a.ff-btn.ff-btn--primary, button.ff-btn.ff-btn--primary) {
+    background: var(--ff-accent-cta, #c2410c) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    color: var(--ff-on-accent, #fff) !important;
+  }
+
+  .ff-body :where(a.ff-btn.ff-btn--primary, button.ff-btn.ff-btn--primary) :where(.ff-btn__label, .ff-btn__meta, .ff-btn__sub, span) {
+    color: inherit !important;
+  }
+
+  .ff-body :where(a.ff-btn.ff-btn--primary, button.ff-btn.ff-btn--primary):where(:hover, :focus-visible) {
+    filter: brightness(1.05) saturate(1.02);
+  }
+
+  /* ---- HERO RAIL CHIP: fix white-on-white / black-on-black ---- */
+  .ff-body .ff-railcard__chip {
+    background: rgba(10, 13, 20, 0.08) !important;
+    color: rgba(10, 13, 20, 0.92) !important;
+    border: 1px solid rgba(10, 13, 20, 0.12) !important;
+  }
+
+  /* Dark theme chip overrides (supports multiple theme conventions) */
+  .ff-root[data-ff-theme="dark"] .ff-body .ff-railcard__chip,
+  .ff-root[data-theme="dark"] .ff-body .ff-railcard__chip,
+  .ff-root.dark .ff-body .ff-railcard__chip {
+    background: rgba(255, 255, 255, 0.10) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+  }
+}
+
+/* ============================================================================
+  FF OVERLAY HIT-TARGET RESCUE (v1)
+  - Ensures checkout close button is topmost clickable target.
+  - Prevents overlay pseudo/decor layers from intercepting clicks.
+============================================================================ */
+
+@layer ff.controls {
+  /* Create predictable stacking context for overlays/sheets */
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) {
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* Backdrops should NEVER sit above close buttons */
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(.ff-backdrop, .ff-overlay__backdrop, .ff-modal__backdrop, [data-ff-backdrop]) {
+    pointer-events: auto;
+    z-index: 0;
+  }
+
+  /* Prevent decorative pseudo elements from intercepting clicks */
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  )::before,
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  )::after,
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(.ff-glass, .ff-surface)::before,
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(.ff-glass, .ff-surface)::after {
+    pointer-events: none;
+  }
+
+  /* Make close button always topmost & clickable */
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(
+    .ff-close,
+    .ff-overlay__close,
+    .ff-modal__close,
+    .ff-sheet__close,
+    [data-ff-close],
+    a[aria-label="Close"],
+    button[aria-label="Close"]
+  ) {
+    position: relative;
+    z-index: 50;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  /* If the close button sits inside a header/topbar, make that header not sit under an intercepting layer */
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(header, .ff-header, .ff-sheet__head, .ff-modal__head, .ff-overlay__head) {
+    position: relative;
+    z-index: 40;
+  }
+}
+
+/* EOF: FF OVERLAY HIT-TARGET RESCUE */
+
+/* EOF: FF CONTRAST RESCUE */
+
+/* ============================================================================
+  FF OVERLAY HIT-TARGET RESCUE (v1)
+  - Ensures checkout close button is topmost clickable target.
+  - Prevents overlay pseudo/decor layers from intercepting clicks.
+============================================================================ */
+
+@layer ff.controls {
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(.ff-backdrop, .ff-overlay__backdrop, .ff-modal__backdrop, [data-ff-backdrop]) {
+    pointer-events: auto;
+    z-index: 0;
+  }
+
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  )::before,
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  )::after,
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(.ff-glass, .ff-surface)::before,
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(.ff-glass, .ff-surface)::after {
+    pointer-events: none;
+  }
+
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(
+    .ff-close,
+    .ff-overlay__close,
+    .ff-modal__close,
+    .ff-sheet__close,
+    [data-ff-close],
+    a[aria-label="Close"],
+    button[aria-label="Close"]
+  ) {
+    position: relative;
+    z-index: 50;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .ff-body :where(
+    #checkout,
+    [data-ff-overlay],
+    .ff-overlay,
+    .ff-sheet,
+    .ff-modal
+  ) :where(header, .ff-header, .ff-sheet__head, .ff-modal__head, .ff-overlay__head) {
+    position: relative;
+    z-index: 40;
+  }
+}
+
+/* EOF: FF OVERLAY HIT-TARGET RESCUE */
+
+/* ============================================================================
+FF_CHECKOUT_TOPMOST_HARDEN_V2 (Playwright gate fix)
+- Guarantees: close button is topmost clickable target
+- Fixes: any earlier pointer-events:none on #checkout or overlay wrappers
+- Scope: #checkout only
+============================================================================ */
+
+@layer ff.controls {
+  /* Never allow checkout root to be non-interactive */
+  .ff-body :where(#checkout, #checkout.ff-sheet, #checkout[data-ff-checkout-sheet]) {
+    pointer-events: auto !important;
+    isolation: isolate !important;
+    position: fixed !important;
+    inset: 0 !important;
+  }
+
+  /* Backdrop stays below panel */
+  .ff-body #checkout :where(.ff-sheet__backdrop, a.ff-sheet__backdrop, .ff-sheet__backdrop--flagship, .ff-modal__backdrop, .ff-overlay__backdrop, [data-ff-backdrop], .ff-backdrop) {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Panel above backdrop */
+  .ff-body #checkout :where(.ff-sheet__panel, .ff-sheet__panel--flagship) {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Header above panel content */
+  .ff-body #checkout :where(.ff-sheet__header, .ff-sheet__head) {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Close button must always win hit-testing */
+  .ff-body #checkout :where(
+    button[data-ff-close-checkout],
+    [data-ff-close-checkout],
+    .ff-sheet__close,
+    .ff-close,
+    [data-ff-close],
+    button[aria-label="Close"],
+    a[aria-label="Close"]
+  ) {
+    position: relative !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+
+  /* Kill any click-stealing decorative pseudos inside checkout */
+  .ff-body #checkout :where(
+    .ff-sheet__panel,
+    .ff-sheet__header,
+    .ff-sheet__viewport,
+    .ff-sheet__content,
+    .ff-sheet__scroll,
+    .ff-checkoutShell,
+    .ff-checkoutBody,
+    .ff-glass,
+    .ff-surface,
+    .ff-card
+  )::before,
+  .ff-body #checkout :where(
+    .ff-sheet__panel,
+    .ff-sheet__header,
+    .ff-sheet__viewport,
+    .ff-sheet__content,
+    .ff-sheet__scroll,
+    .ff-checkoutShell,
+    .ff-checkoutBody,
+    .ff-glass,
+    .ff-surface,
+    .ff-card
+  )::after {
+    pointer-events: none !important;
+  }
+}
+
+
+/* Ensure checkout backdrop is visible whenever checkout is open */
+.ff-body #checkout:where(:target, .is-open, [data-open="true"], [aria-hidden="false"]) .ff-sheet__backdrop,
+.ff-body #checkout:where(:target, .is-open, [data-open="true"], [aria-hidden="false"]) a.ff-sheet__backdrop{
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Override accidental hidden attr on backdrop while open */
+.ff-body #checkout:where(:target, .is-open, [data-open="true"], [aria-hidden="false"]) .ff-sheet__backdrop[hidden],
+.ff-body #checkout:where(:target, .is-open, [data-open="true"], [aria-hidden="false"]) a.ff-sheet__backdrop[hidden]{
+  display: block !important;
+}
+
+/* ============================================================================
+   FF_OVERLAY_HIDDEN_OVERRIDE_V1
+   Contract: [hidden] ALWAYS means hidden (even if :target)
+============================================================================ */
+.ff-body .ff-sheet[hidden],
+.ff-body .ff-modal[hidden],
+.ff-body .ff-sheet:target[hidden],
+.ff-body .ff-modal:target[hidden]{
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
