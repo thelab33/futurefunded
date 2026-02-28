@@ -60,3 +60,6 @@ app/data/*.sqlite*
 .env
 .env.*
 !.env.example
+
+# FF tooling artifacts
+tools/.artifacts/
