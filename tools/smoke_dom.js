@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Minimal smoke_dom stub — hits the homepage and ensures HTTP 200
-const url = process.env.SMOKE_URL || 'http://127.0.0.1:5000/';
+const url = process.env.SMOKE_URL || 'http://127.0.0.1:5000/'\;
 
 (async () => {
   try {
