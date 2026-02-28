@@ -1,14 +1,37 @@
+# Python
 __pycache__/
 *.pyc
-*.bak
-*.swp
-.env
-*.sqlite3
-.DS_Store
+.venv/
+
+# Node
 node_modules/
-.env.*
-.cache/
-*.log
-.idea/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Playwright
+playwright-report/
+test-results/
+**/playwright-report/
+**/test-results/
+
+# Local tool artifacts (FutureFunded)
+tools/artifacts/
+tools/.artifacts/**/*.gen.txt
+tools/.artifacts/**/*.tmp
+
+# Backups / patches
+*.bak
+*.bak_*
+*.bak-*
+*.bak_loader
+*.bak_djlint
+*.bak_ff*
+*.orig
+*.rej
+
+# OS/editor
+.DS_Store
+Thumbs.db
 .vscode/
-*.db
+.idea/

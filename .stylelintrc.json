@@ -1,0 +1,25 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "ignoreFiles": ["**/*.bak", "**/*.min.css", "**/vendor/**", "**/.artifacts/**", "**/artifacts/**"],
+  "rules": {
+    "selector-class-pattern": null,
+    "selector-id-pattern": null,
+    "declaration-block-single-line-max-declarations": null,
+    "no-descending-specificity": null,
+    "property-no-deprecated": null,
+    "block-no-empty": null,
+
+    "value-keyword-case": null,
+    "color-function-notation": null,
+    "color-function-alias-notation": null,
+    "alpha-value-notation": null,
+    "custom-property-empty-line-before": null,
+    "rule-empty-line-before": null,
+    "at-rule-empty-line-before": null,
+    "comment-empty-line-before": null,
+    "media-feature-range-notation": null,
+    "property-no-vendor-prefix": null,
+    "shorthand-property-no-redundant-values": null,
+    "no-duplicate-selectors": null
+  }
+}

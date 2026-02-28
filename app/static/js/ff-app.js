@@ -16,6 +16,20 @@
 (function () {
   "use strict";
 
+/* [ff-js] ENSURE_WINDOW_FF_EARLY v1 */
+  // Deterministic: ensure global API exists for contracts/tests.
+  // Must run before any early returns.
+  var FF = (function ensureFFEarly() {
+    try {
+      if (!window.ff || typeof window.ff !== "object") window.ff = {};
+      return window.ff;
+    } catch (_) {
+      return {};
+    }
+  })();
+  try {
+    if (!FF.version) FF.version = "17.0.0-ff";
+  } catch (_) {}
   /* --------------------------------------------------------------------------
    * Boot guard (prevents double init)
    * ------------------------------------------------------------------------ */

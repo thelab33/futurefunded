@@ -14,7 +14,7 @@
     "format:check": "prettier --check app/templates/index.html app/static/css/ff.css app/static/js/ff-app.js",
     "format:write": "prettier --write app/templates/index.html app/static/css/ff.css app/static/js/ff-app.js",
     "fmt:check": "npm run format:check",
-    "fmt:write": "npm run format:write",    
+    "fmt:write": "npm run format:write",
     "lint:js": "eslint app/static/js --max-warnings=0",
     "lint:css": "stylelint app/static/css --config stylelint.config.cjs --max-warnings=0",
     "lint:html": "node -e \"console.log('HTML lint skipped (Jinja runtime templates).')\"",
@@ -39,7 +39,9 @@
     "clean:hard": "rimraf node_modules package-lock.json .cache dist *.log",
     "prepare": "husky",
     "onboard": "node -e \"console.log('FutureFunded ready → npm run serve')\"",
-    "premium:verify": "node -e \"console.log('Premium mode verified: flags, Stripe, CSP, analytics.')\""
+    "premium:verify": "node -e \"console.log('Premium mode verified: flags, Stripe, CSP, analytics.')\"",
+    "audit:prod": "python tools/ff_no_slashsemi_gate.py && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
+    "audit:fast": "node tools/smoke_dom.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json"
   },
   "devDependencies": {
     "@axe-core/cli": "^4.11.0",
