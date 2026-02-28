@@ -1,0 +1,53 @@
+{
+  "file": "app/static/css/ff.css",
+  "layers_found": [
+    {
+      "name": "ff.tokens",
+      "start": 1113,
+      "end": 9246
+    },
+    {
+      "name": "ff.base",
+      "start": 9434,
+      "end": 14431
+    },
+    {
+      "name": "ff.type",
+      "start": 14598,
+      "end": 16572
+    },
+    {
+      "name": "ff.layout",
+      "start": 16741,
+      "end": 19564
+    },
+    {
+      "name": "ff.surfaces",
+      "start": 19735,
+      "end": 21676
+    },
+    {
+      "name": "ff.controls",
+      "start": 21847,
+      "end": 42574
+    },
+    {
+      "name": "ff.pages",
+      "start": 42799,
+      "end": 69519
+    },
+    {
+      "name": "ff.utilities",
+      "start": 69783,
+      "end": 83594
+    }
+  ],
+  "violations": [],
+  "allowed_global_at_rules": [],
+  "tucked": [],
+  "summary": {
+    "violations_total": 0,
+    "allowed_total": 0,
+    "tucked_total": 0
+  }
+}

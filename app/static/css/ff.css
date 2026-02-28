@@ -1050,6 +1050,197 @@ Purpose:
   border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_a6fc4532e2
+Source: global (unlayered) block at line 1772
+Header: .ff-body #checkout[data-ff-checkout-sheet]
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* ============================================================================
+FF_CHECKOUT_OVERLAY_CONTRACT_V1 (Playwright-safe)
+Fixes:
+- Close button must be topmost clickable target (no layer intercept)
+- Backdrop below panel; panel remains interactive (NO pointer-events:none)
+Scope: #checkout only
+============================================================================ */
+
+.ff-body #checkout.ff-sheet,
+.ff-body #checkout[data-ff-checkout-sheet]{
+  position: fixed !important;
+  inset: 0 !important;
+  isolation: isolate !important;
+}
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_c614f03366
+Source: global (unlayered) block at line 1787
+Header: .ff-body #checkout :where(.ff-sheet__backdrop, a.ff-sheet__backdrop, .ff-sheet__backdrop--flagship, .ff-modal__backdrop, .ff-overlay__backdrop, [data-ff-backdro…
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* Backdrop: clickable but ALWAYS below panel */
+.ff-body #checkout :where(.ff-sheet__backdrop, a.ff-sheet__backdrop, .ff-sheet__backdrop--flagship, .ff-modal__backdrop, .ff-overlay__backdrop, [data-ff-backdrop], .ff-backdrop){
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: auto !important;
+}
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_662ae10ce0
+Source: global (unlayered) block at line 1795
+Header: .ff-body #checkout :where(.ff-sheet__panel, .ff-sheet__panel--flagship)
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* Panel: above backdrop, interactive */
+.ff-body #checkout :where(.ff-sheet__panel, .ff-sheet__panel--flagship){
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_1707dd0147
+Source: global (unlayered) block at line 1802
+Header: .ff-body #checkout :where(.ff-sheet__header, .ff-sheet__head)
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* Header stays above panel content */
+.ff-body #checkout :where(.ff-sheet__header, .ff-sheet__head){
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+}
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_e4b4747fb5
+Source: global (unlayered) block at line 1810
+Header: )
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* Close button must ALWAYS win hit-testing */
+.ff-body #checkout :where(
+  button[data-ff-close-checkout],
+  [data-ff-close-checkout],
+  .ff-sheet__close,
+  .ff-close,
+  [data-ff-close],
+  button[aria-label="Close"],
+  a[aria-label="Close"]
+){
+  position: relative !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+}
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_9ce5d73d14
+Source: global (unlayered) block at line 1826
+Header: )::after
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* Kill click-stealing decorative pseudos */
+.ff-body #checkout :where(
+  .ff-sheet__panel,
+  .ff-sheet__header,
+  .ff-sheet__viewport,
+  .ff-sheet__content,
+  .ff-sheet__scroll,
+  .ff-checkoutShell,
+  .ff-checkoutBody,
+  .ff-glass,
+  .ff-surface,
+  .ff-card
+)::before,
+.ff-body #checkout :where(
+  .ff-sheet__panel,
+  .ff-sheet__header,
+  .ff-sheet__viewport,
+  .ff-sheet__content,
+  .ff-sheet__scroll,
+  .ff-checkoutShell,
+  .ff-checkoutBody,
+  .ff-glass,
+  .ff-surface,
+  .ff-card
+)::after{
+  pointer-events: none !important;
+}
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_4402fa3e96
+Source: global (unlayered) block at line 1854
+Header: .ff-body #checkout :where(.ff-sheet__viewport, [data-ff-checkout-viewport])
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+
+/* Keep scroll contract sane */
+.ff-body #checkout :where(.ff-sheet__viewport, [data-ff-checkout-viewport]){ min-height: 0 !important; }
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_c0964e6435
+Source: global (unlayered) block at line 1857
+Header: .ff-body #checkout :where(.ff-sheet__content, [data-ff-checkout-content])
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+.ff-body #checkout :where(.ff-sheet__content, [data-ff-checkout-content]){ min-height: 0 !important; }
+
+
+/* ============================================================================
+[ff-layer] FF_LAYER_HYGIENE_TUCK_V1_92708c2210
+Source: global (unlayered) block at line 1858
+Header: .ff-body #checkout :where(.ff-sheet__scroll, [data-ff-checkout-scroll])
+Action: tucked into @ff.controls (existing layer)
+Note: This is conservative and only runs when destination is unambiguous.
+============================================================================ */
+
+
+.ff-body #checkout :where(.ff-sheet__scroll, [data-ff-checkout-scroll]){
+  min-height: 0 !important;
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
 }
 
 /* ============================================================================
@@ -1771,97 +1962,23 @@ PAGES (chrome, hero, sections, overlays, footer, tabs, toasts)
   .ff-body .ff-footer__link:hover{ text-decoration: underline !important; text-decoration-color: var(--ff-link-underline); }
 }
 
-/* ============================================================================
-FF_CHECKOUT_OVERLAY_CONTRACT_V1 (Playwright-safe)
-Fixes:
-- Close button must be topmost clickable target (no layer intercept)
-- Backdrop below panel; panel remains interactive (NO pointer-events:none)
-Scope: #checkout only
-============================================================================ */
 
-.ff-body #checkout.ff-sheet,
-.ff-body #checkout[data-ff-checkout-sheet]{
-  position: fixed !important;
-  inset: 0 !important;
-  isolation: isolate !important;
-}
 
-/* Backdrop: clickable but ALWAYS below panel */
-.ff-body #checkout :where(.ff-sheet__backdrop, a.ff-sheet__backdrop, .ff-sheet__backdrop--flagship, .ff-modal__backdrop, .ff-overlay__backdrop, [data-ff-backdrop], .ff-backdrop){
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  pointer-events: auto !important;
-}
 
-/* Panel: above backdrop, interactive */
-.ff-body #checkout :where(.ff-sheet__panel, .ff-sheet__panel--flagship){
-  position: relative !important;
-  z-index: 1 !important;
-  pointer-events: auto !important;
-}
 
-/* Header stays above panel content */
-.ff-body #checkout :where(.ff-sheet__header, .ff-sheet__head){
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 2 !important;
-  pointer-events: auto !important;
-}
 
-/* Close button must ALWAYS win hit-testing */
-.ff-body #checkout :where(
-  button[data-ff-close-checkout],
-  [data-ff-close-checkout],
-  .ff-sheet__close,
-  .ff-close,
-  [data-ff-close],
-  button[aria-label="Close"],
-  a[aria-label="Close"]
-){
-  position: relative !important;
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-}
 
-/* Kill click-stealing decorative pseudos */
-.ff-body #checkout :where(
-  .ff-sheet__panel,
-  .ff-sheet__header,
-  .ff-sheet__viewport,
-  .ff-sheet__content,
-  .ff-sheet__scroll,
-  .ff-checkoutShell,
-  .ff-checkoutBody,
-  .ff-glass,
-  .ff-surface,
-  .ff-card
-)::before,
-.ff-body #checkout :where(
-  .ff-sheet__panel,
-  .ff-sheet__header,
-  .ff-sheet__viewport,
-  .ff-sheet__content,
-  .ff-sheet__scroll,
-  .ff-checkoutShell,
-  .ff-checkoutBody,
-  .ff-glass,
-  .ff-surface,
-  .ff-card
-)::after{
-  pointer-events: none !important;
-}
 
-/* Keep scroll contract sane */
-.ff-body #checkout :where(.ff-sheet__viewport, [data-ff-checkout-viewport]){ min-height: 0 !important; }
-.ff-body #checkout :where(.ff-sheet__content, [data-ff-checkout-content]){ min-height: 0 !important; }
-.ff-body #checkout :where(.ff-sheet__scroll, [data-ff-checkout-scroll]){
-  min-height: 0 !important;
-  overflow: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior: contain !important;
-}
+
+
+
+
+
+
+
+
+
+
 
 /* ============================================================================
 UTILITIES (including hook/ID/attr stubs so audits can be green without _auto_stubs)
