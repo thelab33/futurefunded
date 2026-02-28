@@ -1,65 +1,46 @@
 {
   "name": "connectatx-fundraiser",
   "version": "1.1.1",
-  "description": "FutureFunded flagship fundraiser platform with premium-ready, audit-first architecture.",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": ">=18.18.0"
-  },
-  "packageManager": "npm@10.0.0",
+  "description": "FutureFunded / FundChamps — production-gated fundraising platform (Flask + Playwright + CSS/JS contracts)",
   "scripts": {
-    "dev": "cross-env FLASK_APP=app:create_app FLASK_ENV=development flask run --reload --debug",
-    "serve": "npm run dev",
-    "format:check": "prettier --check app/templates/index.html app/static/css/ff.css app/static/js/ff-app.js",
-    "format:write": "prettier --write app/templates/index.html app/static/css/ff.css app/static/js/ff-app.js",
-    "fmt:check": "npm run format:check",
-    "fmt:write": "npm run format:write",
-    "lint:js": "eslint app/static/js --max-warnings=0",
-    "lint:css": "stylelint app/static/css --config stylelint.config.cjs --max-warnings=0",
-    "lint:html": "node -e \"console.log('HTML lint skipped (Jinja runtime templates).')\"",
-    "lint": "npm-run-all -p lint:js lint:css lint:html",
-    "check": "npm-run-all fmt:check lint",
-    "health": "npm-run-all check audit:deps",
-    "audit:deps": "npm audit --audit-level=high || true",
-    "audit:a11y": "axe http://localhost:5000/ --exit 1",
-    "audit:lighthouse": "node scripts/ensure-cache.js && lighthouse http://localhost:5000/ --quiet --chrome-flags=\"--headless\" --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=.cache/lh-report.json",
-    "audit:teams": "node scripts/ff-audit-teams.js",
-    "audit:all": "npm-run-all check audit:teams audit:a11y audit:lighthouse audit:deps",
-    "patch:teams": "node scripts/ff-patch-team-images.js",
-    "doctor": "npm-run-all audit:teams patch:teams",
-    "lh:desktop": "node scripts/ensure-cache.js && lighthouse http://localhost:5000/ --preset=desktop --chrome-flags=\"--headless --no-sandbox --disable-gpu\" --output=html --output-path=.cache/lh-desktop.html",
-    "lh:mobile": "node scripts/ensure-cache.js && lighthouse http://localhost:5000/ --preset=desktop --form-factor=mobile --screenEmulation.mobile --throttling-method=simulate --chrome-flags=\"--headless --no-sandbox --disable-gpu\" --output=html --output-path=.cache/lh-mobile.html",
-    "core:gate": "python tools/ff_core_gate.py",
-    "check:core": "npm run format:check && npm run core:gate",
-    "a11y": "pa11y http://localhost:5000",
-    "a11y:axe": "axe http://localhost:5000/ --exit 1",
-    "purge:css": "node -e \"console.log('PurgeCSS intentionally disabled (dynamic UI safe).')\"",
-    "clean": "rimraf .cache dist *.log",
-    "clean:hard": "rimraf node_modules package-lock.json .cache dist *.log",
-    "prepare": "husky",
-    "onboard": "node -e \"console.log('FutureFunded ready → npm run serve')\"",
-    "premium:verify": "node -e \"console.log('Premium mode verified: flags, Stripe, CSP, analytics.')\"",
-    "audit:prod": ".venv/bin/python tools/ff_no_slashsemi_gate.py && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
-    "audit:fast": "node tools/smoke_dom.js && npx eslint -c eslint.config.js app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json",
-    "test:pw": "PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npx playwright test --project=chromium --reporter=line",
-    "gate:smoke": "node tools/smoke_dom.js && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
-    "gate:full": "node tools/smoke_dom.js && npm run audit:prod && npx playwright test --project=chromium"
+    "audit:prod": ".venv/bin/python tools/ff_no_slashsemi_gate.py && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.mjs app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
+
+    "pw:gate:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts tests/ff_checkout_delegation.spec.ts tests/ff_checkout_ux_v2.spec.ts tests/ff_uiux_pro_gate.spec.ts",
+    "pw:gate:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts tests/ff_checkout_delegation.spec.ts tests/ff_checkout_ux_v2.spec.ts tests/ff_uiux_pro_gate.spec.ts",
+
+    "audit:gate:local": "npm run audit:prod && npm run pw:gate:local",
+    "audit:gate:site": "npm run audit:prod && npm run pw:gate:site",
+
+    "lint:js": "npx eslint -c eslint.config.mjs app/static/js/ff-app.js --quiet",
+    "lint:css": "npx stylelint app/static/css/ff.css --config .stylelintrc.json",
+    "lint:html": ".venv/bin/python -m djlint app/templates/index.html --lint",
+    "format": "prettier --write app/static/css app/static/js",
+
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "app/static/css/**/*": [
+      "prettier --write"
+    ],
+    "app/static/js/**/*": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
-    "@axe-core/cli": "^4.11.0",
-    "@eslint/js": "^9.39.2",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.50.0",
     "@stylistic/eslint-plugin": "^2.13.0",
     "cross-env": "^7.0.3",
     "eslint": "^9.39.2",
     "eslint-formatter-unix": "^9.0.1",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "jsdom": "^24.0.0",
     "lighthouse": "^13.0.1",
     "lint-staged": "^15.5.2",
     "npm-run-all": "^4.1.5",
     "pa11y": "^9.0.1",
+    "playwright": "^1.50.0",
     "postcss": "^8.5.6",
     "postcss-safe-parser": "^7.0.1",
     "postcss-selector-parser": "^7.1.1",
@@ -70,14 +51,6 @@
     "stylelint-config-recess-order": "^7.4.0",
     "stylelint-config-standard": "^39.0.1",
     "stylelint-order": "^7.0.1"
-  },
-  "lint-staged": {
-    "app/static/css/**/*": [
-      "prettier --write"
-    ],
-    "app/static/js/**/*": [
-      "prettier --write"
-    ]
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^5.4.1",
