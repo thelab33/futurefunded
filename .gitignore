@@ -46,3 +46,6 @@ app/data/*.db
 app/data/*.sqlite*
 *.db
 *.sqlite*
+
+# FF patch backups
+*.bak_cookie_secure
