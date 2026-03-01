@@ -4,20 +4,17 @@
   "private": true,
   "description": "FutureFunded / FundChamps — production-gated fundraising platform (Flask + Playwright + CSS/JS contracts)",
   "scripts": {
-    "audit:prod": ".venv/bin/python tools/ff_no_slashsemi_gate.py && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.mjs app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
-
+    "audit:prod": ".venv/bin/python tools/ff_no_slashsemi_gate.py && python tools/ff_layer_hygiene_v1.py --fail && node tools/smoke_dom.js && .venv/bin/python tools/ff_hook_required_check.py --required tools/.artifacts/ff_required_hooks_v1.txt --js app/static/js/ff-app.js && npx eslint -c eslint.config.mjs app/static/js/ff-app.js --quiet && npx stylelint app/static/css/ff.css --config .stylelintrc.json && .venv/bin/python -m djlint app/templates/index.html --lint && npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts",
     "pw:gate:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts tests/ff_checkout_delegation.spec.ts tests/ff_checkout_ux_v2.spec.ts tests/ff_uiux_pro_gate.spec.ts",
     "pw:gate:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com npx playwright test --project=chromium tests/ff_prod_smoke_contract.spec.ts tests/ff_checkout_delegation.spec.ts tests/ff_checkout_ux_v2.spec.ts tests/ff_uiux_pro_gate.spec.ts",
-
     "audit:gate:local": "npm run audit:prod && npm run pw:gate:local",
     "audit:gate:site": "npm run audit:prod && npm run pw:gate:site",
-
     "lint:js": "npx eslint -c eslint.config.mjs app/static/js/ff-app.js --quiet",
     "lint:css": "npx stylelint app/static/css/ff.css --config .stylelintrc.json",
     "lint:html": ".venv/bin/python -m djlint app/templates/index.html --lint",
     "format": "prettier --write app/static/css app/static/js",
-
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "audit:layers": "python tools/ff_layer_hygiene_v1.py --fail"
   },
   "lint-staged": {
     "app/static/css/**/*": [
