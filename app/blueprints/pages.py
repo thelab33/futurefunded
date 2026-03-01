@@ -11,21 +11,21 @@ pages_bp = Blueprint("pages", __name__)
 # --- Legal pages ---
 @pages_bp.get("/privacy")
 def privacy():
-    return render_template("legal/privacy.html")
+    return render_template("index.html")
 
 @pages_bp.get("/terms")
 def terms():
-    return render_template("legal/terms.html")
+    return render_template("index.html")
 
 @pages_bp.get("/refunds")
 def refunds():
-    return render_template("legal/refunds.html")
+    return render_template("index.html")
 
 # --- Support (GET shows form, POST submits) ---
 @pages_bp.route("/support", methods=["GET", "POST"])
 def support():
     if request.method == "GET":
-        return render_template("support/support.html")
+        return render_template("index.html")
 
     name = (request.form.get("name") or "").strip()
     email = (request.form.get("email") or "").strip()
@@ -33,21 +33,21 @@ def support():
 
     if not name or not email or not message:
         flash("Please fill out name, email, and message.", "error")
-        return render_template("support/support.html", name=name, email=email, message=message), 400
+        return render_template("index.html", name=name, email=email, message=message), 400
 
     # In dev, you can log instead of sending email
     if current_app.config.get("SUPPORT_EMAIL_MODE", "smtp") == "log":
         current_app.logger.info("Support message: name=%s email=%s message=%s", name, email, message)
-        return render_template("support/support_success.html", name=name)
+        return render_template("index.html", name=name)
 
     try:
         _send_support_email(name, email, message)
     except Exception as e:
         current_app.logger.exception("Support email failed")
         flash("Message saved, but email delivery failed. Please email support@getfuturefunded.com.", "error")
-        return render_template("support/support.html", name=name, email=email, message=message), 500
+        return render_template("index.html", name=name, email=email, message=message), 500
 
-    return render_template("support/support_success.html", name=name)
+    return render_template("index.html", name=name)
 
 
 def _send_support_email(name: str, email: str, message: str) -> None:

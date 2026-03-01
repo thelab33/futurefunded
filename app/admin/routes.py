@@ -18,7 +18,7 @@ import threading
 from decimal import Decimal
 from typing import Any, Dict, Iterable, List, Optional
 
-from flask import (
+from flask import (, abort
     Blueprint,
     Response,
     current_app,
@@ -345,13 +345,7 @@ def dashboard():
         "goal_amount": _goal_amount_dollars(goal),
     }
 
-    return render_template(
-        "admin/dashboard.html",
-        sponsors=sponsors,
-        transactions=transactions,
-        goal=goal,
-        stats=stats,
-    )
+    return abort(404)
 
 
 # ───────────────────────────────
@@ -365,7 +359,7 @@ def sponsors_list():
     q_text = (request.args.get("q") or "").strip()
 
     if not Sponsor or not _table_exists(Sponsor):
-        return render_template("admin/sponsors.html", sponsors=sponsors)
+        return abort(404)
 
     try:
         q = db.session.query(Sponsor)
@@ -379,7 +373,7 @@ def sponsors_list():
         current_app.logger.exception("Failed loading sponsors list")
         sponsors = []
 
-    return render_template("admin/sponsors.html", sponsors=sponsors)
+    return abort(404)
 
 
 @admin.route("/sponsors/approve/<int:sponsor_id>", methods=["POST"])
@@ -501,7 +495,7 @@ def goals():
 
     if not CampaignGoal or not _table_exists(CampaignGoal):
         flash("Goals are unavailable in this environment.", "warning")
-        return render_template("admin/goals.html", goal=None)
+        return abort(404)
 
     goal = _active_goal(org_id=org_id)
 
@@ -565,7 +559,7 @@ def goals():
 
         return redirect(url_for("admin.goals", org_id=org_id) if org_id else url_for("admin.goals"))
 
-    return render_template("admin/goals.html", goal=goal)
+    return abort(404)
 
 
 # ───────────────────────────────
@@ -586,7 +580,7 @@ def transactions_list():
         except Exception:
             current_app.logger.exception("Failed loading transactions")
 
-    return render_template("admin/transactions.html", transactions=txs)
+    return abort(404)
 
 
 # ───────────────────────────────

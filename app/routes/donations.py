@@ -41,7 +41,7 @@ def donate_for_org(org_slug: str):
 
     # --- STEP 1: Render donation form -------------------------------------------
     if request.method == "GET":
-        return render_template("donate.html", org=org)
+        return render_template("index.html", org=org)
 
     # --- STEP 2: Handle donation POST (AJAX) ------------------------------------
     try:

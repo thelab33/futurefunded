@@ -20,7 +20,7 @@ import io
 import logging
 
 import requests
-from flask import (Blueprint, Response, current_app, flash, jsonify, redirect,
+from flask import (Blueprint, Response, current_app, flash, jsonify, redirect, abort
                    render_template, request, url_for)
 
 from app.extensions import db
@@ -136,13 +136,7 @@ def dashboard():
     except Exception:  # pragma: no cover
         current_app.logger.exception("Admin dashboard query failed")
 
-    return render_template(
-        "admin/dashboard.html",
-        sponsors=sponsors,
-        transactions=transactions,
-        goal=goal,
-        stats=stats,
-    )
+    return abort(404)
 
 
 # ───────────────────────────────
@@ -153,7 +147,7 @@ def sponsors_list():
     """List sponsors with optional name search."""
     if not Sponsor:
         flash("Sponsor model unavailable.", "warning")
-        return render_template("admin/sponsors.html", sponsors=[])
+        return abort(404)
 
     q = request.args.get("q", "").strip()
     query = Sponsor.query
@@ -172,7 +166,7 @@ def sponsors_list():
         current_app.logger.exception("Sponsor list query failed")
         sponsors = []
 
-    return render_template("admin/sponsors.html", sponsors=sponsors)
+    return abort(404)
 
 
 @bp.post("/sponsors/approve/<int:sponsor_id>")
@@ -277,7 +271,7 @@ def goals():
     """View/update the active campaign goal (schema tolerant)."""
     if not CampaignGoal:
         flash("CampaignGoal model unavailable.", "warning")
-        return render_template("admin/goals.html", goal=None)
+        return abort(404)
 
     goal = None
     try:
@@ -313,7 +307,7 @@ def goals():
         current_app.logger.exception("Update goal failed")
         flash("Could not update goal.", "danger")
 
-    return render_template("admin/goals.html", goal=goal)
+    return abort(404)
 
 
 # ───────────────────────────────
@@ -324,7 +318,7 @@ def transactions_list():
     """List all transactions (most recent first)."""
     if not Transaction:
         flash("Transaction model unavailable.", "warning")
-        return render_template("admin/transactions.html", transactions=[])
+        return abort(404)
 
     try:
         txs = Transaction.query.order_by(
@@ -334,7 +328,7 @@ def transactions_list():
         current_app.logger.exception("Transactions query failed")
         txs = []
 
-    return render_template("admin/transactions.html", transactions=txs)
+    return abort(404)
 
 
 # ───────────────────────────────

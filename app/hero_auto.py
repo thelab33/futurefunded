@@ -95,7 +95,7 @@ def home():
         deadline="",
         currency="USD",
     )
-    return render_template("pages/home.html", **data)
+    return render_template("index.html", **data)
 
 
 # ───────────────────────── Optional CSP / Talisman hook ─────────────────────────

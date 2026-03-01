@@ -28,8 +28,7 @@ def thank_you():
                 amount_val = None
 
         # Prefer template (brandable)
-        return render_template(
-            "thank_you.html",
+        return render_template("index.html",
             org=org,
             amount=amount_val,
             redirect_status=redirect_status,

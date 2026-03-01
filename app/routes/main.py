@@ -296,7 +296,7 @@ def json_sanitize(obj: Any) -> JSONValue:
 
 def _render_error(message: str, status: int = 500):
     try:
-        return render_template("error.html", message=message), status
+        return render_template("index.html", message=message), status
     except Exception:
         return message, status
         
@@ -1326,13 +1326,13 @@ def become_sponsor():
         except Exception:
             current_app.logger.exception("Sponsor submission error", extra={"name": name, "amount": float(amt)})
             flash("Unable to process sponsorship right now.", "danger")
-            return render_template("become_sponsor.html", form=form), 500
+            return render_template("index.html", form=form), 500
 
     if request.method == "POST":
         flash("Please correct the errors in the form.", "warning")
-        return render_template("become_sponsor.html", form=form), 400
+        return render_template("index.html", form=form), 400
 
-    return render_template("become_sponsor.html", form=form)
+    return render_template("index.html", form=form)
 
 
 @bp.get("/about")
@@ -1344,7 +1344,7 @@ def about():
             about=_generate_about_section(cfg),
             mission=_generate_mission_section(cfg, _generate_impact_stats(cfg)),
         )
-        resp = make_response(render_template("about.html", **context))
+        resp = make_response(render_template("index.html", **context))
         resp.set_etag(_short_etag(str(sorted(context.keys()))))
         _nocache_html(resp)
         return resp
@@ -1361,7 +1361,7 @@ def sponsor_list():
 
     q = _sponsor_query()
     if q is None:
-        return render_template("sponsor_list.html", sponsors=sponsors, pagination=pagination)
+        return render_template("index.html", sponsors=sponsors, pagination=pagination)
 
     try:
         try:
@@ -1374,7 +1374,7 @@ def sponsor_list():
         current_app.logger.exception("Error fetching sponsors list")
         sponsors, pagination = [], None
 
-    return render_template("sponsor_list.html", sponsors=sponsors, pagination=pagination)
+    return render_template("index.html", sponsors=sponsors, pagination=pagination)
 
 
 @bp.route("/donate", methods=["GET", "POST"])
@@ -1408,11 +1408,11 @@ def donate():
         if hasattr(form, "source"):
             form.source.data = prefill["source"]
 
-        return render_template("donate.html", form=form, prefill=prefill)
+        return render_template("index.html", form=form, prefill=prefill)
 
     if not form.validate_on_submit():
         flash("Please fix the highlighted errors and try again.", "warning")
-        return render_template("donate.html", form=form, prefill=prefill), 400
+        return render_template("index.html", form=form, prefill=prefill), 400
 
     def _field_value(obj: Any, name: str, default: str = "") -> Any:
         return getattr(obj, name).data if hasattr(obj, name) else default
@@ -1486,7 +1486,7 @@ def thank_you():
         )
 
     try:
-        return render_template("thank_you.html", org=org, amount=amount, return_url=return_url)
+        return render_template("index.html", org=org, amount=amount, return_url=return_url)
     except Exception:
         current_app.logger.exception("thank-you template render failed; using fallback")
         html = f"""<!doctype html>
@@ -1524,7 +1524,7 @@ def tiers():
         return Response(html, mimetype="text/html", status=200)
 
     if _template_exists("tiers.html"):
-        return render_template("tiers.html", tiers=tiers_list, team=cfg)
+        return render_template("index.html", tiers=tiers_list, team=cfg)
 
     if _template_exists(fragment_tpl):
         fragment = render_template(fragment_tpl, tiers=tiers_list, team=cfg)
