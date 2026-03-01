@@ -63,3 +63,6 @@ app/data/*.sqlite*
 
 # FF tooling artifacts
 tools/.artifacts/
+
+# Windows download metadata
+*:Zone.Identifier
