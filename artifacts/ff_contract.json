@@ -1,0 +1,7 @@
+{
+  "overlays": ["checkout","sponsor-interest","press-video","terms","privacy","drawer"],
+  "modal_markers": [".ff-modal",".ff-sheet",".ff-drawer","[role='dialog']","[aria-modal='true']"],
+  "allow_modifier_via_base": true,
+  "allow_element_via_base": true,
+  "ignore_css_classes": []
+}
