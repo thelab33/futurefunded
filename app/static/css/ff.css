@@ -3379,3 +3379,146 @@ overflow-x: clip;
 
 
 /* EOF: app/static/css/ff.css */
+
+/* ======================================================
+FF PATCH: strict-missing selectors (2026-03-05)
+Purpose: satisfy contract audits for markup-aligned classes.
+Safe: additive only.
+====================================================== */
+@layer ff.utilities, ff.controls, ff.surfaces, ff.pages;
+
+/* Utilities */
+@layer ff.utilities {
+  .ff-mt-0 { margin-top: 0 !important; }
+
+  /* Focus probe inserted by ff-app.js for Playwright focus-visible gating */
+  .ff-focus-probe {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 2147483647;
+    transform: translateY(-160%);
+    opacity: 0.001;
+    pointer-events: auto;
+    padding: 8px 12px;
+    border-radius: var(--ff-r-2, 14px);
+    text-decoration: none;
+    background: rgba(10, 15, 26, 0.86);
+    color: rgba(246, 247, 255, 0.96);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 12px 34px rgba(0,0,0,0.45);
+    outline: 0 solid transparent;
+    outline-offset: 2px;
+  }
+  .ff-focus-probe:focus,
+  .ff-focus-probe:focus-visible {
+    opacity: 1;
+    transform: translateY(0);
+    outline: 2px solid rgba(255,255,255,0.9);
+    box-shadow:
+      0 0 0 3px rgba(99, 102, 241, 0.55),
+      0 12px 34px rgba(0,0,0,0.45);
+  }
+}
+
+/* FAQ Card */
+@layer ff.surfaces {
+  .ff-faqCard {
+    border-radius: var(--ff-r-3, 18px);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 16px 44px rgba(0,0,0,0.22);
+    overflow: hidden;
+  }
+}
+
+/* Topbar Goal cluster */
+@layer ff.controls {
+  .ff-topbarGoal {
+    display: grid;
+    gap: var(--ff-1, 4px);
+    min-width: 0;
+  }
+  .ff-topbarGoal__stack {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ff-2, 8px);
+    min-width: 0;
+  }
+  .ff-topbarGoal__goal {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .ff-topbarGoal__numbers {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ff-2, 8px);
+    min-width: 0;
+  }
+  .ff-topbarGoal__raised {
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .ff-topbarGoal__sep {
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+  .ff-topbarGoal__percent {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.92;
+    white-space: nowrap;
+  }
+  .ff-topbarGoal__progress {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  /* If your markup uses an inner bar element, this makes it visible */
+  .ff-topbarGoal__progress > .ff-progress__bar,
+  .ff-topbarGoal__progress > span,
+  .ff-topbarGoal__progress > i {
+    display: block;
+    height: 100%;
+    width: var(--ff-progress, 0%);
+    background: rgba(99, 102, 241, 0.75);
+    border-radius: inherit;
+  }
+}
+
+/* Trust section */
+@layer ff.pages {
+  .ff-trustSignals {
+    display: grid;
+    gap: var(--ff-3, 12px);
+  }
+  .ff-trustCard {
+    border-radius: var(--ff-r-3, 18px);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    padding: var(--ff-4, 16px);
+    box-shadow: 0 16px 44px rgba(0,0,0,0.22);
+  }
+  .ff-trustSignal {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ff-3, 12px);
+    min-width: 0;
+  }
+}
+
+/* Video mount */
+@layer ff.pages {
+  .ff-videoMount {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--ff-r-3, 18px);
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+  }
+}
