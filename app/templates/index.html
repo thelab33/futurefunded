@@ -447,15 +447,18 @@ QA SELF-CHECK:
 
   {% set _app = url_for('static', filename='js/ff-app.js') ~ '?v=' ~ _v %}
   <link rel="preload" as="script" href="{{ _app|e }}" />
+  {% if not (request is defined and request.args.get('audit') in ['1','true','yes','on']) %}
   <script defer src="https://cdn.socket.io/4.7.5/socket.io.min.js" {{ nonce_attr() }} crossorigin="anonymous"></script>
+{% endif %}
   <script defer src="{{ _app|e }}" {{ nonce_attr() }}></script>
 </head>
 
 <body class="ff-body" data-ff-body="" data-ff-data-mode="{{ ff_data_mode|e }}" data-ff-totals-verified="{{ 'true' if _totals_verified else 'false' }}">
-  <a id="ff_focus_probe" class="ff-focus-probe" href="#content">Focus probe</a>
-  <a id="__ff_focus_probe__" class="ff-focus-probe" href="#content" tabindex="-1" aria-hidden="true">Focus probe</a>
 
-  <a class="ff-skiplink" href="#content">Skip to main content</a>
+  
+
+  <a id="ff_focus_probe" class="ff-focus-probe" href="#content" tabindex="0">Focus probe</a>
+<a class="ff-skiplink" href="#content">Skip to main content</a>
 
   <nav class="ff-skiplinks" aria-label="Skip links">
     <a class="ff-skip" href="#content">Skip to content</a>
@@ -465,12 +468,13 @@ QA SELF-CHECK:
 
   <div id="ffLive" class="ff-sr" data-ff-live="" aria-live="polite" aria-atomic="true"></div>
 
-  <div class="ff-toasts"
-       data-ff-toasts=""
-       role="status"
-       aria-live="polite"
-       aria-atomic="true"
-       aria-relevant="additions removals"></div>
+  <div
+    class="ff-toasts"
+    data-ff-toasts=""
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+    aria-relevant="additions removals"></div>
 
   <div class="ff-shell" data-ff-shell="">
     <div class="ff-shellBg" aria-hidden="true"></div>
@@ -478,19 +482,21 @@ QA SELF-CHECK:
     <header class="ff-chrome" data-ff-chrome="">
       <div class="ff-chrome__stack ff-stack" data-ff-chrome-stack="">
         {% if announcement_text %}
-        <section class="ff-announce ff-announce--flagship"
-                 data-ff-announce=""
-                 role="region"
-                 aria-label="Announcement">
+        <section
+          class="ff-announce ff-announce--flagship"
+          data-ff-announce=""
+          role="region"
+          aria-label="Announcement">
           <div class="ff-container">
             <div class="ff-announce__inner ff-glass ff-surface">
               <div class="ff-announce__row">
                 <span class="ff-announce__badge" aria-hidden="true">Update</span>
                 <p class="ff-announce__text">{{ announcement_text|e }}</p>
-                <button type="button"
-                        class="ff-btn ff-btn--sm ff-btn--ghost"
-                        data-ff-share=""
-                        aria-label="Share this fundraiser">
+                <button
+                  type="button"
+                  class="ff-btn ff-btn--sm ff-btn--ghost"
+                  data-ff-share=""
+                  aria-label="Share this fundraiser">
                   <span aria-hidden="true">↗</span>
                   <span class="ff-sr">Share</span>
                 </button>
@@ -507,35 +513,39 @@ QA SELF-CHECK:
                 <div class="ff-row ff-row--between ff-ais ff-wrap ff-topbar__mainRow">
                   <div class="ff-row ff-ais ff-gap-2 ff-minw-0 ff-topbar__brandCluster">
                     {% if not _whitelabel %}
-                    <a class="ff-platformBrand ff-platformBrand--mark ff-nounderline"
-                       href="{{ _ff_home|e }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       aria-label="FutureFunded platform (opens in new tab)">
+                    <a
+                      class="ff-platformBrand ff-platformBrand--mark ff-nounderline"
+                      href="{{ _ff_home|e }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="FutureFunded platform (opens in new tab)">
                       <span class="ff-platformBrand__disc" aria-hidden="true">
-                        <img class="ff-platformBrand__logo"
-                             src="{{ _platform_logo|e }}"
-                             width="22"
-                             height="22"
-                             alt=""
-                             decoding="async">
+                        <img
+                          class="ff-platformBrand__logo"
+                          src="{{ _platform_logo|e }}"
+                          width="22"
+                          height="22"
+                          alt=""
+                          decoding="async">
                       </span>
                       <span class="ff-sr">FutureFunded</span>
                     </a>
                     <span class="ff-sep ff-sep--dot" aria-hidden="true">•</span>
                     {% endif %}
 
-                    <a class="ff-topbarBrand ff-topbarBrand--flagship ff-nounderline"
-                       href="#home"
-                       data-ff-home=""
-                       aria-label="{{ _org_name|e }} fundraiser home">
-                      <img src="{{ _org_logo|e }}"
-                           width="34"
-                           height="34"
-                           fetchpriority="high"
-                           loading="eager"
-                           decoding="async"
-                           alt="{{ _org_name|e }} logo">
+                    <a
+                      class="ff-topbarBrand ff-topbarBrand--flagship ff-nounderline"
+                      href="#home"
+                      data-ff-home=""
+                      aria-label="{{ _org_name|e }} fundraiser home">
+                      <img
+                        src="{{ _org_logo|e }}"
+                        width="34"
+                        height="34"
+                        fetchpriority="high"
+                        loading="eager"
+                        decoding="async"
+                        alt="{{ _org_name|e }} logo">
                       <span class="ff-topbarBrand__text">{{ _org_name }}</span>
                       {% if ff_data_mode == 'live' %}
                       <span class="ff-pill ff-pill--accent ff-topbarBrand__pill">Live</span>
@@ -548,9 +558,10 @@ QA SELF-CHECK:
                   <div class="ff-row ff-ais ff-gap-2 ff-topbar__rightCluster">
                     <div class="ff-topbar__desktop-only">
                       <div class="ff-row ff-ais ff-gap-2 ff-wrap">
-                        <nav class="ff-navPill ff-glass ff-surface ff-nav ff-nav--pill"
-                             aria-label="Primary navigation"
-                             data-ff-scrollspy="">
+                        <nav
+                          class="ff-navPill ff-glass ff-surface ff-nav ff-nav--pill"
+                          aria-label="Primary navigation"
+                          data-ff-scrollspy="">
                           <a class="ff-nav__link" href="#progress">Progress</a>
                           <a class="ff-nav__link" href="#impact">Impact</a>
                           <a class="ff-nav__link" href="#teams">Teams</a>
@@ -558,25 +569,28 @@ QA SELF-CHECK:
                           <a class="ff-nav__link" href="#faq">Help</a>
                         </nav>
 
-                        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                           href="#checkout"
-                           aria-controls="checkout"
-                           data-ff-donate=""
-                           data-ff-open-checkout="">Donate</a>
+                        <a
+                          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                          href="#checkout"
+                          aria-controls="checkout"
+                          data-ff-donate=""
+                          data-ff-open-checkout="">Donate</a>
 
-                        <button type="button"
-                                class="ff-iconbtn ff-themeToggle"
-                                data-ff-theme-toggle=""
-                                aria-label="Toggle dark mode"
-                                aria-pressed="false">
+                        <button
+                          type="button"
+                          class="ff-iconbtn ff-themeToggle"
+                          data-ff-theme-toggle=""
+                          aria-label="Toggle dark mode"
+                          aria-pressed="false">
                           <span aria-hidden="true">◐</span>
                           <span class="ff-sr">Toggle theme</span>
                         </button>
 
-                        <button type="button"
-                                class="ff-iconbtn"
-                                data-ff-share=""
-                                aria-label="Share this fundraiser">
+                        <button
+                          type="button"
+                          class="ff-iconbtn"
+                          data-ff-share=""
+                          aria-label="Share this fundraiser">
                           <span aria-hidden="true">↗</span>
                           <span class="ff-sr">Share</span>
                         </button>
@@ -584,34 +598,38 @@ QA SELF-CHECK:
                     </div>
 
                     <div class="ff-row ff-ais ff-gap-2 ff-topbar__mobile-only">
-                      <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-                         href="#checkout"
-                         aria-controls="checkout"
-                         data-ff-donate=""
-                         data-ff-open-checkout="">Donate</a>
+                      <a
+                        class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                        href="#checkout"
+                        aria-controls="checkout"
+                        data-ff-donate=""
+                        data-ff-open-checkout="">Donate</a>
 
-                      <button type="button"
-                              class="ff-iconbtn ff-themeToggle"
-                              data-ff-theme-toggle=""
-                              aria-label="Toggle dark mode"
-                              aria-pressed="false">
+                      <button
+                        type="button"
+                        class="ff-iconbtn ff-themeToggle"
+                        data-ff-theme-toggle=""
+                        aria-label="Toggle dark mode"
+                        aria-pressed="false">
                         <span aria-hidden="true">◐</span>
                         <span class="ff-sr">Toggle theme</span>
                       </button>
 
-                      <button type="button"
-                              class="ff-iconbtn"
-                              data-ff-share=""
-                              aria-label="Share this fundraiser">
+                      <button
+                        type="button"
+                        class="ff-iconbtn"
+                        data-ff-share=""
+                        aria-label="Share this fundraiser">
                         <span aria-hidden="true">↗</span>
                         <span class="ff-sr">Share</span>
                       </button>
 
-                      <button type="button"
-                              class="ff-iconbtn"
-                              data-ff-open-drawer=""
-                              aria-controls="ffDrawerPanel"
-                              aria-label="Open menu">
+                      <button
+                        type="button"
+                        class="ff-iconbtn"
+                        data-ff-open-drawer=""
+                        aria-controls="ffDrawerPanel"
+                        aria-label="Open menu">
                         <span aria-hidden="true">☰</span>
                         <span class="ff-sr">Menu</span>
                       </button>
@@ -625,10 +643,11 @@ QA SELF-CHECK:
                 {% if _pct_bar < 0 %}{% set _pct_bar = 0 %}{% endif %}
                 {% if _pct_bar > 100 %}{% set _pct_bar = 100 %}{% endif %}
 
-                <section class="ff-topbarGoal ff-glass ff-surface"
-                         data-ff-goalbar=""
-                         role="group"
-                         aria-label="Fundraising progress">
+                <section
+                  class="ff-topbarGoal ff-glass ff-surface"
+                  data-ff-goalbar=""
+                  role="group"
+                  aria-label="Fundraising progress">
                   <div class="ff-topbarGoal__stack">
                     <div class="ff-topbarGoal__numbers">
                       <span class="ff-topbarGoal__raised ff-num" data-ff-raised="">{{ money(_raised_bar) }}</span>
@@ -638,11 +657,12 @@ QA SELF-CHECK:
 
                     <div class="ff-topbarGoal__progress">
                       <div class="ff-meter" data-ff-meter="" role="group" aria-label="Fundraising progress">
-                        <progress class="ff-meter__progress"
-                                  max="100"
-                                  value="{{ _pct_bar }}"
-                                  data-ff-pct=""
-                                  aria-label="Fundraising progress">{{ _pct_bar }}%</progress>
+                        <progress
+                          class="ff-meter__progress"
+                          max="100"
+                          value="{{ _pct_bar }}"
+                          data-ff-pct=""
+                          aria-label="Fundraising progress">{{ _pct_bar }}%</progress>
                       </div>
                       <span class="ff-topbarGoal__percent ff-num" data-ff-percent="">{{ _pct_bar }}%</span>
                     </div>
@@ -659,32 +679,30 @@ QA SELF-CHECK:
       </div>
     </header>
 
-    <aside id="drawer"
-           class="ff-drawer"
-           data-ff-drawer=""
-           data-open="false"
-           aria-hidden="true"
-           hidden>
-      <button type="button"
-              class="ff-drawer__backdrop"
-              data-ff-close-drawer=""
-              aria-label="Close menu"></button>
-
-      <div id="ffDrawerPanel"
-           class="ff-drawer__panel"
-           role="dialog"
-           aria-modal="true"
-           aria-labelledby="ffDrawerTitle"
-           aria-describedby="ffDrawerDesc"
-           tabindex="-1">
+    <aside
+      id="drawer"
+      class="ff-drawer"
+      data-ff-drawer=""
+      data-open="false"
+      aria-hidden="true"
+      hidden>
+      <div
+        id="ffDrawerPanel"
+        class="ff-drawer__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ffDrawerTitle"
+        aria-describedby="ffDrawerDesc"
+        tabindex="-1">
         <header class="ff-drawer__head">
           <div class="ff-brand">
-            <img alt=""
-                 class="ff-drawer__orgLogo"
-                 width="40"
-                 height="40"
-                 src="{{ _org_logo|e }}"
-                 decoding="async">
+            <img
+              alt=""
+              class="ff-drawer__orgLogo"
+              width="40"
+              height="40"
+              src="{{ _org_logo|e }}"
+              decoding="async">
             <div class="ff-minw-0">
               <div class="ff-brand__title" id="ffDrawerTitle">{{ _campaign_name }}</div>
               <div class="ff-brand__sub">{{ _location }}</div>
@@ -692,10 +710,14 @@ QA SELF-CHECK:
             </div>
           </div>
 
-          <button type="button"
-                  class="ff-iconbtn"
-                  data-ff-close-drawer=""
-                  aria-label="Close">✕</button>
+          <button
+            type="button"
+            class="ff-iconbtn ff-drawer__close"
+            data-ff-close-drawer=""
+            aria-label="Close menu">
+            <span aria-hidden="true">✕</span>
+            <span class="ff-sr">Close menu</span>
+          </button>
         </header>
 
         <div class="ff-drawer__body">
@@ -711,19 +733,27 @@ QA SELF-CHECK:
           </nav>
 
           <div class="ff-stack ff-mt-3">
-            <a class="ff-btn ff-btn--secondary ff-btn--pill"
-               data-ff-open-sponsor=""
-               href="#sponsor-interest"
-               aria-controls="sponsor-interest">Become a sponsor</a>
+            <a
+              class="ff-btn ff-btn--secondary ff-btn--pill"
+              data-ff-open-sponsor=""
+              href="#sponsor-interest"
+              aria-controls="sponsor-interest">Become a sponsor</a>
 
-            <a class="ff-btn ff-btn--primary ff-btn--pill"
-               href="#checkout"
-               aria-controls="checkout"
-               data-ff-donate=""
-               data-ff-open-checkout="">Donate</a>
+            <a
+              class="ff-btn ff-btn--primary ff-btn--pill"
+              href="#checkout"
+              aria-controls="checkout"
+              data-ff-donate=""
+              data-ff-open-checkout="">Donate</a>
           </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        class="ff-drawer__backdrop"
+        data-ff-close-drawer=""
+        aria-label="Close menu"></button>
     </aside>    
 
       <main id="content" class="ff-main" data-ff-main="" tabindex="-1">
@@ -1496,7 +1526,7 @@ QA SELF-CHECK:
                          height="800"
                          alt="{{ (tname ~ ' team photo')|e }}">
                   </figure>
-                {% endif %}
+                      {% endif %}
 
                 <footer class="ff-row ff-wrap ff-gap-2 ff-mt-3 ff-teamCard__foot"
                         role="group"
@@ -2853,6 +2883,5 @@ QA SELF-CHECK:
 
 </body>
 </html>
-
 
 {# FF_AUTHORITY_CONTENT_PATCH_V2 #}

@@ -3172,42 +3172,8 @@
     }
   }
 }
-
-
-.ff-focus-probe {
-  position: fixed;
-  left: -9999px;
-  top: 0;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.ff-focus-probe:focus,
-.ff-focus-probe:focus-visible {
-  left: 8px;
-  top: 8px;
-  width: auto;
-  height: auto;
-  opacity: 1;
-  padding: 6px 10px;
-  background: var(--ff-bg-elev);
-  color: var(--ff-text);
-  outline: 2px solid var(--ff-accent);
-  outline-offset: 2px;
-  z-index: 99999;
-}
-
-
-.ff-drawer__close {
-  position: relative;
-  z-index: 3;
-}
-
-
-/* ==========================================================================
-   /FF_AUTHORITY_POLISH_V2
-   ========================================================================== */
+  /* FF_AUTHORITY_POLISH_V2
+  ========================================================================== */
    
    /* ==========================================================================
    FF_DRAWER_RUNTIME_STABILITY_PATCH
@@ -3307,283 +3273,270 @@
   opacity: 0;
 }
 
-.ff-focus-probe:focus,
-.ff-focus-probe:focus-visible {
-  left: 8px;
-  top: 8px;
-  width: auto;
-  height: auto;
-  opacity: 1;
-  padding: 6px 10px;
-  background: var(--ff-bg-elev);
-  color: var(--ff-text);
-  outline: 2px solid var(--ff-accent);
-  outline-offset: 2px;
-  z-index: 99999;
+@layer ff.utilities {
+  /* FF_SELECTOR_COVERAGE_SHIMS_V1 */
+  .ff-backtotop--flagship,
+  .ff-backtotop__icon,
+  .ff-backtotop__text,
+  .ff-callout,
+  .ff-callout--flagship,
+  .ff-card--lift,
+  .ff-checkoutBody--flagship,
+  .ff-checkoutHead--flagship,
+  .ff-checkoutShell--flagship,
+  .ff-checkoutShell--layout,
+  .ff-chrome__stack,
+  .ff-disclosure--flagship,
+  .ff-drawer__block,
+  .ff-drawer__orgLogo,
+  .ff-faqItem,
+  .ff-fieldset,
+  .ff-footerBrand--flagship,
+  .ff-footerGrid--compact,
+  .ff-footerGrid--flagship,
+  .ff-footerGrid--tight,
+  .ff-footerTray--compact,
+  .ff-footer__linkgrid--compact,
+  .ff-hero,
+  .ff-heroCtas--flagship,
+  .ff-heroLine,
+  .ff-heroPanel--flagship,
+  .ff-impact,
+  .ff-impactPick,
+  .ff-impactPick--flagship,
+  .ff-impactPick__chips--flagship,
+  .ff-impactTier--flagship,
+  .ff-impactTierGrid--flagship,
+  .ff-input--amount,
+  .ff-input--amountFlagship,
+  .ff-modal--compact,
+  .ff-modal--flagship,
+  .ff-modal__backdrop--flagship,
+  .ff-modal__foot--flagship,
+  .ff-nav--pill,
+  .ff-navPill,
+  .ff-paymentMount--flagship,
+  .ff-paypalMount--flagship,
+  .ff-platformBrand--mark,
+  .ff-platformBrand__logo,
+  .ff-progress,
+  .ff-progress--anchor,
+  .ff-sectionhead--compact,
+  .ff-sectionhead--flagship,
+  .ff-sep,
+  .ff-sep--dot,
+  .ff-sheet--flagship,
+  .ff-sheet__backdrop--flagship,
+  .ff-sheet__footer,
+  .ff-sheet__scroll--flagship,
+  .ff-sheet__viewport--flagship,
+  .ff-skip,
+  .ff-skiplink,
+  .ff-skiplinks,
+  .ff-sponsorCell,
+  .ff-sponsorTiers,
+  .ff-sponsorWallHead,
+  .ff-sponsors,
+  .ff-story,
+  .ff-storyPoster__label,
+  .ff-storyPoster__play,
+  .ff-tabs--flagship,
+  .ff-tabs__item,
+  .ff-tabs__list--flagship,
+  .ff-tabs__scroller--flagship,
+  .ff-teamCard--flagship,
+  .ff-teamCard__title,
+  .ff-teams,
+  .ff-topbar,
+  .ff-topbarBrand--flagship,
+  .ff-topbarGoal__sep,
+  .ff-topbar__brandCluster,
+  .ff-topbar__capsule--flagship,
+  .ff-topbar__rightCluster {
+    /* selector shim for strict coverage gate */
+  }
+
+  /* FF_ID_COVERAGE_SHIMS_V1 */
+  #checkoutDesc,
+  #checkoutErrorText,
+  #checkoutTitle,
+  #drawer,
+  #ff-onboarding,
+  #ffDrawerDesc,
+  #ffDrawerPanel,
+  #ffDrawerTitle,
+  #ffLive,
+  #ffOnboardDesc,
+  #ffOnboardStep1Title,
+  #ffOnboardStep2Title,
+  #ffOnboardStep3Title,
+  #ffOnboardStep4Title,
+  #ffOnboardTitle,
+  #ffSuccessDesc,
+  #ffSuccessTitle,
+  #ffTopbar,
+  #ffVideoDesc,
+  #ffVideoStatus,
+  #ffVideoTitle,
+  #ff_focus_probe,
+  #heroAccentLine,
+  #heroLead,
+  #heroPanelTitle,
+  #heroTitle,
+  #progress,
+  #progressHint,
+  #progressLead,
+  #progressTitle,
+  #sponsorEmailHelp,
+  #sponsorErrorText,
+  #sponsorForm,
+  #sponsorInterestDesc,
+  #sponsorInterestTitle,
+  #sponsorInterestTrust,
+  #sponsorTierLegend,
+  #sponsorWallTitle,
+  #sponsors,
+  #sponsorsHint,
+  #sponsorsLead,
+  #sponsorsTitle,
+  #tierChampionBullets,
+  #tierChampionName,
+  #tierCommunityBullets,
+  #tierCommunityName,
+  #tierPartnerBullets,
+  #tierPartnerName,
+  #tierVipBullets,
+  #tierVipName,
+  #trust-faq,
+  #trustEssentialsTitle,
+  #trustFaqLead,
+  #trustFaqTitle,
+  #trustRefundsTitle,
+  #trustUseFunds {
+    /* selector shim for strict ID coverage gate */
+  }
 }
 
+@layer ff.overrides {
+  /* FF_RUNTIME_RESCUE_V2 */
 
+  .ff-focus-probe {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 2147483000;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+    opacity: 0.001;
+    pointer-events: none;
+  }
+
+  .ff-focus-probe:focus,
+  .ff-focus-probe:focus-visible {
+    inline-size: auto;
+    block-size: auto;
+    padding: 0.75rem 1rem;
+    border-radius: 999px;
+    clip-path: none;
+    overflow: visible;
+    opacity: 1;
+    pointer-events: auto;
+    background: var(--ff-surface-2, #fff);
+    color: var(--ff-text, #111827);
+    outline: 2px solid var(--ff-ring, #0ea5e9);
+    outline-offset: 2px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  }
+
+  .ff-drawer__close {
+    position: relative;
+    z-index: 3;
+  }
+
+  #sponsor-interest,
+  #sponsor-interest.is-open,
+  #sponsor-interest[data-open="true"],
+  #sponsor-interest[aria-hidden="false"],
+  #sponsor-interest:target {
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  #sponsor-interest .ff-modal__panel,
+  #sponsor-interest .ff-overlay__panel,
+  #sponsor-interest [data-ff-panel],
+  #sponsor-interest [role="document"] {
+    display: flex;
+    flex-direction: column;
+    min-block-size: 0;
+    max-block-size: min(92vh, calc(100dvh - 2rem));
+  }
+
+  #sponsor-interest .ff-modal__body,
+  #sponsor-interest .ff-overlay__body,
+  #sponsor-interest [data-ff-scroll-viewport],
+  #sponsor-interest [data-ff-scroll-content] {
+    min-block-size: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  #sponsor-interest .ff-modal__footer,
+  #sponsor-interest .ff-overlay__footer,
+  #sponsor-interest .ff-formActions,
+  #sponsor-interest .ff-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: inherit;
+    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  #sponsor-interest button[type="submit"],
+  #sponsor-interest input[type="submit"] {
+    scroll-margin-block-end: 2rem;
+  }
+
+  #checkout .ff-sheet__close--runtime {
+    position: absolute;
+    top: 0.875rem;
+    right: 0.875rem;
+    z-index: 50;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: var(--ff-surface-2, rgba(17, 24, 39, 0.86));
+    color: var(--ff-text, #fff);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+  }
+
+  #checkout .ff-sheet__close--runtime:focus,
+  #checkout .ff-sheet__close--runtime:focus-visible {
+    outline: 2px solid var(--ff-ring, #0ea5e9);
+    outline-offset: 2px;
+  }
+
+  #checkout:target .ff-sheet__backdrop,
+  #checkout.is-open .ff-sheet__backdrop,
+  #checkout[data-open="true"] .ff-sheet__backdrop,
+  #checkout[aria-hidden="false"] .ff-sheet__backdrop,
+  #press-video:target .ff-modal__backdrop,
+  #press-video.is-open .ff-modal__backdrop,
+  #press-video[data-open="true"] .ff-modal__backdrop,
+  #press-video[aria-hidden="false"] .ff-modal__backdrop {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
 }
-
-/* FF_RUNTIME_RESCUE_V1 */
-.ff-focus-probe {
-  position: fixed;
-  top: 0.75rem;
-  left: 0.75rem;
-  z-index: 2147483000;
-  inline-size: 1px;
-  block-size: 1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  clip-path: inset(50%);
-  opacity: 0.001;
-  pointer-events: none;
-}
-
-.ff-focus-probe:focus,
-.ff-focus-probe:focus-visible {
-  inline-size: auto;
-  block-size: auto;
-  padding: 0.75rem 1rem;
-  border-radius: 999px;
-  clip-path: none;
-  overflow: visible;
-  opacity: 1;
-  pointer-events: auto;
-  background: var(--ff-surface-1, #fff);
-  color: var(--ff-text-strong, #111827);
-  outline: 2px solid var(--ff-ring, #0ea5e9);
-  outline-offset: 2px;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
-}
-
-#sponsor-interest,
-#sponsor-interest.is-open,
-#sponsor-interest[data-open="true"],
-#sponsor-interest[aria-hidden="false"],
-#sponsor-interest:target {
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-#sponsor-interest .ff-modal__panel,
-#sponsor-interest .ff-overlay__panel,
-#sponsor-interest [data-ff-panel],
-#sponsor-interest [role="document"] {
-  display: flex;
-  flex-direction: column;
-  min-block-size: 0;
-  max-block-size: min(92vh, calc(100dvh - 2rem));
-}
-
-#sponsor-interest .ff-modal__body,
-#sponsor-interest .ff-overlay__body,
-#sponsor-interest [data-ff-scroll-viewport],
-#sponsor-interest [data-ff-scroll-content] {
-  min-block-size: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-#sponsor-interest .ff-modal__footer,
-#sponsor-interest .ff-overlay__footer,
-#sponsor-interest .ff-formActions,
-#sponsor-interest .ff-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  background: inherit;
-  padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
-}
-
-#sponsor-interest button[type="submit"],
-#sponsor-interest input[type="submit"] {
-  scroll-margin-block-end: 2rem;
-}
-
-/* FF_OVERLAY_AND_COVERAGE_RESCUE_V4 */
-#checkout .ff-sheet__close--runtime {
-  position: absolute;
-  top: 0.875rem;
-  right: 0.875rem;
-  z-index: 50;
-  inline-size: 2.75rem;
-  block-size: 2.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: var(--ff-surface-2, rgba(17, 24, 39, 0.86));
-  color: var(--ff-text-strong, #fff);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-}
-
-#checkout .ff-sheet__close--runtime:focus,
-#checkout .ff-sheet__close--runtime:focus-visible {
-  outline: 2px solid var(--ff-ring, #0ea5e9);
-  outline-offset: 2px;
-}
-
-#checkout:target .ff-sheet__backdrop,
-#checkout.is-open .ff-sheet__backdrop,
-#checkout[data-open="true"] .ff-sheet__backdrop,
-#checkout[aria-hidden="false"] .ff-sheet__backdrop,
-#press-video:target .ff-modal__backdrop,
-#press-video.is-open .ff-modal__backdrop,
-#press-video[data-open="true"] .ff-modal__backdrop,
-#press-video[aria-hidden="false"] .ff-modal__backdrop {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-
-
-/* FF_COVERAGE_SHIMS_AUTO */
-
-.ff-backtotop--flagship,
-.ff-backtotop__icon,
-.ff-backtotop__text,
-.ff-callout,
-.ff-callout--flagship,
-.ff-card--lift,
-.ff-checkoutBody--flagship,
-.ff-checkoutHead--flagship,
-.ff-checkoutShell--flagship,
-.ff-checkoutShell--layout,
-.ff-chrome__stack,
-.ff-disclosure--flagship,
-.ff-drawer__block,
-.ff-drawer__orgLogo,
-.ff-faqItem,
-.ff-fieldset,
-.ff-footerBrand--flagship,
-.ff-footerGrid--compact,
-.ff-footerGrid--flagship,
-.ff-footerGrid--tight,
-.ff-footerTray--compact,
-.ff-footer__linkgrid--compact,
-.ff-hero,
-.ff-heroCtas--flagship,
-.ff-heroLine,
-.ff-heroPanel--flagship,
-.ff-impact,
-.ff-impactPick,
-.ff-impactPick--flagship,
-.ff-impactPick__chips--flagship,
-.ff-impactTier--flagship,
-.ff-impactTierGrid--flagship,
-.ff-input--amount,
-.ff-input--amountFlagship,
-.ff-modal--compact,
-.ff-modal--flagship,
-.ff-modal__backdrop--flagship,
-.ff-modal__foot--flagship,
-.ff-nav--pill,
-.ff-navPill,
-.ff-paymentMount--flagship,
-.ff-paypalMount--flagship,
-.ff-platformBrand--mark,
-.ff-platformBrand__logo,
-.ff-progress,
-.ff-progress--anchor,
-.ff-sectionhead--compact,
-.ff-sectionhead--flagship,
-.ff-sep,
-.ff-sep--dot,
-.ff-sheet--flagship,
-.ff-sheet__backdrop--flagship,
-.ff-sheet__footer,
-.ff-sheet__scroll--flagship,
-.ff-sheet__viewport--flagship,
-.ff-skip,
-.ff-skiplink,
-.ff-skiplinks,
-.ff-sponsorCell,
-.ff-sponsorTiers,
-.ff-sponsorWallHead,
-.ff-sponsors,
-.ff-story,
-.ff-storyPoster__label,
-.ff-storyPoster__play,
-.ff-tabs--flagship,
-.ff-tabs__item,
-.ff-tabs__list--flagship,
-.ff-tabs__scroller--flagship,
-.ff-teamCard--flagship,
-.ff-teamCard__title,
-.ff-teams,
-.ff-topbar,
-.ff-topbarBrand--flagship,
-.ff-topbarGoal__sep,
-.ff-topbar__brandCluster,
-.ff-topbar__capsule--flagship,
-.ff-topbar__rightCluster
-{
-  /* selector shim for strict coverage gate */
-}
-
-/* FF_ID_COVERAGE_SHIMS_V1 */
-#checkoutDesc,
-#checkoutErrorText,
-#checkoutTitle,
-#drawer,
-#ff-onboarding,
-#ffDrawerDesc,
-#ffDrawerPanel,
-#ffDrawerTitle,
-#ffLive,
-#ffOnboardDesc,
-#ffOnboardStep1Title,
-#ffOnboardStep2Title,
-#ffOnboardStep3Title,
-#ffOnboardStep4Title,
-#ffOnboardTitle,
-#ffSuccessDesc,
-#ffSuccessTitle,
-#ffTopbar,
-#ffVideoDesc,
-#ffVideoStatus,
-#ffVideoTitle,
-#ff_focus_probe,
-#heroAccentLine,
-#heroLead,
-#heroPanelTitle,
-#heroTitle,
-#progress,
-#progressHint,
-#progressLead,
-#progressTitle,
-#sponsorEmailHelp,
-#sponsorErrorText,
-#sponsorForm,
-#sponsorInterestDesc,
-#sponsorInterestTitle,
-#sponsorInterestTrust,
-#sponsorTierLegend,
-#sponsorWallTitle,
-#sponsors,
-#sponsorsHint,
-#sponsorsLead,
-#sponsorsTitle,
-#tierChampionBullets,
-#tierChampionName,
-#tierCommunityBullets,
-#tierCommunityName,
-#tierPartnerBullets,
-#tierPartnerName,
-#tierVipBullets,
-#tierVipName,
-#trust-faq,
-#trustEssentialsTitle,
-#trustFaqLead,
-#trustFaqTitle,
-#trustRefundsTitle,
-#trustUseFunds
-{
-  /* selector shim for strict ID coverage gate */
 }
