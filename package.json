@@ -27,14 +27,15 @@
     "pw:legacy": "npx playwright test --project=chromium --workers=1 tests/qa/legacy/ff_checkout_ux_gate_v2.spec.ts tests/qa/legacy/ff_authority_polish_gate.spec.ts",
     "qa:fast": "run-s audit:dom pw:mini",
     "qa:core": "run-s audit:contracts audit:lint pw:mini",
-    "qa:full": "run-s audit:contracts audit:lint pw:smoke pw:contracts pw:flows pw:integration",
+    "qa:full": "run-s audit:contracts audit:lint pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
     "qa:release:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 run-s audit:contracts audit:lint pw:mini",
     "qa:release:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com run-s audit:contracts audit:lint pw:mini",
     "qa:legacy:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npm run pw:legacy",
     "qa:legacy:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com npm run pw:legacy",
     "report:playwright": "npx playwright show-report",
     "test:e2e": "npm run qa:core",
-    "qa:tree": "find tests/qa -maxdepth 2 -type f | sort"
+    "qa:tree": "find tests/qa -maxdepth 2 -type f | sort",
+    "qa:release:candidate": "run-s audit:contracts audit:lint pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets"
   },
   "lint-staged": {
     "app/static/css/**/*": [
