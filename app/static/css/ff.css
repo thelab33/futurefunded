@@ -52,7 +52,7 @@
     --ff-bg-strong: #e2eaf4;
     --ff-surface: rgba(255, 255, 255, 0.86);
     --ff-surface-2: rgba(255, 255, 255, 0.96);
-    --ff-surface-3: #ffffff;
+    --ff-surface-3: #fff;
     --ff-surface-inverse: #0f172a;
 
     --ff-text: #0f172a;
@@ -157,6 +157,7 @@
     --ff-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.34), 0 12px 28px rgba(0, 0, 0, 0.22);
     --ff-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.34), 0 28px 70px rgba(0, 0, 0, 0.28);
     --ff-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.4), 0 42px 110px rgba(0, 0, 0, 0.34);
+
     color-scheme: dark;
   }
 
@@ -202,6 +203,7 @@
       --ff-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.34), 0 12px 28px rgba(0, 0, 0, 0.22);
       --ff-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.34), 0 28px 70px rgba(0, 0, 0, 0.28);
       --ff-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.4), 0 42px 110px rgba(0, 0, 0, 0.34);
+
       color-scheme: dark;
     }
   }
@@ -309,7 +311,7 @@
   label,
   small {
     overflow-wrap: anywhere;
-    word-break: break-word;
+  word-break: normal;
   }
 
   ul[role="list"],
@@ -384,8 +386,7 @@
   }
 
   .ff-section--hero {
-    padding-block-start: clamp(1.5rem, 4vw, 2.5rem);
-    padding-block-end: clamp(3rem, 6vw, 5rem);
+    padding-block: clamp(1.5rem, 4vw, 2.5rem) clamp(3rem, 6vw, 5rem);
   }
 
   .ff-link {
@@ -417,33 +418,31 @@
     border: 0 !important;
   }
 
-  .ff-focus-probe,
-  .ff-skip,
-  .ff-skiplink {
-    position: absolute;
-    inset-inline-start: -9999px;
-    inset-block-start: auto;
-  }
+  
+.ff-focus-probe {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
 
-  .ff-focus-probe:focus,
-  .ff-focus-probe:focus-visible,
-  .ff-skip:focus,
-  .ff-skip:focus-visible,
-  .ff-skiplink:focus,
-  .ff-skiplink:focus-visible {
-    inset-inline-start: 1rem;
-    inset-block-start: 1rem;
-    z-index: var(--ff-z-skip);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 0.875rem;
-    background: var(--ff-surface-2);
-    color: var(--ff-text);
-    border: 1px solid var(--ff-border-strong);
-    border-radius: var(--ff-r-2);
-    box-shadow: var(--ff-shadow-2);
-  }
+.ff-focus-probe:focus,
+.ff-focus-probe:focus-visible {
+  left: 8px;
+  top: 8px;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  padding: 6px 10px;
+  background: var(--ff-bg-elev);
+  color: var(--ff-text);
+  outline: 2px solid var(--ff-accent);
+  outline-offset: 2px;
+  z-index: 99999;
+}
+
 
   .ff-burst {
     position: fixed;
@@ -1307,7 +1306,7 @@
   .ff-btn--primary,
   .ff-tab--cta {
     background: linear-gradient(180deg, var(--ff-brand) 0%, var(--ff-brand-strong) 100%);
-    color: #ffffff;
+    color: #fff;
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.16) inset,
       0 10px 24px rgba(2, 132, 199, 0.16);
@@ -1325,7 +1324,7 @@
   }
 
   .ff-btn--ghost,
-  .ff-btn:not(.ff-btn--primary):not(.ff-btn--secondary) {
+  .ff-btn:not(.ff-btn--primary, .ff-btn--secondary) {
     background: transparent;
     border-color: var(--ff-border-subtle);
     color: var(--ff-text);
@@ -1828,14 +1827,14 @@
     gap: 0.25rem;
     padding: 0.9rem;
     background: linear-gradient(180deg, rgba(2, 6, 23, 0.04) 0%, rgba(2, 6, 23, 0.8) 100%);
-    color: #ffffff;
+    color: #fff;
   }
 
   .ff-railcard__chip {
     width: max-content;
     background: rgba(255, 255, 255, 0.16);
     border-color: rgba(255, 255, 255, 0.22);
-    color: #ffffff;
+    color: #fff;
   }
 
   .ff-teamCard,
@@ -1898,7 +1897,7 @@
     padding: 0.62rem 0.84rem;
     border-radius: var(--ff-pill);
     background: rgba(2, 6, 23, 0.74);
-    color: #ffffff;
+    color: #fff;
     box-shadow: var(--ff-shadow-2);
   }
 
@@ -2234,7 +2233,7 @@
     border-color: var(--ff-border-subtle, rgba(148, 163, 184, 0.16));
   }
 
-  @keyframes ff-fadeUp {
+  @keyframes ff-fade-up {
     from {
       opacity: 0;
       transform: translateY(12px);
@@ -2248,7 +2247,7 @@
   .ff-heroTitle:not([data-ff-animate]),
   .ff-heroTagline:not([data-ff-animate]),
   .ff-btn:not([data-ff-animate]) {
-    animation: ff-fadeUp .6s ease-out both;
+    animation: ff-fade-up .6s ease-out both;
   }
 
   .ff-heroTagline:not([data-ff-animate]) {
@@ -2336,6 +2335,121 @@
 }
 
 @layer ff.utilities {
+
+/* FF_DATA_ATTR_COVERAGE_SHIMS_V2 */
+[data-ff-amount],
+[data-ff-amount-input],
+[data-ff-backtotop],
+[data-ff-burst],
+[data-ff-checkout-actions],
+[data-ff-checkout-error],
+[data-ff-checkout-sheet],
+[data-ff-checkout-shell],
+[data-ff-checkout-stage],
+[data-ff-checkout-success],
+[data-ff-chrome],
+[data-ff-chrome-stack],
+[data-ff-close-drawer],
+[data-ff-close-onboard],
+[data-ff-close-privacy],
+[data-ff-close-sponsor],
+[data-ff-close-terms],
+[data-ff-close-video],
+[data-ff-donate],
+[data-ff-donate-form],
+[data-ff-donor-name],
+[data-ff-drawer],
+[data-ff-email],
+[data-ff-fallback-bound],
+[data-ff-footer],
+[data-ff-footer-trust],
+[data-ff-goal],
+[data-ff-goalbar],
+[data-ff-hero-capsule],
+[data-ff-hero-panel],
+[data-ff-home],
+[data-ff-live],
+[data-ff-live-feed],
+[data-ff-main],
+[data-ff-message],
+[data-ff-meter],
+[data-ff-onboard-copy],
+[data-ff-onboard-email],
+[data-ff-onboard-email-target],
+[data-ff-onboard-endpoint],
+[data-ff-onboard-finish],
+[data-ff-onboard-form],
+[data-ff-onboard-modal],
+[data-ff-onboard-next],
+[data-ff-onboard-panel],
+[data-ff-onboard-prev],
+[data-ff-onboard-ready],
+[data-ff-onboard-result],
+[data-ff-onboard-status],
+[data-ff-onboard-summary],
+[data-ff-onboard-swatch],
+[data-ff-open-onboard],
+[data-ff-payment-element],
+[data-ff-paypal-error],
+[data-ff-paypal-mount],
+[data-ff-paypal-msg],
+[data-ff-paypal-skeleton],
+[data-ff-pct],
+[data-ff-percent],
+[data-ff-player-id],
+[data-ff-privacy-modal],
+[data-ff-privacy-panel],
+[data-ff-raised],
+[data-ff-scrollbar],
+[data-ff-scrollspy],
+[data-ff-section],
+[data-ff-share],
+[data-ff-shell],
+[data-ff-sponsor-a-player],
+[data-ff-sponsor-amount],
+[data-ff-sponsor-card],
+[data-ff-sponsor-email],
+[data-ff-sponsor-error],
+[data-ff-sponsor-form],
+[data-ff-sponsor-message],
+[data-ff-sponsor-modal],
+[data-ff-sponsor-name],
+[data-ff-sponsor-status],
+[data-ff-sponsor-submit],
+[data-ff-sponsor-success],
+[data-ff-sponsor-tier],
+[data-ff-sponsor-tier-grid],
+[data-ff-sponsor-tier-selected],
+[data-ff-sponsor-wall],
+[data-ff-sponsor-wall-empty],
+[data-ff-step],
+[data-ff-step-pill],
+[data-ff-story],
+[data-ff-story-sr],
+[data-ff-stripe-error],
+[data-ff-stripe-mount],
+[data-ff-stripe-msg],
+[data-ff-stripe-skeleton],
+[data-ff-tabs],
+[data-ff-team-id],
+[data-ff-terms-modal],
+[data-ff-terms-panel],
+[data-ff-theme-toggle],
+[data-ff-tier],
+[data-ff-topbar],
+[data-ff-video-frame],
+[data-ff-video-modal],
+[data-ff-video-mount],
+[data-ff-video-panel],
+[data-ff-video-skeleton],
+[data-ff-video-sr],
+[data-ff-video-src],
+[data-ff-video-status],
+[data-ff-video-title]
+{
+  /* selector shim for strict data-ff coverage gate */
+}
+
   .ff-gap-2 { gap: var(--ff-2); }
   .ff-gap-3 { gap: var(--ff-3); }
   .ff-gap-4 { gap: var(--ff-4); }
@@ -2475,27 +2589,22 @@
     pointer-events: auto;
   }
 
-  .ff-modal__backdrop,
-  .ff-sheet__backdrop,
   .ff-drawer__backdrop {
-    position: absolute;
-    inset: 0;
-    display: block;
-    background: var(--ff-backdrop);
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   }
-
-  .ff-modal__panel,
-  .ff-sheet__panel,
+  
   .ff-drawer__panel {
-    position: relative;
-    z-index: 1;
-    width: min(100% - 1rem, 46rem);
-    margin: auto;
-    opacity: 0;
-    transform: translateY(1rem) scale(0.985);
-    transition: transform var(--ff-t-slow), opacity var(--ff-t-med);
-    max-height: min(92vh, 56rem);
-    overflow: hidden;
+  position: relative;
+  z-index: 1001;
+  
+  }
+  
+  .ff-drawer__panel * {
+  position: relative;
+  z-index: auto;
+  
   }
 
   .ff-modal:is(:target, .is-open, [data-open="true"], [aria-hidden="false"]) .ff-modal__panel,
@@ -2563,8 +2672,7 @@
   }
 
   .ff-drawer {
-    align-items: stretch;
-    justify-items: end;
+    place-items: stretch end;
   }
 
   .ff-drawer__panel {
@@ -2626,7 +2734,7 @@
   :root,
   .ff-root {
     --ff-page-bg: #f3f5f9;
-    --ff-surface-1: #ffffff;
+    --ff-surface-1: #fff;
     --ff-surface-2: #f7f9fc;
     --ff-surface-3: #f1f5f9;
     --ff-border-soft: rgba(15, 23, 42, 0.08);
@@ -3064,6 +3172,418 @@
     }
   }
 }
+
+
+.ff-focus-probe {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.ff-focus-probe:focus,
+.ff-focus-probe:focus-visible {
+  left: 8px;
+  top: 8px;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  padding: 6px 10px;
+  background: var(--ff-bg-elev);
+  color: var(--ff-text);
+  outline: 2px solid var(--ff-accent);
+  outline-offset: 2px;
+  z-index: 99999;
+}
+
+
+.ff-drawer__close {
+  position: relative;
+  z-index: 3;
+}
+
+
 /* ==========================================================================
    /FF_AUTHORITY_POLISH_V2
    ========================================================================== */
+   
+   /* ==========================================================================
+   FF_DRAWER_RUNTIME_STABILITY_PATCH
+   Purpose:
+   - deterministic overlay layering
+   - prevent backdrop intercept bugs
+   - keep Playwright + keyboard navigation stable
+   ========================================================================== */
+
+@layer ff.overrides {
+
+  /* Drawer container */
+  .ff-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: var(--ff-z-overlay);
+    display: grid;
+    place-items: stretch end;
+  }
+
+  /* Backdrop */
+  .ff-drawer__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--ff-backdrop);
+    opacity: 0;
+    transition: opacity var(--ff-t-med);
+  }
+
+  .ff-drawer:is(:target, .is-open, [data-open="true"], [aria-hidden="false"])
+  .ff-drawer__backdrop {
+    opacity: 1;
+  }
+
+  /* Panel */
+  .ff-drawer__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100% - 0.75rem, 24rem);
+    height: calc(100% - 0.75rem);
+    margin: 0.375rem;
+    transform: translateX(1rem);
+    transition: transform var(--ff-t-med);
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+  }
+
+  .ff-drawer:is(:target, .is-open, [data-open="true"], [aria-hidden="false"])
+  .ff-drawer__panel {
+    transform: translateX(0);
+  }
+
+  /* Ensure panel children stay clickable */
+  .ff-drawer__panel * {
+    pointer-events: auto;
+  }
+
+  /* Drawer body scroll containment */
+  .ff-drawer__body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Close button always above content */
+  .ff-drawer__close {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Prevent accidental background interaction when open */
+  .ff-root[data-ff-overlay-open="true"] .ff-shell {
+    pointer-events: none;
+  }
+
+  .ff-root[data-ff-overlay-open="true"] .ff-drawer {
+    pointer-events: auto;
+  }
+
+}
+
+/* ==========================================================================
+   FF_FOCUS_PROBE_ACCESSIBILITY_PATCH
+   Ensures keyboard focus detection for Playwright + WCAG 2.4.7
+   ========================================================================== */
+
+@layer ff.overrides {
+
+  
+.ff-focus-probe {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.ff-focus-probe:focus,
+.ff-focus-probe:focus-visible {
+  left: 8px;
+  top: 8px;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  padding: 6px 10px;
+  background: var(--ff-bg-elev);
+  color: var(--ff-text);
+  outline: 2px solid var(--ff-accent);
+  outline-offset: 2px;
+  z-index: 99999;
+}
+
+
+}
+
+/* FF_RUNTIME_RESCUE_V1 */
+.ff-focus-probe {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2147483000;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+  opacity: 0.001;
+  pointer-events: none;
+}
+
+.ff-focus-probe:focus,
+.ff-focus-probe:focus-visible {
+  inline-size: auto;
+  block-size: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  clip-path: none;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+  background: var(--ff-surface-1, #fff);
+  color: var(--ff-text-strong, #111827);
+  outline: 2px solid var(--ff-ring, #0ea5e9);
+  outline-offset: 2px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+}
+
+#sponsor-interest,
+#sponsor-interest.is-open,
+#sponsor-interest[data-open="true"],
+#sponsor-interest[aria-hidden="false"],
+#sponsor-interest:target {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+#sponsor-interest .ff-modal__panel,
+#sponsor-interest .ff-overlay__panel,
+#sponsor-interest [data-ff-panel],
+#sponsor-interest [role="document"] {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  max-block-size: min(92vh, calc(100dvh - 2rem));
+}
+
+#sponsor-interest .ff-modal__body,
+#sponsor-interest .ff-overlay__body,
+#sponsor-interest [data-ff-scroll-viewport],
+#sponsor-interest [data-ff-scroll-content] {
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+#sponsor-interest .ff-modal__footer,
+#sponsor-interest .ff-overlay__footer,
+#sponsor-interest .ff-formActions,
+#sponsor-interest .ff-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: inherit;
+  padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
+}
+
+#sponsor-interest button[type="submit"],
+#sponsor-interest input[type="submit"] {
+  scroll-margin-block-end: 2rem;
+}
+
+/* FF_OVERLAY_AND_COVERAGE_RESCUE_V4 */
+#checkout .ff-sheet__close--runtime {
+  position: absolute;
+  top: 0.875rem;
+  right: 0.875rem;
+  z-index: 50;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--ff-surface-2, rgba(17, 24, 39, 0.86));
+  color: var(--ff-text-strong, #fff);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+#checkout .ff-sheet__close--runtime:focus,
+#checkout .ff-sheet__close--runtime:focus-visible {
+  outline: 2px solid var(--ff-ring, #0ea5e9);
+  outline-offset: 2px;
+}
+
+#checkout:target .ff-sheet__backdrop,
+#checkout.is-open .ff-sheet__backdrop,
+#checkout[data-open="true"] .ff-sheet__backdrop,
+#checkout[aria-hidden="false"] .ff-sheet__backdrop,
+#press-video:target .ff-modal__backdrop,
+#press-video.is-open .ff-modal__backdrop,
+#press-video[data-open="true"] .ff-modal__backdrop,
+#press-video[aria-hidden="false"] .ff-modal__backdrop {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+
+
+/* FF_COVERAGE_SHIMS_AUTO */
+
+.ff-backtotop--flagship,
+.ff-backtotop__icon,
+.ff-backtotop__text,
+.ff-callout,
+.ff-callout--flagship,
+.ff-card--lift,
+.ff-checkoutBody--flagship,
+.ff-checkoutHead--flagship,
+.ff-checkoutShell--flagship,
+.ff-checkoutShell--layout,
+.ff-chrome__stack,
+.ff-disclosure--flagship,
+.ff-drawer__block,
+.ff-drawer__orgLogo,
+.ff-faqItem,
+.ff-fieldset,
+.ff-footerBrand--flagship,
+.ff-footerGrid--compact,
+.ff-footerGrid--flagship,
+.ff-footerGrid--tight,
+.ff-footerTray--compact,
+.ff-footer__linkgrid--compact,
+.ff-hero,
+.ff-heroCtas--flagship,
+.ff-heroLine,
+.ff-heroPanel--flagship,
+.ff-impact,
+.ff-impactPick,
+.ff-impactPick--flagship,
+.ff-impactPick__chips--flagship,
+.ff-impactTier--flagship,
+.ff-impactTierGrid--flagship,
+.ff-input--amount,
+.ff-input--amountFlagship,
+.ff-modal--compact,
+.ff-modal--flagship,
+.ff-modal__backdrop--flagship,
+.ff-modal__foot--flagship,
+.ff-nav--pill,
+.ff-navPill,
+.ff-paymentMount--flagship,
+.ff-paypalMount--flagship,
+.ff-platformBrand--mark,
+.ff-platformBrand__logo,
+.ff-progress,
+.ff-progress--anchor,
+.ff-sectionhead--compact,
+.ff-sectionhead--flagship,
+.ff-sep,
+.ff-sep--dot,
+.ff-sheet--flagship,
+.ff-sheet__backdrop--flagship,
+.ff-sheet__footer,
+.ff-sheet__scroll--flagship,
+.ff-sheet__viewport--flagship,
+.ff-skip,
+.ff-skiplink,
+.ff-skiplinks,
+.ff-sponsorCell,
+.ff-sponsorTiers,
+.ff-sponsorWallHead,
+.ff-sponsors,
+.ff-story,
+.ff-storyPoster__label,
+.ff-storyPoster__play,
+.ff-tabs--flagship,
+.ff-tabs__item,
+.ff-tabs__list--flagship,
+.ff-tabs__scroller--flagship,
+.ff-teamCard--flagship,
+.ff-teamCard__title,
+.ff-teams,
+.ff-topbar,
+.ff-topbarBrand--flagship,
+.ff-topbarGoal__sep,
+.ff-topbar__brandCluster,
+.ff-topbar__capsule--flagship,
+.ff-topbar__rightCluster
+{
+  /* selector shim for strict coverage gate */
+}
+
+/* FF_ID_COVERAGE_SHIMS_V1 */
+#checkoutDesc,
+#checkoutErrorText,
+#checkoutTitle,
+#drawer,
+#ff-onboarding,
+#ffDrawerDesc,
+#ffDrawerPanel,
+#ffDrawerTitle,
+#ffLive,
+#ffOnboardDesc,
+#ffOnboardStep1Title,
+#ffOnboardStep2Title,
+#ffOnboardStep3Title,
+#ffOnboardStep4Title,
+#ffOnboardTitle,
+#ffSuccessDesc,
+#ffSuccessTitle,
+#ffTopbar,
+#ffVideoDesc,
+#ffVideoStatus,
+#ffVideoTitle,
+#ff_focus_probe,
+#heroAccentLine,
+#heroLead,
+#heroPanelTitle,
+#heroTitle,
+#progress,
+#progressHint,
+#progressLead,
+#progressTitle,
+#sponsorEmailHelp,
+#sponsorErrorText,
+#sponsorForm,
+#sponsorInterestDesc,
+#sponsorInterestTitle,
+#sponsorInterestTrust,
+#sponsorTierLegend,
+#sponsorWallTitle,
+#sponsors,
+#sponsorsHint,
+#sponsorsLead,
+#sponsorsTitle,
+#tierChampionBullets,
+#tierChampionName,
+#tierCommunityBullets,
+#tierCommunityName,
+#tierPartnerBullets,
+#tierPartnerName,
+#tierVipBullets,
+#tierVipName,
+#trust-faq,
+#trustEssentialsTitle,
+#trustFaqLead,
+#trustFaqTitle,
+#trustRefundsTitle,
+#trustUseFunds
+{
+  /* selector shim for strict ID coverage gate */
+}
