@@ -107,10 +107,9 @@ def _env_mode(app: Optional[Flask] = None) -> str:
     for key in ("FF_ENV", "ENV", "FLASK_ENV"):
         val = (os.getenv(key) or "").strip().lower()
         if val:
-            # normalize common aliases
-            if val in {"prod"}:
+            if val == "prod":
                 return "production"
-            if val in {"dev"}:
+            if val == "dev":
                 return "development"
             return val
 
@@ -125,7 +124,6 @@ def _resolve_config(target: Optional[ConfigLike]) -> ConfigLike:
     - Else choose ProductionConfig when env indicates production; otherwise DevelopmentConfig.
     """
     if target is not None:
-        # legacy typo normalization
         if isinstance(target, str) and target == "app.config.config.DevelopmentConfig":
             return "app.config.DevelopmentConfig"
         return target
@@ -160,7 +158,13 @@ def _iter_candidates(x: Union[str, Iterable[str]]) -> List[str]:
 
 
 def _json_error(message: str, status: int, **extra: Any):
-    payload: Dict[str, Any] = {"ok": False, "error": {"code": int(status), "message": str(message)}}
+    payload: Dict[str, Any] = {
+        "ok": False,
+        "error": {
+            "code": int(status),
+            "message": str(message),
+        },
+    }
     rid = extra.pop("request_id", None)
     if rid:
         payload["error"]["request_id"] = rid
@@ -266,10 +270,10 @@ def _configure_logging(app: Flask) -> None:
         handler.addFilter(_RequestIDFilter())
         root.addHandler(handler)
     else:
-        for h in root.handlers:
-            h.addFilter(_RequestIDFilter())
-            if not getattr(h, "formatter", None) or "%(request_id)s" not in getattr(h.formatter, "_fmt", ""):
-                h.setFormatter(logging.Formatter(fmt))
+        for handler in root.handlers:
+            handler.addFilter(_RequestIDFilter())
+            if not getattr(handler, "formatter", None) or "%(request_id)s" not in getattr(handler.formatter, "_fmt", ""):
+                handler.setFormatter(logging.Formatter(fmt))
 
     root.setLevel(str(app.config.get("LOG_LEVEL", "INFO")).upper())
     logging.getLogger("werkzeug").setLevel(str(app.config.get("WERKZEUG_LOG_LEVEL", "WARNING")).upper())
@@ -337,7 +341,6 @@ def _apply_proxyfix(app: Flask) -> None:
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
     app.logger.info("ProxyFix enabled (trusting X-Forwarded-* headers).")
-    # Hint for url_for outside request context (actual scheme comes from ProxyFix inside requests)
     app.config["PREFERRED_URL_SCHEME"] = "https"
 
 
@@ -359,23 +362,20 @@ def _discover_static_roots() -> List[Path]:
     ]
 
     roots: List[Path] = []
-    for p in candidates:
-        if p.is_dir():
-            roots.append(p)
+    for path in candidates:
+        if path.is_dir():
+            roots.append(path)
 
-    # Optional extra roots from env (pipe or comma separated)
     extra = (os.getenv("FF_STATIC_ROOTS") or "").strip()
     if extra:
         for chunk in extra.replace(",", "|").split("|"):
-            c = chunk.strip()
-            if not c:
+            raw = chunk.strip()
+            if not raw:
                 continue
-            pp = Path(c).expanduser()
-            if pp.is_dir():
-                roots.append(pp)
+            path = Path(raw).expanduser()
+            if path.is_dir():
+                roots.append(path)
 
-    # If ff assets exist elsewhere, add their parent dirs as last-resort roots (bounded)
-    # NOTE: bounded and deterministic: only checks a small set of known filenames.
     for name in ("ff-app.js", "ff.css"):
         try:
             for guess in (
@@ -386,24 +386,22 @@ def _discover_static_roots() -> List[Path]:
                 BASE_DIR / "public",
             ):
                 hit = guess / name
-                if hit.is_file():
-                    if hit.parent not in roots:
-                        roots.append(hit.parent)
+                if hit.is_file() and hit.parent not in roots:
+                    roots.append(hit.parent)
         except Exception:
             pass
 
-    # Unique, order-preserving
     seen: set[str] = set()
     out: List[Path] = []
-    for r in roots:
+    for root in roots:
         try:
-            rp = r.resolve()
+            resolved = root.resolve()
         except Exception:
             continue
-        key = str(rp)
+        key = str(resolved)
         if key not in seen:
             seen.add(key)
-            out.append(rp)
+            out.append(resolved)
     return out
 
 
@@ -415,17 +413,19 @@ def _static_max_age(app: Flask, filename: str) -> int:
     """
     if not _is_prod(app):
         return 0
+
     fn = (filename or "").lower()
     if any(tok in fn for tok in (".min.", "-v", "_v", ".hash.", ".chunk.")) or (
         len(fn) >= 16 and any(c in "abcdef0123456789" for c in fn[-16:])
     ):
         return 31536000
+
     return 300
 
 
 def _register_static_routes(app: Flask) -> None:
     roots = _discover_static_roots()
-    app.config["FF_STATIC_ROOTS"] = [str(r) for r in roots]
+    app.config["FF_STATIC_ROOTS"] = [str(root) for root in roots]
     app.logger.info("Static roots: %s", ", ".join(app.config["FF_STATIC_ROOTS"]) or "(none)")
 
     @app.get("/static/<path:filename>", endpoint="static")
@@ -433,8 +433,7 @@ def _register_static_routes(app: Flask) -> None:
         if not filename:
             abort(404)
 
-        parts = Path(filename).parts
-        if ".." in parts:
+        if ".." in Path(filename).parts:
             abort(404)
 
         for root_s in app.config.get("FF_STATIC_ROOTS", []):
@@ -451,7 +450,27 @@ def _register_static_routes(app: Flask) -> None:
                 continue
 
             if full.is_file():
-                return send_file(full, conditional=True, max_age=_static_max_age(app, filename))
+                resp = send_file(full, conditional=True, max_age=_static_max_age(app, filename))
+                try:
+                    fn = (filename or "").lower()
+
+                    if fn.endswith(".webmanifest"):
+                        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+                        resp.headers["Pragma"] = "no-cache"
+                        try:
+                            resp.headers.pop("Expires", None)
+                        except Exception:
+                            pass
+                    elif (not _is_prod(app)) and (fn.endswith("sw.js") or fn.endswith("service-worker.js")):
+                        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+                        resp.headers["Pragma"] = "no-cache"
+                        try:
+                            resp.headers.pop("Expires", None)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                return resp
 
         abort(404)
 
@@ -468,12 +487,13 @@ def _safe_register(app: Flask, dotted: str, attr: Union[str, Iterable[str]], url
 
     try:
         mod = import_module(dotted)
-    except Exception as e:
-        app.logger.warning("Import failed: %s → %s", dotted, e)
+    except Exception as exc:
+        app.logger.warning("Import failed: %s → %s", dotted, exc)
         return False
 
     candidates = _iter_candidates(attr) + ["bp", "api_bp", "main_bp", "admin_bp", "sms_bp"]
     blueprint: Optional[Blueprint] = None
+
     for name in candidates:
         cand = getattr(mod, name, None)
         if isinstance(cand, Blueprint):
@@ -506,6 +526,7 @@ def _register_blueprints(app: Flask) -> None:
         ("app.routes.sms", "sms_bp|bp", "/sms"),
         ("app.routes.legal", "bp", "/legal"),
     ]
+
     for dotted, attr, prefix in core:
         if _module_exists(dotted):
             _safe_register(app, dotted, attr, prefix)
@@ -542,6 +563,7 @@ def _init_sentry(app: Flask) -> None:
     dsn = (os.getenv("SENTRY_DSN") or "").strip()
     if not dsn or not sentry_sdk:
         return
+
     try:
         sentry_sdk.init(
             dsn=dsn,
@@ -557,8 +579,8 @@ def _init_sentry(app: Flask) -> None:
             release=os.getenv("GIT_COMMIT"),
         )
         app.logger.info("Sentry initialized")
-    except Exception as e:
-        app.logger.warning("Sentry init failed: %s", e)
+    except Exception as exc:
+        app.logger.warning("Sentry init failed: %s", exc)
 
 
 def _init_talisman(app: Flask) -> None:
@@ -570,6 +592,7 @@ def _init_talisman(app: Flask) -> None:
 def _init_cors(app: Flask, cors_origins: Union[str, List[str]]) -> None:
     if cors is None:
         return
+
     supports_credentials = (os.getenv("CORS_SUPPORTS_CREDENTIALS", "")).strip().lower() in {"1", "true", "yes", "on"}
     if cors_origins == "*":
         supports_credentials = False
@@ -601,6 +624,7 @@ def _maybe_create_sqlite_tables(app: Flask) -> None:
         return
     if app.config.get("AUTO_CREATE_SQLITE", True) is not True:
         return
+
     try:
         with app.app_context():
             db.create_all()
@@ -624,6 +648,19 @@ def _register_request_lifecycle(app: Flask) -> None:
         start = getattr(g, "_start_ts", None)
         if start:
             resp.headers["X-Response-Time-ms"] = str(int((time.perf_counter() - start) * 1000))
+
+        try:
+            path = request.path or ""
+            if path.endswith(".webmanifest"):
+                resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+                resp.headers["Pragma"] = "no-cache"
+                try:
+                    resp.headers.pop("Expires", None)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         return resp
 
 
@@ -631,7 +668,11 @@ def _register_error_handlers(app: Flask) -> None:
     @app.errorhandler(HTTPException)
     def _http_err(err: HTTPException):
         if _wants_json_response():
-            return _json_error(err.description or err.name, err.code or 500, request_id=getattr(g, "request_id", "-"))
+            return _json_error(
+                err.description or err.name,
+                err.code or 500,
+                request_id=getattr(g, "request_id", "-"),
+            )
         return err
 
     @app.errorhandler(Exception)
@@ -643,6 +684,7 @@ def _register_error_handlers(app: Flask) -> None:
 
         if _wants_json_response():
             return _json_error("Internal Server Error", 500, request_id=getattr(g, "request_id", "-"))
+
         return InternalServerError()
 
 
@@ -772,12 +814,12 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     app.config.setdefault("JSON_AS_ASCII", False)
     app.config.setdefault("PROPAGATE_EXCEPTIONS", False)
 
-    app.config.setdefault("SECRET_KEY", os.getenv("SECRET_KEY") or secrets.token_urlsafe(32))
+    if not app.config.get("SECRET_KEY"):
+        app.config["SECRET_KEY"] = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
+
     app.config.setdefault("SESSION_COOKIE_NAME", os.getenv("SESSION_COOKIE_NAME", "futurefunded"))
     app.config.setdefault("SESSION_COOKIE_SAMESITE", os.getenv("SESSION_COOKIE_SAMESITE", "Lax"))
     app.config.setdefault("SESSION_COOKIE_HTTPONLY", _env_bool_or("SESSION_COOKIE_HTTPONLY", True))
-
-    # IMPORTANT: secure cookies should be ON in production, but still env-overridable.
     app.config.setdefault("SESSION_COOKIE_SECURE", _env_bool_or("SESSION_COOKIE_SECURE", env == "production"))
 
     app.config.setdefault("PREFERRED_URL_SCHEME", "https" if env == "production" else "http")
@@ -797,9 +839,10 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     _register_static_routes(app)
 
     # ---- Optional integrations
+    cors_origins = _parse_cors_origins(env)
     _init_sentry(app)
     _init_talisman(app)
-    _init_cors(app, _parse_cors_origins(env))
+    _init_cors(app, cors_origins)
 
     # ---- Core extensions
     if csrf is not None:
@@ -814,7 +857,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     if Compress:
         Compress(app)
 
-    _init_socketio(app, _parse_cors_origins(env))
+    _init_socketio(app, cors_origins)
 
     # ---- Request lifecycle / errors / CSRF cookie
     _register_request_lifecycle(app)
@@ -833,7 +876,12 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
         @login_manager.user_loader
         def load_user(uid: str):
-            return User.query.get(int(uid)) if User else None
+            if not User:
+                return None
+            try:
+                return db.session.get(User, int(uid))
+            except Exception:
+                return None
 
     if babel is not None:
         babel.init_app(app)
@@ -867,14 +915,24 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
     try:
         from turnkey import init_turnkey  # type: ignore
-    except Exception as e:
-        app.logger.warning("Turnkey import unavailable: %s", e)
+    except Exception as exc:
+        app.logger.warning("Turnkey import unavailable: %s", exc)
     else:
         try:
             init_turnkey(app)
-        except Exception as e:
-            app.logger.warning("Turnkey init failed: %s", e)
+        except Exception as exc:
+            app.logger.warning("Turnkey init failed: %s", exc)
+
+    try:
+        from app.blueprints.futurefunded_onboarding import bp as ff_onboarding_bp  # type: ignore
+
+        if ff_onboarding_bp.name not in app.blueprints:
+            app.register_blueprint(ff_onboarding_bp)
+            app.logger.info("Registered blueprint: %-18s → %s", ff_onboarding_bp.name, "/")
+    except Exception as exc:
+        app.logger.warning("FutureFunded onboarding blueprint registration skipped: %s", exc)
 
     return app
 
 
+__all__ = ["create_app"]

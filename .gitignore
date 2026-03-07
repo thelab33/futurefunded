@@ -1,68 +1,99 @@
+# --------------------------------------------------
+# FutureFunded — repo hygiene
+# --------------------------------------------------
+
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .venv/
+venv/
+.python-version
+.coverage
+.coverage.*
+htmlcov/
 
-# Node
+# Node / frontend
 node_modules/
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
+.pnpm-debug.log*
+.eslintcache
+*.tsbuildinfo
 
-# Playwright
+# Playwright / test outputs
 playwright-report/
 test-results/
-**/playwright-report/
-**/test-results/
+blob-report/
+coverage/
+.nyc_output/
 
-# Local tool artifacts (FutureFunded)
-tools/artifacts/
-tools/.artifacts/**/*.gen.txt
-tools/.artifacts/**/*.tmp
+# Local QA / validation / generated reports
+.logs/
+artifacts/
+tools/.artifacts/
+.htmlvalidate.rendered.json
+getfuturefunded.com_*.report.html
+local.html
+prod.html
 
-# Backups / patches
-*.bak
-*.bak_*
-*.bak-*
-*.bak_loader
-*.bak_djlint
-*.bak_ff*
-*.orig
-*.rej
-
-# OS/editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-# Project backup folders (historical)
-app/templates_backup/
-app/static/css_backup/
-app/static/js/extracted/
-
-# Local databases
+# Local databases / runtime state
+instance/
 app/data/*.db
 app/data/*.sqlite*
 *.db
 *.sqlite*
 
-# FF patch backups
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Backup / patch / restore debris
+*.bak
+*.bak_*
+*.bak-*
+*.bad-*
+*.orig
+*.rej
+*.tmp
+*.tmp_restore
+*.after_patching_backup
+*.withoverrides
+*.bak_loader
+*.bak_djlint
+*.bak_ff*
 *.bak_cookie_secure
 
-# local tooling scratch
-/tools/ff_contrast_audit.py
+# Project-specific backup clutter
+app/static/css/*.bak*
+app/static/js/*.bak*
+app/templates/*.bak*
+app/static/img/_bak_*/
 
-.env
-.env.*
-!.env.example
+# Historical backup folders
+app/templates_backup/
+app/static/css_backup/
+app/static/js/extracted/
 
-.env
-.env.*
-!.env.example
+# Local scratch / one-off outputs
+nohup.out
 
-# FF tooling artifacts
-tools/.artifacts/
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Windows-path junk accidentally created inside repo under WSL
+C:\\Users\\*
 
 # Windows download metadata
 *:Zone.Identifier
