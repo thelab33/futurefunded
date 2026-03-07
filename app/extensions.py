@@ -43,6 +43,7 @@ AutoEscapeFn = _try_import("jinja2", "select_autoescape")
 db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
+# FF_EXT_SOCKETIO_ASYNC_MODE_V1
 socketio = SocketIO(async_mode=os.getenv("SOCKET_ASYNC_MODE", "threading"))
 
 login_manager = LoginManagerCls() if LoginManagerCls else None
@@ -128,12 +129,12 @@ def _attach(msg: Message, attachments: Optional[Iterable[EmailAttachment]]) -> N
     if not attachments:
         return
     for a in attachments:
-        maintype, _, subtype = (a.mimetype or "application/octet-stream").partition("/")
-        part = MIMEBase(maintype or "application", subtype or "octet-stream")
-        part.set_payload(a.content)
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", "attachment", filename=a.filename)
-        msg.attach(part)
+        msg.attach(
+            filename=a.filename,
+            content_type=(a.mimetype or "application/octet-stream"),
+            data=a.content,
+            disposition="attachment",
+        )
 
 
 def _render_template(env: Any, tpl: str, **ctx: Any) -> str:
