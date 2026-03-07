@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+
+{% block page_actions %}
+  <a class="btn" href="{{ url_for('admin.dashboard', org_id=org_id) if org_id else url_for('admin.dashboard') }}">Back to dashboard</a>
+{% endblock %}
+
+{% block content %}
+  {% if not goal_model_available %}
+    <div class="notice">
+      <strong>Goal model unavailable.</strong>
+      This environment cannot read or write campaign goals yet, so the screen stays live with a friendly empty state.
+    </div>
+  {% endif %}
+
+  <section class="grid grid--content">
+    <article class="card stack">
+      <div>
+        <h2>Current active goal</h2>
+        <div class="meta">This value is used as the active campaign target for the current scope.</div>
+      </div>
+
+      <div class="card card--stat">
+        <div class="stat-label">Active goal</div>
+        <div class="stat-value">{{ moneyfmt(goal_amount) }}</div>
+        <div class="stat-help">
+          {% if org_id %}
+            Scoped to org_id={{ org_id }}.
+          {% else %}
+            Global/default scope.
+          {% endif %}
+        </div>
+      </div>
+    </article>
+
+    <article class="card stack">
+      <div>
+        <h2>Update goal</h2>
+        <div class="meta">Set a new campaign target. Existing active rows are safely deactivated first when supported.</div>
+      </div>
+
+      {% if goal_model_available %}
+        <form method="post" class="stack">
+          {% if csrf_token is defined %}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% endif %}
+
+          <label>
+            <span class="label">Goal amount (USD)</span>
+            <input class="input" type="number" name="amount" min="0" step="0.01" value="{{ '%.2f'|format(goal_amount or 0) }}" placeholder="10000.00" required>
+          </label>
+
+          <div class="actions">
+            <button class="btn btn--primary" type="submit">Save goal</button>
+          </div>
+        </form>
+      {% else %}
+        <div class="empty">Goal editing is unavailable here until the CampaignGoal model/table is wired in.</div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

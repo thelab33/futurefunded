@@ -1,0 +1,52 @@
+{% extends "admin/base.html" %}
+
+{% block page_actions %}
+  <a class="btn" href="{{ url_for('admin.dashboard', org_id=org_id) if org_id else url_for('admin.dashboard') }}">Back to dashboard</a>
+{% endblock %}
+
+{% block content %}
+  {% if not transaction_model_available %}
+    <div class="notice">
+      <strong>Transactions table unavailable.</strong>
+      The page remains usable, but there are no transaction records exposed in this environment yet.
+    </div>
+  {% endif %}
+
+  <article class="card stack">
+    <div class="toolbar">
+      <div>
+        <h2>Transactions</h2>
+        <div class="meta">Read-only transaction visibility for recent payment records.</div>
+      </div>
+    </div>
+
+    {% if transaction_model_available and txs %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Status</th>
+              <th>Amount</th>
+              <th>Email</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in txs %}
+              <tr>
+                <td>{{ obj_attr(tx, 'id', default='—') }}</td>
+                <td><span class="badge badge--neutral">{{ tx_status(tx) }}</span></td>
+                <td>{{ moneyfmt(tx_amount_dollars(tx)) }}</td>
+                <td>{{ obj_attr(tx, 'email', 'customer_email', 'donor_email', default='—') or '—' }}</td>
+                <td>{{ dtfmt(obj_attr(tx, 'created_at', 'updated_at')) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif transaction_model_available %}
+      <div class="empty">No transaction rows matched this view yet.</div>
+    {% endif %}
+  </article>
+{% endblock %}

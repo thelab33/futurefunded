@@ -1,0 +1,128 @@
+{% extends "admin/base.html" %}
+
+{% block page_actions %}
+  <a class="btn btn--primary" href="{{ url_for('admin.sponsors_list', org_id=org_id) if org_id else url_for('admin.sponsors_list') }}">Review sponsors</a>
+  <a class="btn" href="{{ url_for('admin.goals', org_id=org_id) if org_id else url_for('admin.goals') }}">Update goal</a>
+{% endblock %}
+
+{% block content %}
+  {% if not sponsor_model_available or not transaction_model_available or not goal_model_available %}
+    <div class="notice">
+      <strong>Heads up:</strong>
+      one or more admin data models are unavailable in this environment. The dashboard stays online and shows whatever data is safely available instead of faceplanting into a 404.
+    </div>
+  {% endif %}
+
+  <section class="grid grid--stats">
+    <article class="card card--stat">
+      <div class="stat-label">Total raised</div>
+      <div class="stat-value">{{ moneyfmt(stats.total_raised) }}</div>
+      <div class="stat-help">Approved sponsor dollars currently visible to the dashboard.</div>
+    </article>
+
+    <article class="card card--stat">
+      <div class="stat-label">Approved sponsors</div>
+      <div class="stat-value">{{ stats.approved_sponsors }}</div>
+      <div class="stat-help">Sponsors currently marked approved.</div>
+    </article>
+
+    <article class="card card--stat">
+      <div class="stat-label">Pending sponsors</div>
+      <div class="stat-value">{{ stats.pending_sponsors }}</div>
+      <div class="stat-help">Sponsors waiting for review or approval.</div>
+    </article>
+
+    <article class="card card--stat">
+      <div class="stat-label">Active goal</div>
+      <div class="stat-value">{{ moneyfmt(stats.goal_amount) }}</div>
+      <div class="stat-help">Current campaign goal for this scope.</div>
+    </article>
+  </section>
+
+  <section class="grid grid--content">
+    <article class="card stack">
+      <div class="toolbar">
+        <div>
+          <h2>Recent sponsors</h2>
+          <div class="meta">Latest entries for review, approval, or cleanup.</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn--sm" href="{{ url_for('admin.sponsors_list', org_id=org_id) if org_id else url_for('admin.sponsors_list') }}">Open sponsor queue</a>
+        </div>
+      </div>
+
+      {% if sponsors %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in sponsors %}
+                {% set status = (obj_attr(s, 'status', default='unknown') or 'unknown')|string|lower %}
+                <tr>
+                  <td>{{ obj_attr(s, 'name', default='—') or '—' }}</td>
+                  <td>{{ obj_attr(s, 'email', default='—') or '—' }}</td>
+                  <td>{{ moneyfmt(obj_attr(s, 'amount', default=0)) }}</td>
+                  <td>
+                    <span class="badge {% if status == 'approved' %}badge--approved{% elif status == 'pending' %}badge--pending{% else %}badge--neutral{% endif %}">
+                      {{ status|title }}
+                    </span>
+                  </td>
+                  <td>{{ dtfmt(obj_attr(s, 'created_at', 'updated_at')) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No sponsors to show yet.</div>
+      {% endif %}
+    </article>
+
+    <article class="card stack">
+      <div class="toolbar">
+        <div>
+          <h2>Recent transactions</h2>
+          <div class="meta">Read-only snapshot of the latest transaction records.</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn--sm" href="{{ url_for('admin.transactions_list', org_id=org_id) if org_id else url_for('admin.transactions_list') }}">Open transactions</a>
+        </div>
+      </div>
+
+      {% if transactions %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tx in transactions %}
+                <tr>
+                  <td>{{ obj_attr(tx, 'id', default='—') }}</td>
+                  <td><span class="badge badge--neutral">{{ tx_status(tx) }}</span></td>
+                  <td>{{ moneyfmt(tx_amount_dollars(tx)) }}</td>
+                  <td>{{ dtfmt(obj_attr(tx, 'created_at', 'updated_at')) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">No transactions to show yet.</div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

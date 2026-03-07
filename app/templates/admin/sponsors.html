@@ -1,0 +1,86 @@
+{% extends "admin/base.html" %}
+
+{% block page_actions %}
+  <a class="btn btn--primary" href="{{ url_for('admin.export_payouts', org_id=org_id) if org_id else url_for('admin.export_payouts') }}">Export CSV</a>
+  <a class="btn" href="{{ url_for('admin.dashboard', org_id=org_id) if org_id else url_for('admin.dashboard') }}">Back to dashboard</a>
+{% endblock %}
+
+{% block content %}
+  {% if not sponsor_model_available %}
+    <div class="notice">
+      <strong>Sponsors table unavailable.</strong>
+      This environment does not currently expose the Sponsor model/table, so the UI stays up with an empty state instead of detonating.
+    </div>
+  {% endif %}
+
+  <article class="card stack">
+    <div class="toolbar">
+      <div>
+        <h2>Sponsor queue</h2>
+        <div class="meta">Search, approve, export, and soft-delete sponsor entries.</div>
+      </div>
+
+      <form method="get" class="search" action="{{ url_for('admin.sponsors_list') }}">
+        {% if org_id %}
+          <input type="hidden" name="org_id" value="{{ org_id }}">
+        {% endif %}
+        <input class="input input--sm" type="search" name="q" value="{{ q_text }}" placeholder="Search sponsor name">
+        <button class="btn btn--sm" type="submit">Search</button>
+      </form>
+    </div>
+
+    {% if sponsor_model_available and sponsors %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th style="min-width:190px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in sponsors %}
+              {% set status = (obj_attr(s, 'status', default='unknown') or 'unknown')|string|lower %}
+              <tr>
+                <td>{{ obj_attr(s, 'name', default='—') or '—' }}</td>
+                <td>{{ obj_attr(s, 'email', default='—') or '—' }}</td>
+                <td>{{ moneyfmt(obj_attr(s, 'amount', default=0)) }}</td>
+                <td>
+                  <span class="badge {% if status == 'approved' %}badge--approved{% elif status == 'pending' %}badge--pending{% else %}badge--neutral{% endif %}">
+                    {{ status|title }}
+                  </span>
+                </td>
+                <td>{{ dtfmt(obj_attr(s, 'created_at', 'updated_at')) }}</td>
+                <td>
+                  <div class="inline-actions">
+                    {% if status != 'approved' %}
+                      <form method="post" action="{{ url_for('admin.approve_sponsor', sponsor_id=obj_attr(s, 'id')) }}{% if org_id %}?org_id={{ org_id }}{% endif %}">
+                        {% if csrf_token is defined %}
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% endif %}
+                        <button class="btn btn--success btn--sm" type="submit">Approve</button>
+                      </form>
+                    {% endif %}
+
+                    <form method="post" action="{{ url_for('admin.delete_sponsor', sponsor_id=obj_attr(s, 'id')) }}{% if org_id %}?org_id={{ org_id }}{% endif %}">
+                      {% if csrf_token is defined %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      {% endif %}
+                      <button class="btn btn--danger btn--sm" type="submit">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif sponsor_model_available %}
+      <div class="empty">No sponsor rows matched this view yet.</div>
+    {% endif %}
+  </article>
+{% endblock %}

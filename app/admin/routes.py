@@ -14,13 +14,15 @@ Refactor goals:
 
 import csv
 import io
+import os
 import threading
 from decimal import Decimal
 from typing import Any, Dict, Iterable, List, Optional
 
-from flask import (, abort
+from flask import (
     Blueprint,
     Response,
+    abort,
     current_app,
     flash,
     jsonify,
@@ -55,7 +57,6 @@ def _require_admin_guard() -> bool:
             return True
         if getattr(current_user, "is_authenticated", False) is False:
             return False
-        # If the model exposes is_admin (bool), require it; else allow
         is_admin = getattr(current_user, "is_admin", True)
         return bool(is_admin)
     except Exception:
@@ -64,7 +65,6 @@ def _require_admin_guard() -> bool:
 
 # ── Models (tolerant imports; continue gracefully if missing) ────────────────
 try:
-    # Prefer explicit imports if you have them; this keeps schema-tolerance intact.
     from app.models import CampaignGoal, Example, Sponsor, Transaction  # type: ignore
 except Exception:  # pragma: no cover
     Sponsor = Transaction = CampaignGoal = Example = None  # type: ignore
@@ -72,19 +72,15 @@ except Exception:  # pragma: no cover
 
 # ── Blueprints ───────────────────────────────────────────────────────────────
 admin = Blueprint("admin", __name__, url_prefix="/admin")
-
-# IMPORTANT: avoid colliding with the RESTX blueprint that is also named "api".
-# Mount this at /api only if you really want it; otherwise consider /internal-api.
 api = Blueprint("admin_api", __name__, url_prefix="/api")
 
-# Export aliases for auto-registrar
 bp = admin
 admin_bp = admin
 api_bp = api
 __all__ = ["bp", "admin_bp", "api_bp", "admin", "api"]
 
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
+# ── Helpers ──────────────────────────────────────────────────────────────────
 def _table_exists(name_or_model: Any) -> bool:
     """Safe table existence check (won’t raise in dev)."""
     try:
@@ -104,6 +100,17 @@ def _first_attr(obj: Any, candidates: Iterable[str]) -> Any:
     return None
 
 
+def _obj_attr(obj: Any, *candidates: str, default: Any = None) -> Any:
+    """Template-safe attribute getter with fallback chain."""
+    for c in candidates:
+        try:
+            if hasattr(obj, c):
+                return getattr(obj, c)
+        except Exception:
+            pass
+    return default
+
+
 def _get_org_id() -> Optional[int]:
     """
     Optional org scoping for multi-tenant dashboards.
@@ -113,6 +120,75 @@ def _get_org_id() -> Optional[int]:
         return request.args.get("org_id", type=int)
     except Exception:
         return None
+
+
+def _home_url() -> str:
+    for endpoint in ("main.home", "main.index", "main_bp.home"):
+        try:
+            return url_for(endpoint)
+        except Exception:
+            continue
+    return "/"
+
+
+def _moneyfmt(value: Any) -> str:
+    try:
+        return f"${float(value or 0):,.2f}"
+    except Exception:
+        return "$0.00"
+
+
+def _dtfmt(value: Any) -> str:
+    if value is None or value == "":
+        return "—"
+    try:
+        if hasattr(value, "strftime"):
+            return value.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        pass
+    try:
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+    except Exception:
+        pass
+    return str(value)
+
+
+def _tx_amount_dollars(tx: Any) -> float:
+    try:
+        if hasattr(tx, "amount"):
+            return float(getattr(tx, "amount", 0) or 0)
+        if hasattr(tx, "amount_cents"):
+            return float(getattr(tx, "amount_cents", 0) or 0) / 100.0
+        if hasattr(tx, "total"):
+            return float(getattr(tx, "total", 0) or 0)
+        if hasattr(tx, "total_cents"):
+            return float(getattr(tx, "total_cents", 0) or 0) / 100.0
+    except Exception:
+        pass
+    return 0.0
+
+
+def _tx_status(tx: Any) -> str:
+    raw = _obj_attr(tx, "status", "payment_status", "state", "result", default="")
+    if raw is None:
+        return "Unknown"
+    text = str(raw).strip()
+    return text.title() if text else "Unknown"
+
+
+def _render_admin(template_name: str, **context: Any):
+    return render_template(
+        template_name,
+        page_brand=current_app.config.get("BRAND_NAME", "FutureFunded"),
+        home_url=_home_url(),
+        moneyfmt=_moneyfmt,
+        dtfmt=_dtfmt,
+        obj_attr=_obj_attr,
+        tx_amount_dollars=_tx_amount_dollars,
+        tx_status=_tx_status,
+        **context,
+    )
 
 
 def _apply_org_filter(q, model: Any, org_id: Optional[int]):
@@ -185,7 +261,6 @@ def _sum_sponsor_amounts(org_id: Optional[int] = None) -> float:
             q = _apply_org_filter(q, Sponsor, org_id)
             return float(q.scalar() or 0.0)
 
-        # Fallback: iterate
         items = (_sponsor_query(org_id=org_id) or db.session.query(Sponsor)).all()
         return float(sum((getattr(s, "amount", 0) or 0) for s in items))
     except Exception:
@@ -219,7 +294,6 @@ def _active_goal(org_id: Optional[int] = None) -> Optional[Any]:
     try:
         q = db.session.query(CampaignGoal)
 
-        # org-first if possible
         if org_id is not None and hasattr(CampaignGoal, "org_id"):
             q = q.filter(CampaignGoal.org_id == org_id)  # type: ignore[attr-defined]
 
@@ -297,7 +371,7 @@ def _admin_guard():
     if request.endpoint and request.endpoint.startswith("admin."):
         if current_user is not None and not _require_admin_guard():
             flash("Please sign in with an admin account.", "warning")
-            return redirect(url_for("main.home"))
+            return redirect(_home_url())
 
 
 # ───────────────────────────────
@@ -310,8 +384,11 @@ def dashboard():
     sponsors: List[Any] = []
     transactions: List[Any] = []
 
-    # Recent sponsors
-    if Sponsor and _table_exists(Sponsor):
+    sponsor_model_available = bool(Sponsor and _table_exists(Sponsor))
+    transaction_model_available = bool(Transaction and _table_exists(Transaction))
+    goal_model_available = bool(CampaignGoal and _table_exists(CampaignGoal))
+
+    if sponsor_model_available:
         try:
             q = db.session.query(Sponsor)
             q = _not_deleted_filter(q, Sponsor)
@@ -321,8 +398,7 @@ def dashboard():
         except Exception:
             current_app.logger.exception("Failed loading recent sponsors")
 
-    # Recent transactions
-    if Transaction and _table_exists(Transaction):
+    if transaction_model_available:
         try:
             q = db.session.query(Transaction)
             q = _apply_org_filter(q, Transaction, org_id)
@@ -331,21 +407,33 @@ def dashboard():
         except Exception:
             current_app.logger.exception("Failed loading recent transactions")
 
-    goal = _active_goal(org_id=org_id)
+    goal = _active_goal(org_id=org_id) if goal_model_available else None
 
-    pending = _count(Sponsor, org_id=org_id, status="pending") if Sponsor else 0
-    approved = _count(Sponsor, org_id=org_id, status="approved") if Sponsor else 0
+    pending = _count(Sponsor, org_id=org_id, status="pending") if sponsor_model_available else 0
+    approved = _count(Sponsor, org_id=org_id, status="approved") if sponsor_model_available else 0
 
     stats = {
         "org_id": org_id,
         "total_raised": _sum_sponsor_amounts(org_id=org_id),
-        "sponsor_count": _count(Sponsor, org_id=org_id) if Sponsor else 0,
+        "sponsor_count": _count(Sponsor, org_id=org_id) if sponsor_model_available else 0,
         "pending_sponsors": pending,
         "approved_sponsors": approved,
         "goal_amount": _goal_amount_dollars(goal),
     }
 
-    return abort(404)
+    return _render_admin(
+        "admin/dashboard.html",
+        page_title="Admin Dashboard",
+        nav_key="dashboard",
+        org_id=org_id,
+        stats=stats,
+        goal=goal,
+        sponsors=sponsors,
+        transactions=transactions,
+        sponsor_model_available=sponsor_model_available,
+        transaction_model_available=transaction_model_available,
+        goal_model_available=goal_model_available,
+    )
 
 
 # ───────────────────────────────
@@ -358,38 +446,49 @@ def sponsors_list():
     sponsors: List[Any] = []
     q_text = (request.args.get("q") or "").strip()
 
-    if not Sponsor or not _table_exists(Sponsor):
-        return abort(404)
+    sponsor_model_available = bool(Sponsor and _table_exists(Sponsor))
+    if sponsor_model_available:
+        try:
+            q = db.session.query(Sponsor)
+            q = _not_deleted_filter(q, Sponsor)
+            q = _apply_org_filter(q, Sponsor, org_id)
+            if q_text and hasattr(Sponsor, "name"):
+                q = q.filter(getattr(Sponsor, "name").ilike(f"%{q_text}%"))
+            q = _order_by_recent(q, Sponsor)
+            sponsors = q.all()
+        except Exception:
+            current_app.logger.exception("Failed loading sponsors list")
+            sponsors = []
 
-    try:
-        q = db.session.query(Sponsor)
-        q = _not_deleted_filter(q, Sponsor)
-        q = _apply_org_filter(q, Sponsor, org_id)
-        if q_text and hasattr(Sponsor, "name"):
-            q = q.filter(getattr(Sponsor, "name").ilike(f"%{q_text}%"))
-        q = _order_by_recent(q, Sponsor)
-        sponsors = q.all()
-    except Exception:
-        current_app.logger.exception("Failed loading sponsors list")
-        sponsors = []
-
-    return abort(404)
+    return _render_admin(
+        "admin/sponsors.html",
+        page_title="Sponsors",
+        nav_key="sponsors",
+        org_id=org_id,
+        q_text=q_text,
+        sponsors=sponsors,
+        sponsor_model_available=sponsor_model_available,
+    )
 
 
 @admin.route("/sponsors/approve/<int:sponsor_id>", methods=["POST"])
 @login_required
 def approve_sponsor(sponsor_id: int):
+    org_id = _get_org_id()
+    dest = url_for("admin.sponsors_list", org_id=org_id) if org_id else url_for("admin.sponsors_list")
+
     if not Sponsor or not _table_exists(Sponsor):
         flash("Sponsors table is unavailable.", "warning")
-        return redirect(url_for("admin.sponsors_list"))
+        return redirect(dest)
 
-    sponsor = db.session.get(Sponsor, sponsor_id)  # SA 2.x style
+    sponsor = db.session.get(Sponsor, sponsor_id)
     if not sponsor:
         flash("Sponsor not found.", "warning")
-        return redirect(url_for("admin.sponsors_list"))
+        return redirect(dest)
 
     if hasattr(sponsor, "status"):
         sponsor.status = "approved"
+
     try:
         db.session.commit()
         flash(f"Sponsor '{getattr(sponsor, 'name', 'Unknown')}' approved!", "success")
@@ -402,22 +501,24 @@ def approve_sponsor(sponsor_id: int):
         current_app.logger.exception("Approve sponsor failed")
         flash("Could not approve sponsor.", "danger")
 
-    return redirect(url_for("admin.sponsors_list"))
+    return redirect(dest)
 
 
 @admin.route("/sponsors/delete/<int:sponsor_id>", methods=["POST"])
 @login_required
 def delete_sponsor(sponsor_id: int):
+    org_id = _get_org_id()
+    dest = url_for("admin.sponsors_list", org_id=org_id) if org_id else url_for("admin.sponsors_list")
+
     if not Sponsor or not _table_exists(Sponsor):
         flash("Sponsors table is unavailable.", "warning")
-        return redirect(url_for("admin.sponsors_list"))
+        return redirect(dest)
 
     sponsor = db.session.get(Sponsor, sponsor_id)
     if not sponsor:
         flash("Sponsor not found.", "warning")
-        return redirect(url_for("admin.sponsors_list"))
+        return redirect(dest)
 
-    # Support both schemas
     try:
         if hasattr(sponsor, "deleted_at"):
             sponsor.deleted_at = func.now()  # type: ignore[attr-defined]
@@ -434,7 +535,7 @@ def delete_sponsor(sponsor_id: int):
         current_app.logger.exception("Delete sponsor failed")
         flash("Could not delete sponsor.", "danger")
 
-    return redirect(url_for("admin.sponsors_list"))
+    return redirect(dest)
 
 
 # ───────────────────────────────
@@ -492,10 +593,22 @@ def export_payouts():
 @login_required
 def goals():
     org_id = _get_org_id()
+    goal_model_available = bool(CampaignGoal and _table_exists(CampaignGoal))
 
-    if not CampaignGoal or not _table_exists(CampaignGoal):
-        flash("Goals are unavailable in this environment.", "warning")
-        return abort(404)
+    if not goal_model_available:
+        if request.method == "POST":
+            flash("Goals are unavailable in this environment.", "warning")
+            return redirect(url_for("admin.goals", org_id=org_id) if org_id else url_for("admin.goals"))
+
+        return _render_admin(
+            "admin/goals.html",
+            page_title="Campaign Goal",
+            nav_key="goals",
+            org_id=org_id,
+            goal=None,
+            goal_amount=0.0,
+            goal_model_available=False,
+        )
 
     goal = _active_goal(org_id=org_id)
 
@@ -512,7 +625,6 @@ def goals():
         goal_cents = int(round(amount_dollars * 100))
 
         try:
-            # Deactivate others if supported (org-scoped if possible)
             q = db.session.query(CampaignGoal)
             if org_id is not None and hasattr(CampaignGoal, "org_id"):
                 q = q.filter(CampaignGoal.org_id == org_id)  # type: ignore[attr-defined]
@@ -523,7 +635,6 @@ def goals():
                 q.update({CampaignGoal.is_active: False})  # type: ignore[arg-type]
 
             if goal:
-                # cents-first
                 if hasattr(goal, "goal_amount"):
                     goal.goal_amount = goal_cents
                 elif hasattr(goal, "amount"):
@@ -536,7 +647,6 @@ def goals():
                 fields: Dict[str, Any] = {}
                 if hasattr(CampaignGoal, "org_id") and org_id is not None:
                     fields["org_id"] = org_id
-                # team_id intentionally NOT required anymore (nullable in your new model)
                 if hasattr(CampaignGoal, "goal_amount"):
                     fields["goal_amount"] = goal_cents
                     fields.setdefault("total", 0)
@@ -559,7 +669,15 @@ def goals():
 
         return redirect(url_for("admin.goals", org_id=org_id) if org_id else url_for("admin.goals"))
 
-    return abort(404)
+    return _render_admin(
+        "admin/goals.html",
+        page_title="Campaign Goal",
+        nav_key="goals",
+        org_id=org_id,
+        goal=goal,
+        goal_amount=_goal_amount_dollars(goal),
+        goal_model_available=True,
+    )
 
 
 # ───────────────────────────────
@@ -570,8 +688,9 @@ def goals():
 def transactions_list():
     org_id = _get_org_id()
     txs: List[Any] = []
+    transaction_model_available = bool(Transaction and _table_exists(Transaction))
 
-    if Transaction and _table_exists(Transaction):
+    if transaction_model_available:
         try:
             q = db.session.query(Transaction)
             q = _apply_org_filter(q, Transaction, org_id)
@@ -580,7 +699,14 @@ def transactions_list():
         except Exception:
             current_app.logger.exception("Failed loading transactions")
 
-    return abort(404)
+    return _render_admin(
+        "admin/transactions.html",
+        page_title="Transactions",
+        nav_key="transactions",
+        org_id=org_id,
+        txs=txs,
+        transaction_model_available=transaction_model_available,
+    )
 
 
 # ───────────────────────────────
@@ -659,4 +785,3 @@ def api_approved_sponsors():
             items = []
 
     return jsonify([_as_dict_sponsor(s) for s in items])
-
