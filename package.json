@@ -33,7 +33,8 @@
     "qa:legacy:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npm run pw:legacy",
     "qa:legacy:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com npm run pw:legacy",
     "report:playwright": "npx playwright show-report",
-    "test:e2e": "npm run qa:core"
+    "test:e2e": "npm run qa:core",
+    "qa:tree": "find tests/qa -maxdepth 2 -type f | sort"
   },
   "lint-staged": {
     "app/static/css/**/*": [
