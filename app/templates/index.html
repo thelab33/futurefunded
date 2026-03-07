@@ -880,23 +880,23 @@ QA SELF-CHECK:
 
           <div class="ff-campaignSnapshot" aria-label="Campaign snapshot">
             <div class="ff-snapshotItem">
-              <span class="ff-snapshotLabel">Goal</span>
-              <span class="ff-snapshotValue">{{ money(_goal_effective) }}</span>
+              <span class="ff-snapshotLabel">Mode</span>
+              <span class="ff-snapshotValue">{% if ff_data_mode == 'live' %}Live{% else %}Preview{% endif %}</span>
             </div>
 
             <div class="ff-snapshotItem">
-              <span class="ff-snapshotLabel">Raised</span>
-              <span class="ff-snapshotValue">{{ money(_raised_effective) }}</span>
+              <span class="ff-snapshotLabel">Totals</span>
+              <span class="ff-snapshotValue">{% if _totals_verified %}Verified{% else %}Pending{% endif %}</span>
             </div>
 
             <div class="ff-snapshotItem">
-              <span class="ff-snapshotLabel">Supporters</span>
-              <span class="ff-snapshotValue">0</span>
+              <span class="ff-snapshotLabel">Teams</span>
+              <span class="ff-snapshotValue">{{ (teams|default([], true))|length }}</span>
             </div>
 
             <div class="ff-snapshotItem">
-              <span class="ff-snapshotLabel">Days left</span>
-              <span class="ff-snapshotValue">60</span>
+              <span class="ff-snapshotLabel">Deadline</span>
+              <span class="ff-snapshotValue">{{ _deadline_fallback|default('TBD', true)|e }}</span>
             </div>
           </div>
 

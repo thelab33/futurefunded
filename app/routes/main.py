@@ -320,19 +320,6 @@ def _ff_json_dumps(obj) -> str:
 
     return json.dumps(_clean(obj), ensure_ascii=False, separators=(",", ":"))
 
-    def _clean(v):
-        if isinstance(v, Decimal):
-            return float(v)
-        if isinstance(v, datetime):
-            return v.isoformat()
-        if isinstance(v, dict):
-            return {k: _clean(x) for k, x in v.items() if x is not None}
-        if isinstance(v, (list, tuple)):
-            return [_clean(x) for x in v if x is not None]
-        return v
-
-    return json.dumps(_clean(obj), ensure_ascii=False, separators=(",", ":"))
-
 
 def _template_exists(name: str) -> bool:
     try:
@@ -1671,3 +1658,37 @@ def checkout_fallback():
     flash("Checkout is loading—please try again.", "info")
     return redirect(url_for("main.home") + "#donate")
 
+
+
+
+# FF_DIAG_EMIT_ENDPOINT_V1
+# Dev-only diagnostic endpoint to broadcast socket events from the running server.
+@bp.route("/_diag/emit")
+def _ff_diag_emit():
+    try:
+        import os
+        from app.extensions import socketio
+
+        # Only allow when DEBUG or explicit env flag (conceal endpoint with 404 when disabled)
+        ff_diag = (
+            current_app.config.get("FF_DIAG", False)
+            or os.getenv("FF_DIAG", "").strip().lower() in ("1", "true", "yes", "on")
+        )
+        if not (current_app.config.get("DEBUG", False) or ff_diag):
+            return ("Not Found", 404)
+
+        amt = request.args.get("amount", "25")
+        donor = request.args.get("donor", "Test Donor")
+        try:
+            amount = float(amt)
+        except Exception:
+            amount = 25.0
+
+        socketio.emit("donation_update", {"amount": amount, "donor": donor})
+        return jsonify({"ok": True, "amount": amount, "donor": donor})
+    except Exception as e:
+        try:
+            current_app.logger.exception("diag emit failed")
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": str(e)}), 500
