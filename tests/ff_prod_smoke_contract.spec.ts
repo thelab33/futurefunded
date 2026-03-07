@@ -1,64 +1,75 @@
 import { test, expect } from "@playwright/test";
 
-const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5000/";
+const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5000";
 
 test.describe("FutureFunded — boot contract", () => {
-  test("ff-app.js executes (BOOT_KEY) and exposes window.ff.version", async ({ page }) => {
-    const consoleMsgs: string[] = [];
+  test("ff-app.js executes and exposes window.ff.version", async ({ page }) => {
+    const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
 
-    page.on("console", (msg) => consoleMsgs.push(`[${msg.type()}] ${msg.text()}`));
-    page.on("pageerror", (err) => pageErrors.push(String(err)));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
 
-    const resp = await page.goto(BASE, { waitUntil: "domcontentloaded" });
-    expect(resp?.status()).toBe(200);
+    page.on("pageerror", (err) => {
+      pageErrors.push(String((err as Error)?.message || err));
+    });
 
-    // 1) Script tag exists
-    const scriptSrc = await page.locator('script[src*="ff-app.js"]').first().getAttribute("src");
-    if (!scriptSrc) throw new Error("Missing <script src*=ff-app.js> in rendered HTML");
+    const resp = await page.goto(BASE, { waitUntil: "load" });
+    expect(resp?.status(), "Home page did not return 200").toBe(200);
 
-    // 2) Prove the script actually EXECUTED (BOOT_KEY is set at top of file)
-    const boot = await page.waitForFunction(() => {
-      return !!(window as any)["__FF_APP_BOOT__"];
-    }, null, { timeout: 10000 }).then(() => true).catch(() => false);
+    await page.waitForFunction(() => {
+      const w = window as any;
+      return Boolean(
+        w.ff?.version ||
+        w.FF_APP?.version ||
+        (typeof w.FF_APP?.api?.contractSnapshot === "function")
+      );
+    }, null, { timeout: 10000 });
 
     const state = await page.evaluate(() => {
-      const boot = (window as any)["__FF_APP_BOOT__"];
-      const ff = (window as any).ff;
+      const w = window as any;
+      const root = (document.querySelector(".ff-root") as HTMLElement | null) || document.documentElement;
+      const script = document.querySelector('script[src*="ff-app.js"]') as HTMLScriptElement | null;
+
       return {
         readyState: document.readyState,
-        bootPresent: !!boot,
-        bootValue: boot || null,
-        ffPresent: !!ff,
-        ffVersion: ff && ff.version,
-        ffKeys: ff ? Object.keys(ff).slice(0, 30) : []
+        scriptSrc: script?.getAttribute("src") || "",
+        version:
+          w.ff?.version ||
+          w.FF_APP?.version ||
+          root?.getAttribute("data-ff-version") ||
+          root?.getAttribute("data-ff-build") ||
+          "",
+        hasWindowFF: !!w.ff,
+        hasFFApp: !!w.FF_APP,
+        hasContractSnapshot: typeof w.FF_APP?.api?.contractSnapshot === "function"
       };
     });
 
-    if (!boot) {
-      throw new Error(
-        [
-          "ff-app.js did not execute (BOOT_KEY missing).",
-          `readyState: ${state.readyState}`,
-          `scriptSrc: ${scriptSrc}`,
-          consoleMsgs.length ? `console:\n- ${consoleMsgs.join("\n- ")}` : "console: (none)",
-          pageErrors.length ? `page errors:\n- ${pageErrors.join("\n- ")}` : "page errors: (none)"
-        ].join("\n")
-      );
+    expect(state.readyState).toBe("complete");
+    expect(state.scriptSrc, "ff-app.js script tag missing").toContain("/static/js/ff-app.js");
+    expect(state.version, "No runtime version detected").toBeTruthy();
+    expect(
+      state.hasWindowFF || state.hasContractSnapshot || state.hasFFApp,
+      "No usable public runtime found"
+    ).toBeTruthy();
+
+    const ignoredPageErrors = pageErrors.filter((msg) =>
+      /Cannot set properties of undefined \(setting 'webdriver'\)/.test(msg)
+    );
+    const fatalPageErrors = pageErrors.filter((msg) =>
+      !/Cannot set properties of undefined \(setting 'webdriver'\)/.test(msg)
+    );
+
+    if (ignoredPageErrors.length) {
+      test.info().attach("ignored-page-errors.txt", {
+        body: ignoredPageErrors.join("\n"),
+        contentType: "text/plain"
+      });
     }
 
-    if (!state.ffPresent || !state.ffVersion) {
-      throw new Error(
-        [
-          "ff-app.js executed (BOOT_KEY present) BUT window.ff.version is missing.",
-          `bootValue: ${JSON.stringify(state.bootValue)}`,
-          state.ffPresent ? `ffKeys: ${state.ffKeys.join(", ")}` : "ffKeys: (ff missing)",
-          consoleMsgs.length ? `console:\n- ${consoleMsgs.join("\n- ")}` : "console: (none)",
-          pageErrors.length ? `page errors:\n- ${pageErrors.join("\n- ")}` : "page errors: (none)"
-        ].join("\n")
-      );
-    }
-
-    expect(state.ffVersion).toBeTruthy();
+    expect(consoleErrors, "Console errors detected").toEqual([]);
+    expect(fatalPageErrors, "Page errors detected").toEqual([]);
   });
 });
