@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html class="ff-root" lang="en" dir="ltr" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Manage FutureFunded onboarding drafts, publish pages, and control page lifecycle from one operator view." />
+  {% if csrf_token is defined %}
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  {% endif %}
+  <title>FutureFunded • Draft Manager</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ff.css') }}" />
+  <script defer src="{{ url_for('static', filename='js/ff-app.js') }}"></script>
+</head>
+<body class="ff-body">
+  <main class="ff-main">
+    <section class="ff-section">
+      <div class="ff-container">
+        <header class="ff-sectionhead ff-sectionhead--flagship">
+          <div class="ff-sectionhead__text ff-minw-0">
+            <p class="ff-kicker ff-m-0">Ops</p>
+            <h1 class="ff-h2 ff-mt-1">FutureFunded Draft Manager</h1>
+            <p class="ff-lead ff-m-0">Manage the draft, published, and archived lifecycle for your onboarding-created pages.</p>
+            <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
+              Signed in as <strong>{{ owner_email }}</strong>
+              {% if is_admin %}<span class="ff-sep ff-sep--dot" aria-hidden="true">•</span><span>Admin</span>{% endif %}
+            </p>
+          </div>
+
+          <div class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2">
+            <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" href="{{ url_for('main.home') }}">Open fundraiser</a>
+            <form method="post" action="{{ url_for('ff_onboarding.logout') }}">
+              {% if csrf_token is defined %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% endif %}
+              <button type="submit" class="ff-btn ff-btn--sm ff-btn--pill">Sign out</button>
+            </form>
+          </div>
+        </header>
+
+        <div class="ff-card ff-glass ff-pad ff-mt-3">
+          {% if draft_summaries %}
+            <div class="ff-stack ff-gap-3">
+              {% for item in draft_summaries %}
+                <article class="ff-card ff-pad ff-teamCard">
+                  <div class="ff-row ff-row--between ff-wrap ff-gap-2">
+                    <div class="ff-minw-0">
+                      <p class="ff-kicker ff-m-0">{{ item.org_type or 'Organization' }}</p>
+                      <h2 class="ff-h3 ff-mt-1 ff-mb-0">{{ item.org_name or item.slug }}</h2>
+                      <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Owner: {{ item.owner_email or '—' }}</p>
+                      <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Contact: {{ item.contact_email or '—' }}</p>
+                    </div>
+
+                    <div class="ff-row ff-wrap ff-gap-2">
+                      {% if item.status == 'published' %}
+                        <span class="ff-pill ff-pill--live">Published</span>
+                      {% elif item.status == 'archived' %}
+                        <span class="ff-pill ff-pill--ghost">Archived</span>
+                      {% else %}
+                        <span class="ff-pill ff-pill--soft">Draft</span>
+                      {% endif %}
+                      <span class="ff-pill ff-pill--ghost">{{ item.slug }}</span>
+                    </div>
+                  </div>
+
+                  <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="group" aria-label="Draft actions">
+                    <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" href="{{ item.draft_url }}" target="_blank" rel="noopener noreferrer">Open draft</a>
+                    <a class="ff-btn ff-btn--sm ff-btn--pill" href="{{ item.json_url }}" target="_blank" rel="noopener noreferrer">View JSON</a>
+
+                    {% if item.public_url %}
+                      <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill" href="{{ item.public_url }}" target="_blank" rel="noopener noreferrer">Open live page</a>
+                    {% endif %}
+
+                    {% if item.can_publish %}
+                      <button
+                        type="button"
+                        class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                        data-ff-onboard-publish=""
+                        data-ff-onboard-draft-slug="{{ item.slug }}">
+                        Publish page
+                      </button>
+                    {% endif %}
+
+                    {% if item.can_unpublish %}
+                      <button
+                        type="button"
+                        class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
+                        data-ff-onboard-unpublish=""
+                        data-ff-onboard-draft-slug="{{ item.slug }}">
+                        Unpublish
+                      </button>
+                    {% endif %}
+
+                    {% if item.can_archive %}
+                      <button
+                        type="button"
+                        class="ff-btn ff-btn--sm ff-btn--pill"
+                        data-ff-onboard-archive=""
+                        data-ff-onboard-draft-slug="{{ item.slug }}">
+                        Archive
+                      </button>
+                    {% endif %}
+                  </div>
+
+                  <div class="ff-row ff-wrap ff-gap-2 ff-mt-2">
+                    <p class="ff-help ff-muted ff-m-0">Created: {{ item.created_at or '—' }}</p>
+                    <p class="ff-help ff-muted ff-m-0">Updated: {{ item.updated_at or '—' }}</p>
+                    {% if item.published_at %}
+                      <p class="ff-help ff-muted ff-m-0">Published: {{ item.published_at }}</p>
+                    {% endif %}
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="ff-help ff-muted ff-m-0">No visible drafts yet. Create one from the onboarding wizard, or sign in with an admin email to view all.</p>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

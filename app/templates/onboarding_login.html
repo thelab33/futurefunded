@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html class="ff-root" lang="en" dir="ltr" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Owner login for managing FutureFunded onboarding drafts, publishing pages, and operator access." />
+  {% if csrf_token is defined %}
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  {% endif %}
+  <style{{ nonce_attr() }}>
+  .ff-authShell { max-width: 42rem; }
+</style>
+  <title>FutureFunded • Owner Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ff.css') }}" />
+</head>
+<body class="ff-body">
+  <main class="ff-main">
+    <section class="ff-section">
+      <div class="ff-container ff-authShell">
+        <article class="ff-card ff-glass ff-pad">
+          <header class="ff-stack ff-gap-2">
+            <p class="ff-kicker ff-m-0">Ops Access</p>
+            <h1 class="ff-h2 ff-mt-1 ff-mb-0">Owner login</h1>
+            <p class="ff-lead ff-m-0">Sign in to manage drafts, publish pages, and control the lifecycle of your FutureFunded pages.</p>
+          </header>
+
+          {% if error %}
+            <div class="ff-alert ff-alert--error ff-mt-3" role="alert">{{ error }}</div>
+          {% endif %}
+
+          <form method="post" action="{{ url_for('ff_onboarding.login') }}" class="ff-stack ff-mt-3">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+            <input type="hidden" name="next" value="{{ next_url }}">
+
+            <label class="ff-stack">
+              <span class="ff-label">Email</span>
+              <input class="ff-input" type="email" name="email" autocomplete="email" required placeholder="you@example.com" value="{{ session_email or '' }}">
+            </label>
+
+            <label class="ff-stack">
+              <span class="ff-label">Access code</span>
+              <input class="ff-input" type="password" name="code" autocomplete="current-password" required placeholder="Enter owner access code">
+            </label>
+
+            <div class="ff-row ff-wrap ff-gap-2 ff-mt-2">
+              <button type="submit" class="ff-btn ff-btn--primary ff-btn--pill">Sign in</button>
+              <a href="{{ url_for('main.home') }}" class="ff-btn ff-btn--pill">Back to fundraiser</a>
+            </div>
+
+            <p class="ff-help ff-muted ff-m-0">
+              Set <code>FF_ONBOARDING_ACCESS_CODE</code> and optionally <code>FF_ONBOARDING_ADMIN_EMAILS</code> in your environment for real deployments.
+            </p>
+          </form>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
