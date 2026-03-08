@@ -1009,7 +1009,7 @@ def main() -> None:
                 getattr(_socketio, "async_mode", cfg.async_mode),
                 allow_unsafe,
             )
-            _socketio.run(flask_app, allow_unsafe_werkzeug=allow_unsafe, **run_kwargs)
+            _socketio.run(flask_app, allow_unsafe_werkzeug=True, **run_kwargs)
         else:
             logging.info("Socket.IO not available; falling back to Flask.run()")
             flask_app.run(**run_kwargs)
