@@ -435,7 +435,7 @@ QA SELF-CHECK:
     <meta name="ff:{{ k }}" content="{{ v|e }}" />
   {% endfor %}
 
-  {% set _css = url_for('static', filename='css/ff.css') ~ '?v=' ~ _v %}
+  {% set _css = url_for('static', filename='css/ff.css') + '?v=' + FF_BUILD_ID ~ '?v=' ~ _v %}
   <link rel="preload" as="style" href="{{ _css|e }}" />
   <link rel="stylesheet" href="{{ _css|e }}" />
 
@@ -877,6 +877,19 @@ QA SELF-CHECK:
             <p class="ff-help ff-muted ff-m-0">Progress</p>
             <p class="ff-help ff-num ff-m-0" data-ff-percent="">{{ _pct_i }}%</p>
           </div>
+
+{% set _ff_launch_empty_totals = (_goal_effective|float <= 0 and _raised_effective|float <= 0) %}
+{% set _remaining_to_goal = ((_goal_effective - _raised_effective) if (_goal_effective|float > _raised_effective|float) else 0) %}
+
+{% if _ff_launch_empty_totals %}
+<div class="ff-launchNotice" role="status" aria-live="polite">
+<p class="ff-launchNotice__title">Organizer update pending</p>
+<p class="ff-launchNotice__text">
+This page is live and ready to accept support. Verified totals and the season goal will appear as soon as the organizer publishes them.
+</p>
+</div>
+{% endif %}
+
 
           {% set _remaining_to_goal = ((_goal_effective - _raised_effective) if (_goal_effective|float > _raised_effective|float) else 0) %}
           <div class="ff-progressCompact__pulse" aria-label="Goal tracking highlights">

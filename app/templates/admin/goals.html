@@ -2,7 +2,7 @@
 
 {% block page_actions %}
   <a class="btn" href="{{ url_for('admin.dashboard', org_id=org_id) if org_id else url_for('admin.dashboard') }}">Back to dashboard</a>
-{% endblock %}
+{% endblock page_actions %}
 
 {% block content %}
   {% if not goal_model_available %}
@@ -58,4 +58,4 @@
       {% endif %}
     </article>
   </section>
-{% endblock %}
+{% endblock content %}

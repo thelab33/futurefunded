@@ -1,0 +1,11 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "void-style": "off",
+    "no-trailing-whitespace": "off",
+    "prefer-native-element": "off",
+    "aria-label-misuse": "off",
+    "no-redundant-role": "off",
+    "unique-landmark": "off"
+  }
+}

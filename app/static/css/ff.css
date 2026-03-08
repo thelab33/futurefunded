@@ -3812,3 +3812,157 @@
   }
 }
 
+
+/* =========================================================
+   FF_RHYTHM_POLISH_V1
+   Layout rhythm + premium density polish
+   ========================================================= */
+
+@layer ff.overrides {
+
+/* ----------------------------------------
+   GLOBAL SECTION RHYTHM
+---------------------------------------- */
+
+.ff-section{
+  padding-block: clamp(2.75rem,4vw,3.75rem);
+}
+
+.ff-section + .ff-section{
+  border-top:1px solid var(--ff-border-subtle);
+}
+
+.ff-sectionhead{
+  margin-bottom:1.75rem;
+}
+
+.ff-sectionhead__actions{
+  gap:.5rem;
+}
+
+
+/* ----------------------------------------
+   CARD DENSITY (premium spacing)
+---------------------------------------- */
+
+.ff-card,
+.ff-progressMini,
+.ff-sponsorCard,
+.ff-teamCard,
+.ff-impactCard{
+  padding:1.25rem;
+}
+
+
+/* ----------------------------------------
+   SNAPSHOT GRID ALIGNMENT
+---------------------------------------- */
+
+.ff-snapshotGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:.75rem;
+}
+
+
+/* ----------------------------------------
+   HERO SOFT LIGHTING
+---------------------------------------- */
+
+.ff-hero{
+  background:
+    radial-gradient(circle at 20% 10%, rgba(14,165,233,.08), transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(59,130,246,.06), transparent 60%);
+}
+
+
+/* ----------------------------------------
+   SPONSOR TIER INTERACTION
+---------------------------------------- */
+
+.ff-sponsorTier{
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease;
+}
+
+.ff-sponsorTier:hover{
+  transform:translateY(-3px);
+  box-shadow:var(--ff-shadow-2);
+}
+
+}
+
+
+/* =========================================================
+   FF_DASHBOARD_NUMBERS_V1
+   Emphasize fundraising metrics like a real dashboard
+   ========================================================= */
+
+@layer ff.overrides {
+
+.ff-progressMini__value,
+.ff-stat__value,
+.ff-kpi__value,
+.ff-num{
+  font-size: clamp(1.4rem,2.2vw,2rem);
+  font-weight: 820;
+  letter-spacing:-0.03em;
+  line-height:1.05;
+}
+
+.ff-progressMini__label,
+.ff-stat__label,
+.ff-kpi__label{
+  font-size:var(--ff-fs-200);
+  font-weight:720;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  color:var(--ff-text-muted);
+}
+
+.ff-progressMini{
+  display:flex;
+  flex-direction:column;
+  gap:.25rem;
+}
+
+}
+
+
+/* =========================================================
+   FF_LAUNCH_NOTICE_PATCH_V1
+   Styles for organizer update notice
+   ========================================================= */
+
+@layer ff.overrides {
+
+.ff-launchNotice{
+  margin-top:1rem;
+  padding:0.9rem 1rem;
+  border-radius:var(--ff-r-3);
+  border:1px solid rgba(14,165,233,.18);
+  background:linear-gradient(
+    180deg,
+    rgba(14,165,233,.06),
+    rgba(14,165,233,.02)
+  );
+}
+
+.ff-launchNotice__title{
+  font-size:var(--ff-fs-200);
+  font-weight:760;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--ff-brand-strong);
+}
+
+.ff-launchNotice__text{
+  font-size:var(--ff-fs-300);
+  color:var(--ff-text-muted);
+  max-width:46ch;
+}
+
+}
+
+

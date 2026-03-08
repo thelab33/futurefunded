@@ -3,7 +3,7 @@
 {% block page_actions %}
   <a class="btn btn--primary" href="{{ url_for('admin.export_payouts', org_id=org_id) if org_id else url_for('admin.export_payouts') }}">Export CSV</a>
   <a class="btn" href="{{ url_for('admin.dashboard', org_id=org_id) if org_id else url_for('admin.dashboard') }}">Back to dashboard</a>
-{% endblock %}
+{% endblock page_actions %}
 
 {% block content %}
   {% if not sponsor_model_available %}
@@ -58,7 +58,7 @@
                 <td>
                   <div class="inline-actions">
                     {% if status != 'approved' %}
-                      <form method="post" action="{{ url_for('admin.approve_sponsor', sponsor_id=obj_attr(s, 'id')) }}{% if org_id %}?org_id={{ org_id }}{% endif %}">
+                      <form method="post" action="{{ url_for('admin.approve_sponsor', sponsor_id=obj_attr(s, 'id')) }}{%- if org_id %}?org_id={{ org_id }}{%- endif -%}">
                         {% if csrf_token is defined %}
                           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% endif %}
@@ -66,7 +66,7 @@
                       </form>
                     {% endif %}
 
-                    <form method="post" action="{{ url_for('admin.delete_sponsor', sponsor_id=obj_attr(s, 'id')) }}{% if org_id %}?org_id={{ org_id }}{% endif %}">
+                    <form method="post" action="{{ url_for('admin.delete_sponsor', sponsor_id=obj_attr(s, 'id')) }}{%- if org_id %}?org_id={{ org_id }}{%- endif -%}">
                       {% if csrf_token is defined %}
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       {% endif %}
@@ -83,4 +83,4 @@
       <div class="empty">No sponsor rows matched this view yet.</div>
     {% endif %}
   </article>
-{% endblock %}
+{% endblock content %}

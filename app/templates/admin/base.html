@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="description" content="FutureFunded operator dashboard for sponsors, goals, transactions, and campaign administration." />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>{{ page_title }} • {{ page_brand }} Admin</title>
   <style>
@@ -258,7 +259,9 @@
       .topbar__inner{padding:12px 16px}
       .container{padding:18px 16px}
     }
-  </style>
+  
+  .u-nowrap { white-space: nowrap; }
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -293,7 +296,7 @@
       </div>
 
       <div class="actions">
-        {% block page_actions %}{% endblock %}
+        {% block page_actions %}{% endblock page_actions %}
       </div>
     </section>
 
@@ -307,7 +310,7 @@
       {% endif %}
     {% endwith %}
 
-    {% block content %}{% endblock %}
+    {% block content %}{% endblock content %}
   </main>
 </body>
 </html>

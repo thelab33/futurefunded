@@ -3,7 +3,7 @@
 {% block page_actions %}
   <a class="btn btn--primary" href="{{ url_for('admin.sponsors_list', org_id=org_id) if org_id else url_for('admin.sponsors_list') }}">Review sponsors</a>
   <a class="btn" href="{{ url_for('admin.goals', org_id=org_id) if org_id else url_for('admin.goals') }}">Update goal</a>
-{% endblock %}
+{% endblock page_actions %}
 
 {% block content %}
   {% if not sponsor_model_available or not transaction_model_available or not goal_model_available %}
@@ -125,4 +125,4 @@
       {% endif %}
     </article>
   </section>
-{% endblock %}
+{% endblock content %}

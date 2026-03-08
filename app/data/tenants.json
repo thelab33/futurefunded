@@ -1,0 +1,26 @@
+{
+  "connect-atx-elite": {
+    "brand_name": "Connect ATX Elite",
+    "city": "Austin",
+    "state": "TX",
+    "theme_color": "#0ea5e9",
+    "goal_amount": 25000,
+    "paypal_me": "https://paypal.me/yourteam",
+    "contact_email": "support@getfuturefunded.com",
+    "teams": [
+      { "name": "Connect ATX Elite", "slug": "connect-atx-elite" }
+    ]
+  },
+  "oakridge-soccer": {
+    "brand_name": "Oakridge Soccer",
+    "city": "Oakridge",
+    "state": "TX",
+    "theme_color": "#22c55e",
+    "goal_amount": 12000,
+    "paypal_me": "https://paypal.me/oakridge",
+    "contact_email": "support@getfuturefunded.com",
+    "teams": [
+      { "name": "Oakridge Soccer", "slug": "oakridge-soccer" }
+    ]
+  }
+}
