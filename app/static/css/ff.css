@@ -3540,3 +3540,275 @@
   }
 }
 }
+
+
+@layer ff.overrides {
+  /* FF_UI_ROI_PATCH_V1 */
+
+  #progress.ff-section,
+  #impact.ff-section,
+  #sponsors.ff-section,
+  #teams.ff-section,
+  #faq.ff-section {
+    padding-block: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .ff-sectionhead--compact {
+    gap: 0.75rem;
+  }
+
+  .ff-sectionhead--compact .ff-sectionhead__text {
+    max-width: 56rem;
+  }
+
+  .ff-sectionhead--compact .ff-sectionhead__actions {
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ff-sectionhead--compact .ff-sectionhead__actions .ff-btn--secondary {
+    min-height: 2.25rem;
+    padding-inline: 0.75rem;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--ff-text-soft);
+  }
+
+  .ff-sectionhead--compact .ff-sectionhead__actions .ff-iconbtn {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    background: transparent;
+    border-color: var(--ff-border-subtle);
+    box-shadow: none;
+    color: var(--ff-text-muted);
+  }
+
+  .ff-progressCompact {
+    overflow: clip;
+  }
+
+  .ff-progressCompact__hero {
+    gap: 1rem;
+  }
+
+  .ff-progressCompact__summary {
+    padding: 1.15rem;
+  }
+
+  .ff-progressCompact__pulse {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .ff-progressMini {
+    padding: 0.9rem 0.95rem;
+    border-radius: var(--ff-r-3);
+    border: 1px solid var(--ff-border-subtle);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.92));
+    box-shadow: var(--ff-shadow-1);
+  }
+
+  .ff-root[data-theme="dark"] .ff-progressMini {
+    background:
+      linear-gradient(180deg, rgba(11,18,32,0.88), rgba(11,18,32,0.96));
+  }
+
+  .ff-progressMini--remaining {
+    border-color: rgba(14, 165, 233, 0.24);
+    background:
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.10), transparent 7rem),
+      linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.98));
+  }
+
+  .ff-root[data-theme="dark"] .ff-progressMini--remaining {
+    background:
+      radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 7rem),
+      linear-gradient(180deg, rgba(11,18,32,0.9), rgba(11,18,32,0.98));
+  }
+
+  .ff-progressMini__label {
+    font-size: var(--ff-fs-200);
+    font-weight: 760;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ff-text-muted);
+  }
+
+  .ff-progressMini__value {
+    font-size: clamp(1.35rem, 2vw, 1.95rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 820;
+    color: var(--ff-text);
+  }
+
+  .ff-progressMini__note {
+    max-width: 30ch;
+  }
+
+  .ff-campaignSnapshot {
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .ff-snapshotItem {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .ff-snapshotLabel {
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .ff-sponsorCard--founder {
+    position: relative;
+    overflow: clip;
+  }
+
+  .ff-sponsorCard--founder::after {
+    content: "";
+    position: absolute;
+    inset: auto -2rem -2rem auto;
+    width: 8rem;
+    height: 8rem;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(14,165,233,0.16), transparent 70%);
+    pointer-events: none;
+  }
+
+  .ff-sponsorWall {
+    gap: 0.85rem;
+  }
+
+  .ff-sponsorWall__item {
+    min-height: 5.25rem;
+    border-radius: var(--ff-r-3);
+  }
+
+  .ff-sponsorWall__item.ff-skeleton {
+    opacity: 0.92;
+  }
+
+  .ff-sponsorWallEmpty {
+    padding: 1rem 1.05rem;
+    border-radius: var(--ff-r-3);
+    border: 1px dashed var(--ff-border-strong);
+    background:
+      linear-gradient(180deg, rgba(14,165,233,0.04), rgba(15,23,42,0.01));
+  }
+
+  .ff-teamGrid {
+    gap: 1rem;
+  }
+
+  .ff-teamCard {
+    min-height: 100%;
+  }
+
+  .ff-teamCard__inner {
+    gap: 0.95rem;
+  }
+
+  .ff-teamCard__media {
+    position: relative;
+    min-height: 12rem;
+    overflow: hidden;
+    border-radius: calc(var(--ff-r-3) - 2px);
+    border: 1px solid var(--ff-border-subtle);
+    background:
+      linear-gradient(180deg, rgba(14,165,233,0.06), rgba(15,23,42,0.03)),
+      linear-gradient(135deg, #eef4fa, #dde7f3);
+  }
+
+  .ff-root[data-theme="dark"] .ff-teamCard__media {
+    background:
+      linear-gradient(180deg, rgba(56,189,248,0.08), rgba(2,6,23,0.08)),
+      linear-gradient(135deg, #0f172a, #162235);
+  }
+
+  .ff-teamCard__media::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 42%;
+    background: linear-gradient(180deg, rgba(15,23,42,0), rgba(15,23,42,0.12));
+    pointer-events: none;
+  }
+
+  .ff-teamCard__img {
+    width: 100%;
+    height: 100%;
+    min-height: 12rem;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .ff-teamCard__stats {
+    gap: 0.6rem;
+  }
+
+  .ff-teamStat {
+    padding: 0.7rem 0.78rem;
+    border-radius: var(--ff-r-2);
+  }
+
+  .ff-teamCard__foot {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ff-teamCard__media.is-media-missing::before {
+    content: attr(data-ff-fallback-label);
+    position: absolute;
+    inset-inline: 0.95rem;
+    inset-block-end: 0.95rem;
+    z-index: 2;
+    font-size: var(--ff-fs-300);
+    font-weight: 760;
+    color: var(--ff-text-soft);
+    line-height: 1.2;
+  }
+
+  .ff-teamCard__media.is-media-missing::after {
+    content: "Preview media";
+    position: absolute;
+    inset-block-start: 0.8rem;
+    inset-inline-start: 0.8rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.6rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--ff-pill);
+    border: 1px solid var(--ff-border-strong);
+    background: rgba(255,255,255,0.84);
+    color: var(--ff-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 760;
+    letter-spacing: 0.02em;
+  }
+
+  .ff-root[data-theme="dark"] .ff-teamCard__media.is-media-missing::after {
+    background: rgba(11,18,32,0.84);
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-sectionhead--compact .ff-sectionhead__actions .ff-iconbtn {
+      display: none;
+    }
+
+    .ff-progressCompact__pulse {
+      grid-template-columns: 1fr;
+    }
+
+    .ff-teamCard__media,
+    .ff-teamCard__img {
+      min-height: 10.5rem;
+    }
+  }
+}
+

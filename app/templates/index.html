@@ -878,6 +878,25 @@ QA SELF-CHECK:
             <p class="ff-help ff-num ff-m-0" data-ff-percent="">{{ _pct_i }}%</p>
           </div>
 
+          {% set _remaining_to_goal = ((_goal_effective - _raised_effective) if (_goal_effective|float > _raised_effective|float) else 0) %}
+          <div class="ff-progressCompact__pulse" aria-label="Goal tracking highlights">
+            <article class="ff-progressMini ff-progressMini--remaining">
+              <p class="ff-progressMini__label ff-m-0">Still to goal</p>
+              <p class="ff-progressMini__value ff-num ff-mt-1 ff-mb-0">{{ money(_remaining_to_goal) }}</p>
+              <p class="ff-progressMini__note ff-help ff-muted ff-mt-1 ff-mb-0">
+                What the program still needs to close the gap.
+              </p>
+            </article>
+
+            <article class="ff-progressMini">
+              <p class="ff-progressMini__label ff-m-0">Momentum move</p>
+              <p class="ff-progressMini__value ff-num ff-mt-1 ff-mb-0">$250</p>
+              <p class="ff-progressMini__note ff-help ff-muted ff-mt-1 ff-mb-0">
+                A partner-size gift moves the board fast.
+              </p>
+            </article>
+          </div>
+
           <div class="ff-campaignSnapshot" aria-label="Campaign snapshot">
             <div class="ff-snapshotItem">
               <span class="ff-snapshotLabel">Mode</span>
@@ -1264,11 +1283,11 @@ QA SELF-CHECK:
              role="note"
              aria-label="Sponsor wall empty state">
           <p class="ff-help ff-muted ff-m-0">
-            Sponsors appear here after confirmation. Want to be the first?
+            This wall becomes visible social proof after the first confirmed sponsor.
             <a class="ff-link"
                href="#sponsor-interest"
                aria-controls="sponsor-interest"
-               data-ff-open-sponsor="">Become a sponsor</a>.
+               data-ff-open-sponsor="">Claim the founding spot</a>.
           </p>
           <p class="ff-sr">Sponsor entries will appear here after confirmation.</p>
         </div>
@@ -1517,7 +1536,8 @@ QA SELF-CHECK:
                       {# FF_AUTHORITY_CONTENT_PATCH_V2 team stats #}
 
                       {% if tphoto %}
-                  <figure class="ff-teamCard__media">
+                  {% set _team_media = (t.photo|default(_fallback_team_photo, true))|string|trim %}
+                  <figure class="ff-teamCard__media{% if not _team_media %} is-media-missing{% endif %}"{% if not _team_media %} data-ff-fallback-label="{{ tname|e }}"{% endif %}>
                     <img class="ff-teamCard__img"
                          src="{{ tphoto|e }}"
                          loading="lazy"
