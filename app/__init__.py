@@ -786,12 +786,18 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     cfg = _resolve_config(config_class)
     try:
         app.config.from_object(cfg)
+
     except Exception as exc:
         fallback = "app.config.DevelopmentConfig"
         if isinstance(cfg, str) and cfg != fallback:
             app.config.from_object(fallback)
         else:
             raise RuntimeError(f"Invalid FLASK_CONFIG '{cfg}': {exc}")
+
+    # Disable static caching in development (prevents CSS/JS drift)
+    if _env_mode(app) != "production":
+        app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
 
     # ---- Normalize environment (do NOT leave ENV=?)
     env = _env_mode(app)
@@ -816,6 +822,29 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
     if not app.config.get("SECRET_KEY"):
         app.config["SECRET_KEY"] = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
+
+    # FutureFunded asset version hardening
+    app.config["FF_ASSET_V"] = str(
+        app.config.get("FF_ASSET_V")
+        or os.getenv("FF_ASSET_V")
+        or app.config.get("FF_BUILD_ID")
+        or os.getenv("FF_BUILD_ID")
+        or app.config.get("FF_VERSION")
+        or os.getenv("FF_VERSION")
+        or "dev"
+    ).strip()
+
+    app.config["FF_BUILD_ID"] = str(
+        app.config.get("FF_BUILD_ID")
+        or os.getenv("FF_BUILD_ID")
+        or app.config["FF_ASSET_V"]
+    ).strip()
+
+    app.config["FF_VERSION"] = str(
+        app.config.get("FF_VERSION")
+        or os.getenv("FF_VERSION")
+        or app.config["FF_ASSET_V"]
+    ).strip()
 
     app.config.setdefault("SESSION_COOKIE_NAME", os.getenv("SESSION_COOKIE_NAME", "futurefunded"))
     app.config.setdefault("SESSION_COOKIE_SAMESITE", os.getenv("SESSION_COOKIE_SAMESITE", "Lax"))

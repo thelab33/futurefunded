@@ -35,7 +35,9 @@
     "report:playwright": "npx playwright show-report",
     "test:e2e": "npm run qa:core",
     "qa:tree": "find tests/qa -maxdepth 2 -type f | sort",
-    "qa:release:candidate": "run-s audit:contracts audit:lint pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets"
+    "qa:release:candidate": "run-s audit:contracts audit:lint pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
+    "sanity:deploy": "python tools/ff_deploy_sanity.py",
+    "qa:ship": "run-s sanity:deploy audit:contracts audit:lint"
   },
   "lint-staged": {
     "app/static/css/**/*": [

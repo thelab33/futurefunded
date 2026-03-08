@@ -435,7 +435,7 @@ QA SELF-CHECK:
     <meta name="ff:{{ k }}" content="{{ v|e }}" />
   {% endfor %}
 
-  {% set _css = url_for('static', filename='css/ff.css') + '?v=' + FF_BUILD_ID ~ '?v=' ~ _v %}
+  {% set _css = url_for('static', filename='css/ff.css') ~ '?v=' ~ _v %}
   <link rel="preload" as="style" href="{{ _css|e }}" />
   <link rel="stylesheet" href="{{ _css|e }}" />
 
@@ -889,7 +889,6 @@ This page is live and ready to accept support. Verified totals and the season go
 </p>
 </div>
 {% endif %}
-
 
           {% set _remaining_to_goal = ((_goal_effective - _raised_effective) if (_goal_effective|float > _raised_effective|float) else 0) %}
           <div class="ff-progressCompact__pulse" aria-label="Goal tracking highlights">
