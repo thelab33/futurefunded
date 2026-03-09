@@ -1,4 +1,63 @@
 
+/* --------------------------------------------------
+FutureFunded Stripe Prewarm Engine
+Preloads Stripe before checkout opens
+Removes blank payment element delay
+-------------------------------------------------- */
+
+(function(){
+
+let stripePreloaded = false;
+
+function preloadStripe(){
+  if(stripePreloaded) return;
+  stripePreloaded = true;
+
+  const s = document.createElement("script");
+  s.src = "https://js.stripe.com/v3/";
+  s.async = true;
+  s.dataset.ffStripePreload = "true";
+
+  document.head.appendChild(s);
+}
+
+function attachPrewarm(){
+
+  const triggers = document.querySelectorAll(
+    '[data-ff-open-checkout], .ff-donate-btn, a[href="#checkout"]'
+  );
+
+  triggers.forEach(btn=>{
+    btn.addEventListener("mouseenter", preloadStripe, {once:true});
+    btn.addEventListener("touchstart", preloadStripe, {once:true});
+    btn.addEventListener("focus", preloadStripe, {once:true});
+  });
+
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", attachPrewarm);
+}else{
+  attachPrewarm();
+}
+
+})();
+
+
+/* Stripe mount safety */
+(function(){
+  const mount =
+    document.querySelector('[data-ff-stripe-mount]') ||
+    document.querySelector('[data-ff-payment-element]') ||
+    document.querySelector('#payment-element');
+
+  if(!mount){
+    console.warn("Stripe mount point missing");
+    return;
+  }
+
+  window.__FF_STRIPE_MOUNT__ = mount;
+})();
 /* FF_RUNTIME_BOOT */
 (function(){
   window.ff = window.ff || {};
@@ -3391,3 +3450,802 @@ document.addEventListener("mousedown", function(e){
   w.FF_APP.api.closeCheckoutHard = closeCheckout;
 })();
 
+/* FF_V1_CREDIBILITY_PACK_START */
+(function () {
+  "use strict";
+
+  if (window.__FF_V1_CREDIBILITY_PACK_V1__) return;
+  window.__FF_V1_CREDIBILITY_PACK_V1__ = true;
+
+  var w = window;
+  var d = document;
+
+  function qs(selector, scope) {
+    return (scope || d).querySelector(selector);
+  }
+
+  function qsa(selector, scope) {
+    return Array.prototype.slice.call((scope || d).querySelectorAll(selector));
+  }
+
+  function text(node) {
+    return String((node && node.textContent) || "").replace(/\s+/g, " ").trim();
+  }
+
+  function create(tag, className, textValue) {
+    var el = d.createElement(tag);
+    if (className) el.className = className;
+    if (textValue != null) el.textContent = textValue;
+    return el;
+  }
+
+  function insertAfter(anchor, node) {
+    if (!anchor || !anchor.parentNode || !node) return;
+    if (anchor.nextSibling) {
+      anchor.parentNode.insertBefore(node, anchor.nextSibling);
+    } else {
+      anchor.parentNode.appendChild(node);
+    }
+  }
+
+  function meta(name) {
+    var node =
+      qs('meta[name="' + name + '"]') ||
+      qs('meta[name="ff-' + name + '"]') ||
+      qs('meta[name="ff:' + name + '"]');
+    return node ? String(node.getAttribute("content") || "").trim() : "";
+  }
+
+  function canonicalUrl() {
+    var link = qs('link[rel="canonical"]');
+    return link && link.href ? link.href : w.location.href.split("#")[0];
+  }
+
+  function supportEmail() {
+    var mail = qs('a[href^="mailto:"]');
+    return meta("support-email") || meta("email") || (mail ? mail.getAttribute("href").replace(/^mailto:/, "") : "");
+  }
+
+  function logoUrl() {
+    var img = qs('.ff-topbarBrand img, .ff-brand img, .ff-platformBrand img, [data-ff-org-logo], [data-ff-logo]');
+    if (!img) return "";
+    return img.getAttribute("src") || "";
+  }
+
+  function programName() {
+    return (
+      text(qs(".ff-brand__title")) ||
+      text(qs(".ff-topbarBrand__text")) ||
+      text(qs("h1")) ||
+      String(d.title || "").replace(/\s*[|—-].*$/, "").trim() ||
+      "FutureFunded"
+    );
+  }
+
+  function initials(name) {
+    return String(name || "Sponsor")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(function (part) { return part.charAt(0).toUpperCase(); })
+      .join("") || "SP";
+  }
+
+  function tierText(host) {
+    var candidates = [
+      qs(".ff-tierPill", host),
+      qs(".ff-help", host),
+      qs(".ff-muted", host),
+      qs("[data-ff-sponsor-tier]", host)
+    ].filter(Boolean);
+
+    for (var i = 0; i < candidates.length; i += 1) {
+      var value = text(candidates[i]);
+      if (/community|partner|champion|vip|founding|recommended/i.test(value)) return value;
+    }
+
+    var whole = text(host);
+    var match = whole.match(/\b(community|partner|champion|vip|founding sponsor|recommended)\b/i);
+    return match ? match[0] : "";
+  }
+
+  function isPremiumTier(value) {
+    return /partner|champion|vip|founding/i.test(String(value || ""));
+  }
+
+  function enhanceSponsorCard(host) {
+    if (!host || host.classList.contains("ff-skeleton")) return;
+    if (host.getAttribute("data-ff-credibility-ready") === "true") return;
+    host.setAttribute("data-ff-credibility-ready", "true");
+
+    var img = qs("img", host);
+    var strong = qs("strong", host);
+    var name = text(strong) || "Sponsor";
+    var tier = tierText(host);
+
+    host.classList.add("ff-sponsorLogoReady");
+
+    if (img) {
+      img.classList.add("ff-sponsorLogo__img");
+      img.setAttribute("loading", img.getAttribute("loading") || "lazy");
+      img.setAttribute("decoding", img.getAttribute("decoding") || "async");
+      if (!img.getAttribute("alt")) {
+        img.setAttribute("alt", name + " logo");
+      }
+    } else {
+      host.classList.add("ff-sponsorHasFallback");
+      host.setAttribute("data-ff-sponsor-initials", initials(name));
+    }
+
+    if (isPremiumTier(tier) && !qs(".ff-verifiedBadge", host)) {
+      var badge = create("span", "ff-verifiedBadge", "Verified partner");
+      if (strong && strong.parentNode) {
+        if (strong.nextSibling) {
+          strong.parentNode.insertBefore(badge, strong.nextSibling);
+        } else {
+          strong.parentNode.appendChild(badge);
+        }
+      } else {
+        host.appendChild(badge);
+      }
+    }
+  }
+
+  function mountSponsorLogos() {
+    qsa(".ff-sponsorWall__item .ff-card, .ff-sponsorCard").forEach(enhanceSponsorCard);
+  }
+
+  function trustStripMarkup() {
+    var wrap = create("div", "ff-trustStrip");
+    wrap.setAttribute("data-ff-trust-strip", "");
+
+    var row = create("div", "ff-trustStrip__row");
+
+    [
+      "Secure checkout",
+      "Email receipt",
+      "Tax-friendly records",
+      "Powered by Stripe + PayPal"
+    ].forEach(function (label) {
+      var item = create("span", "ff-trustStrip__item");
+      var icon = create("span", "ff-trustStrip__icon", "✓");
+      var txt = create("span", "", label);
+      item.appendChild(icon);
+      item.appendChild(txt);
+      row.appendChild(item);
+    });
+
+    wrap.appendChild(row);
+
+    var metaLine = create(
+      "div",
+      "ff-trustStrip__meta",
+      "Built for clean donor trust: secure payment rails, confirmation by email, and organized records for program support."
+    );
+    wrap.appendChild(metaLine);
+
+    return wrap;
+  }
+
+  function mountTrustStrip() {
+    var heroAnchor = qs(".ff-heroCtas") || qs(".ff-heroContext") || qs(".ff-heroPanelHead");
+    if (heroAnchor && !qs("[data-ff-trust-strip]", heroAnchor.parentNode || d)) {
+      insertAfter(heroAnchor, trustStripMarkup());
+    }
+
+    var checkoutAnchor = qs("#checkout .ff-checkoutHead") || qs("#checkout .ff-sheet__header");
+    if (checkoutAnchor && !qs("[data-ff-trust-strip]", checkoutAnchor)) {
+      checkoutAnchor.appendChild(trustStripMarkup());
+    }
+  }
+
+  function rawDeadlineValue() {
+    var cfgDeadline =
+      (w.FF_APP && w.FF_APP.cfg && (w.FF_APP.cfg.deadline || w.FF_APP.cfg.campaignDeadline)) || "";
+
+    var attrDeadlineNode = qs("[data-ff-deadline], [data-ff-deadline-text]");
+    var attrDeadline =
+      attrDeadlineNode
+        ? (attrDeadlineNode.getAttribute("data-ff-deadline") ||
+           attrDeadlineNode.getAttribute("data-ff-deadline-text") ||
+           text(attrDeadlineNode))
+        : "";
+
+    var explicit =
+      meta("deadline") ||
+      meta("campaign-deadline") ||
+      meta("ff-deadline") ||
+      cfgDeadline ||
+      attrDeadline;
+
+    if (explicit) return explicit;
+
+    var bodyText = text(d.body);
+    var iso = bodyText.match(/\b(20\d{2}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?\b/);
+    if (iso) return iso[1];
+
+    return "";
+  }
+
+  function parseDeadline(value) {
+    if (!value) return null;
+    var raw = String(value).trim();
+    if (!raw) return null;
+
+    var dt = new Date(raw);
+    if (!isNaN(dt.getTime())) return dt;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      dt = new Date(raw + "T23:59:59");
+      if (!isNaN(dt.getTime())) return dt;
+    }
+
+    return null;
+  }
+
+  function deadlineLabel(dt) {
+    var now = new Date();
+    var diff = dt.getTime() - now.getTime();
+    var days = Math.ceil(diff / 86400000);
+
+    if (diff < 0) {
+      return {
+        text: "Campaign deadline passed",
+        state: "passed"
+      };
+    }
+
+    if (days <= 0) {
+      return {
+        text: "Ends today",
+        state: "urgent"
+      };
+    }
+
+    if (days === 1) {
+      return {
+        text: "Ends tomorrow",
+        state: "urgent"
+      };
+    }
+
+    if (days <= 7) {
+      return {
+        text: "Ends in " + days + " days",
+        state: "urgent"
+      };
+    }
+
+    return {
+      text: "Ends in " + days + " days",
+      state: "normal"
+    };
+  }
+
+  function mountCountdown() {
+    var raw = rawDeadlineValue();
+    var dt = parseDeadline(raw);
+    if (!dt) return;
+
+    var target =
+      qs(".ff-heroContext") ||
+      qs(".ff-heroCtas") ||
+      qs(".ff-heroPanelHead") ||
+      qs("#progress .ff-sectionhead__actions");
+
+    if (!target) return;
+
+    var pill = qs(".ff-deadlinePill");
+    if (!pill) {
+      pill = create("span", "ff-deadlinePill");
+      var dot = create("span", "ff-deadlinePill__dot");
+      dot.setAttribute("aria-hidden", "true");
+      var txt = create("span", "ff-deadlinePill__text");
+      pill.appendChild(dot);
+      pill.appendChild(txt);
+      target.appendChild(pill);
+    }
+
+    pill.classList.remove("is-urgent", "is-passed");
+
+    var label = deadlineLabel(dt);
+    if (label.state === "urgent") pill.classList.add("is-urgent");
+    if (label.state === "passed") pill.classList.add("is-passed");
+
+    var txtNode = qs(".ff-deadlinePill__text", pill);
+    if (txtNode) txtNode.textContent = label.text;
+
+    pill.setAttribute("title", "Campaign deadline: " + dt.toLocaleString());
+  }
+
+  function injectDonationSchema() {
+    if (qs("#ffDonationSchema")) return;
+
+    var url = canonicalUrl();
+    var name = programName();
+    var email = supportEmail();
+    var logo = logoUrl();
+    var script = d.createElement("script");
+
+    script.type = "application/ld+json";
+    script.id = "ffDonationSchema";
+
+    var orgId = url + "#organization";
+
+    var graph = [
+      {
+        "@type": "Organization",
+        "@id": orgId,
+        "name": name,
+        "url": url
+      },
+      {
+        "@type": "WebPage",
+        "@id": url + "#webpage",
+        "name": d.title || name,
+        "url": url,
+        "isPartOf": { "@id": orgId },
+        "about": { "@id": orgId },
+        "potentialAction": {
+          "@type": "DonateAction",
+          "target": url + "#checkout",
+          "recipient": { "@id": orgId }
+        }
+      }
+    ];
+
+    if (email) graph[0].email = email;
+    if (logo) graph[0].logo = logo;
+
+    script.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": graph
+    });
+
+    d.head.appendChild(script);
+  }
+
+  function bootCredibilityPack() {
+    mountSponsorLogos();
+    mountTrustStrip();
+    mountCountdown();
+    injectDonationSchema();
+  }
+
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", bootCredibilityPack, { once: true });
+  } else {
+    bootCredibilityPack();
+  }
+
+  w.setTimeout(bootCredibilityPack, 350);
+  w.setTimeout(bootCredibilityPack, 1200);
+  w.setInterval(mountCountdown, 60000);
+
+  w.FF_APP = w.FF_APP || {};
+  w.FF_APP.api = w.FF_APP.api || {};
+  w.FF_APP.api.refreshCredibilityPack = bootCredibilityPack;
+}());
+/* FF_V1_CREDIBILITY_PACK_END */
+
+/* FF_V1_CREDIBILITY_RESCUE_V1_START */
+(function () {
+  "use strict";
+
+  if (window.__FF_V1_CREDIBILITY_RESCUE_V1__) return;
+  window.__FF_V1_CREDIBILITY_RESCUE_V1__ = true;
+
+  var d = document;
+  var w = window;
+
+  function qs(sel, scope) {
+    return (scope || d).querySelector(sel);
+  }
+
+  function qsa(sel, scope) {
+    return Array.prototype.slice.call((scope || d).querySelectorAll(sel));
+  }
+
+  function txt(node) {
+    return String((node && node.textContent) || "").replace(/\s+/g, " ").trim();
+  }
+
+  function create(tag, cls, textValue) {
+    var el = d.createElement(tag);
+    if (cls) el.className = cls;
+    if (textValue != null) el.textContent = textValue;
+    return el;
+  }
+
+  function insertAfter(anchor, node) {
+    if (!anchor || !anchor.parentNode || !node) return;
+    if (anchor.nextSibling) anchor.parentNode.insertBefore(node, anchor.nextSibling);
+    else anchor.parentNode.appendChild(node);
+  }
+
+  function initials(name) {
+    return String(name || "Sponsor")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(function (x) { return x.charAt(0).toUpperCase(); })
+      .join("") || "SP";
+  }
+
+  function isPremiumTier(value) {
+    return /founding|partner|champion|vip|recommended/i.test(String(value || ""));
+  }
+
+  function sponsorTierText(host) {
+    var pool = [
+      qs(".ff-tierPill", host),
+      qs(".ff-help", host),
+      qs(".ff-muted", host)
+    ].filter(Boolean);
+
+    for (var i = 0; i < pool.length; i += 1) {
+      var value = txt(pool[i]);
+      if (/community|partner|champion|vip|founding|recommended/i.test(value)) return value;
+    }
+
+    var whole = txt(host);
+    var match = whole.match(/\b(community|partner|champion|vip|founding sponsor|recommended)\b/i);
+    return match ? match[0] : "";
+  }
+
+  function buildTrustStrip() {
+    var wrap = create("div", "ff-trustStrip");
+    wrap.setAttribute("data-ff-trust-strip", "");
+
+    var row = create("div", "ff-trustStrip__row");
+
+    [
+      "Secure checkout",
+      "Email receipt",
+      "Program records",
+      "Powered by Stripe + PayPal"
+    ].forEach(function (label) {
+      var item = create("span", "ff-trustStrip__item");
+      var icon = create("span", "ff-trustStrip__icon", "✓");
+      var copy = create("span", "", label);
+      item.appendChild(icon);
+      item.appendChild(copy);
+      row.appendChild(item);
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(
+      create(
+        "div",
+        "ff-trustStrip__meta",
+        "Built for donor trust: secure payments, confirmation by email, and clean records for program support."
+      )
+    );
+
+    return wrap;
+  }
+
+  function mountHeroTrustStrip() {
+    if (qs('.ff-hero [data-ff-trust-strip], .ff-hero__capsule [data-ff-trust-strip], .ff-hero__capsuleInner [data-ff-trust-strip]')) return;
+
+    var anchor =
+      qs(".ff-heroCtas") ||
+      qs(".ff-heroContext") ||
+      qs(".ff-heroHeader .ff-activityFeed") ||
+      qs(".ff-heroHeader h1, .ff-heroHeader .ff-heroTitle") ||
+      qs(".ff-hero__capsuleInner h1, .ff-hero__capsuleInner .ff-heroTitle") ||
+      qs("#home h1");
+
+    if (!anchor) return;
+
+    var strip = buildTrustStrip();
+    insertAfter(anchor, strip);
+  }
+
+  function mountCheckoutTrustStrip() {
+    var head = qs("#checkout .ff-checkoutHead") || qs("#checkout .ff-sheet__header");
+    if (!head || qs("[data-ff-trust-strip]", head)) return;
+    head.appendChild(buildTrustStrip());
+  }
+
+  function parseDeadlineFromPage() {
+    var metaNode =
+      qs('meta[name="ff-deadline"]') ||
+      qs('meta[name="deadline"]') ||
+      qs('meta[name="campaign-deadline"]');
+
+    if (metaNode) {
+      var rawMeta = String(metaNode.getAttribute("content") || "").trim();
+      var dtMeta = new Date(rawMeta);
+      if (!isNaN(dtMeta.getTime())) return dtMeta;
+    }
+
+    var textPool = txt(d.body);
+    var iso = textPool.match(/\b(20\d{2}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?\b/);
+    if (iso) {
+      var dtIso = new Date(iso[1] + "T23:59:59");
+      if (!isNaN(dtIso.getTime())) return dtIso;
+    }
+
+    return null;
+  }
+
+  function deadlineState(dt) {
+    var now = new Date();
+    var diff = dt.getTime() - now.getTime();
+    var days = Math.ceil(diff / 86400000);
+
+    if (diff < 0) return { text: "Campaign deadline passed", klass: "is-passed" };
+    if (days <= 0) return { text: "Ends today", klass: "is-urgent" };
+    if (days === 1) return { text: "Ends tomorrow", klass: "is-urgent" };
+    if (days <= 7) return { text: "Ends in " + days + " days", klass: "is-urgent" };
+    return { text: "Ends in " + days + " days", klass: "" };
+  }
+
+  function mountDeadlinePill() {
+    var dt = parseDeadlineFromPage();
+    if (!dt) return;
+
+    var target =
+      qs(".ff-heroContext") ||
+      qs(".ff-heroCtas") ||
+      qs("#progress .ff-sectionhead__actions") ||
+      qs("#progress .ff-sectionhead") ||
+      qs(".ff-progressCompact__summary");
+
+    if (!target) return;
+
+    var pill = qs(".ff-deadlinePill", target) || qs(".ff-deadlinePill");
+    if (!pill) {
+      pill = create("span", "ff-deadlinePill");
+      var dot = create("span", "ff-deadlinePill__dot");
+      dot.setAttribute("aria-hidden", "true");
+      var label = create("span", "ff-deadlinePill__text");
+      pill.appendChild(dot);
+      pill.appendChild(label);
+      target.appendChild(pill);
+    }
+
+    pill.classList.remove("is-urgent", "is-passed");
+    var state = deadlineState(dt);
+    if (state.klass) pill.classList.add(state.klass);
+
+    var labelNode = qs(".ff-deadlinePill__text", pill);
+    if (labelNode) labelNode.textContent = state.text;
+
+    pill.setAttribute("title", "Campaign deadline: " + dt.toLocaleString());
+  }
+
+  function enhanceSponsorCard(card) {
+    if (!card || card.getAttribute("data-ff-sponsor-cred-ready") === "true") return;
+    card.setAttribute("data-ff-sponsor-cred-ready", "true");
+
+    var strong = qs("strong", card);
+    var name = txt(strong) || "Sponsor";
+    var tier = sponsorTierText(card);
+
+    card.classList.add("ff-sponsorLogoReady");
+
+    var img = qs("img", card);
+    if (img) {
+      img.classList.add("ff-sponsorLogo__img");
+      if (!img.getAttribute("alt")) img.setAttribute("alt", name + " logo");
+    } else {
+      card.classList.add("ff-sponsorHasFallback");
+      card.setAttribute("data-ff-sponsor-initials", initials(name));
+    }
+
+    if (isPremiumTier(tier) && !qs(".ff-verifiedBadge", card)) {
+      var badge = create("span", "ff-verifiedBadge", "Verified partner");
+      if (strong && strong.parentNode) {
+        if (strong.nextSibling) strong.parentNode.insertBefore(badge, strong.nextSibling);
+        else strong.parentNode.appendChild(badge);
+      } else {
+        card.appendChild(badge);
+      }
+    }
+  }
+
+  function mountSponsorCredibility() {
+    qsa(".ff-sponsorWall__item .ff-card, .ff-sponsorCard, .ff-sponsorWall__item").forEach(function (node) {
+      var card = node.classList.contains("ff-card") || node.classList.contains("ff-sponsorCard")
+        ? node
+        : (qs(".ff-card", node) || node);
+
+      enhanceSponsorCard(card);
+    });
+  }
+
+  function boot() {
+    mountHeroTrustStrip();
+    mountCheckoutTrustStrip();
+    mountDeadlinePill();
+    mountSponsorCredibility();
+  }
+
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+
+  w.addEventListener("load", boot, { once: true });
+  w.setTimeout(boot, 150);
+  w.setTimeout(boot, 650);
+  w.setTimeout(boot, 1400);
+
+  w.FF_APP = w.FF_APP || {};
+  w.FF_APP.api = w.FF_APP.api || {};
+  w.FF_APP.api.forceCredibilityRescue = boot;
+}());
+/* FF_V1_CREDIBILITY_RESCUE_V1_END */
+
+/* FF_V1_CREDIBILITY_RESCUE_V2_START */
+(function () {
+  "use strict";
+
+  if (window.__FF_V1_CREDIBILITY_RESCUE_V2__) return;
+  window.__FF_V1_CREDIBILITY_RESCUE_V2__ = true;
+
+  var d = document;
+  var w = window;
+
+  function qs(sel, scope) {
+    return (scope || d).querySelector(sel);
+  }
+
+  function qsa(sel, scope) {
+    return Array.prototype.slice.call((scope || d).querySelectorAll(sel));
+  }
+
+  function txt(node) {
+    return String((node && (node.innerText || node.textContent)) || "").replace(/\s+/g, " ").trim();
+  }
+
+  function create(tag, cls, textValue) {
+    var el = d.createElement(tag);
+    if (cls) el.className = cls;
+    if (textValue != null) el.textContent = textValue;
+    return el;
+  }
+
+  function initials(name) {
+    return String(name || "Sponsor")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(function (part) { return part.charAt(0).toUpperCase(); })
+      .join("") || "SP";
+  }
+
+  function isPremiumTier(text) {
+    return /founding|partner|champion|vip|recommended/i.test(String(text || ""));
+  }
+
+  function extractDeadline() {
+    var meta =
+      qs('meta[name="ff-deadline"]') ||
+      qs('meta[name="deadline"]') ||
+      qs('meta[name="campaign-deadline"]');
+
+    if (meta) {
+      var m = String(meta.getAttribute("content") || "").trim();
+      var md = new Date(m);
+      if (!isNaN(md.getTime())) return md;
+    }
+
+    var bodyText = txt(d.body);
+
+    var explicit = bodyText.match(/deadline\s*(?:is|:)?\s*(20\d{2}-\d{2}-\d{2})/i);
+    if (explicit) {
+      var dt1 = new Date(explicit[1] + "T23:59:59");
+      if (!isNaN(dt1.getTime())) return dt1;
+    }
+
+    var iso = bodyText.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+    if (iso) {
+      var dt2 = new Date(iso[1] + "T23:59:59");
+      if (!isNaN(dt2.getTime())) return dt2;
+    }
+
+    return null;
+  }
+
+  function deadlineLabel(dt) {
+    var now = new Date();
+    var diff = dt.getTime() - now.getTime();
+    var days = Math.ceil(diff / 86400000);
+
+    if (diff < 0) return { text: "Campaign deadline passed", klass: "is-passed" };
+    if (days <= 0) return { text: "Ends today", klass: "is-urgent" };
+    if (days === 1) return { text: "Ends tomorrow", klass: "is-urgent" };
+    if (days <= 7) return { text: "Ends in " + days + " days", klass: "is-urgent" };
+    return { text: "Ends in " + days + " days", klass: "" };
+  }
+
+  function mountDeadlinePillHard() {
+    var dt = extractDeadline();
+    if (!dt) return;
+
+    var target =
+      qs(".ff-heroContext") ||
+      qs(".ff-heroCtas") ||
+      qs("#progress .ff-sectionhead__actions") ||
+      qs("#progress .ff-sectionhead") ||
+      qs(".ff-progressCompact__summary");
+
+    if (!target) return;
+
+    var pill = qs(".ff-deadlinePill");
+    if (!pill) {
+      pill = create("span", "ff-deadlinePill");
+      pill.appendChild(create("span", "ff-deadlinePill__dot"));
+      pill.appendChild(create("span", "ff-deadlinePill__text"));
+      target.appendChild(pill);
+    }
+
+    pill.classList.remove("is-urgent", "is-passed");
+
+    var state = deadlineLabel(dt);
+    if (state.klass) pill.classList.add(state.klass);
+
+    var label = qs(".ff-deadlinePill__text", pill);
+    if (label) label.textContent = state.text;
+
+    pill.title = "Campaign deadline: " + dt.toLocaleString();
+  }
+
+  function mountSponsorFallbacksHard() {
+    qsa(".ff-sponsorWall__item, .ff-sponsorCard").forEach(function (host) {
+      if (host.getAttribute("data-ff-sponsor-cred-v2") === "true") return;
+      host.setAttribute("data-ff-sponsor-cred-v2", "true");
+
+      var card = qs(".ff-card", host) || host;
+      var strong = qs("strong", card);
+      var name = txt(strong) || "Sponsor";
+      var allText = txt(card);
+
+      var existingImg = qs("img", card);
+      if (existingImg) {
+        existingImg.classList.add("ff-sponsorLogo__img");
+        if (!existingImg.getAttribute("alt")) {
+          existingImg.setAttribute("alt", name + " logo");
+        }
+      } else if (!qs(".ff-sponsorLogo__fallback", card)) {
+        var fallback = create("span", "ff-sponsorLogo__fallback", initials(name));
+        fallback.setAttribute("aria-hidden", "true");
+        card.insertBefore(fallback, card.firstChild);
+      }
+
+      if (isPremiumTier(allText) && !qs(".ff-verifiedBadge", card)) {
+        var badge = create("span", "ff-verifiedBadge", "Verified partner");
+        if (strong && strong.parentNode) {
+          strong.parentNode.insertBefore(badge, strong.nextSibling);
+        } else {
+          card.appendChild(badge);
+        }
+      }
+    });
+  }
+
+  function boot() {
+    mountDeadlinePillHard();
+    mountSponsorFallbacksHard();
+  }
+
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+
+  w.addEventListener("load", boot, { once: true });
+  w.setTimeout(boot, 200);
+  w.setTimeout(boot, 900);
+  w.setTimeout(boot, 1800);
+
+  w.FF_APP = w.FF_APP || {};
+  w.FF_APP.api = w.FF_APP.api || {};
+  w.FF_APP.api.forceCredibilityRescueV2 = boot;
+}());
+/* FF_V1_CREDIBILITY_RESCUE_V2_END */
