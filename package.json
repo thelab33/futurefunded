@@ -37,7 +37,8 @@
     "qa:tree": "find tests/qa -maxdepth 2 -type f | sort",
     "qa:release:candidate": "run-s audit:contracts audit:lint pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
     "sanity:deploy": "python tools/ff_deploy_sanity.py",
-    "qa:ship": "run-s sanity:deploy audit:contracts audit:lint"
+    "qa:ship": "run-s sanity:deploy audit:contracts audit:lint",
+    "audit:factory": "python tools/ff_factory_sanity_audit.py"
   },
   "lint-staged": {
     "app/static/css/**/*": [

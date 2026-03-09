@@ -331,7 +331,7 @@ QA SELF-CHECK:
 {% set FF_TEAMS = FF_TEAMS_RAW %}
 {% set teams = (teams|default(FF_TEAMS, true)) %}
 
-<html class="ff-root"
+<html class="ff-root ff-overlay-open"
       lang="en"
       dir="ltr"
       data-density="{{ density|default('compact', true)|string|trim|e }}"
@@ -451,6 +451,7 @@ QA SELF-CHECK:
   <script defer src="https://cdn.socket.io/4.7.5/socket.io.min.js" {{ nonce_attr() }} crossorigin="anonymous"></script>
 {% endif %}
   <script defer src="{{ _app|e }}" {{ nonce_attr() }}></script>
+
 </head>
 
 <body class="ff-body" data-ff-body="" data-ff-data-mode="{{ ff_data_mode|e }}" data-ff-totals-verified="{{ 'true' if _totals_verified else 'false' }}">
@@ -458,11 +459,9 @@ QA SELF-CHECK:
   
 
   <a id="ff_focus_probe" class="ff-focus-probe" href="#content" tabindex="0">Focus probe</a>
-<a class="ff-skiplink" href="#content">Skip to main content</a>
-
   <nav class="ff-skiplinks" aria-label="Skip links">
-    <a class="ff-skip" href="#content">Skip to content</a>
-    <a class="ff-skip" href="#checkout" data-ff-donate="">Skip to checkout</a>
+    <a class="ff-skip" href="#content">Skip to main content</a>
+    <a class="ff-skip ff-donate-btn" href="#checkout" data-ff-donate="">Skip to checkout</a>
     <a class="ff-skip" href="#faq">Skip to FAQ</a>
   </nav>
 
@@ -570,7 +569,7 @@ QA SELF-CHECK:
                         </nav>
 
                         <a
-                          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                          class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                           href="#checkout"
                           aria-controls="checkout"
                           data-ff-donate=""
@@ -599,7 +598,7 @@ QA SELF-CHECK:
 
                     <div class="ff-row ff-ais ff-gap-2 ff-topbar__mobile-only">
                       <a
-                        class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                        class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                         href="#checkout"
                         aria-controls="checkout"
                         data-ff-donate=""
@@ -712,7 +711,7 @@ QA SELF-CHECK:
 
           <button
             type="button"
-            class="ff-iconbtn ff-drawer__close"
+            class="ff-iconbtn ff-drawer__close ff-sheet__close"
             data-ff-close-drawer=""
             aria-label="Close menu">
             <span aria-hidden="true">✕</span>
@@ -723,12 +722,12 @@ QA SELF-CHECK:
         <div class="ff-drawer__body">
           <nav class="ff-drawer__block" aria-label="Drawer navigation">
             <ul class="ff-drawer__grid" role="list">
-              <li><a class="ff-drawer__link" data-ff-close-drawer="" href="#progress">Progress →</a></li>
-              <li><a class="ff-drawer__link" data-ff-close-drawer="" href="#impact">Impact →</a></li>
-              <li><a class="ff-drawer__link" data-ff-close-drawer="" href="#teams">Teams →</a></li>
-              <li><a class="ff-drawer__link" data-ff-close-drawer="" href="#sponsors">Sponsors →</a></li>
-              <li><a class="ff-drawer__link" data-ff-close-drawer="" href="#faq">Help →</a></li>
-              <li><a class="ff-drawer__link" data-ff-close-drawer="" href="#footer">Contact →</a></li>
+              <li><a class="ff-drawer__link ff-sheet__close" data-ff-close-drawer="" href="#progress">Progress →</a></li>
+              <li><a class="ff-drawer__link ff-sheet__close" data-ff-close-drawer="" href="#impact">Impact →</a></li>
+              <li><a class="ff-drawer__link ff-sheet__close" data-ff-close-drawer="" href="#teams">Teams →</a></li>
+              <li><a class="ff-drawer__link ff-sheet__close" data-ff-close-drawer="" href="#sponsors">Sponsors →</a></li>
+              <li><a class="ff-drawer__link ff-sheet__close" data-ff-close-drawer="" href="#faq">Help →</a></li>
+              <li><a class="ff-drawer__link ff-sheet__close" data-ff-close-drawer="" href="#footer">Contact →</a></li>
             </ul>
           </nav>
 
@@ -740,7 +739,7 @@ QA SELF-CHECK:
               aria-controls="sponsor-interest">Become a sponsor</a>
 
             <a
-              class="ff-btn ff-btn--primary ff-btn--pill"
+              class="ff-btn ff-btn--primary ff-btn--pill ff-donate-btn"
               href="#checkout"
               aria-controls="checkout"
               data-ff-donate=""
@@ -751,7 +750,7 @@ QA SELF-CHECK:
 
       <button
         type="button"
-        class="ff-drawer__backdrop"
+        class="ff-drawer__backdrop ff-sheet__close"
         data-ff-close-drawer=""
         aria-label="Close menu"></button>
     </aside>    
@@ -776,7 +775,7 @@ QA SELF-CHECK:
                     </div>
                   </header>
                   <nav class="ff-heroCtas ff-heroCtas--flagship" aria-label="Primary actions">
-                    <a class="ff-btn ff-btn--primary ff-btn--lg ff-btn--pill" href="#checkout" aria-controls="checkout" data-ff-donate="" data-ff-open-checkout="">Donate</a>
+                    <a class="ff-btn ff-btn--primary ff-btn--lg ff-btn--pill ff-donate-btn" href="#checkout" aria-controls="checkout" data-ff-donate="" data-ff-open-checkout="">Donate</a>
                     <div class="ff-row ff-wrap ff-gap-2" role="group" aria-label="Secondary actions">
                       <button type="button" class="ff-btn ff-btn--ghost ff-btn--lg ff-btn--pill" data-ff-share="" aria-label="Share this fundraiser">Share</button>
                       <a class="ff-btn ff-btn--secondary ff-btn--lg ff-btn--pill" href="#sponsors">Sponsor</a>
@@ -797,7 +796,7 @@ QA SELF-CHECK:
                   <button type="button" class="ff-chip" data-ff-amount="100">$100</button>
                   <button type="button" class="ff-chip" data-ff-amount="250">$250</button>
                 </div>
-                <a class="ff-btn ff-btn--primary ff-btn--pill ff-w-100 ff-mt-2" href="#checkout" aria-controls="checkout" data-ff-donate="" data-ff-open-checkout="">Donate</a>
+                <a class="ff-btn ff-btn--primary ff-btn--pill ff-w-100 ff-mt-2 ff-donate-btn" href="#checkout" aria-controls="checkout" data-ff-donate="" data-ff-open-checkout="">Donate</a>
               </article>
             </aside>
           </div>
@@ -825,7 +824,7 @@ QA SELF-CHECK:
       <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
            aria-label="Progress actions"
            role="group">
-        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
            href="#checkout"
            aria-controls="checkout"
            data-ff-donate=""
@@ -1012,7 +1011,7 @@ This page is live and ready to accept support. Verified totals and the season go
       <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
            aria-label="Impact actions"
            role="group">
-        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
            href="#checkout"
            aria-controls="checkout"
            data-ff-donate=""
@@ -1124,7 +1123,7 @@ This page is live and ready to accept support. Verified totals and the season go
 
             <footer class="ff-impactTier__footer">
               <a role="button"
-                 class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                 class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                  href="#checkout"
                  aria-controls="checkout"
                  data-ff-donate=""
@@ -1148,7 +1147,7 @@ This page is live and ready to accept support. Verified totals and the season go
 
             <footer class="ff-impactTier__footer">
               <a role="button"
-                 class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                 class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                  href="#checkout"
                  aria-controls="checkout"
                  data-ff-donate=""
@@ -1168,7 +1167,7 @@ This page is live and ready to accept support. Verified totals and the season go
 
             <footer class="ff-impactTier__footer">
               <a role="button"
-                 class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                 class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                  href="#checkout"
                  aria-controls="checkout"
                  data-ff-donate=""
@@ -1196,7 +1195,7 @@ This page is live and ready to accept support. Verified totals and the season go
               <div class="ff-row ff-gap-2 ff-wrap"
                    role="group"
                    aria-label="Momentum actions">
-                <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                    href="#checkout"
                    aria-controls="checkout"
                    data-ff-donate=""
@@ -1472,7 +1471,7 @@ This page is live and ready to accept support. Verified totals and the season go
       <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
            aria-label="Teams actions"
            role="group">
-        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
            href="#checkout"
            aria-controls="checkout"
            data-ff-donate=""
@@ -1549,7 +1548,7 @@ This page is live and ready to accept support. Verified totals and the season go
 
                       {% if tphoto %}
                   {% set _team_media = (t.photo|default(_fallback_team_photo, true))|string|trim %}
-                  <figure class="ff-teamCard__media{% if not _team_media %} is-media-missing{% endif %}"{% if not _team_media %} data-ff-fallback-label="{{ tname|e }}"{% endif %}>
+                  <figure class="ff-teamCard__media{% if not _team_media %} is-media-missing{% endif %}"{% if not _team_media %} data-ff-fallback-label="{{ tname|e }}"{% endif %} data-ff-fallback-bound="true">
                     <img class="ff-teamCard__img"
                          src="{{ tphoto|e }}"
                          loading="lazy"
@@ -1563,7 +1562,7 @@ This page is live and ready to accept support. Verified totals and the season go
                 <footer class="ff-row ff-wrap ff-gap-2 ff-mt-3 ff-teamCard__foot"
                         role="group"
                         aria-label="Team actions">
-                  <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+                  <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                      href="#checkout"
                      aria-controls="checkout"
                      data-ff-donate=""
@@ -1590,7 +1589,7 @@ This page is live and ready to accept support. Verified totals and the season go
           <div class="ff-row ff-wrap ff-gap-2 ff-mt-2"
                role="group"
                aria-label="Donate actions">
-            <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+            <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
                href="#checkout"
                aria-controls="checkout"
                data-ff-donate=""
@@ -1634,7 +1633,7 @@ This page is live and ready to accept support. Verified totals and the season go
       <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
            aria-label="Program actions"
            role="group">
-        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
            href="#checkout"
            aria-controls="checkout"
            data-ff-donate=""
@@ -1727,7 +1726,7 @@ This page is live and ready to accept support. Verified totals and the season go
           <div class="ff-row ff-wrap ff-gap-2 ff-mt-3"
                role="group"
                aria-label="Story actions">
-            <a class="ff-btn ff-btn--primary ff-btn--pill"
+            <a class="ff-btn ff-btn--primary ff-btn--pill ff-donate-btn"
                href="#checkout"
                aria-controls="checkout"
                data-ff-donate=""
@@ -1762,7 +1761,7 @@ This page is live and ready to accept support. Verified totals and the season go
       <nav class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2"
            aria-label="Trust actions"
            role="group">
-        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
            href="#checkout"
            aria-controls="checkout"
            data-ff-donate=""
@@ -1923,7 +1922,7 @@ This page is live and ready to accept support. Verified totals and the season go
         </p>
 
         <div class="ff-row ff-ais ff-wrap ff-gap-2" aria-label="Footer quick actions">
-          <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
+          <a class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill ff-donate-btn"
              href="#checkout"
              aria-controls="checkout"
              data-ff-donate=""
@@ -2014,7 +2013,7 @@ This page is live and ready to accept support. Verified totals and the season go
   <div class="ff-tabs__scroller ff-tabs__scroller--flagship">
     <ul class="ff-tabs__list ff-tabs__list--flagship" role="list" aria-label="Section shortcuts">
       <li class="ff-tabs__item">
-        <a class="ff-tab ff-tab--cta ff-tab--pill"
+        <a class="ff-tab ff-tab--cta ff-tab--pill ff-donate-btn"
            href="#checkout"
            aria-controls="checkout"
            aria-label="Donate (opens checkout)"
@@ -2058,8 +2057,8 @@ This page is live and ready to accept support. Verified totals and the season go
          role="dialog"
          aria-modal="true"
          aria-labelledby="checkoutTitle"
-         aria-describedby="checkoutDesc">
-  <a class="ff-sheet__backdrop ff-sheet__backdrop--flagship"
+         aria-describedby="checkoutDesc" data-ff-stripe-preload="true">
+  <a class="ff-sheet__backdrop ff-sheet__backdrop--flagship ff-sheet__close"
      data-ff-close-checkout=""
      href="#home"
      tabindex="-1"
@@ -2088,10 +2087,10 @@ This page is live and ready to accept support. Verified totals and the season go
 
             <div class="ff-row ff-ais ff-gap-2">
               <button type="button"
-                      class="ff-iconbtn"
+                      class="ff-iconbtn ff-sheet__close"
                       data-ff-close-checkout=""
                       aria-label="Close checkout">✕</button>
-              <a class="ff-sr" href="#home" tabindex="-1" data-ff-close-checkout="">Close</a>
+              <a class="ff-sr ff-sheet__close" href="#home" tabindex="-1" data-ff-close-checkout="">Close</a>
             </div>
           </div>
         </header>
@@ -2103,7 +2102,7 @@ This page is live and ready to accept support. Verified totals and the season go
                      data-ff-checkout-stage="form"
                      aria-label="Donation form">
               <form id="donationForm"
-                    class="ff-stack"
+                    class="ff-stack ff-donate-btn"
                     data-ff-donate-form=""
                     data-ff-id="donationFormSecondary2"
                     novalidate>
@@ -2229,7 +2228,7 @@ This page is live and ready to accept support. Verified totals and the season go
                     <div id="paymentElement"
                          class="ff-paymentMount ff-paymentMount--flagship ff-mt-2"
                          data-ff-payment-element=""
-                         data-ff-stripe-mount="">
+                         data-ff-stripe-mount="" id="payment-element">
                       <div class="ff-skeleton ff-skeleton--payment"
                            data-ff-stripe-skeleton=""
                            aria-hidden="true"></div>
@@ -2302,7 +2301,7 @@ This page is live and ready to accept support. Verified totals and the season go
                     Continue to payment
                   </button>
 
-                  <a class="ff-btn ff-btn--pill ff-w-100"
+                  <a class="ff-btn ff-btn--pill ff-w-100 ff-sheet__close"
                      data-ff-close-checkout=""
                      href="#home">Close</a>
                 </div>
@@ -2331,7 +2330,7 @@ This page is live and ready to accept support. Verified totals and the season go
                         data-ff-share=""
                         aria-label="Share this fundraiser">Share</button>
 
-                <a class="ff-btn ff-btn--pill"
+                <a class="ff-btn ff-btn--pill ff-sheet__close"
                    data-ff-close-checkout=""
                    href="#home">Done</a>
               </div>
@@ -2354,7 +2353,7 @@ This page is live and ready to accept support. Verified totals and the season go
          aria-modal="true"
          aria-labelledby="sponsorInterestTitle"
          aria-describedby="sponsorInterestDesc sponsorInterestTrust">
-  <a class="ff-modal__backdrop ff-modal__backdrop--flagship"
+  <a class="ff-modal__backdrop ff-modal__backdrop--flagship ff-sheet__close"
      data-ff-close-sponsor=""
      href="#home"
      tabindex="-1"
@@ -2371,7 +2370,7 @@ This page is live and ready to accept support. Verified totals and the season go
       </div>
 
       <button type="button"
-              class="ff-iconbtn"
+              class="ff-iconbtn ff-sheet__close"
               data-ff-close-sponsor=""
               aria-label="Close sponsor inquiry">✕</button>
     </header>
@@ -2478,7 +2477,7 @@ This page is live and ready to accept support. Verified totals and the season go
             <p class="ff-help ff-muted ff-m-0">We typically respond within&nbsp;24–48&nbsp;hours.</p>
 
             <div class="ff-row ff-ais ff-gap-2">
-              <a class="ff-btn ff-btn--pill"
+              <a class="ff-btn ff-btn--pill ff-sheet__close"
                  data-ff-close-sponsor=""
                  href="#home"
                  aria-label="Cancel sponsor inquiry">Cancel</a>
@@ -2506,7 +2505,7 @@ This page is live and ready to accept support. Verified totals and the season go
          aria-modal="true"
          aria-labelledby="ffVideoTitle"
          aria-describedby="ffVideoDesc ffVideoStatus">
-  <a class="ff-modal__backdrop ff-modal__backdrop--flagship"
+  <a class="ff-modal__backdrop ff-modal__backdrop--flagship ff-sheet__close"
      data-ff-close-video=""
      href="#home"
      tabindex="-1"
@@ -2534,7 +2533,7 @@ This page is live and ready to accept support. Verified totals and the season go
       </div>
 
       <button type="button"
-              class="ff-iconbtn"
+              class="ff-iconbtn ff-sheet__close"
               data-ff-close-video=""
               aria-label="Close video">✕</button>
     </header>
@@ -2546,11 +2545,11 @@ This page is live and ready to accept support. Verified totals and the season go
       </div>
 
       <div class="ff-row ff-wrap ff-gap-2" role="group" aria-label="Video actions">
-        <a class="ff-btn ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--primary ff-btn--pill ff-donate-btn"
            data-ff-open-checkout=""
            href="#checkout"
            aria-controls="checkout">Donate</a>
-        <a class="ff-btn ff-btn--pill"
+        <a class="ff-btn ff-btn--pill ff-sheet__close"
            data-ff-close-video=""
            href="#home">Close</a>
       </div>
@@ -2606,7 +2605,7 @@ This page is live and ready to accept support. Verified totals and the season go
       <p class="ff-help ff-muted ff-m-0">{{ _policy_blurb|e }}</p>
 
       <div class="ff-row ff-wrap ff-gap-2" role="group" aria-label="Terms actions">
-        <a class="ff-btn ff-btn--primary ff-btn--pill"
+        <a class="ff-btn ff-btn--primary ff-btn--pill ff-donate-btn"
            data-ff-open-checkout=""
            href="#checkout"
            aria-controls="checkout">Donate</a>
@@ -2899,7 +2898,7 @@ This page is live and ready to accept support. Verified totals and the season go
       <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Secure checkout • Email receipt • No account</p>
     </div>
 
-    <a class="ff-btn ff-btn--primary ff-btn--pill"
+    <a class="ff-btn ff-btn--primary ff-btn--pill ff-donate-btn"
        href="#checkout"
        aria-controls="checkout"
        data-ff-donate=""
