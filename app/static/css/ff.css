@@ -1,12 +1,21 @@
 /* ==========================================================================
 FutureFunded — Flagship Design System Stylesheet
 File: app/static/css/ff.css
-Version: v1.2.0 "Hyperglass Factory Build"
+Version: v1.3.0 "Hyperglass Launch Consolidated"
 
 Purpose
 -------
 Production-ready consolidated design system for the public FutureFunded
 fundraising experience.
+
+Principles
+----------
+- Premium restraint over decoration
+- Trust-first donation UX
+- Mobile-first responsive rhythm
+- Deterministic overlay contracts
+- WCAG-aware focus + motion behavior
+- Hook-safe for JS / tests / onboarding
 
 Architecture
 ------------
@@ -23,6 +32,9 @@ Architecture
 
 @layer ff.tokens, ff.base, ff.type, ff.layout, ff.surfaces, ff.controls, ff.pages, ff.utilities, ff.overrides;
 
+/* ==========================================================================
+   TOKENS
+   ========================================================================== */
 @layer ff.tokens {
   .ff-root,
   :root {
@@ -158,7 +170,7 @@ Architecture
     --ff-bg-strong: #162234;
 
     --ff-surface: rgba(11, 18, 32, 0.76);
-    --ff-surface-1: rgba(10, 16, 28, 0.9);
+    --ff-surface-1: rgba(10, 16, 28, 0.90);
     --ff-surface-2: rgba(11, 18, 32, 0.92);
     --ff-surface-3: rgba(255, 255, 255, 0.03);
     --ff-surface-inverse: #f8fafc;
@@ -196,14 +208,15 @@ Architecture
     --ff-danger-soft: rgba(248, 113, 113, 0.16);
 
     --ff-focus: #7dd3fc;
-    --ff-ring: 0 0 0 3px rgba(125, 211, 252, 0.2);
+    --ff-ring: 0 0 0 3px rgba(125, 211, 252, 0.20);
     --ff-backdrop: rgba(2, 6, 23, 0.72);
 
     --ff-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.34), 0 12px 28px rgba(0, 0, 0, 0.22);
     --ff-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.34), 0 28px 70px rgba(0, 0, 0, 0.28);
-    --ff-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.4), 0 42px 110px rgba(0, 0, 0, 0.34);
+    --ff-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.40), 0 42px 110px rgba(0, 0, 0, 0.34);
     --ff-shadow-card: 0 16px 34px rgba(0, 0, 0, 0.34);
     --ff-shadow-card-hover: 0 18px 36px rgba(0, 0, 0, 0.42);
+
     color-scheme: dark;
   }
 
@@ -213,12 +226,14 @@ Architecture
       --ff-bg-subtle: #0a1019;
       --ff-bg-muted: #0f172a;
       --ff-bg-strong: #162234;
+
       --ff-surface: rgba(11, 18, 32, 0.76);
-      --ff-surface-1: rgba(10, 16, 28, 0.9);
+      --ff-surface-1: rgba(10, 16, 28, 0.90);
       --ff-surface-2: rgba(11, 18, 32, 0.92);
       --ff-surface-3: rgba(255, 255, 255, 0.03);
       --ff-surface-inverse: #f8fafc;
       --ff-bg-elev: rgba(11, 18, 32, 0.92);
+
       --ff-text: #f8fafc;
       --ff-text-1: #f8fafc;
       --ff-text-soft: #dbe5f0;
@@ -227,30 +242,39 @@ Architecture
       --ff-text-3: #94a3b8;
       --ff-text-4: #7f91aa;
       --ff-text-inverse: #020617;
+
       --ff-border-subtle: rgba(148, 163, 184, 0.16);
       --ff-border-soft: rgba(148, 163, 184, 0.12);
       --ff-border-strong: rgba(148, 163, 184, 0.26);
       --ff-hairline: rgba(148, 163, 184, 0.16);
+
       --ff-brand: #38bdf8;
       --ff-brand-strong: #7dd3fc;
       --ff-brand-soft: rgba(56, 189, 248, 0.16);
+
       --ff-accent: #fb923c;
       --ff-accent-strong: #fdba74;
       --ff-accent-soft: rgba(251, 146, 60, 0.16);
+
       --ff-success: #34d399;
       --ff-success-soft: rgba(52, 211, 153, 0.16);
+
       --ff-warn: #f59e0b;
       --ff-warn-soft: rgba(245, 158, 11, 0.16);
+
       --ff-danger: #f87171;
       --ff-danger-soft: rgba(248, 113, 113, 0.16);
+
       --ff-focus: #7dd3fc;
-      --ff-ring: 0 0 0 3px rgba(125, 211, 252, 0.2);
+      --ff-ring: 0 0 0 3px rgba(125, 211, 252, 0.20);
       --ff-backdrop: rgba(2, 6, 23, 0.72);
+
       --ff-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.34), 0 12px 28px rgba(0, 0, 0, 0.22);
       --ff-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.34), 0 28px 70px rgba(0, 0, 0, 0.28);
-      --ff-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.4), 0 42px 110px rgba(0, 0, 0, 0.34);
+      --ff-shadow-3: 0 16px 36px rgba(0, 0, 0, 0.40), 0 42px 110px rgba(0, 0, 0, 0.34);
       --ff-shadow-card: 0 16px 34px rgba(0, 0, 0, 0.34);
       --ff-shadow-card-hover: 0 18px 36px rgba(0, 0, 0, 0.42);
+
       color-scheme: dark;
     }
   }
@@ -262,6 +286,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   BASE
+   ========================================================================== */
 @layer ff.base {
   *,
   *::before,
@@ -272,6 +299,12 @@ Architecture
   html {
     color-scheme: light dark;
     scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  html,
+  body {
+    min-width: 0;
     overflow-x: hidden;
   }
 
@@ -290,12 +323,6 @@ Architecture
   figure,
   blockquote {
     margin: 0;
-  }
-
-  html,
-  body {
-    min-width: 0;
-    overflow-x: hidden;
   }
 
   body,
@@ -536,6 +563,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   TYPE
+   ========================================================================== */
 @layer ff.type {
   .ff-display,
   .ff-heroTitle {
@@ -600,7 +630,8 @@ Architecture
   .ff-storyList,
   .ff-footer__link,
   .ff-announce__text,
-  .ff-launchNotice__text {
+  .ff-launchNotice__text,
+  .ff-footerTrust {
     font-size: clamp(0.9375rem, 0.92rem + 0.08vw, 1rem);
     line-height: 1.65;
     color: var(--ff-text-3);
@@ -653,7 +684,7 @@ Architecture
 
   .ff-quote {
     padding: 0.9rem 1rem;
-    background: linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(247,250,253,0.96) 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(247, 250, 253, 0.96) 100%);
     border-inline-start: 3px solid rgba(14, 165, 233, 0.45);
     border-radius: 14px;
   }
@@ -675,6 +706,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   LAYOUT
+   ========================================================================== */
 @layer ff.layout {
   .ff-stack {
     display: flex;
@@ -852,7 +886,8 @@ Architecture
   .ff-checkoutBody,
   .ff-checkoutMethod,
   .ff-snapshotGrid,
-  .ff-progressCompact__pulse {
+  .ff-progressCompact__pulse,
+  .ff-teamCard__stats {
     display: grid;
     gap: 1rem;
   }
@@ -1003,6 +1038,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   SURFACES
+   ========================================================================== */
 @layer ff.surfaces {
   .ff-glass,
   .ff-surface,
@@ -1147,6 +1185,7 @@ Architecture
   .ff-trustSignal,
   .ff-progressCompact__summary,
   .ff-progressCompact__use,
+  .ff-progressCompact__details,
   .ff-snapshotItem,
   .ff-onboardSummary__item,
   .ff-sponsorWall__item,
@@ -1154,7 +1193,6 @@ Architecture
   .ff-teamStat,
   .ff-proofMini,
   .ff-progressMini,
-  .ff-progressCompact__details,
   .ff-storyCopy,
   .ff-storyMedia,
   .ff-sponsorWallBlock,
@@ -1163,7 +1201,9 @@ Architecture
   .ff-modal__body,
   .ff-paymentMount,
   .ff-paypalMount,
-  .ff-videoMount {
+  .ff-videoMount,
+  .ff-faqCard,
+  .ff-trustCard {
     background: var(--ff-surface-3);
     border: 1px solid var(--ff-border-soft);
     border-radius: var(--ff-r-3);
@@ -1179,6 +1219,7 @@ Architecture
     padding: 1rem;
   }
 
+  .ff-card--premium,
   .ff-tierCard--recommended,
   .ff-teamCard.is-featured,
   .ff-sponsorCard--founder,
@@ -1262,8 +1303,8 @@ Architecture
     margin-top: 1rem;
     padding: 0.9rem 1rem;
     border-radius: var(--ff-r-3);
-    border: 1px solid rgba(14, 165, 233, .18);
-    background: linear-gradient(180deg, rgba(14,165,233,.06), rgba(14,165,233,.02));
+    border: 1px solid rgba(14, 165, 233, 0.18);
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.06), rgba(14, 165, 233, 0.02));
   }
 
   .ff-sponsorWall__item {
@@ -1301,7 +1342,7 @@ Architecture
     padding: 1rem 1.05rem;
     border-radius: var(--ff-r-3);
     border: 1px dashed var(--ff-border-strong);
-    background: linear-gradient(180deg, rgba(14,165,233,0.04), rgba(15,23,42,0.01));
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.04), rgba(15, 23, 42, 0.01));
   }
 
   .ff-teamStat {
@@ -1334,7 +1375,7 @@ Architecture
   .ff-root[data-theme="dark"] .ff-progressMini--remaining {
     background:
       radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 7rem),
-      linear-gradient(180deg, rgba(11,18,32,0.9), rgba(11,18,32,0.98));
+      linear-gradient(180deg, rgba(11, 18, 32, 0.90), rgba(11, 18, 32, 0.98));
   }
 
   .ff-skeleton {
@@ -1378,7 +1419,7 @@ Architecture
 
   .ff-root[data-theme="dark"] .is-media-missing {
     background:
-      linear-gradient(180deg, rgba(56, 189, 248, 0.08), rgba(2, 6, 23, 0.1)),
+      linear-gradient(180deg, rgba(56, 189, 248, 0.08), rgba(2, 6, 23, 0.10)),
       linear-gradient(135deg, #0f172a, #162235);
   }
 
@@ -1427,6 +1468,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   CONTROLS
+   ========================================================================== */
 @layer ff.controls {
   .ff-btn,
   .ff-iconbtn,
@@ -1484,7 +1528,7 @@ Architecture
     color: #fff;
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.16) inset,
-      0 10px 22px rgba(14, 165, 233, 0.2);
+      0 10px 22px rgba(14, 165, 233, 0.20);
   }
 
   .ff-btn--primary:hover,
@@ -1821,6 +1865,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   PAGES
+   ========================================================================== */
 @layer ff.pages {
   .ff-chrome {
     position: sticky;
@@ -1932,8 +1979,8 @@ Architecture
 
   .ff-hero {
     background:
-      radial-gradient(circle at 20% 10%, rgba(14,165,233,.08), transparent 60%),
-      radial-gradient(circle at 80% 20%, rgba(59,130,246,.06), transparent 60%);
+      radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.08), transparent 60%),
+      radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.06), transparent 60%);
   }
 
   .ff-hero__capsule,
@@ -2042,13 +2089,13 @@ Architecture
     overflow: hidden;
     border-radius: var(--ff-r-3);
     background: var(--ff-team-media-bg);
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    border: 1px solid rgba(148, 163, 184, 0.20);
   }
 
   .ff-root[data-theme="dark"] .ff-teamCard__media,
   .ff-root[data-theme="dark"] .ff-storyPoster {
     background:
-      linear-gradient(180deg, rgba(56, 189, 248, 0.08), rgba(2, 6, 23, 0.1)),
+      linear-gradient(180deg, rgba(56, 189, 248, 0.08), rgba(2, 6, 23, 0.10)),
       linear-gradient(135deg, #0f172a, #162235);
   }
 
@@ -2057,7 +2104,7 @@ Architecture
     position: absolute;
     inset: auto 0 0 0;
     height: 42%;
-    background: linear-gradient(180deg, rgba(15,23,42,0), rgba(15,23,42,0.12));
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(15, 23, 42, 0.12));
     pointer-events: none;
   }
 
@@ -2069,9 +2116,18 @@ Architecture
     object-position: center;
   }
 
+  .ff-teamCard__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--ff-hairline);
+  }
+
   .ff-storyPoster {
     display: block;
-    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.10);
   }
 
   .ff-storyPoster__img {
@@ -2152,6 +2208,12 @@ Architecture
     font-size: 1rem;
     line-height: 1.25;
     color: var(--ff-text);
+  }
+
+  .ff-sponsorMeta,
+  .ff-storyMeta {
+    display: grid;
+    gap: 0.5rem;
   }
 
   .ff-trustSignals {
@@ -2337,6 +2399,16 @@ Architecture
     height: 100%;
   }
 
+  .ff-checkoutSuccess {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: var(--ff-r-3);
+    border: 1px solid rgba(15, 159, 110, 0.22);
+    background: var(--ff-success-soft);
+    color: var(--ff-text);
+  }
+
   .ff-toasts {
     position: fixed;
     inset-inline-end: 1rem;
@@ -2500,8 +2572,11 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
 @layer ff.utilities {
-  /* FF_DATA_ATTR_COVERAGE_SHIMS */
+  /* coverage shims */
   [data-ff-amount],
   [data-ff-amount-input],
   [data-ff-animate],
@@ -2615,11 +2690,7 @@ Architecture
   [data-ff-video-sr],
   [data-ff-video-src],
   [data-ff-video-status],
-  [data-ff-video-title] {
-    /* selector shim for strict data-ff coverage gate */
-  }
-
-  /* FF_SELECTOR_AND_ID_COVERAGE_SHIMS */
+  [data-ff-video-title],
   .ff-backtotop--flagship,
   .ff-backtotop__icon,
   .ff-backtotop__text,
@@ -2715,10 +2786,7 @@ Architecture
   .ff-topbarGoal__sep,
   .ff-topbar__brandCluster,
   .ff-topbar__capsule--flagship,
-  .ff-topbar__rightCluster {
-    /* selector shim for strict coverage gate */
-  }
-
+  .ff-topbar__rightCluster,
   #checkoutDesc,
   #checkoutErrorText,
   #checkoutTitle,
@@ -2775,7 +2843,7 @@ Architecture
   #trustFaqTitle,
   #trustRefundsTitle,
   #trustUseFunds {
-    /* selector shim for strict ID coverage gate */
+    /* selector shim for strict coverage gates */
   }
 
   .ff-gap-2 { gap: var(--ff-2); }
@@ -2882,6 +2950,9 @@ Architecture
   }
 }
 
+/* ==========================================================================
+   OVERRIDES / OVERLAYS / CHECKOUT / SKIP LINKS
+   ========================================================================== */
 @layer ff.overrides {
   :root,
   .ff-root {
@@ -2901,6 +2972,11 @@ Architecture
     scroll-margin-top: calc(var(--ff-nav-h, 5rem) + 1rem);
   }
 
+  .ff-trust-faq {
+    scroll-margin-top: calc(var(--ff-nav-h, 5rem) + 1rem);
+  }
+
+  /* skip links */
   .ff-skiplinks {
     position: fixed;
     inset-inline-start: max(0.75rem, env(safe-area-inset-left));
@@ -2953,6 +3029,7 @@ Architecture
     pointer-events: auto;
   }
 
+  /* overlay contract */
   .ff-modal,
   .ff-sheet,
   .ff-drawer {
@@ -3124,7 +3201,8 @@ Architecture
   }
 
   .ff-root.is-open,
-  .ff-shell.is-open {
+  .ff-shell.is-open,
+  .ff-overlay-open {
     isolation: isolate;
   }
 
@@ -3148,6 +3226,7 @@ Architecture
     pointer-events: none;
   }
 
+  /* sponsor modal scroll containment */
   #sponsor-interest,
   #sponsor-interest.is-open,
   #sponsor-interest[data-open="true"],
@@ -3192,6 +3271,7 @@ Architecture
     scroll-margin-block-end: 2rem;
   }
 
+  /* checkout sheet scroll engine */
   #checkout.ff-sheet {
     position: fixed;
     inset: 0;
@@ -3261,14 +3341,15 @@ Architecture
     position: sticky;
     bottom: 0;
     z-index: 2;
-    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--ff-surface-2) 22%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, var(--ff-surface-2) 22%);
   }
 
   .ff-root[data-theme="dark"] #checkout .ff-sheet__footer,
   .ff-root[data-theme="dark"] #checkout .ff-sheet__footer--sticky {
-    background: linear-gradient(180deg, rgba(11,18,32,0) 0%, var(--ff-surface-2) 22%);
+    background: linear-gradient(180deg, rgba(11, 18, 32, 0) 0%, var(--ff-surface-2) 22%);
   }
 
+  #checkout .ff-sheet__close,
   #checkout .ff-sheet__close--runtime {
     position: absolute;
     top: 0.875rem;
@@ -3287,10 +3368,32 @@ Architecture
     cursor: pointer;
   }
 
+  #checkout .ff-sheet__close:focus,
+  #checkout .ff-sheet__close:focus-visible,
   #checkout .ff-sheet__close--runtime:focus,
   #checkout .ff-sheet__close--runtime:focus-visible {
     outline: 2px solid var(--ff-focus);
     outline-offset: 2px;
+  }
+
+  /* tiny contract rescues */
+  .ff-announce,
+  .ff-announce--flagship,
+  .ff-footer,
+  .ff-donate-btn,
+  .ff-sheet__close {
+    display: block;
+  }
+
+  .ff-donate-btn,
+  .ff-sheet__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ff-modal__panel--flagship {
+    width: min(100% - 1rem, 54rem);
   }
 
   @media (max-width: 640px) {
@@ -3325,93 +3428,5 @@ Architecture
     .ff-main {
       padding-block-end: 2rem;
     }
-  }
-}
-
-
-@layer ff.overrides {
-  /* FF_CONTRACT_RESCUE_V1 */
-  .ff-announce,
-  .ff-announce--flagship {
-    display: block;
-  }
-
-  .ff-card--premium {
-    background: var(--ff-surface-2);
-    box-shadow: var(--ff-shadow-2);
-  }
-
-  .ff-checkoutSuccess {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1rem;
-    border-radius: var(--ff-r-3);
-    border: 1px solid rgba(15, 159, 110, 0.22);
-    background: var(--ff-success-soft);
-    color: var(--ff-text);
-  }
-
-  .ff-faqCard,
-  .ff-trustCard {
-    background: var(--ff-surface-1);
-    border: 1px solid var(--ff-border-soft);
-    border-radius: var(--ff-r-4);
-    box-shadow: var(--ff-shadow-card);
-    padding: 1rem;
-  }
-
-  .ff-footer {
-    display: block;
-  }
-
-  .ff-footerTrust {
-    color: var(--ff-text-3);
-    font-size: var(--ff-fs-300);
-    line-height: 1.6;
-  }
-
-  .ff-modal__panel--flagship {
-    width: min(100% - 1rem, 54rem);
-  }
-
-  .ff-sponsorMeta,
-  .ff-storyMeta {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .ff-teamCard__foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding-top: 0.25rem;
-    border-top: 1px solid var(--ff-hairline);
-  }
-
-  .ff-trust-faq {
-    scroll-margin-top: calc(var(--ff-nav-h, 5rem) + 1rem);
-  }
-
-  .ff-donate-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .ff-sheet__close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .ff-railcard {
-    position: relative;
-    overflow: hidden;
-    border-radius: var(--ff-r-3);
-  }
-
-  .ff-overlay-open {
-    isolation: isolate;
   }
 }
