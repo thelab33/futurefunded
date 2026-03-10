@@ -4458,3 +4458,63 @@ document.addEventListener("mousedown", function(e){
 
 /* FF_LIVE_ACTIVITY_FEED_V1_END */
 
+/* FF_OVERLAY_LOCK_SELF_HEAL_V1_START */
+(function () {
+  if (window.__FF_OVERLAY_LOCK_SELF_HEAL_V1__) return;
+  window.__FF_OVERLAY_LOCK_SELF_HEAL_V1__ = true;
+
+  function qsa(sel) {
+    return Array.prototype.slice.call(document.querySelectorAll(sel));
+  }
+
+  function hasOpenOverlay() {
+    return qsa(
+      '[data-ff-checkout-sheet][data-open="true"], ' +
+      '[data-ff-sponsor-modal][data-open="true"], ' +
+      '#checkout:not([hidden]), ' +
+      '#sponsor-interest:not([hidden])'
+    ).some(function (el) {
+      if (!el) return false;
+      if (el.getAttribute("aria-hidden") === "true") return false;
+      if (el.hidden) return false;
+      return true;
+    });
+  }
+
+  function syncOverlayLock() {
+    var root = document.documentElement;
+    var body = document.body;
+    if (!body) return;
+
+    if (hasOpenOverlay()) {
+      root.classList.add("ff-overlay-open");
+      body.classList.add("ff-overlay-open");
+    } else {
+      root.classList.remove("ff-overlay-open");
+      body.classList.remove("ff-overlay-open");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", syncOverlayLock);
+  window.addEventListener("pageshow", syncOverlayLock);
+  window.addEventListener("hashchange", function () {
+    setTimeout(syncOverlayLock, 0);
+  });
+
+  document.addEventListener("click", function (e) {
+    var trigger = e.target.closest(
+      "[data-ff-open-checkout], [data-ff-close-checkout], [data-ff-close-sponsor], [data-ff-sponsor-submit]"
+    );
+    if (!trigger) return;
+    setTimeout(syncOverlayLock, 40);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      setTimeout(syncOverlayLock, 40);
+    }
+  });
+
+  setTimeout(syncOverlayLock, 0);
+})();
+/* FF_OVERLAY_LOCK_SELF_HEAL_V1_END */

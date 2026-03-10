@@ -4111,3 +4111,27 @@ ID selectors required by UIUX Pro Gate
 }
 
 /* FF_SPONSOR_SECTION_IDS_LAYERED_V2_END */
+
+/* FF_SCROLLBAR_VISIBILITY_GUARD_V1_START */
+@layer base {
+  html {
+    min-height: 100%;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    min-height: 100%;
+  }
+
+  html.ff-overlay-open,
+  body.ff-overlay-open {
+    overflow: hidden;
+  }
+
+  html:not(.ff-overlay-open),
+  body:not(.ff-overlay-open) {
+    overflow: hidden auto;
+  }
+}
+/* FF_SCROLLBAR_VISIBILITY_GUARD_V1_END */
