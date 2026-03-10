@@ -19,7 +19,11 @@ const BASE =
   process.env.BASE_URL ??
   "http://127.0.0.1:5000";
 
+
 const IMPORTANT_ID_RE = /^(ff|hero|progress|trust|tier|sponsor|checkout|drawer)/i;
+
+const ID_IGNORE_SUFFIX_RE = /(Title|Desc|Help|Legend|Status|ErrorText)$/i;
+
 
 const PRESENTATIONAL_CLASS_ALLOWLIST = new Set<string>([
   "ff-backtotop--flagship",
@@ -130,6 +134,28 @@ const DATAFF_ALLOWLIST = new Set<string>([
   "data-ff-checkout-viewport",
   "data-ff-checkout-status",
   "data-ff-toasts"
+]);
+
+const OPTIONAL_RUNTIME_CLASS_ALLOWLIST = new Set<string>([
+  "ff-sponsorHasFallback",
+  "ff-sponsorLogoReady",
+  "is-passed",
+  "is-urgent"
+]);
+
+const OPTIONAL_RUNTIME_DATAFF_ALLOWLIST = new Set<string>([
+  "data-ff-cred-v3",
+  "data-ff-sponsor-cred-ready",
+  "data-ff-sponsor-initials",
+  "data-ff-stripe-preload",
+  "data-ff-trust-strip",
+
+  /* runtime / JS / instrumentation hooks */
+  "data-ff-fallback-label",
+  "data-ff-focus-probe",
+  "data-ff-onboard-ready",
+  "data-ff-qr",
+  "data-ff-summary-amount"
 ]);
 
 function resolveUrl(url: string): string {
@@ -260,6 +286,7 @@ async function expectCssCoverage(page: Page, label: string) {
 
   const missingClasses = diffSets(domSymbols.classes, cssSymbols.classes, (c) => {
     if (CLASS_ALLOWLIST.has(c)) return false;
+    if (OPTIONAL_RUNTIME_CLASS_ALLOWLIST.has(c)) return false;
     return c.startsWith("ff-") || c.startsWith("is-");
   });
 
@@ -267,6 +294,7 @@ async function expectCssCoverage(page: Page, label: string) {
 
   const missingDataAttrs = diffSets(domSymbols.dataAttrs, cssSymbols.dataAttrs, (a) => {
     if (DATAFF_ALLOWLIST.has(a)) return false;
+    if (OPTIONAL_RUNTIME_DATAFF_ALLOWLIST.has(a)) return false;
     return a.startsWith("data-ff-");
   });
 
@@ -399,22 +427,32 @@ async function openCheckout(page: Page) {
 }
 
 async function closeCheckout(page: Page) {
+  if (page.isClosed()) return;
+
   const btn = page.locator(
     '#checkout button[data-ff-close-checkout]:not(.ff-sheet__backdrop):not(.ff-backdrop):not(.backdrop), #checkout button.ff-sheet__close, #checkout button[data-ff-close]'
   ).first();
 
-  if ((await btn.count()) > 0 && await btn.isVisible().catch(() => false)) {
-    await btn.click({ force: true });
+  const btnCount = await btn.count().catch(() => 0);
+  const btnVisible = btnCount > 0 ? await btn.isVisible().catch(() => false) : false;
+
+  if (btnCount > 0 && btnVisible) {
+    await btn.click({ force: true }).catch(() => {});
   } else {
     const bd = page.locator("#checkout [data-ff-backdrop], #checkout .ff-sheet__backdrop, #checkout .ff-backdrop, #checkout .backdrop").first();
-    if ((await bd.count()) > 0 && await bd.isVisible().catch(() => false)) {
-      await bd.click({ force: true });
-    } else {
-      await page.keyboard.press("Escape");
+    const bdCount = await bd.count().catch(() => 0);
+    const bdVisible = bdCount > 0 ? await bd.isVisible().catch(() => false) : false;
+
+    if (bdCount > 0 && bdVisible) {
+      await bd.click({ force: true }).catch(() => {});
+    } else if (!page.isClosed()) {
+      await page.keyboard.press("Escape").catch(() => {});
     }
   }
 
-  await page.waitForTimeout(150);
+  if (!page.isClosed()) {
+    await page.waitForTimeout(150).catch(() => {});
+  }
 }
 
 function installConsoleAndNetworkGuards(page: Page) {

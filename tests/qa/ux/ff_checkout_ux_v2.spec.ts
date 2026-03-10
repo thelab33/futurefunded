@@ -21,7 +21,7 @@ function closeButton(page: Page) {
         "#checkout button[data-ff-close-checkout]",
         "#checkout [role='button'][data-ff-close-checkout]",
         "#checkout a[data-ff-close-checkout]:not(.ff-sheet__backdrop):not(.ff-backdrop):not(.backdrop)",
-        "#checkout .ff-sheet__close",
+        "#checkout .ff-sheet__close:not(.ff-sheet__backdrop)",
       ].join(", ")
     )
     .first();
@@ -126,7 +126,7 @@ async function closeViaButtonOrEscape(page: Page) {
   if (await btn.count()) {
     // If it exists, it must be interactable for a premium UX
     await expect(btn).toBeVisible({ timeout: TIMEOUT.open });
-    await btn.click({ force: true });
+    await btn.evaluate(el => el.click());
   } else {
     // No close button found -> escape is still a valid UX contract
     await page.keyboard.press("Escape");

@@ -1,3 +1,352 @@
+/* FF_SELECTOR_CONTRACT_AUTOGEN_START */
+(function initFFSelectorContract(global) {
+  "use strict";
+
+  const CONTRACT = Object.freeze({
+    "activityfeed": ".ff-activityFeed",
+    "activityfeedItem": ".ff-activityFeed__item",
+    "checkout": "#checkout",
+    "checkoutActions": "[data-ff-checkout-actions]",
+    "checkoutContent": "[data-ff-checkout-content]",
+    "checkoutError": "[data-ff-checkout-error]",
+    "checkoutScroll": "[data-ff-checkout-scroll]",
+    "checkoutSheet": "[data-ff-checkout-sheet]",
+    "checkoutShell": "[data-ff-checkout-shell]",
+    "checkoutStage": "[data-ff-checkout-stage]",
+    "checkoutStatus": "[data-ff-checkout-status]",
+    "checkoutSuccess": "[data-ff-checkout-success]",
+    "checkoutViewport": "[data-ff-checkout-viewport]",
+    "checkoutamountfield": ".ff-checkoutAmountField",
+    "checkoutamountrow": ".ff-checkoutAmountRow",
+    "checkoutaside": ".ff-checkoutAside",
+    "checkoutbody": ".ff-checkoutBody",
+    "checkoutbodyFlagship": ".ff-checkoutBody--flagship",
+    "checkoutcard": ".ff-checkoutCard",
+    "checkoutcardAmount": ".ff-checkoutCard--amount",
+    "checkoutcardHead": ".ff-checkoutCard__head",
+    "checkoutcta": ".ff-checkoutCta",
+    "checkoutcurrency": ".ff-checkoutCurrency",
+    "checkoutdesc": "#checkoutDesc",
+    "checkouterrortext": "#checkoutErrorText",
+    "checkoutfooteractions": ".ff-checkoutFooterActions",
+    "checkoutfooterbar": ".ff-checkoutFooterBar",
+    "checkoutfootercopy": ".ff-checkoutFooterCopy",
+    "checkouthead": ".ff-checkoutHead",
+    "checkoutheadFlagship": ".ff-checkoutHead--flagship",
+    "checkouthelpcard": ".ff-checkoutHelpCard",
+    "checkouthero": ".ff-checkoutHero",
+    "checkouthighlights": ".ff-checkoutHighlights",
+    "checkoutlayout": ".ff-checkoutLayout",
+    "checkoutmain": ".ff-checkoutMain",
+    "checkoutmethod": ".ff-checkoutMethod",
+    "checkoutmethodHead": ".ff-checkoutMethod__head",
+    "checkoutpreset": ".ff-checkoutPreset",
+    "checkoutpresetgrid": ".ff-checkoutPresetGrid",
+    "checkoutsecondarycta": ".ff-checkoutSecondaryCta",
+    "checkoutshell": ".ff-checkoutShell",
+    "checkoutshellFlagship": ".ff-checkoutShell--flagship",
+    "checkoutshellLayout": ".ff-checkoutShell--layout",
+    "checkoutsuccess": ".ff-checkoutSuccess",
+    "checkoutsummarycard": ".ff-checkoutSummaryCard",
+    "checkoutsummarycardTop": ".ff-checkoutSummaryCard__top",
+    "checkoutsummarylist": ".ff-checkoutSummaryList",
+    "checkoutsummarylistItem": ".ff-checkoutSummaryList__item",
+    "checkoutsummarystat": ".ff-checkoutSummaryStat",
+    "checkoutsummarystatLabel": ".ff-checkoutSummaryStat__label",
+    "checkoutsummarystatValue": ".ff-checkoutSummaryStat__value",
+    "checkoutsummarytrust": ".ff-checkoutSummaryTrust",
+    "checkouttitle": "#checkoutTitle",
+    "closeCheckout": "[data-ff-close-checkout]",
+    "closeDrawer": "[data-ff-close-drawer]",
+    "closeOnboard": "[data-ff-close-onboard]",
+    "closePrivacy": "[data-ff-close-privacy]",
+    "closeSponsor": "[data-ff-close-sponsor]",
+    "closeTerms": "[data-ff-close-terms]",
+    "closeVideo": "[data-ff-close-video]",
+    "donate": "[data-ff-donate]",
+    "donateForm": "[data-ff-donate-form]",
+    "donationamount": "#donationAmount",
+    "donationamounthelp": "#donationAmountHelp",
+    "donationamountlegend": "#donationAmountLegend",
+    "donationform": "#donationForm",
+    "donationformsecondary2": "#donationFormSecondary2",
+    "drawer": "#drawer",
+    "drawerBackdrop": ".ff-drawer__backdrop",
+    "drawerBlock": ".ff-drawer__block",
+    "drawerBody": ".ff-drawer__body",
+    "drawerClose": ".ff-drawer__close",
+    "drawerGrid": ".ff-drawer__grid",
+    "drawerHead": ".ff-drawer__head",
+    "drawerLink": ".ff-drawer__link",
+    "drawerOrgLogo": ".ff-drawer__orgLogo",
+    "drawerPanel": ".ff-drawer__panel",
+    "faq": "#faq",
+    "faqtitle": "#faqTitle",
+    "ffOnboarding": "#ff-onboarding",
+    "ffconfig": "#ffConfig",
+    "ffdrawerdesc": "#ffDrawerDesc",
+    "ffdrawerpanel": "#ffDrawerPanel",
+    "ffdrawertitle": "#ffDrawerTitle",
+    "fflive": "#ffLive",
+    "ffonboarddesc": "#ffOnboardDesc",
+    "ffonboardstep1title": "#ffOnboardStep1Title",
+    "ffonboardstep2title": "#ffOnboardStep2Title",
+    "ffonboardstep3title": "#ffOnboardStep3Title",
+    "ffonboardstep4title": "#ffOnboardStep4Title",
+    "ffonboardtitle": "#ffOnboardTitle",
+    "ffselectors": "#ffSelectors",
+    "ffsuccessdesc": "#ffSuccessDesc",
+    "ffsuccesstitle": "#ffSuccessTitle",
+    "fftopbar": "#ffTopbar",
+    "ffvideodesc": "#ffVideoDesc",
+    "ffvideostatus": "#ffVideoStatus",
+    "ffvideotitle": "#ffVideoTitle",
+    "floatingDonate": "[data-ff-floating-donate]",
+    "floatingdonate": ".ff-floatingDonate",
+    "floatingdonateInner": ".ff-floatingDonate__inner",
+    "footer": "[data-ff-footer]",
+    "footerTrust": "[data-ff-footer-trust]",
+    "goal": "[data-ff-goal]",
+    "goalbar": "[data-ff-goalbar]",
+    "heroaccentline": "#heroAccentLine",
+    "heroactivitytitle": "#heroActivityTitle",
+    "herolead": "#heroLead",
+    "heropaneltitle": "#heroPanelTitle",
+    "herotitle": "#heroTitle",
+    "home": "[data-ff-home]",
+    "impact": "#impact",
+    "impacthint": "#impactHint",
+    "impactlead": "#impactLead",
+    "impactpickdesc": "#impactPickDesc",
+    "impactpicktitle": "#impactPickTitle",
+    "impactplayerhint": "#impactPlayerHint",
+    "impactplayertitle": "#impactPlayerTitle",
+    "impactproofdesc": "#impactProofDesc",
+    "impactprooftitle": "#impactProofTitle",
+    "impacttitle": "#impactTitle",
+    "live": "[data-ff-live]",
+    "liveFeed": "[data-ff-live-feed]",
+    "main": "[data-ff-main]",
+    "meter": "[data-ff-meter]",
+    "modal": ".ff-modal",
+    "modalBackdrop": ".ff-modal__backdrop",
+    "modalBackdropFlagship": ".ff-modal__backdrop--flagship",
+    "modalBody": ".ff-modal__body",
+    "modalCompact": ".ff-modal--compact",
+    "modalFlagship": ".ff-modal--flagship",
+    "modalFootFlagship": ".ff-modal__foot--flagship",
+    "modalFootSticky": ".ff-modal__foot--sticky",
+    "modalHead": ".ff-modal__head",
+    "modalHeadFlagship": ".ff-modal__head--flagship",
+    "modalPanel": ".ff-modal__panel",
+    "modalPanelFlagship": ".ff-modal__panel--flagship",
+    "modalPanelVideo": ".ff-modal__panel--video",
+    "modalTitle": ".ff-modal__title",
+    "modalVideo": ".ff-modal--video",
+    "onboardCopy": "[data-ff-onboard-copy]",
+    "onboardEmail": "[data-ff-onboard-email]",
+    "onboardEmailTarget": "[data-ff-onboard-email-target]",
+    "onboardEndpoint": "[data-ff-onboard-endpoint]",
+    "onboardFinish": "[data-ff-onboard-finish]",
+    "onboardForm": "[data-ff-onboard-form]",
+    "onboardModal": "[data-ff-onboard-modal]",
+    "onboardNext": "[data-ff-onboard-next]",
+    "onboardPanel": "[data-ff-onboard-panel]",
+    "onboardPrev": "[data-ff-onboard-prev]",
+    "onboardResult": "[data-ff-onboard-result]",
+    "onboardStatus": "[data-ff-onboard-status]",
+    "onboardSummary": "[data-ff-onboard-summary]",
+    "onboardSwatch": "[data-ff-onboard-swatch]",
+    "onboardcolor": ".ff-onboardColor",
+    "onboardgrid": ".ff-onboardGrid",
+    "onboardpanel": ".ff-onboardPanel",
+    "onboardstep": ".ff-onboardStep",
+    "onboardstepper": ".ff-onboardStepper",
+    "onboardsummary": ".ff-onboardSummary",
+    "onboardswatch": ".ff-onboardSwatch",
+    "onboardswatches": ".ff-onboardSwatches",
+    "openCheckout": "[data-ff-open-checkout]",
+    "openDrawer": "[data-ff-open-drawer]",
+    "openOnboard": "[data-ff-open-onboard]",
+    "openPrivacy": "[data-ff-open-privacy]",
+    "openSponsor": "[data-ff-open-sponsor]",
+    "openTerms": "[data-ff-open-terms]",
+    "openVideo": "[data-ff-open-video]",
+    "paypalError": "[data-ff-paypal-error]",
+    "paypalMount": "[data-ff-paypal-mount]",
+    "paypalMsg": "[data-ff-paypal-msg]",
+    "paypalSkeleton": "[data-ff-paypal-skeleton]",
+    "playerId": "[data-ff-player-id]",
+    "privacy": "#privacy",
+    "privacydesc": "#privacyDesc",
+    "privacytitle": "#privacyTitle",
+    "sheet": ".ff-sheet",
+    "sheetBackdrop": ".ff-sheet__backdrop",
+    "sheetBackdropFlagship": ".ff-sheet__backdrop--flagship",
+    "sheetCheckout": ".ff-sheet--checkout",
+    "sheetClose": ".ff-sheet__close",
+    "sheetContent": ".ff-sheet__content",
+    "sheetFlagship": ".ff-sheet--flagship",
+    "sheetFooter": ".ff-sheet__footer",
+    "sheetFooterSticky": ".ff-sheet__footer--sticky",
+    "sheetHeader": ".ff-sheet__header",
+    "sheetPanel": ".ff-sheet__panel",
+    "sheetPanelFlagship": ".ff-sheet__panel--flagship",
+    "sheetScroll": ".ff-sheet__scroll",
+    "sheetScrollFlagship": ".ff-sheet__scroll--flagship",
+    "sheetViewport": ".ff-sheet__viewport",
+    "sheetViewportFlagship": ".ff-sheet__viewport--flagship",
+    "shell": "[data-ff-shell]",
+    "sponsorAPlayer": "[data-ff-sponsor-a-player]",
+    "sponsorAmount": "[data-ff-sponsor-amount]",
+    "sponsorCard": "[data-ff-sponsor-card]",
+    "sponsorEmail": "[data-ff-sponsor-email]",
+    "sponsorError": "[data-ff-sponsor-error]",
+    "sponsorForm": "[data-ff-sponsor-form]",
+    "sponsorMessage": "[data-ff-sponsor-message]",
+    "sponsorModal": "[data-ff-sponsor-modal]",
+    "sponsorName": "[data-ff-sponsor-name]",
+    "sponsorStatus": "[data-ff-sponsor-status]",
+    "sponsorSubmit": "[data-ff-sponsor-submit]",
+    "sponsorSuccess": "[data-ff-sponsor-success]",
+    "sponsorTier": "[data-ff-sponsor-tier]",
+    "sponsorTierGrid": "[data-ff-sponsor-tier-grid]",
+    "sponsorTierSelected": "[data-ff-sponsor-tier-selected]",
+    "sponsorWall": "[data-ff-sponsor-wall]",
+    "sponsorWallEmpty": "[data-ff-sponsor-wall-empty]",
+    "sponsors": "#sponsors",
+    "sponsorshint": "#sponsorsHint",
+    "sponsorslead": "#sponsorsLead",
+    "sponsorstitle": "#sponsorsTitle",
+    "sponsorwall": ".ff-sponsorWall",
+    "sponsorwallCompact": ".ff-sponsorWall--compact",
+    "sponsorwallItem": ".ff-sponsorWall__item",
+    "sponsorwallItemCompact": ".ff-sponsorWall__item--compact",
+    "sponsorwallblock": ".ff-sponsorWallBlock",
+    "sponsorwallblockCompact": ".ff-sponsorWallBlock--compact",
+    "sponsorwallempty": ".ff-sponsorWallEmpty",
+    "stripeError": "[data-ff-stripe-error]",
+    "stripeMount": "[data-ff-stripe-mount]",
+    "stripeMsg": "[data-ff-stripe-msg]",
+    "stripePreload": "[data-ff-stripe-preload]",
+    "stripeSkeleton": "[data-ff-stripe-skeleton]",
+    "tabs": "[data-ff-tabs]",
+    "tabsFlagship": ".ff-tabs--flagship",
+    "tabsItem": ".ff-tabs__item",
+    "tabsList": ".ff-tabs__list",
+    "tabsListFlagship": ".ff-tabs__list--flagship",
+    "tabsScroller": ".ff-tabs__scroller",
+    "tabsScrollerFlagship": ".ff-tabs__scroller--flagship",
+    "teamId": "[data-ff-team-id]",
+    "teamcard": ".ff-teamCard",
+    "teamcardAsk": ".ff-teamCard__ask",
+    "teamcardBody": ".ff-teamCard__body",
+    "teamcardEyebrow": ".ff-teamCard__eyebrow",
+    "teamcardFallback": ".ff-teamCard__fallback",
+    "teamcardFallbackCopy": ".ff-teamCard__fallbackCopy",
+    "teamcardFallbackMark": ".ff-teamCard__fallbackMark",
+    "teamcardFlagship": ".ff-teamCard--flagship",
+    "teamcardFoot": ".ff-teamCard__foot",
+    "teamcardHead": ".ff-teamCard__head",
+    "teamcardImg": ".ff-teamCard__img",
+    "teamcardInner": ".ff-teamCard__inner",
+    "teamcardMedia": ".ff-teamCard__media",
+    "teamcardMediaBackdrop": ".ff-teamCard__mediaBackdrop",
+    "teamcardMediaPill": ".ff-teamCard__mediaPill",
+    "teamcardMediaPillGhost": ".ff-teamCard__mediaPill--ghost",
+    "teamcardMediaShade": ".ff-teamCard__mediaShade",
+    "teamcardMediaTop": ".ff-teamCard__mediaTop",
+    "teamcardMeta": ".ff-teamCard__meta",
+    "teamcardMeter": ".ff-teamCard__meter",
+    "teamcardMeterBar": ".ff-teamCard__meterBar",
+    "teamcardMeterText": ".ff-teamCard__meterText",
+    "teamcardStats": ".ff-teamCard__stats",
+    "teamcardSummary": ".ff-teamCard__summary",
+    "teamcardSummaryLabel": ".ff-teamCard__summaryLabel",
+    "teamcardSummaryValue": ".ff-teamCard__summaryValue",
+    "teamcardTitle": ".ff-teamCard__title",
+    "terms": "#terms",
+    "termsdesc": "#termsDesc",
+    "termstitle": "#termsTitle",
+    "tier": "[data-ff-tier]",
+    "toasts": "[data-ff-toasts]",
+    "topbar": "[data-ff-topbar]",
+    "topbarBrandCluster": ".ff-topbar__brandCluster",
+    "topbarCapsule": ".ff-topbar__capsule",
+    "topbarCapsuleFlagship": ".ff-topbar__capsule--flagship",
+    "topbarCapsuleInner": ".ff-topbar__capsuleInner",
+    "topbarDesktopOnly": ".ff-topbar__desktop-only",
+    "topbarMainRow": ".ff-topbar__mainRow",
+    "topbarMobileOnly": ".ff-topbar__mobile-only",
+    "topbarRightCluster": ".ff-topbar__rightCluster",
+    "topbarbrand": ".ff-topbarBrand",
+    "topbarbrandFlagship": ".ff-topbarBrand--flagship",
+    "topbarbrandPill": ".ff-topbarBrand__pill",
+    "topbarbrandText": ".ff-topbarBrand__text",
+    "topbargoal": ".ff-topbarGoal",
+    "topbargoalGoal": ".ff-topbarGoal__goal",
+    "topbargoalNumbers": ".ff-topbarGoal__numbers",
+    "topbargoalPercent": ".ff-topbarGoal__percent",
+    "topbargoalProgress": ".ff-topbarGoal__progress",
+    "topbargoalRaised": ".ff-topbarGoal__raised",
+    "topbargoalSep": ".ff-topbarGoal__sep",
+    "topbargoalStack": ".ff-topbarGoal__stack",
+    "videoFrame": "[data-ff-video-frame]",
+    "videoModal": "[data-ff-video-modal]",
+    "videoMount": "[data-ff-video-mount]",
+    "videoPanel": "[data-ff-video-panel]",
+    "videoSkeleton": "[data-ff-video-skeleton]",
+    "videoSr": "[data-ff-video-sr]",
+    "videoSrc": "[data-ff-video-src]",
+    "videoStatus": "[data-ff-video-status]",
+    "videoTitle": "[data-ff-video-title]",
+    "videoframe": ".ff-videoFrame",
+    "videomount": ".ff-videoMount",
+  });
+
+  function getHTMLSelectors() {
+    try {
+      if (global.ffSelectors && typeof global.ffSelectors === "object") return global.ffSelectors;
+      const tag = global.document && global.document.getElementById("ffSelectors");
+      if (tag && tag.textContent) {
+        return JSON.parse(tag.textContent);
+      }
+    } catch (_err) {
+      /* no-op */
+    }
+    return null;
+  }
+
+  function resolveSelector(key, fallback) {
+    const live = getHTMLSelectors();
+    if (live && typeof live[key] === "string" && live[key].trim()) {
+      return live[key].trim();
+    }
+    if (typeof CONTRACT[key] === "string" && CONTRACT[key].trim()) {
+      return CONTRACT[key].trim();
+    }
+    return typeof fallback === "string" ? fallback : "";
+  }
+
+  function makeSelectorMap() {
+    const out = Object.create(null);
+    for (const key of Object.keys(CONTRACT)) {
+      out[key] = resolveSelector(key, CONTRACT[key]);
+    }
+    return Object.freeze(out);
+  }
+
+  global.__FF_SELECTOR_CONTRACT__ = Object.freeze({
+    contract: CONTRACT,
+    resolveSelector,
+    makeSelectorMap
+  });
+
+  global.FF_SELECTORS = makeSelectorMap();
+})(window);
+/* FF_SELECTOR_CONTRACT_AUTOGEN_END */
+
+
 
 /* --------------------------------------------------
 FutureFunded Stripe Prewarm Engine
@@ -49,7 +398,7 @@ if(document.readyState === "loading"){
   const mount =
     document.querySelector('[data-ff-stripe-mount]') ||
     document.querySelector('[data-ff-payment-element]') ||
-    document.querySelector('#payment-element');
+    document.querySelector('#paymentElement');
 
   if(!mount){
     console.warn("Stripe mount point missing");
@@ -3450,383 +3799,58 @@ document.addEventListener("mousedown", function(e){
   w.FF_APP.api.closeCheckoutHard = closeCheckout;
 })();
 
-/* FF_V1_CREDIBILITY_PACK_START */
-(function () {
-  "use strict";
+/* FF_V1_TEAMS_MEDIA_FALLBACKS_V1_START */
+(function initTeamMediaFallbacks() {
+  if (window.__FF_V1_TEAMS_MEDIA_FALLBACKS_V1__) return;
+  window.__FF_V1_TEAMS_MEDIA_FALLBACKS_V1__ = true;
 
-  if (window.__FF_V1_CREDIBILITY_PACK_V1__) return;
-  window.__FF_V1_CREDIBILITY_PACK_V1__ = true;
+  const mediaNodes = Array.from(
+    document.querySelectorAll(".ff-teamCard__media[data-ff-fallback-bound='true']")
+  );
 
-  var w = window;
-  var d = document;
+  mediaNodes.forEach((media) => {
+    const img = media.querySelector(".ff-teamCard__img");
 
-  function qs(selector, scope) {
-    return (scope || d).querySelector(selector);
-  }
-
-  function qsa(selector, scope) {
-    return Array.prototype.slice.call((scope || d).querySelectorAll(selector));
-  }
-
-  function text(node) {
-    return String((node && node.textContent) || "").replace(/\s+/g, " ").trim();
-  }
-
-  function create(tag, className, textValue) {
-    var el = d.createElement(tag);
-    if (className) el.className = className;
-    if (textValue != null) el.textContent = textValue;
-    return el;
-  }
-
-  function insertAfter(anchor, node) {
-    if (!anchor || !anchor.parentNode || !node) return;
-    if (anchor.nextSibling) {
-      anchor.parentNode.insertBefore(node, anchor.nextSibling);
-    } else {
-      anchor.parentNode.appendChild(node);
-    }
-  }
-
-  function meta(name) {
-    var node =
-      qs('meta[name="' + name + '"]') ||
-      qs('meta[name="ff-' + name + '"]') ||
-      qs('meta[name="ff:' + name + '"]');
-    return node ? String(node.getAttribute("content") || "").trim() : "";
-  }
-
-  function canonicalUrl() {
-    var link = qs('link[rel="canonical"]');
-    return link && link.href ? link.href : w.location.href.split("#")[0];
-  }
-
-  function supportEmail() {
-    var mail = qs('a[href^="mailto:"]');
-    return meta("support-email") || meta("email") || (mail ? mail.getAttribute("href").replace(/^mailto:/, "") : "");
-  }
-
-  function logoUrl() {
-    var img = qs('.ff-topbarBrand img, .ff-brand img, .ff-platformBrand img, [data-ff-org-logo], [data-ff-logo]');
-    if (!img) return "";
-    return img.getAttribute("src") || "";
-  }
-
-  function programName() {
-    return (
-      text(qs(".ff-brand__title")) ||
-      text(qs(".ff-topbarBrand__text")) ||
-      text(qs("h1")) ||
-      String(d.title || "").replace(/\s*[|—-].*$/, "").trim() ||
-      "FutureFunded"
-    );
-  }
-
-  function initials(name) {
-    return String(name || "Sponsor")
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(function (part) { return part.charAt(0).toUpperCase(); })
-      .join("") || "SP";
-  }
-
-  function tierText(host) {
-    var candidates = [
-      qs(".ff-tierPill", host),
-      qs(".ff-help", host),
-      qs(".ff-muted", host),
-      qs("[data-ff-sponsor-tier]", host)
-    ].filter(Boolean);
-
-    for (var i = 0; i < candidates.length; i += 1) {
-      var value = text(candidates[i]);
-      if (/community|partner|champion|vip|founding|recommended/i.test(value)) return value;
-    }
-
-    var whole = text(host);
-    var match = whole.match(/\b(community|partner|champion|vip|founding sponsor|recommended)\b/i);
-    return match ? match[0] : "";
-  }
-
-  function isPremiumTier(value) {
-    return /partner|champion|vip|founding/i.test(String(value || ""));
-  }
-
-  function enhanceSponsorCard(host) {
-    if (!host || host.classList.contains("ff-skeleton")) return;
-    if (host.getAttribute("data-ff-credibility-ready") === "true") return;
-    host.setAttribute("data-ff-credibility-ready", "true");
-
-    var img = qs("img", host);
-    var strong = qs("strong", host);
-    var name = text(strong) || "Sponsor";
-    var tier = tierText(host);
-
-    host.classList.add("ff-sponsorLogoReady");
-
-    if (img) {
-      img.classList.add("ff-sponsorLogo__img");
-      img.setAttribute("loading", img.getAttribute("loading") || "lazy");
-      img.setAttribute("decoding", img.getAttribute("decoding") || "async");
-      if (!img.getAttribute("alt")) {
-        img.setAttribute("alt", name + " logo");
-      }
-    } else {
-      host.classList.add("ff-sponsorHasFallback");
-      host.setAttribute("data-ff-sponsor-initials", initials(name));
-    }
-
-    if (isPremiumTier(tier) && !qs(".ff-verifiedBadge", host)) {
-      var badge = create("span", "ff-verifiedBadge", "Verified partner");
-      if (strong && strong.parentNode) {
-        if (strong.nextSibling) {
-          strong.parentNode.insertBefore(badge, strong.nextSibling);
-        } else {
-          strong.parentNode.appendChild(badge);
-        }
-      } else {
-        host.appendChild(badge);
-      }
-    }
-  }
-
-  function mountSponsorLogos() {
-    qsa(".ff-sponsorWall__item .ff-card, .ff-sponsorCard").forEach(enhanceSponsorCard);
-  }
-
-  function trustStripMarkup() {
-    var wrap = create("div", "ff-trustStrip");
-    wrap.setAttribute("data-ff-trust-strip", "");
-
-    var row = create("div", "ff-trustStrip__row");
-
-    [
-      "Secure checkout",
-      "Email receipt",
-      "Tax-friendly records",
-      "Powered by Stripe + PayPal"
-    ].forEach(function (label) {
-      var item = create("span", "ff-trustStrip__item");
-      var icon = create("span", "ff-trustStrip__icon", "✓");
-      var txt = create("span", "", label);
-      item.appendChild(icon);
-      item.appendChild(txt);
-      row.appendChild(item);
-    });
-
-    wrap.appendChild(row);
-
-    var metaLine = create(
-      "div",
-      "ff-trustStrip__meta",
-      "Built for clean donor trust: secure payment rails, confirmation by email, and organized records for program support."
-    );
-    wrap.appendChild(metaLine);
-
-    return wrap;
-  }
-
-  function mountTrustStrip() {
-    var heroAnchor = qs(".ff-heroCtas") || qs(".ff-heroContext") || qs(".ff-heroPanelHead");
-    if (heroAnchor && !qs("[data-ff-trust-strip]", heroAnchor.parentNode || d)) {
-      insertAfter(heroAnchor, trustStripMarkup());
-    }
-
-    var checkoutAnchor = qs("#checkout .ff-checkoutHead") || qs("#checkout .ff-sheet__header");
-    if (checkoutAnchor && !qs("[data-ff-trust-strip]", checkoutAnchor)) {
-      checkoutAnchor.appendChild(trustStripMarkup());
-    }
-  }
-
-  function rawDeadlineValue() {
-    var cfgDeadline =
-      (w.FF_APP && w.FF_APP.cfg && (w.FF_APP.cfg.deadline || w.FF_APP.cfg.campaignDeadline)) || "";
-
-    var attrDeadlineNode = qs("[data-ff-deadline], [data-ff-deadline-text]");
-    var attrDeadline =
-      attrDeadlineNode
-        ? (attrDeadlineNode.getAttribute("data-ff-deadline") ||
-           attrDeadlineNode.getAttribute("data-ff-deadline-text") ||
-           text(attrDeadlineNode))
-        : "";
-
-    var explicit =
-      meta("deadline") ||
-      meta("campaign-deadline") ||
-      meta("ff-deadline") ||
-      cfgDeadline ||
-      attrDeadline;
-
-    if (explicit) return explicit;
-
-    var bodyText = text(d.body);
-    var iso = bodyText.match(/\b(20\d{2}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?\b/);
-    if (iso) return iso[1];
-
-    return "";
-  }
-
-  function parseDeadline(value) {
-    if (!value) return null;
-    var raw = String(value).trim();
-    if (!raw) return null;
-
-    var dt = new Date(raw);
-    if (!isNaN(dt.getTime())) return dt;
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      dt = new Date(raw + "T23:59:59");
-      if (!isNaN(dt.getTime())) return dt;
-    }
-
-    return null;
-  }
-
-  function deadlineLabel(dt) {
-    var now = new Date();
-    var diff = dt.getTime() - now.getTime();
-    var days = Math.ceil(diff / 86400000);
-
-    if (diff < 0) {
-      return {
-        text: "Campaign deadline passed",
-        state: "passed"
-      };
-    }
-
-    if (days <= 0) {
-      return {
-        text: "Ends today",
-        state: "urgent"
-      };
-    }
-
-    if (days === 1) {
-      return {
-        text: "Ends tomorrow",
-        state: "urgent"
-      };
-    }
-
-    if (days <= 7) {
-      return {
-        text: "Ends in " + days + " days",
-        state: "urgent"
-      };
-    }
-
-    return {
-      text: "Ends in " + days + " days",
-      state: "normal"
+    const markBroken = () => {
+      media.classList.remove("is-ready");
+      media.classList.add("is-media-broken");
     };
-  }
 
-  function mountCountdown() {
-    var raw = rawDeadlineValue();
-    var dt = parseDeadline(raw);
-    if (!dt) return;
+    const markReady = () => {
+      if (!img || img.naturalWidth < 48 || img.naturalHeight < 48) {
+        markBroken();
+        return;
+      }
+      media.classList.remove("is-media-broken", "is-media-missing");
+      media.classList.add("is-ready");
+    };
 
-    var target =
-      qs(".ff-heroContext") ||
-      qs(".ff-heroCtas") ||
-      qs(".ff-heroPanelHead") ||
-      qs("#progress .ff-sectionhead__actions");
-
-    if (!target) return;
-
-    var pill = qs(".ff-deadlinePill");
-    if (!pill) {
-      pill = create("span", "ff-deadlinePill");
-      var dot = create("span", "ff-deadlinePill__dot");
-      dot.setAttribute("aria-hidden", "true");
-      var txt = create("span", "ff-deadlinePill__text");
-      pill.appendChild(dot);
-      pill.appendChild(txt);
-      target.appendChild(pill);
+    if (!img) {
+      media.classList.add("is-media-missing");
+      return;
     }
 
-    pill.classList.remove("is-urgent", "is-passed");
+    const src = (img.getAttribute("src") || "").trim();
+    if (!src) {
+      media.classList.add("is-media-missing");
+      return;
+    }
 
-    var label = deadlineLabel(dt);
-    if (label.state === "urgent") pill.classList.add("is-urgent");
-    if (label.state === "passed") pill.classList.add("is-passed");
-
-    var txtNode = qs(".ff-deadlinePill__text", pill);
-    if (txtNode) txtNode.textContent = label.text;
-
-    pill.setAttribute("title", "Campaign deadline: " + dt.toLocaleString());
-  }
-
-  function injectDonationSchema() {
-    if (qs("#ffDonationSchema")) return;
-
-    var url = canonicalUrl();
-    var name = programName();
-    var email = supportEmail();
-    var logo = logoUrl();
-    var script = d.createElement("script");
-
-    script.type = "application/ld+json";
-    script.id = "ffDonationSchema";
-
-    var orgId = url + "#organization";
-
-    var graph = [
-      {
-        "@type": "Organization",
-        "@id": orgId,
-        "name": name,
-        "url": url
-      },
-      {
-        "@type": "WebPage",
-        "@id": url + "#webpage",
-        "name": d.title || name,
-        "url": url,
-        "isPartOf": { "@id": orgId },
-        "about": { "@id": orgId },
-        "potentialAction": {
-          "@type": "DonateAction",
-          "target": url + "#checkout",
-          "recipient": { "@id": orgId }
-        }
+    if (img.complete) {
+      if (img.naturalWidth > 48 && img.naturalHeight > 48) {
+        markReady();
+      } else {
+        markBroken();
       }
-    ];
+      return;
+    }
 
-    if (email) graph[0].email = email;
-    if (logo) graph[0].logo = logo;
+    img.addEventListener("load", markReady, { once: true });
+    img.addEventListener("error", markBroken, { once: true });
+  });
+})();
+ /* FF_V1_TEAMS_MEDIA_FALLBACKS_V1_END */
 
-    script.textContent = JSON.stringify({
-      "@context": "https://schema.org",
-      "@graph": graph
-    });
-
-    d.head.appendChild(script);
-  }
-
-  function bootCredibilityPack() {
-    mountSponsorLogos();
-    mountTrustStrip();
-    mountCountdown();
-    injectDonationSchema();
-  }
-
-  if (d.readyState === "loading") {
-    d.addEventListener("DOMContentLoaded", bootCredibilityPack, { once: true });
-  } else {
-    bootCredibilityPack();
-  }
-
-  w.setTimeout(bootCredibilityPack, 350);
-  w.setTimeout(bootCredibilityPack, 1200);
-  w.setInterval(mountCountdown, 60000);
-
-  w.FF_APP = w.FF_APP || {};
-  w.FF_APP.api = w.FF_APP.api || {};
-  w.FF_APP.api.refreshCredibilityPack = bootCredibilityPack;
-}());
-/* FF_V1_CREDIBILITY_PACK_END */
 
 /* FF_V1_CREDIBILITY_RESCUE_V1_START */
 (function () {
@@ -4080,15 +4104,15 @@ document.addEventListener("mousedown", function(e){
 }());
 /* FF_V1_CREDIBILITY_RESCUE_V1_END */
 
-/* FF_V1_CREDIBILITY_RESCUE_V2_START */
+/* FF_V1_CREDIBILITY_CONSOLIDATED_V3_START */
 (function () {
   "use strict";
 
-  if (window.__FF_V1_CREDIBILITY_RESCUE_V2__) return;
-  window.__FF_V1_CREDIBILITY_RESCUE_V2__ = true;
+  if (window.__FF_V1_CREDIBILITY_CONSOLIDATED_V3__) return;
+  window.__FF_V1_CREDIBILITY_CONSOLIDATED_V3__ = true;
 
-  var d = document;
   var w = window;
+  var d = document;
 
   function qs(sel, scope) {
     return (scope || d).querySelector(sel);
@@ -4098,15 +4122,15 @@ document.addEventListener("mousedown", function(e){
     return Array.prototype.slice.call((scope || d).querySelectorAll(sel));
   }
 
-  function txt(node) {
-    return String((node && (node.innerText || node.textContent)) || "").replace(/\s+/g, " ").trim();
-  }
-
-  function create(tag, cls, textValue) {
+  function create(tag, className, textValue) {
     var el = d.createElement(tag);
-    if (cls) el.className = cls;
+    if (className) el.className = className;
     if (textValue != null) el.textContent = textValue;
     return el;
+  }
+
+  function text(node) {
+    return String((node && (node.textContent || node.innerText)) || "").replace(/\s+/g, " ").trim();
   }
 
   function initials(name) {
@@ -4118,40 +4142,81 @@ document.addEventListener("mousedown", function(e){
       .join("") || "SP";
   }
 
-  function isPremiumTier(text) {
-    return /founding|partner|champion|vip|recommended/i.test(String(text || ""));
+  function premium(textValue) {
+    return /founding|partner|champion|vip|recommended|premium/i.test(String(textValue || ""));
   }
 
-  function extractDeadline() {
-    var meta =
-      qs('meta[name="ff-deadline"]') ||
-      qs('meta[name="deadline"]') ||
-      qs('meta[name="campaign-deadline"]');
+  function firstExisting(selectors, scope) {
+    for (var i = 0; i < selectors.length; i += 1) {
+      var found = qs(selectors[i], scope);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function mountTrustStrip() {
+    var targets = [
+      qs(".ff-storyCopy"),
+      qs(".ff-checkoutHead"),
+      qs("#checkout .ff-sheet__header")
+    ].filter(Boolean);
+
+    targets.forEach(function (target) {
+      if (!target || qs(".ff-trustStrip", target)) return;
+
+      var wrap = create("div", "ff-trustStrip");
+      var row = create("div", "ff-trustStrip__row");
+
+      [
+        "Secure checkout",
+        "Email receipt",
+        "Tax season ready"
+      ].forEach(function (label) {
+        var item = create("span", "ff-trustStrip__item");
+        var icon = create("span", "ff-trustStrip__icon", "✓");
+        var txt = create("span", "", label);
+        item.appendChild(icon);
+        item.appendChild(txt);
+        row.appendChild(item);
+      });
+
+      var meta = create(
+        "div",
+        "ff-trustStrip__meta",
+        "Powered by Stripe / PayPal where enabled."
+      );
+
+      wrap.appendChild(row);
+      wrap.appendChild(meta);
+      target.appendChild(wrap);
+    });
+  }
+
+  function findDeadlineDate() {
+    var meta = firstExisting([
+      'meta[name="ff-deadline"]',
+      'meta[name="deadline"]',
+      'meta[name="campaign-deadline"]'
+    ]);
 
     if (meta) {
-      var m = String(meta.getAttribute("content") || "").trim();
-      var md = new Date(m);
-      if (!isNaN(md.getTime())) return md;
+      var rawMeta = String(meta.getAttribute("content") || "").trim();
+      var metaDate = new Date(rawMeta);
+      if (!isNaN(metaDate.getTime())) return metaDate;
     }
 
-    var bodyText = txt(d.body);
+    var pageText = text(d.body);
+    var matches = pageText.match(/\b20\d{2}-\d{2}-\d{2}\b/g) || [];
 
-    var explicit = bodyText.match(/deadline\s*(?:is|:)?\s*(20\d{2}-\d{2}-\d{2})/i);
-    if (explicit) {
-      var dt1 = new Date(explicit[1] + "T23:59:59");
-      if (!isNaN(dt1.getTime())) return dt1;
-    }
-
-    var iso = bodyText.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
-    if (iso) {
-      var dt2 = new Date(iso[1] + "T23:59:59");
-      if (!isNaN(dt2.getTime())) return dt2;
+    for (var i = 0; i < matches.length; i += 1) {
+      var dt = new Date(matches[i] + "T23:59:59");
+      if (!isNaN(dt.getTime())) return dt;
     }
 
     return null;
   }
 
-  function deadlineLabel(dt) {
+  function deadlineState(dt) {
     var now = new Date();
     var diff = dt.getTime() - now.getTime();
     var days = Math.ceil(diff / 86400000);
@@ -4163,16 +4228,17 @@ document.addEventListener("mousedown", function(e){
     return { text: "Ends in " + days + " days", klass: "" };
   }
 
-  function mountDeadlinePillHard() {
-    var dt = extractDeadline();
+  function mountDeadlinePill() {
+    var dt = findDeadlineDate();
     if (!dt) return;
 
-    var target =
-      qs(".ff-heroContext") ||
-      qs(".ff-heroCtas") ||
-      qs("#progress .ff-sectionhead__actions") ||
-      qs("#progress .ff-sectionhead") ||
-      qs(".ff-progressCompact__summary");
+    var target = firstExisting([
+      ".ff-heroContext",
+      ".ff-heroCtas",
+      "#progress .ff-sectionhead__actions",
+      "#progress .ff-sectionhead",
+      ".ff-progressCompact__summary"
+    ]);
 
     if (!target) return;
 
@@ -4186,66 +4252,209 @@ document.addEventListener("mousedown", function(e){
 
     pill.classList.remove("is-urgent", "is-passed");
 
-    var state = deadlineLabel(dt);
+    var state = deadlineState(dt);
     if (state.klass) pill.classList.add(state.klass);
 
-    var label = qs(".ff-deadlinePill__text", pill);
-    if (label) label.textContent = state.text;
+    var txtNode = qs(".ff-deadlinePill__text", pill);
+    if (txtNode) txtNode.textContent = state.text;
 
-    pill.title = "Campaign deadline: " + dt.toLocaleString();
+    pill.title = "Campaign deadline: " + dt.toLocaleDateString();
   }
 
-  function mountSponsorFallbacksHard() {
-    qsa(".ff-sponsorWall__item, .ff-sponsorCard").forEach(function (host) {
-      if (host.getAttribute("data-ff-sponsor-cred-v2") === "true") return;
-      host.setAttribute("data-ff-sponsor-cred-v2", "true");
+  function normalizeSponsorCard(host) {
+    if (!host || host.getAttribute("data-ff-cred-v3") === "true") return;
+    host.setAttribute("data-ff-cred-v3", "true");
 
-      var card = qs(".ff-card", host) || host;
-      var strong = qs("strong", card);
-      var name = txt(strong) || "Sponsor";
-      var allText = txt(card);
+    var card = qs(".ff-card", host) || host;
+    var strong = qs("strong", card);
+    var heading = strong || qs("h3, h4, .ff-h3, .ff-tierName", card);
+    var name = text(heading) || "Sponsor";
+    var bodyText = text(card);
 
-      var existingImg = qs("img", card);
-      if (existingImg) {
-        existingImg.classList.add("ff-sponsorLogo__img");
-        if (!existingImg.getAttribute("alt")) {
-          existingImg.setAttribute("alt", name + " logo");
-        }
-      } else if (!qs(".ff-sponsorLogo__fallback", card)) {
-        var fallback = create("span", "ff-sponsorLogo__fallback", initials(name));
-        fallback.setAttribute("aria-hidden", "true");
+    var img = qs("img", card);
+    if (img) {
+      img.classList.add("ff-sponsorLogo__img");
+      if (!img.getAttribute("alt")) img.setAttribute("alt", name + " logo");
+    } else if (!qs(".ff-sponsorLogo__fallback", card)) {
+      var fallback = create("span", "ff-sponsorLogo__fallback", initials(name));
+      if (heading && heading.parentNode) {
+        heading.parentNode.insertBefore(fallback, heading);
+      } else {
         card.insertBefore(fallback, card.firstChild);
       }
+    }
 
-      if (isPremiumTier(allText) && !qs(".ff-verifiedBadge", card)) {
-        var badge = create("span", "ff-verifiedBadge", "Verified partner");
-        if (strong && strong.parentNode) {
-          strong.parentNode.insertBefore(badge, strong.nextSibling);
-        } else {
-          card.appendChild(badge);
-        }
+    if (premium(bodyText) && !qs(".ff-verifiedBadge", card)) {
+      var badge = create("span", "ff-verifiedBadge", "Verified partner");
+      if (heading && heading.parentNode) {
+        heading.parentNode.insertBefore(badge, heading.nextSibling);
+      } else {
+        card.appendChild(badge);
       }
-    });
+    }
   }
 
-  function boot() {
-    mountDeadlinePillHard();
-    mountSponsorFallbacksHard();
+  function mountSponsorLogos() {
+    qsa(".ff-sponsorWall__item, .ff-sponsorCard, .ff-sponsorGrid > *, .ff-sponsorWallBlock .ff-card").forEach(normalizeSponsorCard);
+  }
+
+  function injectSchema() {
+    if (qs("#ffDonationSchema")) return;
+
+    var titleNode = firstExisting(["#heroTitle", ".ff-heroTitle", "h1"]);
+    var title = text(titleNode) || "FutureFunded campaign";
+    var canonical = qs('link[rel="canonical"]');
+    var url = canonical && canonical.href ? canonical.href : w.location.href.split("#")[0];
+
+    var amountRaisedNode = qs("[data-ff-raised]");
+    var goalNode = qs("[data-ff-goal]");
+
+    function money(node) {
+      return text(node).replace(/[^0-9.]/g, "") || "";
+    }
+
+    var schema = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": title,
+      "url": url,
+      "potentialAction": {
+        "@type": "DonateAction",
+        "target": url + "#checkout"
+      },
+      "about": {
+        "@type": "Organization",
+        "name": "FutureFunded"
+      }
+    };
+
+    var raised = money(amountRaisedNode);
+    var goal = money(goalNode);
+    if (raised || goal) {
+      schema.mainEntity = {
+        "@type": "DonateAction",
+        "name": title,
+        "target": url + "#checkout"
+      };
+    }
+
+    var script = d.createElement("script");
+    script.id = "ffDonationSchema";
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(schema);
+    d.head.appendChild(script);
+  }
+
+  function bootCredibilityV3() {
+    mountTrustStrip();
+    mountDeadlinePill();
+    mountSponsorLogos();
+    injectSchema();
   }
 
   if (d.readyState === "loading") {
-    d.addEventListener("DOMContentLoaded", boot, { once: true });
+    d.addEventListener("DOMContentLoaded", bootCredibilityV3, { once: true });
   } else {
-    boot();
+    bootCredibilityV3();
   }
 
-  w.addEventListener("load", boot, { once: true });
-  w.setTimeout(boot, 200);
-  w.setTimeout(boot, 900);
-  w.setTimeout(boot, 1800);
+  w.addEventListener("load", bootCredibilityV3, { once: true });
+  w.setTimeout(bootCredibilityV3, 250);
+  w.setTimeout(bootCredibilityV3, 900);
+  w.setTimeout(bootCredibilityV3, 1800);
+  w.setInterval(mountDeadlinePill, 60000);
 
   w.FF_APP = w.FF_APP || {};
   w.FF_APP.api = w.FF_APP.api || {};
-  w.FF_APP.api.forceCredibilityRescueV2 = boot;
+  w.FF_APP.api.refreshCredibilityPack = bootCredibilityV3;
 }());
-/* FF_V1_CREDIBILITY_RESCUE_V2_END */
+/* FF_V1_CREDIBILITY_CONSOLIDATED_V3_END */
+
+
+/* FF_DONATION_SEED_DEFAULT_V1_START */
+
+(function(){
+
+  function seedDefaultDonation(){
+
+    const amountInput = document.querySelector('[data-ff-amount-input]');
+    if(!amountInput) return;
+
+    if(amountInput.value && amountInput.value.trim() !== "") return;
+
+    const preset = document.querySelector('[data-ff-amount]');
+    if(!preset) return;
+
+    const val = preset.getAttribute("data-ff-amount");
+    if(!val) return;
+
+    amountInput.value = val;
+
+    const summary = document.querySelector('[data-ff-summary-amount]');
+    if(summary){
+      summary.textContent = "$" + val;
+    }
+
+  }
+
+  document.addEventListener("click", function(e){
+    const openBtn = e.target.closest("[data-ff-open-checkout]");
+    if(!openBtn) return;
+
+    setTimeout(seedDefaultDonation, 60);
+  });
+
+})();
+
+/* FF_DONATION_SEED_DEFAULT_V1_END */
+
+
+
+/* FF_LIVE_ACTIVITY_FEED_V1_START */
+
+(function(){
+
+  const messages = [
+    "Maria from Austin donated $25",
+    "The Johnson Family donated $100",
+    "A local sponsor pledged $500",
+    "Alumni family donated $50",
+    "Community supporter donated $25"
+  ];
+
+  function pushActivity(msg){
+
+    const feed = document.querySelector("[data-ff-live-feed]");
+    if(!feed) return;
+
+    const el = document.createElement("div");
+    el.className = "ff-activityFeed__item";
+    el.textContent = msg;
+
+    feed.prepend(el);
+
+    const items = feed.querySelectorAll(".ff-activityFeed__item");
+    if(items.length > 6){
+      items[items.length-1].remove();
+    }
+
+  }
+
+  function startFeed(){
+
+    if(window.__FF_LIVE_FEED_STARTED__) return;
+    window.__FF_LIVE_FEED_STARTED__ = true;
+
+    setInterval(function(){
+      const msg = messages[Math.floor(Math.random()*messages.length)];
+      pushActivity(msg);
+    }, 9000);
+
+  }
+
+  document.addEventListener("DOMContentLoaded", startFeed);
+
+})();
+
+/* FF_LIVE_ACTIVITY_FEED_V1_END */
+

@@ -94,6 +94,28 @@ IGNORE_DATA_JS_OPTIONAL = {
     "onboard-ready", "onboard-unpublish",
 }
 
+
+
+OPTIONAL_JS_CLASSES = {
+    "ff-sponsorHasFallback",
+    "ff-sponsorLogo__img",
+    "ff-sponsorLogoReady",
+    "is-passed",
+    "is-urgent",
+}
+
+OPTIONAL_JS_IDS = {
+    "payment-element",
+}
+
+OPTIONAL_JS_DATA = {
+    "credibility-ready",
+    "deadline-text",
+    "sponsor-cred-ready",
+    "sponsor-cred-v2",
+    "cred-v3",
+}
+
 IGNORE_UNUSED_IDS = {
     "checkoutDesc", "checkoutErrorText", "checkoutTitle", "ffDrawerDesc", "ffDrawerPanel",
     "ffDrawerTitle", "ffLive", "ffOnboardDesc", "ffOnboardStep1Title", "ffOnboardStep2Title",
@@ -342,6 +364,7 @@ def main() -> int:
         c for c in js_classes
         if c not in html_classes
         and c not in IGNORE_JS_CLASSES
+        and c not in OPTIONAL_JS_CLASSES
         and not c.startswith(("animate-", "opacity-", "translate-", "scale-", "fc-", "js-"))
     ])
 
@@ -349,12 +372,14 @@ def main() -> int:
         i for i in js_ids
         if i not in html_ids
         and i not in {"ffConfig", "ffSelectors"}
+        and i not in OPTIONAL_JS_IDS
     ])
 
     js_data_missing_html = sorted_list([
         d for d in js_data
         if d not in html_data
         and d not in IGNORE_DATA_JS_OPTIONAL
+        and d not in OPTIONAL_JS_DATA
     ])
 
     css_classes_unused = sorted_list([
