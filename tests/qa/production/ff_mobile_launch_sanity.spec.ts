@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, devices, Page } from "@playwright/test";
 
 const BASE =
   process.env.PLAYWRIGHT_BASE_URL ??
@@ -51,11 +51,22 @@ async function openCheckout(page: Page) {
   await page.waitForTimeout(400);
 }
 
-test.describe("FutureFunded — production launch readiness", () => {
-  test("homepage boots cleanly and core assets load", async ({ page }) => {
-    const consoleErrors: string[] = [];
-    const pageErrors: string[] = [];
+test.use({
+  ...devices["iPhone 13"],
+});
+
+test.describe("FutureFunded — mobile launch sanity", () => {
+  test("homepage and checkout are usable on mobile", async ({ page }) => {
     const badResponses: string[] = [];
+    const consoleErrors: string[] = [];
+
+    page.on("response", (res) => {
+      const url = res.url();
+      const status = res.status();
+      if (status >= 400 && !isAllowedOptional404(url, status)) {
+        badResponses.push(`${status} ${url}`);
+      }
+    });
 
     page.on("console", (msg) => {
       if (msg.type() === "error") {
@@ -63,65 +74,37 @@ test.describe("FutureFunded — production launch readiness", () => {
       }
     });
 
-    page.on("pageerror", (err) => {
-      pageErrors.push(String((err as Error)?.message || err));
-    });
-
-    page.on("response", (res) => {
-      const url = res.url();
-      const status = res.status();
-
-      if (status >= 400 && !isAllowedOptional404(url, status)) {
-        badResponses.push(`${status} ${url}`);
-      }
-    });
-
     const resp = await page.goto(BASE, { waitUntil: "domcontentloaded" });
-    expect(resp, "No initial response received").toBeTruthy();
-    expect(resp!.status(), "Homepage did not return HTTP 200").toBe(200);
+    expect(resp?.status()).toBe(200);
 
     await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1200);
 
-    const title = await page.title();
-    expect(title, "Document title should exist").toBeTruthy();
-
-    const ffVersion = await page.evaluate(() => {
-      return (window as any)?.ff?.version ?? null;
+    const noHorizontalScroll = await page.evaluate(() => {
+      const de = document.documentElement;
+      const body = document.body;
+      return de.scrollWidth <= de.clientWidth + 1 && body.scrollWidth <= body.clientWidth + 1;
     });
-    expect(ffVersion, "window.ff.version should exist in production").toBeTruthy();
-
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText.length, "Body content should not be empty").toBeGreaterThan(100);
+    expect(noHorizontalScroll, "Horizontal scroll detected on mobile").toBeTruthy();
 
     await openCheckout(page);
 
     const checkout = page.locator("#checkout");
-    await expect(checkout, "Checkout container should exist").toBeVisible();
+    await expect(checkout).toBeVisible();
 
-    const unexpectedConsoleErrors = consoleErrors.filter((text) => {
-      if (!/Failed to load resource/i.test(text)) return true;
-      return badResponses.length > 0;
+    const viewportOk = await page.evaluate(() => {
+      const el = document.querySelector("#checkout") as HTMLElement | null;
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
     });
+    expect(viewportOk, "Checkout did not render correctly on mobile").toBeTruthy();
 
-    test.info().attach("production-launch-readiness.json", {
-      body: JSON.stringify(
-        {
-          base: BASE,
-          ffVersion,
-          badResponses,
-          consoleErrors,
-          unexpectedConsoleErrors,
-          pageErrors
-        },
-        null,
-        2
-      ),
+    test.info().attach("mobile-launch-sanity.json", {
+      body: JSON.stringify({ base: BASE, badResponses, consoleErrors }, null, 2),
       contentType: "application/json"
     });
 
-    expect(unexpectedConsoleErrors, "Unexpected console errors detected").toEqual([]);
-    expect(pageErrors, "Unexpected page errors detected").toEqual([]);
-    expect(badResponses, "Unexpected bad responses detected").toEqual([]);
+    expect(badResponses, "Unexpected mobile same-origin 4xx/5xx responses").toEqual([]);
   });
 });

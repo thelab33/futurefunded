@@ -1,14 +1,24 @@
 {
   "name": "connectatx-fundraiser",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "FutureFunded production-gated fundraising platform (Flask + Playwright + CSS/JS contracts)",
+  "packageManager": "npm@10",
+  "engines": {
+    "node": ">=20 <23",
+    "npm": ">=10"
+  },
   "scripts": {
     "prepare": "husky install",
+    "clean": "rimraf test-results playwright-report .playwright-artifacts",
     "clean:test": "rimraf test-results playwright-report",
+    "clean:reports": "rimraf test-results playwright-report",
+    "setup:e2e": "npx playwright install --with-deps chromium",
+    "typecheck": "tsc --noEmit",
     "lint:js": "npx eslint -c eslint.config.mjs app/static/js/ff-app.js --quiet",
     "lint:css": "npx stylelint app/static/css/ff.css --config .stylelintrc.json",
     "lint:html": "python -m djlint app/templates/index.html --lint",
+    "lint": "run-s lint:js lint:css lint:html",
     "format": "prettier --write app/static/css app/static/js",
     "format:check": "prettier --check app/static/css app/static/js",
     "audit:no-slashsemi": "python tools/ff_no_slashsemi_gate.py",
@@ -31,30 +41,46 @@
     "pw:ux": "npx playwright test --project=chromium --workers=1 tests/qa/ux/ff_checkout_ux_v2.spec.ts tests/qa/ux/ff_uiux_pro_gate.spec.ts",
     "pw:integration": "npx playwright test --project=chromium --workers=1 tests/qa/integration/ff_app_integration.spec.ts tests/qa/integration/ff_app_delegated_open_close.spec.ts",
     "pw:assets": "npx playwright test --project=chromium --workers=1 tests/qa/assets/ff_asset_trace.spec.ts",
+    "pw:production": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_launch_readiness.spec.ts",
+    "pw:launch:links": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_launch_links_and_share.spec.ts",
+    "pw:launch:mobile": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_mobile_launch_sanity.spec.ts",
+    "pw:launch:trust": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_content_trust.spec.ts",
+    "pw:launch:live-payment": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_live_payment_smoke.spec.ts",
+    "pw:launch:bundle": "run-s pw:production pw:launch:links pw:launch:mobile pw:launch:trust",
     "pw:mini": "npx playwright test --project=chromium --workers=1 tests/qa/smoke/ff_smoke.spec.ts tests/qa/contracts/ff_contract.spec.ts tests/qa/flows/ff_donation_flow.spec.ts",
     "pw:legacy": "npx playwright test --project=chromium --workers=1 tests/qa/legacy/ff_checkout_ux_gate_v2.spec.ts tests/qa/legacy/ff_authority_polish_gate.spec.ts",
     "qa:fast": "run-s audit:dom pw:mini",
-    "pw:production": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_launch_readiness.spec.ts",
     "qa:core": "run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:platform": "run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:full": "run-s audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
+    "qa:full:typed": "run-s typecheck audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
     "qa:release:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:release:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:legacy:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 npm run pw:legacy",
     "qa:legacy:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com npm run pw:legacy",
-    "qa:release:candidate": "run-s audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
+    "qa:release:candidate": "run-s audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets pw:production",
+    "qa:launch:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 run-s pw:production pw:launch:links pw:launch:mobile pw:launch:trust",
+    "qa:launch:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com run-s pw:production pw:launch:links pw:launch:mobile pw:launch:trust",
     "sanity:deploy": "python tools/ff_deploy_sanity.py",
     "qa:ship": "run-s sanity:deploy audit:contracts audit:lint audit:css",
-    "qa:ship:full": "run-s sanity:deploy audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
+    "qa:ship:full": "run-s sanity:deploy audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets pw:production",
     "report:playwright": "npx playwright show-report",
+    "test": "npm run qa:core",
     "test:e2e": "npm run qa:core",
-    "qa:tree": "find tests/qa -maxdepth 2 -type f | sort"
+    "qa:tree": "find tests/qa -maxdepth 2 -type f | sort",
+    "qa:which": "node -e \"console.log(['QA ladder:','  qa:fast                -> fastest DOM + mini Playwright sanity','  qa:core                -> contracts + lint + css audit + mini Playwright','  qa:full                -> full local regression pack','  qa:full:typed          -> full regression + TypeScript noEmit check','  qa:release:local       -> release sanity against local app','  qa:release:site        -> release sanity against public site','  qa:launch:local        -> local launch readiness bundle','  qa:launch:site         -> public launch readiness bundle','  qa:release:candidate   -> strongest release-candidate gate','  qa:ship                -> deploy sanity + core audits','  qa:ship:full           -> deploy sanity + full suite','  pw:launch:live-payment -> opt-in live payment preflight (env-gated)'].join('\\n'))\""
   },
   "lint-staged": {
     "app/static/css/**/*": [
       "prettier --write"
     ],
     "app/static/js/**/*": [
+      "prettier --write"
+    ],
+    "tests/**/*.{ts,js,json}": [
+      "prettier --write"
+    ],
+    "package.json": [
       "prettier --write"
     ]
   },

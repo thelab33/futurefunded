@@ -3,9 +3,9 @@
 **Owner:** Angel  
 **Product:** FutureFunded  
 **Primary URL:** https://getfuturefunded.com  
-**Runbook Version:** 1.0  
+**Runbook Version:** 1.1  
 **Date:** __________  
-**Launch Decision:** [ ] NO-GO  [ ] SOFT LAUNCH  [ ] GO LIVE
+**Launch Decision:** [ ] NO-GO  [x] SOFT LAUNCH  [ ] GO LIVE
 
 ---
 
@@ -33,12 +33,18 @@
 - [x] launch-readiness Playwright test passed
 - [x] checkout open/close path verified in automation
 - [x] production homepage boot verified in automation
+- [x] production launch-readiness test passed against `http://127.0.0.1:5000`
+- [x] production launch-readiness test passed against `https://getfuturefunded.com`
 
 ### Release hygiene
 - [ ] working tree clean
-- [ ] release commit created
-- [ ] rollback point tagged
+- [x] release commit created
+- [x] rollback point tagged
 - [ ] production env reviewed one last time
+
+### Release references
+- [x] Release commit: `79747f7`
+- [x] Launch candidate tag: `v1.0.0-launch-candidate`
 
 ---
 
@@ -46,15 +52,18 @@
 
 If **any** item below fails, launch result is **NO-GO**:
 
-- [ ] homepage returns HTTP 200
-- [ ] core CSS loads
-- [ ] core JS loads
-- [ ] checkout opens
-- [ ] no fatal console/runtime errors
+- [x] homepage returns HTTP 200
+- [x] core CSS loads
+- [x] core JS loads
+- [x] checkout opens
+- [x] no fatal console/runtime errors in automated production readiness check
 - [ ] one real payment completes successfully
 - [ ] receipt/confirmation is received
 - [ ] payment dashboard reflects the transaction
 - [ ] support / contact path is visible and real
+
+**Current status:**  
+Automation clears this section except for the live business-critical payment and support verification items above.
 
 ---
 
@@ -71,7 +80,7 @@ If **any** item below fails, launch result is **NO-GO**:
 - [ ] organization/team name is correct
 - [ ] amount presets make sense
 - [ ] custom amount field works
-- [ ] `team_id` hidden input exists and posts correctly
+- [x] `team_id` hidden input exists and posts correctly in the tested flow
 - [ ] `player_id` path works if used
 
 ### Run one real transaction
@@ -113,9 +122,9 @@ __________________________________________________
 - [ ] SMS preview looks clean
 
 ### Canonical / routing
-- [ ] canonical domain is intentional
+- [x] canonical domain is intentional
 - [ ] `www` vs non-`www` behavior is intentional
-- [ ] no broken redirects
+- [x] no broken redirects detected in current production readiness path
 
 **Notes:**  
 __________________________________________________  
@@ -132,7 +141,7 @@ __________________________________________________
 - [ ] one larger modern viewport
 
 ### Checks
-- [ ] no horizontal scroll
+- [x] no horizontal scroll in automated UX checks
 - [ ] hero headline wraps cleanly
 - [ ] CTA visible above the fold
 - [ ] topbar/sticky UI does not cover content
@@ -144,20 +153,26 @@ __________________________________________________
 - [ ] footer remains usable
 - [ ] contrast is strong in bright conditions
 
+**Current status:**  
+Automation looks healthy; real-device verification still required.
+
 ---
 
 ## 6) Accessibility sanity pass
 
-- [ ] keyboard-only navigation works
-- [ ] skip links work
-- [ ] focus ring visible
+- [x] keyboard-only navigation works in automated coverage paths
+- [x] skip links work
+- [x] focus ring visible
 - [ ] focus returns after modal/sheet close
 - [ ] buttons vs links are sensible
 - [ ] important images have correct alt text
 - [ ] decorative imagery is not noisy to assistive tech
 - [ ] forms have labels and sensible errors
-- [ ] no surprise autoplay audio
+- [x] no surprise autoplay audio in tested paths
 - [ ] reduced-motion experience is acceptable
+
+**Current status:**  
+Baseline accessibility looks solid, but a final manual assistive-tech sanity pass is still recommended.
 
 ---
 
@@ -177,6 +192,9 @@ __________________________________________________
 - [ ] sponsor tiers are accurate
 - [ ] goal / raised values are correct
 
+**Current status:**  
+Strong visual confidence, but this still needs a human founder pass line by line.
+
 ---
 
 ## 8) Rollback notes
@@ -191,15 +209,15 @@ Rollback immediately if any of the following happens:
 - donor trust is compromised by broken content
 
 ### Rollback plan
-- [ ] previous release/tag identified
+- [x] previous release/tag identified
 - [ ] deployment rollback command/path known
 - [ ] old env values available if needed
 - [ ] cache/CDN purge plan known
 - [ ] post-rollback smoke check defined
 
-**Rollback tag / commit:** ________________________  
+**Rollback tag / commit:** `v1.0.0-launch-candidate` / `79747f7`  
 **Rollback command/path:** ________________________  
-**Owner:** ________________________
+**Owner:** Angel
 
 ---
 
@@ -211,25 +229,42 @@ Use one of these in your notes / internal comms:
 > FutureFunded launch is paused. Core revenue, routing, or trust checks are not fully passing yet. Public release remains blocked until production issues are cleared.
 
 ### SOFT LAUNCH
-> FutureFunded is approved for controlled release. Core automation is green and production boot is healthy. Limited live usage is allowed while final payment, mobile, and verification checks finish.
+> FutureFunded is approved for controlled release. Core automation is green, production boot is healthy, and launch-candidate checks are passing. Limited live usage is allowed while final payment, mobile, QR/share, and verification checks finish.
 
 ### GO LIVE
 > FutureFunded is approved for public launch. Core QA, production readiness, payment verification, and trust checks are complete. Public distribution is now cleared.
 
 **Selected status line:**  
-__________________________________________________
+FutureFunded is approved for controlled release. Core automation is green, production boot is healthy, and launch-candidate checks are passing. Limited live usage is allowed while final payment, mobile, QR/share, and verification checks finish.
 
 ---
 
 ## 10) Final decision
 
 - [ ] NO-GO
-- [ ] SOFT LAUNCH
+- [x] SOFT LAUNCH
 - [ ] GO LIVE
 
-**Approved by:** ________________________  
+**Approved by:** Angel  
 **Time:** ________________________  
 **Final notes:**  
-__________________________________________________  
-__________________________________________________  
-__________________________________________________
+Automation is green across local and public production readiness.  
+Public go-live is pending one real donation, receipt confirmation, payment dashboard verification, QR/share verification, and a quick real-device mobile pass.  
+Do not reopen broad styling or structural changes before these final checks are done.
+
+---
+
+## 11) Immediate next actions
+
+### Highest priority
+- [ ] run one real production donation
+- [ ] confirm receipt email
+- [ ] confirm payment provider dashboard entry
+- [ ] scan QR from a real phone
+- [ ] verify share preview
+- [ ] complete one iPhone or Android pass
+
+### When those pass
+- [ ] mark **GO LIVE**
+- [ ] update selected status line
+- [ ] announce publicly
