@@ -1,16 +1,17 @@
-# FutureFunded — Launch War Room
+# FutureFunded — Launch Day Runbook
 
-Owner: Angel  
-Environment: Production  
-Primary URL: https://getfuturefunded.com  
-Date: __________  
-Decision: [ ] NO-GO  [ ] SOFT LAUNCH  [ ] GO LIVE
+**Owner:** Angel  
+**Product:** FutureFunded  
+**Primary URL:** https://getfuturefunded.com  
+**Runbook Version:** 1.0  
+**Date:** __________  
+**Launch Decision:** [ ] NO-GO  [ ] SOFT LAUNCH  [ ] GO LIVE
 
 ---
 
-## A. Release snapshot
+## 1) Release snapshot
 
-### Local engineering gates
+### Automated engineering gates
 - [x] `audit:no-slashsemi`
 - [x] `audit:layers`
 - [x] `audit:dom`
@@ -24,201 +25,211 @@ Decision: [ ] NO-GO  [ ] SOFT LAUNCH  [ ] GO LIVE
 - [x] `pw:integration`
 - [x] `pw:ux`
 - [x] `pw:assets`
+- [x] `pw:production` local
+- [x] `pw:production` public
 
 ### Evidence
-- [x] `npm run qa:full` passed locally
-- [x] hidden `team_id` input restored
-- [x] optional local `/api/activity-feed` 404 handled in QA guards
-- [x] asset trace passed
-- [x] UX gate passed
-- [x] contracts passed
+- [x] `npm run qa:full` passed
+- [x] launch-readiness Playwright test passed
+- [x] checkout open/close path verified in automation
+- [x] production homepage boot verified in automation
 
-### Git / release
+### Release hygiene
 - [ ] working tree clean
 - [ ] release commit created
 - [ ] rollback point tagged
-- [ ] production env reviewed
+- [ ] production env reviewed one last time
 
 ---
 
-## B. Production domain health
+## 2) Hard stop / no-go rules
 
-### Required
-- [ ] `https://getfuturefunded.com` returns 200
-- [ ] homepage renders correctly
-- [ ] main CSS loads
-- [ ] main JS loads
-- [ ] favicon / manifest / primary static assets load
-- [ ] no 530 / 5xx on root or core assets
-- [ ] HTTPS valid
-- [ ] canonical domain behavior intentional
+If **any** item below fails, launch result is **NO-GO**:
 
-### Evidence
-- Notes: ________________________________________
-- Screenshot captured: [ ]
-- Console checked: [ ]
-
-### Decision rule
-If any item in this section fails, result = **NO-GO**.
+- [ ] homepage returns HTTP 200
+- [ ] core CSS loads
+- [ ] core JS loads
+- [ ] checkout opens
+- [ ] no fatal console/runtime errors
+- [ ] one real payment completes successfully
+- [ ] receipt/confirmation is received
+- [ ] payment dashboard reflects the transaction
+- [ ] support / contact path is visible and real
 
 ---
 
-## C. Payments
+## 3) Live donation checklist
 
-### Stripe / PayPal config
-- [ ] Stripe publishable key is live
-- [ ] Stripe secret key is live
-- [ ] PayPal credentials are live
+### Before payment
+- [ ] live Stripe publishable key confirmed
+- [ ] live Stripe secret key confirmed
+- [ ] live PayPal credentials confirmed
 - [ ] webhook endpoints configured
-- [ ] webhook signing secrets correct
-- [ ] test/dev credentials not exposed in rendered source
+- [ ] webhook secrets configured
+- [ ] no test keys visible in rendered source
+- [ ] fundraiser goal is correct
+- [ ] organization/team name is correct
+- [ ] amount presets make sense
+- [ ] custom amount field works
+- [ ] `team_id` hidden input exists and posts correctly
+- [ ] `player_id` path works if used
 
-### Checkout behavior
-- [ ] hero donate opens checkout
-- [ ] sticky/nav donate opens checkout
-- [ ] team donate opens checkout
-- [ ] preset amount selection works
-- [ ] custom amount works
-- [ ] `team_id` posts correctly
-- [ ] `player_id` posts correctly if used
-- [ ] close / reopen checkout works
-- [ ] keyboard focus remains sane
-- [ ] mobile sheet usable
+### Run one real transaction
+- [ ] open checkout from hero CTA
+- [ ] preset amount path tested
+- [ ] custom amount path tested
+- [ ] submit real payment
+- [ ] success state visible
+- [ ] cancel path behaves cleanly
+- [ ] failure path behaves cleanly
 
-### Real payment verification
-- [ ] one real production payment completed
-- [ ] success state shown
-- [ ] cancel path shown cleanly
-- [ ] failure path shown cleanly
-- [ ] totals update correctly
-- [ ] receipt / confirmation email received
-- [ ] Stripe dashboard event confirmed
-- [ ] PayPal callback behavior confirmed if applicable
+### After payment
+- [ ] confirmation UI visible
+- [ ] receipt email received
+- [ ] Stripe/PayPal dashboard event visible
+- [ ] internal totals reflect the update path
+- [ ] donor sees a believable, polished finish state
 
-### Decision rule
-If real payment is not verified, result cannot be **GO LIVE**.
-
----
-
-## D. Content / trust / accuracy
-
-- [ ] organization name final everywhere
-- [ ] campaign title final
-- [ ] logo correct
-- [ ] fundraiser goal correct
-- [ ] raised total source correct
-- [ ] sponsor tiers correct
-- [ ] contact email correct
-- [ ] terms link real
-- [ ] privacy link real
-- [ ] refund/support path real
-- [ ] no placeholder copy
-- [ ] no preview/demo residue
-- [ ] no fake names/images left behind
-
-Reviewer initials: __________
+**Transaction notes:**  
+__________________________________________________  
+__________________________________________________
 
 ---
 
-## E. Mobile and UX
+## 4) QR / share / link verification
+
+### QR
+- [ ] QR code opens the live production URL
+- [ ] QR is scannable from a phone in normal room light
+- [ ] QR lands on a healthy page
+- [ ] mobile page is readable on first load
+
+### Share
+- [ ] share button uses the correct URL
+- [ ] share title is correct
+- [ ] share text is correct
+- [ ] OG/social preview is acceptable
+- [ ] iMessage preview looks clean
+- [ ] SMS preview looks clean
+
+### Canonical / routing
+- [ ] canonical domain is intentional
+- [ ] `www` vs non-`www` behavior is intentional
+- [ ] no broken redirects
+
+**Notes:**  
+__________________________________________________  
+__________________________________________________
+
+---
+
+## 5) Mobile verification
 
 ### Devices
 - [ ] iPhone Safari
 - [ ] Android Chrome
-- [ ] small viewport
-- [ ] large viewport
+- [ ] one smaller viewport
+- [ ] one larger modern viewport
 
 ### Checks
 - [ ] no horizontal scroll
-- [ ] hero wraps cleanly
-- [ ] CTAs visible immediately
-- [ ] sticky UI does not cover content
+- [ ] hero headline wraps cleanly
+- [ ] CTA visible above the fold
+- [ ] topbar/sticky UI does not cover content
 - [ ] checkout usable with keyboard open
 - [ ] safe-area spacing acceptable
-- [ ] QR code readable
-- [ ] team cards legible
-- [ ] sponsor blocks legible
-- [ ] video modal behaves correctly
+- [ ] cards remain legible
+- [ ] sponsor blocks remain legible
+- [ ] FAQ remains readable
+- [ ] footer remains usable
+- [ ] contrast is strong in bright conditions
 
 ---
 
-## F. Accessibility sanity pass
+## 6) Accessibility sanity pass
 
 - [ ] keyboard-only navigation works
 - [ ] skip links work
 - [ ] focus ring visible
-- [ ] focus returns after modal close
-- [ ] buttons vs links sensible
-- [ ] progress UI has labels
-- [ ] inputs have labels
-- [ ] images have correct alt behavior
-- [ ] reduced motion feels acceptable
+- [ ] focus returns after modal/sheet close
+- [ ] buttons vs links are sensible
+- [ ] important images have correct alt text
+- [ ] decorative imagery is not noisy to assistive tech
+- [ ] forms have labels and sensible errors
 - [ ] no surprise autoplay audio
+- [ ] reduced-motion experience is acceptable
 
 ---
 
-## G. Analytics / visibility
+## 7) Content / trust / accuracy
 
-- [ ] analytics installed
-- [ ] page view recorded
-- [ ] donate CTA tracked
-- [ ] checkout open tracked
-- [ ] donation success tracked
-- [ ] sponsor inquiry tracked
-- [ ] share action tracked
-- [ ] error logging visible
-- [ ] owner can see failures quickly
-
----
-
-## H. Manual production notes
-
-### Console / network
-- [ ] no fatal console errors
-- [ ] no broken websocket behavior
-- [ ] no unexpected 4xx/5xx on critical resources
-
-Notes:
-__________________________________________________
-__________________________________________________
-__________________________________________________
+- [ ] logo is final and crisp
+- [ ] team/program name is final
+- [ ] campaign title is final
+- [ ] copy is typo-checked
+- [ ] no lorem ipsum
+- [ ] no preview/demo residue
+- [ ] no fake content remains
+- [ ] support email is correct
+- [ ] terms link is real
+- [ ] privacy link is real
+- [ ] refund/support path is real
+- [ ] sponsor tiers are accurate
+- [ ] goal / raised values are correct
 
 ---
 
-## I. Launch decision
+## 8) Rollback notes
+
+### Rollback trigger
+Rollback immediately if any of the following happens:
+- homepage stops serving correctly
+- checkout fails for real donors
+- receipts fail
+- console/runtime errors become user-visible
+- payment provider config is wrong
+- donor trust is compromised by broken content
+
+### Rollback plan
+- [ ] previous release/tag identified
+- [ ] deployment rollback command/path known
+- [ ] old env values available if needed
+- [ ] cache/CDN purge plan known
+- [ ] post-rollback smoke check defined
+
+**Rollback tag / commit:** ________________________  
+**Rollback command/path:** ________________________  
+**Owner:** ________________________
+
+---
+
+## 9) Launch status line
+
+Use one of these in your notes / internal comms:
 
 ### NO-GO
-Use if:
-- production domain broken
-- core assets broken
-- fatal console/runtime errors
-- payment unverified
-- receipts/webhooks broken
+> FutureFunded launch is paused. Core revenue, routing, or trust checks are not fully passing yet. Public release remains blocked until production issues are cleared.
 
 ### SOFT LAUNCH
-Use if:
-- red items cleared
-- one real payment verified
-- but device / analytics / manual pass still incomplete
+> FutureFunded is approved for controlled release. Core automation is green and production boot is healthy. Limited live usage is allowed while final payment, mobile, and verification checks finish.
 
 ### GO LIVE
-Use only if:
-- production domain healthy
-- assets healthy
-- payment verified
-- receipt verified
-- webhooks verified
-- mobile pass done
-- no fatal console/runtime errors
-- trust/content review complete
+> FutureFunded is approved for public launch. Core QA, production readiness, payment verification, and trust checks are complete. Public distribution is now cleared.
 
-Final decision:
+**Selected status line:**  
+__________________________________________________
+
+---
+
+## 10) Final decision
+
 - [ ] NO-GO
 - [ ] SOFT LAUNCH
 - [ ] GO LIVE
 
-Approved by: __________
-Time: __________
-Notes:
-__________________________________________________
+**Approved by:** ________________________  
+**Time:** ________________________  
+**Final notes:**  
+__________________________________________________  
+__________________________________________________  
 __________________________________________________

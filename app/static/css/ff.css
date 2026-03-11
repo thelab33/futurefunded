@@ -4426,3 +4426,357 @@ OVERRIDES
   letter-spacing: -0.02em;
 }
 }
+
+/* FF_LAUNCH_FORTUNE_POLISH_V1_START */
+@layer ff.overrides {
+  .ff-root,
+  :root {
+    --ff-launch-bg: #f5f8fc;
+    --ff-launch-bg-soft: #eef3f9;
+    --ff-launch-surface: rgba(255, 255, 255, 0.9);
+    --ff-launch-surface-strong: rgba(255, 255, 255, 0.96);
+    --ff-launch-border: rgba(15, 23, 42, 0.08);
+    --ff-launch-border-strong: rgba(15, 23, 42, 0.14);
+    --ff-launch-text: #0f172a;
+    --ff-launch-text-strong: #091224;
+    --ff-launch-text-muted: #4c5b73;
+    --ff-launch-text-soft: #64748b;
+    --ff-launch-blue: #0f5fe8;
+    --ff-launch-blue-strong: #0849b8;
+    --ff-launch-blue-soft: rgba(15, 95, 232, 0.12);
+    --ff-launch-shadow-sm: 0 10px 24px rgba(15, 23, 42, 0.06);
+    --ff-launch-shadow-md: 0 18px 40px rgba(15, 23, 42, 0.08);
+    --ff-launch-shadow-lg: 0 26px 60px rgba(15, 23, 42, 0.11);
+    --ff-launch-radius-xl: 1.5rem;
+    --ff-launch-radius-lg: 1.125rem;
+    --ff-launch-reading: 70ch;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    hanging-punctuation: first last;
+  }
+
+  body,
+  .ff-body,
+  .ff-root,
+  .ff-shell {
+    color: var(--ff-launch-text);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(15, 95, 232, 0.08), transparent 60%),
+      linear-gradient(180deg, var(--ff-launch-bg) 0%, #f8fbff 100%);
+  }
+
+  .ff-shellBg {
+    background:
+      radial-gradient(900px 440px at 20% 0%, rgba(15, 95, 232, 0.07), transparent 60%),
+      radial-gradient(760px 360px at 100% 0%, rgba(59, 130, 246, 0.05), transparent 55%);
+    opacity: 1;
+  }
+
+  .ff-body,
+  .ff-body p,
+  .ff-body li,
+  .ff-body dd,
+  .ff-body dt,
+  .ff-body label,
+  .ff-body small {
+    color: var(--ff-launch-text-muted);
+  }
+
+  .ff-body strong,
+  .ff-body b,
+  .ff-body h1,
+  .ff-body h2,
+  .ff-body h3,
+  .ff-body h4,
+  .ff-body h5,
+  .ff-body h6,
+  .ff-hero h1,
+  .ff-story h2,
+  .ff-sponsors h2,
+  .ff-teams h2,
+  .ff-impact h2,
+  .ff-faq h2,
+  .ff-section h2 {
+    color: var(--ff-launch-text-strong);
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  .ff-body h1,
+  .ff-hero h1 {
+    font-weight: 800;
+    line-height: 0.96;
+    max-width: 10ch;
+  }
+
+  .ff-body h2,
+  .ff-section h2 {
+    font-weight: 760;
+    line-height: 1.04;
+    font-size: clamp(1.7rem, 1.2rem + 1.7vw, 2.6rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .ff-body h3 {
+    font-weight: 720;
+    line-height: 1.12;
+    font-size: clamp(1.05rem, 0.95rem + 0.45vw, 1.32rem);
+  }
+
+  .ff-body p,
+  .ff-body li {
+    line-height: 1.62;
+  }
+
+  .ff-body a {
+    text-underline-offset: 0.16em;
+    text-decoration-thickness: 0.08em;
+  }
+
+  .ff-body :focus-visible {
+    outline: 3px solid rgba(15, 95, 232, 0.45);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(15, 95, 232, 0.12);
+  }
+
+  .ff-chrome,
+  .ff-topbar,
+  .ff-topbar__capsule--flagship,
+  .ff-heroPanel--flagship,
+  .ff-card,
+  .ff-story,
+  .ff-sponsors,
+  .ff-teams,
+  .ff-impact,
+  .ff-faqItem,
+  .ff-callout,
+  .ff-callout--flagship,
+  .ff-drawer__block,
+  .ff-teamCard--flagship,
+  .ff-sponsorCell,
+  .ff-checkoutShell,
+  .ff-checkoutShell--flagship,
+  .ff-checkoutShell--layout,
+  .ff-checkoutBody,
+  .ff-modal__panel,
+  .ff-sheet__panel,
+  .ff-sheet__viewport,
+  .ff-sheet__scroll,
+  .ff-paymentMount--flagship,
+  .ff-paypalMount--flagship,
+  .ff-storyPoster__play,
+  .ff-disclosure--flagship {
+    background: var(--ff-launch-surface);
+    border: 1px solid var(--ff-launch-border);
+    box-shadow: var(--ff-launch-shadow-sm);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+
+  .ff-heroPanel--flagship,
+  .ff-checkoutShell,
+  .ff-checkoutShell--flagship,
+  .ff-checkoutShell--layout,
+  .ff-teamCard--flagship,
+  .ff-sponsorCell,
+  .ff-story,
+  .ff-impactPick,
+  .ff-impactTier--flagship,
+  .ff-faqItem {
+    border-radius: var(--ff-launch-radius-xl);
+  }
+
+  .ff-callout,
+  .ff-callout--flagship,
+  .ff-disclosure--flagship,
+  .ff-drawer__block,
+  .ff-topbar__capsule--flagship,
+  .ff-storyPoster__play {
+    border-radius: var(--ff-launch-radius-lg);
+  }
+
+  .ff-topbar,
+  .ff-chrome {
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+    backdrop-filter: blur(18px) saturate(145%);
+    -webkit-backdrop-filter: blur(18px) saturate(145%);
+  }
+
+  .ff-topbar *,
+  .ff-chrome *,
+  .ff-hero *,
+  .ff-story *,
+  .ff-impact *,
+  .ff-sponsors *,
+  .ff-teams *,
+  #checkout * {
+    text-wrap: pretty;
+  }
+
+  .ff-section,
+  [id="story"],
+  [id="impact"],
+  [id="teams"],
+  [id="faq"],
+  [id="sponsors"] {
+    scroll-margin-top: 6rem;
+  }
+
+  .ff-hero,
+  .ff-story,
+  .ff-sponsors,
+  .ff-impact,
+  .ff-teams,
+  .ff-faq,
+  .ff-footer {
+    position: relative;
+  }
+
+  .ff-heroPanel--flagship,
+  .ff-checkoutShell,
+  .ff-teamCard--flagship,
+  .ff-sponsorCell {
+    overflow: clip;
+  }
+
+  .ff-teamCard--flagship,
+  .ff-sponsorCell,
+  .ff-impactPick,
+  .ff-impactTier--flagship,
+  .ff-faqItem,
+  .ff-storyPoster__play {
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .ff-teamCard--flagship:hover,
+  .ff-sponsorCell:hover,
+  .ff-impactPick:hover,
+  .ff-impactTier--flagship:hover,
+  .ff-faqItem:hover {
+    transform: translateY(-2px);
+    border-color: var(--ff-launch-border-strong);
+    box-shadow: var(--ff-launch-shadow-md);
+  }
+
+  .ff-body .ff-btn,
+  .ff-body button,
+  .ff-body [type="button"],
+  .ff-body [type="submit"],
+  .ff-body [role="button"] {
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    border-radius: 999px;
+  }
+
+  .ff-btn,
+  .ff-navPill,
+  .ff-tabs__item,
+  .ff-storyPoster__play {
+    box-shadow:
+      0 10px 24px rgba(15, 95, 232, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .ff-btn:hover,
+  .ff-navPill:hover,
+  .ff-tabs__item:hover,
+  .ff-storyPoster__play:hover {
+    transform: translateY(-1px);
+  }
+
+  .ff-body input,
+  .ff-body select,
+  .ff-body textarea {
+    background: rgba(255, 255, 255, 0.98);
+    color: var(--ff-launch-text);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  }
+
+  .ff-body input::placeholder,
+  .ff-body textarea::placeholder {
+    color: var(--ff-launch-text-soft);
+  }
+
+  .ff-progress,
+  .ff-progress--anchor,
+  [role="progressbar"] {
+    border-radius: 999px;
+  }
+
+  .ff-body .ff-sep,
+  .ff-body .ff-topbarGoal__sep {
+    opacity: 0.5;
+  }
+
+  .ff-story p,
+  .ff-impact p,
+  .ff-sponsors p,
+  .ff-teams p,
+  .ff-faqItem p {
+    max-width: var(--ff-launch-reading);
+  }
+
+  .ff-footer,
+  .ff-footerBrand--flagship,
+  .ff-footerGrid--flagship,
+  .ff-footerGrid--compact,
+  .ff-footerTray--compact {
+    color: #42506a;
+  }
+
+  .ff-footer a {
+    color: #15356c;
+  }
+
+  .ff-body .ff-skip,
+  .ff-body .ff-skiplink {
+    border-radius: 999px;
+    box-shadow: var(--ff-launch-shadow-sm);
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-body h1,
+    .ff-hero h1 {
+      line-height: 0.99;
+      max-width: 12ch;
+    }
+
+    .ff-heroPanel--flagship,
+    .ff-checkoutShell,
+    .ff-teamCard--flagship,
+    .ff-sponsorCell,
+    .ff-impactPick,
+    .ff-impactTier--flagship,
+    .ff-faqItem {
+      border-radius: 1.2rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .ff-heroPanel--flagship,
+    .ff-story,
+    .ff-sponsors,
+    .ff-impact,
+    .ff-teams,
+    .ff-checkoutShell {
+      box-shadow: var(--ff-launch-shadow-lg);
+    }
+
+    .ff-body h1,
+    .ff-hero h1 {
+      max-width: 9ch;
+    }
+  }
+}
+/* FF_LAUNCH_FORTUNE_POLISH_V1_END */
