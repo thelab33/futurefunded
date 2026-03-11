@@ -961,6 +961,15 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     except Exception as exc:
         app.logger.warning("FutureFunded onboarding blueprint registration skipped: %s", exc)
 
+    # FF_ACTIVITY_FEED_REGISTER_V1_START
+    try:
+        from app.routes.activity_feed import bp as activity_feed_bp
+        _safe_register(app, activity_feed_bp)
+    except Exception:
+        pass
+    # FF_ACTIVITY_FEED_REGISTER_V1_END
+
+
     return app
 
 

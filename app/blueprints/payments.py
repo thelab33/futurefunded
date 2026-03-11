@@ -460,8 +460,59 @@ def _create_stripe_event_row(*, event_id: str, etype: str, livemode: bool, objec
 
 
 # ----------------------------
+# Live feed helpers
+# ----------------------------
+def _activity_time_ago(dt: Optional[datetime]) -> str:
+    if not dt:
+        return "Just now"
+    try:
+        now = datetime.now(dt.tzinfo) if getattr(dt, "tzinfo", None) else datetime.now()
+        seconds = max(0, int((now - dt).total_seconds()))
+    except Exception:
+        return "Just now"
+
+    if seconds < 60:
+        return "Just now"
+    if seconds < 3600:
+        return f"{seconds // 60}m ago"
+    if seconds < 86400:
+        return f"{seconds // 3600}h ago"
+    return f"{seconds // 86400}d ago"
+
+
+def _emit_activity_event(
+    *,
+    kind: str,
+    name: str,
+    amount: Optional[float] = None,
+    player_name: Optional[str] = None,
+    created_at: Optional[datetime] = None,
+) -> None:
+    payload = {
+        "kind": kind,
+        "name": (name or "Supporter")[:160],
+        "amount": amount,
+        "player_name": player_name,
+        "created_at": _iso(created_at),
+        "time_ago": _activity_time_ago(created_at),
+    }
+
+    try:
+        from app.extensions import socketio  # type: ignore
+    except Exception:
+        socketio = None
+
+    try:
+        if socketio:
+            socketio.emit("activity:new", payload, namespace="/")
+    except Exception:
+        current_app.logger.exception("payments: failed to emit activity:new")
+
+# ----------------------------
 # Routes
 # ----------------------------
+# FF_PAYMENTS_LIVE_FEED_V1
+
 @bp.get("/health")
 def payments_health():
     s = Settings.load()
@@ -538,6 +589,36 @@ def get_donation(donation_id: int):
         }
     )
 
+
+@bp.get("/activity-feed")
+def payments_activity_feed():
+    rows = (
+        db.session.query(Donation)
+        .filter(Donation.provider_status == "succeeded")
+        .order_by(Donation.paid_at.desc(), Donation.id.desc())
+        .limit(5)
+        .all()
+    )
+
+    items = []
+    for d in rows:
+        dt = getattr(d, "paid_at", None) or getattr(d, "created_at", None)
+        raw_name = (getattr(d, "name", "") or "").strip()
+        display_name = "Anonymous donor" if raw_name.lower() == "anonymous" else (raw_name or "Supporter")
+        amount_dollars = (int(getattr(d, "amount_cents", 0) or 0) / 100.0)
+
+        items.append(
+            {
+                "kind": "donation",
+                "name": display_name[:160],
+                "amount": amount_dollars,
+                "player_name": None,
+                "created_at": _iso(dt),
+                "time_ago": _activity_time_ago(dt),
+            }
+        )
+
+    return _json_ok({"items": items})
 
 @bp.post("/stripe/intent")
 def stripe_intent():
@@ -763,6 +844,31 @@ def stripe_webhook():
             if not updated:
                 return ("", 200)
 
+            if status == "succeeded":
+                d = None
+                if donation_id_raw.isdigit():
+                    d = db.session.get(Donation, int(donation_id_raw))
+                elif pi_id:
+                    d = (
+                        db.session.query(Donation)
+                        .filter(Donation.provider_intent_id == pi_id)
+                        .order_by(Donation.id.desc())
+                        .first()
+                    )
+
+                if d:
+                    paid_dt = getattr(d, "paid_at", None) or getattr(d, "created_at", None)
+                    raw_name = (getattr(d, "name", "") or "").strip()
+                    display_name = "Anonymous donor" if raw_name.lower() == "anonymous" else (raw_name or "Supporter")
+                    amount_dollars = (int(getattr(d, "amount_cents", 0) or 0) / 100.0)
+
+                    _emit_activity_event(
+                        kind="donation",
+                        name=display_name,
+                        amount=amount_dollars,
+                        created_at=paid_dt,
+                    )
+
         elif isinstance(obj, dict) and etype in ("charge.succeeded", "charge.updated"):
             ch_status = str(obj.get("status") or "").lower()
             ch_paid = bool(obj.get("paid") or False)
@@ -778,5 +884,6 @@ def stripe_webhook():
         db.session.rollback()
         current_app.logger.exception("payments: webhook processing failed (will retry)")
         return ("", 500)
+
 
 

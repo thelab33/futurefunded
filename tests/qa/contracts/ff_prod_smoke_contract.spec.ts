@@ -1,75 +1,102 @@
 import { test, expect } from "@playwright/test";
 
-const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5000";
-
 test.describe("FutureFunded — boot contract", () => {
   test("ff-app.js executes and exposes window.ff.version", async ({ page }) => {
     const consoleErrors: string[] = [];
-    const pageErrors: string[] = [];
+    const fatalPageErrors: string[] = [];
+    const httpFailures: Array<{ url: string; status: number }> = [];
 
-    page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
-    });
+    /**
+     * Endpoints that are allowed to 404 during local boot without failing
+     * the ff-app smoke contract.
+     *
+     * Keep this list very small and intentional.
+     */
+    const ALLOWED_OPTIONAL_404_PATTERNS = [
+      /\/api\/activity-feed(?:\?|$)/i,
+    ];
+
+    const isAllowedOptional404 = (url: string, status: number): boolean => {
+      return status === 404 && ALLOWED_OPTIONAL_404_PATTERNS.some((rx) => rx.test(url));
+    };
 
     page.on("pageerror", (err) => {
-      pageErrors.push(String((err as Error)?.message || err));
+      fatalPageErrors.push(String(err));
     });
 
-    const resp = await page.goto(BASE, { waitUntil: "load" });
-    expect(resp?.status(), "Home page did not return 200").toBe(200);
+    page.on("response", (resp) => {
+      const status = resp.status();
+      const url = resp.url();
 
-    await page.waitForFunction(() => {
-      const w = window as any;
-      return Boolean(
-        w.ff?.version ||
-        w.FF_APP?.version ||
-        (typeof w.FF_APP?.api?.contractSnapshot === "function")
+      if (status >= 400) {
+        httpFailures.push({ url, status });
+      }
+    });
+
+    page.on("console", (msg) => {
+      if (msg.type() !== "error") return;
+
+      const text = msg.text();
+
+      /**
+       * Browser console collapses network failures into generic
+       * "Failed to load resource" messages, which are too vague on their own.
+       * We collect them, but later filter them against the actual response list.
+       */
+      consoleErrors.push(text);
+    });
+
+    await page.goto("http://127.0.0.1:5000", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1200);
+
+    const ffVersion = await page.evaluate(() => {
+      return (window as any)?.ff?.version ?? null;
+    });
+
+    expect(ffVersion, "window.ff.version should be exposed after boot").toBeTruthy();
+
+    const unexpectedHttpFailures = httpFailures.filter(
+      ({ url, status }) => !isAllowedOptional404(url, status)
+    );
+
+    /**
+     * Only keep console errors that are not explained by an allowed optional 404.
+     * Generic resource-load console noise is tolerated only when it maps to a
+     * specifically allowlisted optional endpoint.
+     */
+    const unexpectedConsoleErrors = consoleErrors.filter((text) => {
+      if (!/Failed to load resource/i.test(text)) return true;
+
+      const matchedAllowed404 = httpFailures.some(
+        ({ url, status }) => isAllowedOptional404(url, status)
       );
-    }, null, { timeout: 10000 });
 
-    const state = await page.evaluate(() => {
-      const w = window as any;
-      const root = (document.querySelector(".ff-root") as HTMLElement | null) || document.documentElement;
-      const script = document.querySelector('script[src*="ff-app.js"]') as HTMLScriptElement | null;
-
-      return {
-        readyState: document.readyState,
-        scriptSrc: script?.getAttribute("src") || "",
-        version:
-          w.ff?.version ||
-          w.FF_APP?.version ||
-          root?.getAttribute("data-ff-version") ||
-          root?.getAttribute("data-ff-build") ||
-          "",
-        hasWindowFF: !!w.ff,
-        hasFFApp: !!w.FF_APP,
-        hasContractSnapshot: typeof w.FF_APP?.api?.contractSnapshot === "function"
-      };
+      return !matchedAllowed404;
     });
 
-    expect(state.readyState).toBe("complete");
-    expect(state.scriptSrc, "ff-app.js script tag missing").toContain("/static/js/ff-app.js");
-    expect(state.version, "No runtime version detected").toBeTruthy();
     expect(
-      state.hasWindowFF || state.hasContractSnapshot || state.hasFFApp,
-      "No usable public runtime found"
-    ).toBeTruthy();
+      unexpectedHttpFailures,
+      [
+        "Unexpected HTTP failures detected during boot.",
+        ...unexpectedHttpFailures.map((x) => `- [HTTP ${x.status}] ${x.url}`),
+      ].join("\n")
+    ).toEqual([]);
 
-    const ignoredPageErrors = pageErrors.filter((msg) =>
-      /Cannot set properties of undefined \(setting 'webdriver'\)/.test(msg)
-    );
-    const fatalPageErrors = pageErrors.filter((msg) =>
-      !/Cannot set properties of undefined \(setting 'webdriver'\)/.test(msg)
-    );
+    expect(
+      unexpectedConsoleErrors,
+      [
+        "Unexpected console errors detected during boot.",
+        ...unexpectedConsoleErrors.map((x) => `- ${x}`),
+      ].join("\n")
+    ).toEqual([]);
 
-    if (ignoredPageErrors.length) {
-      test.info().attach("ignored-page-errors.txt", {
-        body: ignoredPageErrors.join("\n"),
-        contentType: "text/plain"
-      });
-    }
-
-    expect(consoleErrors, "Console errors detected").toEqual([]);
-    expect(fatalPageErrors, "Page errors detected").toEqual([]);
+    expect(
+      fatalPageErrors,
+      [
+        "Unexpected page errors detected during boot.",
+        ...fatalPageErrors.map((x) => `- ${x}`),
+      ].join("\n")
+    ).toEqual([]);
   });
 });

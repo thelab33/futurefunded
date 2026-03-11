@@ -1926,12 +1926,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     if (state.socket || !w.io || root.getAttribute("data-ff-webdriver") === "true") return;
 
     try {
-      state.socket = w.io({
-        transports: ["polling"],
-        upgrade: false,
-        reconnection: true,
-        timeout: 5000
-      });
+      state.socket = socket;
     } catch (err) {
       return;
     }
@@ -4518,3 +4513,195 @@ document.addEventListener("mousedown", function(e){
   setTimeout(syncOverlayLock, 0);
 })();
 /* FF_OVERLAY_LOCK_SELF_HEAL_V1_END */
+
+/* FF_LIVE_FEED_V1_JS_START */
+(function () {
+  if (window.__FF_LIVE_FEED_V1__) return;
+  window.__FF_LIVE_FEED_V1__ = true;
+
+  function ffMoney(value) {
+    var n = Number(value || 0);
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0
+      }).format(n);
+    } catch (_) {
+      return "$" + Math.round(n);
+    }
+  }
+
+  function ffActivityText(item) {
+    if (!item) return "supported the season";
+    if (item.kind === "donation") return "donated " + ffMoney(item.amount);
+    if (item.kind === "sponsor") return "became a sponsor";
+    if (item.kind === "player_sponsor") return "sponsored " + (item.player_name || "a player");
+    return "supported the season";
+  }
+
+  function ffRenderActivityItem(item) {
+    var li = document.createElement("li");
+    li.className = "ff-liveFeed__item is-new";
+    li.innerHTML = [
+      '<span class="ff-liveFeed__dot" aria-hidden="true"></span>',
+      '<div class="ff-liveFeed__content">',
+      '  <strong class="ff-liveFeed__name"></strong>',
+      '  <span class="ff-liveFeed__text"></span>',
+      '</div>',
+      '<time class="ff-liveFeed__time"></time>'
+    ].join("");
+
+    var nameEl = li.querySelector(".ff-liveFeed__name");
+    var textEl = li.querySelector(".ff-liveFeed__text");
+    var timeEl = li.querySelector(".ff-liveFeed__time");
+
+    if (nameEl) nameEl.textContent = item.name || "Supporter";
+    if (textEl) textEl.textContent = ffActivityText(item);
+    if (timeEl) timeEl.textContent = item.time_ago || "Just now";
+
+    return li;
+  }
+
+  function ffFindProgressNode() {
+    var selectors = [
+      "[data-ff-progress-fill]",
+      "[data-ff-progress-meter]",
+      ".ff-progress__fill",
+      ".ff-progressBar__fill",
+      ".ff-meter__fill",
+      ".ff-progressBar",
+      ".ff-progress"
+    ];
+    for (var i = 0; i < selectors.length; i += 1) {
+      var node = document.querySelector(selectors[i]);
+      if (node) return node;
+    }
+    return null;
+  }
+
+  function ffAnimateProgressBar() {
+    var meter = ffFindProgressNode();
+    if (!meter) return;
+    meter.classList.remove("is-bump");
+    void meter.offsetWidth;
+    meter.classList.add("is-bump");
+    window.setTimeout(function () {
+      meter.classList.remove("is-bump");
+    }, 900);
+  }
+
+  function ffPushActivityItem(item) {
+    var list = document.querySelector("[data-ff-live-feed-list]");
+    if (!list) return;
+
+    var empty = list.querySelector(".ff-liveFeed__item--empty");
+    if (empty) empty.remove();
+
+    var node = ffRenderActivityItem(item);
+    list.prepend(node);
+
+    while (list.children.length > 5) {
+      list.removeChild(list.lastElementChild);
+    }
+
+    window.setTimeout(function () {
+      node.classList.remove("is-new");
+    }, 1600);
+
+    document.dispatchEvent(new CustomEvent("ff:donation-activity", { detail: item }));
+  }
+
+  function ffHydrateLiveFeed() {
+    var root = document.querySelector("[data-ff-live-feed]");
+    var list = document.querySelector("[data-ff-live-feed-list]");
+    if (!root || !list) return;
+
+    var urls = [
+      "/api/activity-feed",
+      "/payments/activity-feed",
+      "/activity-feed"
+    ];
+
+    function attempt(i) {
+      if (i >= urls.length) {
+        return Promise.reject(new Error("no feed endpoint"));
+      }
+
+      return fetch(urls[i], {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error("feed request failed");
+          return res.json();
+        })
+        .catch(function () {
+          return attempt(i + 1);
+        });
+    }
+
+    attempt(0)
+      .then(function (data) {
+        if (!data || !Array.isArray(data.items) || !data.items.length) return;
+        list.innerHTML = "";
+        data.items.slice(0, 5).forEach(function (item) {
+          var node = ffRenderActivityItem(item);
+          node.classList.remove("is-new");
+          list.appendChild(node);
+        });
+      })
+      .catch(function () {
+        /* quiet fallback */
+      });
+  }
+
+  function ffInitActivitySocket() {
+    if (!window.io) return;
+    if (!document.querySelector("[data-ff-live-feed-list]")) return;
+
+    
+var socket = {
+  on: function(){},
+  emit: function(){},
+  off: function(){},
+  close: function(){}
+};
+
+if (window.io && window.location.protocol.startsWith("http")) {
+  try {
+    
+if (window.FF_ENABLE_SOCKET === true && window.io) {
+  socket = window.io({ transports: ["polling"], upgrade: false });
+}
+;
+  } catch (e) {
+    console.warn("Socket.IO disabled:", e);
+  }
+}
+    socket.on("activity:new", function (payload) {
+      ffPushActivityItem(payload || {});
+    });
+  }
+
+  document.addEventListener("ff:donation-activity", function (event) {
+    var detail = (event && event.detail) || {};
+    if (
+      detail.kind === "donation" ||
+      detail.kind === "player_sponsor" ||
+      detail.kind === "sponsor"
+    ) {
+      ffAnimateProgressBar();
+    }
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      ffHydrateLiveFeed();
+      ffInitActivitySocket();
+    }, { once: true });
+  } else {
+    ffHydrateLiveFeed();
+    ffInitActivitySocket();
+  }
+})();
+ /* FF_LIVE_FEED_V1_JS_END */

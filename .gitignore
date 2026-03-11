@@ -92,6 +92,11 @@ Thumbs.db
 *.swp
 *.swo
 
+.supervisord.pid
+.supervisor.sock
+tmp/restart.txt
+.logs/
+
 # Windows-path junk accidentally created inside repo under WSL
 C:\\Users\\*
 

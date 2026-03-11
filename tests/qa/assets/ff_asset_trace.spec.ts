@@ -2,6 +2,14 @@ import { test, expect, Page } from "@playwright/test";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5000";
 
+const ALLOWED_OPTIONAL_404_PATTERNS = [
+  /\/api\/activity-feed(?:\?|$)/i
+];
+
+function isAllowedOptional404(url: string, status: number): boolean {
+  return status === 404 && ALLOWED_OPTIONAL_404_PATTERNS.some((rx) => rx.test(url));
+}
+
 async function resetOverlayState(page: Page) {
   await page.evaluate(() => {
     const w = window as any;
@@ -11,7 +19,10 @@ async function resetOverlayState(page: Page) {
     } catch {}
 
     try {
-      if (location.hash && ["#checkout", "#press-video", "#sponsor-interest", "#terms", "#privacy", "#drawer"].includes(location.hash)) {
+      if (
+        location.hash &&
+        ["#checkout", "#press-video", "#sponsor-interest", "#terms", "#privacy", "#drawer"].includes(location.hash)
+      ) {
         history.replaceState(null, "", location.pathname + location.search);
       }
     } catch {}
@@ -47,14 +58,15 @@ test("asset trace — capture runtime network requests", async ({ page }) => {
 
   page.on("response", (res) => {
     const url = res.url();
+    const status = res.status();
     const isLocal =
       url.startsWith("http://127.0.0.1") ||
       url.startsWith("http://localhost") ||
       url.startsWith("https://127.0.0.1") ||
       url.startsWith("https://localhost");
 
-    if (isLocal && res.status() >= 400) {
-      badLocalResponses.push(`${res.status()} ${url}`);
+    if (isLocal && status >= 400 && !isAllowedOptional404(url, status)) {
+      badLocalResponses.push(`${status} ${url}`);
     }
   });
 
@@ -77,7 +89,8 @@ test("asset trace — capture runtime network requests", async ({ page }) => {
     body: JSON.stringify(
       {
         captured: filtered,
-        badLocalResponses
+        badLocalResponses,
+        allowlistedOptional404s: ALLOWED_OPTIONAL_404_PATTERNS.map(String)
       },
       null,
       2

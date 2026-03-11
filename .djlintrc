@@ -1,4 +1,9 @@
 {
-  "ignore": "T032,H031,H020",
-  "profile": "jinja"
+  "profile": "jinja",
+  "ignore": "H025,H014,H020,H031",
+  "max_line_length": 140,
+  "indent": 2,
+  "format_css": true,
+  "format_js": true,
+  "close_void_tags": false
 }
