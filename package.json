@@ -2,7 +2,7 @@
   "name": "connectatx-fundraiser",
   "version": "1.2.0",
   "private": true,
-  "description": "FutureFunded / FundChamps \u2014 production-gated fundraising platform (Flask + Playwright + CSS/JS contracts)",
+  "description": "FutureFunded production-gated fundraising platform (Flask + Playwright + CSS/JS contracts)",
   "scripts": {
     "prepare": "husky install",
     "clean:test": "rimraf test-results playwright-report",
@@ -34,6 +34,7 @@
     "pw:mini": "npx playwright test --project=chromium --workers=1 tests/qa/smoke/ff_smoke.spec.ts tests/qa/contracts/ff_contract.spec.ts tests/qa/flows/ff_donation_flow.spec.ts",
     "pw:legacy": "npx playwright test --project=chromium --workers=1 tests/qa/legacy/ff_checkout_ux_gate_v2.spec.ts tests/qa/legacy/ff_authority_polish_gate.spec.ts",
     "qa:fast": "run-s audit:dom pw:mini",
+    "pw:production": "npx playwright test --project=chromium --workers=1 tests/qa/production/ff_launch_readiness.spec.ts",
     "qa:core": "run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:platform": "run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:full": "run-s audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
