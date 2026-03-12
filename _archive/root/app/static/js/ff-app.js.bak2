@@ -1,0 +1,1727 @@
+/* ============================================================================
+FutureFunded — app/static/js/ff-app.js
+Runtime: FF_APP_RUNTIME_BUILD = 2026.03.04.1
+
+Features (hook-safe, deterministic, CSP-safe):
+
+* Bootstrap marker + window.**FF_APP** exposure
+* Theme toggle with localStorage + OS fallback
+* Single-source overlay manager (hash + back button sync)
+* Donation flow (amount/team prefills, presets, validation, processing placeholder)
+* Video modal (iframe mount/unmount, no innerHTML)
+* Checkout QR hydration (data-ff-qr-src -> src)
+* Share (Web Share API + clipboard fallback)
+* ARIA live announcer + ephemeral toast system
+* Delegated event model (document-level listeners), defensive null-guards everywhere
+  ============================================================================ */
+
+
+/* FF_SOCKETIO_CLIENT_POLICY_V1
+   Goal: prevent websocket-upgrade 400 spam on Werkzeug; keep live updates via polling.
+   - Forces transports=["polling"] + upgrade=false for any Socket.IO client connections.
+   - Disables Socket.IO entirely when .ff-root[data-ff-webdriver="true"] (Playwright).
+*/
+(() => {
+  "use strict";
+  const win = window;
+  const doc = document;
+
+  function ffIsWebdriver() {
+    try {
+      const root = doc.querySelector(".ff-root");
+      return !!(root && root.getAttribute("data-ff-webdriver") === "true");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function dummySocket() {
+    const s = {
+      connected: false,
+      id: undefined,
+      on() { return s; },
+      once() { return s; },
+      off() { return s; },
+      emit() { return false; },
+      connect() { return s; },
+      close() { return; },
+      disconnect() { return; },
+    };
+    return s;
+  }
+
+  function normalizeArgs(args) {
+    // socket.io client supports: io(opts) OR io(url, opts)
+    let url = undefined;
+    let opts = undefined;
+
+    if (!args || !args.length) return { url, opts: {} };
+
+    if (typeof args[0] === "string") {
+      url = args[0];
+      opts = (args.length > 1 && args[1] && typeof args[1] === "object") ? args[1] : {};
+    } else if (args[0] && typeof args[0] === "object") {
+      opts = args[0];
+    } else {
+      opts = {};
+    }
+
+    if (!opts || typeof opts !== "object") opts = {};
+    return { url, opts };
+  }
+
+  function enforcePolicy(opts) {
+    try {
+      opts.transports = ["polling"];
+      opts.upgrade = false;
+      // keep timeouts sane + deterministic
+      if (typeof opts.timeout !== "number") opts.timeout = 6000;
+      if (typeof opts.reconnectionAttempts !== "number") opts.reconnectionAttempts = 3;
+      return opts;
+    } catch (_) {
+      return opts || {};
+    }
+  }
+
+  function wrapOnce() {
+    try {
+      if (typeof win.io !== "function") return false;
+      if (win.io.__ffWrapped) return true;
+
+      const orig = win.io;
+
+      function wrapped(...args) {
+        try {
+          if (ffIsWebdriver()) return dummySocket();
+          const { url, opts } = normalizeArgs(args);
+          const patched = enforcePolicy(opts);
+
+          if (url) return orig.call(this, url, patched);
+          return orig.call(this, patched);
+        } catch (_) {
+          // Never hard-fail runtime because sockets are optional
+          return dummySocket();
+        }
+      }
+
+      // Preserve common static props
+      try {
+        Object.keys(orig).forEach((k) => {
+          try { wrapped[k] = orig[k]; } catch (_) {}
+        });
+        wrapped.connect = (...a) => wrapped(...a);
+      } catch (_) {}
+
+      wrapped.__ffWrapped = true;
+      win.io = wrapped;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Wrap immediately if present, and also retry briefly in case socket.io loads after ff-app.js
+  wrapOnce();
+  let tries = 0;
+  const t = win.setInterval(() => {
+    tries++;
+    if (wrapOnce() || tries >= 60) {
+      try { win.clearInterval(t); } catch (_) {}
+    }
+  }, 50);
+})();
+
+(() => {
+"use strict";
+
+const FF_APP_RUNTIME_BUILD = "2026.03.04.1";
+const doc = document;
+const win = window;
+const root = doc.documentElement;
+
+const OVERLAY_IDS = ["checkout", "press-video", "sponsor-interest", "terms", "privacy", "drawer"];
+const OVERLAY_SET = new Set(OVERLAY_IDS);
+
+const STORAGE_THEME_KEY = "ff:theme";
+
+// ----------------------------- Safe utilities ------------------------------
+
+const noop = () => {};
+
+function isElement(node) {
+return !!node && node.nodeType === 1;
+}
+
+function toEl(node) {
+if (isElement(node)) return node;
+// If a text node is clicked, prefer its parent element
+if (node && node.nodeType === 3) return node.parentElement || null;
+return null;
+}
+
+function $(sel, ctx) {
+const scope = ctx || doc;
+try {
+return scope.querySelector(sel);
+} catch (_) {
+return null;
+}
+}
+
+function $$(sel, ctx) {
+const scope = ctx || doc;
+try {
+return Array.from(scope.querySelectorAll(sel));
+} catch (_) {
+return [];
+}
+}
+
+function closest(el, sel) {
+const node = toEl(el);
+if (!node) return null;
+try {
+return node.closest(sel);
+} catch (_) {
+return null;
+}
+}
+
+function safeGetAttr(el, name) {
+try {
+return el && el.getAttribute ? el.getAttribute(name) : null;
+} catch (_) {
+return null;
+}
+}
+
+function safeSetAttr(el, name, value) {
+try {
+if (!el || !el.setAttribute) return false;
+el.setAttribute(name, String(value));
+return true;
+} catch (_) {
+return false;
+}
+}
+
+function safeRemoveAttr(el, name) {
+try {
+if (!el || !el.removeAttribute) return false;
+el.removeAttribute(name);
+return true;
+} catch (_) {
+return false;
+}
+}
+
+function isVisible(el) {
+const node = toEl(el);
+if (!node) return false;
+try {
+if (node.hidden) return false;
+const cs = win.getComputedStyle ? win.getComputedStyle(node) : null;
+if (!cs) return true;
+return cs.display !== "none" && cs.visibility !== "hidden" && cs.opacity !== "0";
+} catch (_) {
+return true;
+}
+}
+
+function getFocusable(container) {
+const rootNode = toEl(container);
+if (!rootNode) return [];
+const sel =
+'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+'select:not([disabled]), textarea:not([disabled]), summary, ' +
+'[role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"])';
+const nodes = $$(sel, rootNode);
+const out = [];
+for (let i = 0; i < nodes.length; i++) {
+const n = nodes[i];
+if (!isVisible(n)) continue;
+// Skip elements inside [aria-hidden="true"] ancestors
+const hiddenAncestor = closest(n, '[aria-hidden="true"]');
+if (hiddenAncestor && hiddenAncestor !== rootNode) continue;
+out.push(n);
+}
+return out;
+}
+
+function safeJsonFromScript(id) {
+try {
+const el = doc.getElementById(id);
+if (!el) return null;
+const raw = (el.textContent || "").trim();
+if (!raw) return null;
+return JSON.parse(raw);
+} catch (e) {
+try {
+// keep logs low-noise in production
+console.debug("[ff-app] JSON parse failed:", id, e);
+} catch (_) {}
+return null;
+}
+}
+
+function normalizeNumberString(input) {
+const s = String(input == null ? "" : input).trim();
+if (!s) return "";
+// keep digits + single dot
+let out = "";
+let dot = false;
+for (let i = 0; i < s.length; i++) {
+const ch = s[i];
+if (ch >= "0" && ch <= "9") out += ch;
+else if (ch === "." && !dot) {
+dot = true;
+out += ".";
+}
+}
+// trim leading zeros but preserve "0.x"
+if (out.startsWith("0") && out.length > 1 && out[1] !== ".") {
+out = out.replace(/^0+/, "");
+if (!out) out = "0";
+}
+return out;
+}
+
+function parsePositiveAmount(input) {
+const s = normalizeNumberString(input);
+if (!s) return { ok: false, value: 0, text: "" };
+const n = Number(s);
+if (!Number.isFinite(n) || n <= 0) return { ok: false, value: 0, text: s };
+return { ok: true, value: n, text: s };
+}
+
+// ------------------------ Bootstrap marker & config ------------------------
+
+const pageVersion = (() => {
+try {
+const v = (root.getAttribute("data-ff-version") || "").trim();
+return v || "dev";
+} catch (_) {
+return "dev";
+}
+})();
+
+try {
+// Required: Add data-ff-app="ff-app@<version>"
+root.setAttribute("data-ff-app", `ff-app@${pageVersion}`);
+} catch (_) {}
+
+try {
+// Required: Expose { version, timestamp }
+win.FF_APP = { version: pageVersion, timestamp: Date.now() };
+
+console.debug("[ff-app] runtime boot", { version: pageVersion, build: FF_APP_RUNTIME_BUILD });
+} catch (_) {}
+
+const CFG = safeJsonFromScript("ffConfig") || {};
+const SEL_RAW = safeJsonFromScript("ffSelectors") || {};
+
+// If ffSelectors nests selectors, accept it (defensive)
+const SEL_OVERRIDES = (() => {
+if (SEL_RAW && typeof SEL_RAW === "object") {
+  if (SEL_RAW.hooks && typeof SEL_RAW.hooks === "object") return SEL_RAW.hooks;
+  const nested = SEL_RAW.selectors && typeof SEL_RAW.selectors === "object" ? SEL_RAW.selectors : null;
+  return nested || SEL_RAW;
+}
+return {};
+})();
+
+function isValidSelectorString(s) {
+if (typeof s !== "string") return false;
+const v = s.trim();
+if (!v || v.length > 500) return false;
+// reject anything that looks like markup
+if (v.indexOf("<") !== -1 || v.indexOf(">") !== -1) return false;
+return true;
+}
+
+function mergeSelector(defaultSel, overrideSel) {
+const d = String(defaultSel || "").trim();
+const o = isValidSelectorString(overrideSel) ? overrideSel.trim() : "";
+if (!o) return d;
+// Union to avoid breaking contract selectors; keep default first for priority.
+if (!d) return o;
+if (d === o) return d;
+return `${d}, ${o}`;
+}
+
+const SELECTORS = {
+themeToggle: mergeSelector(".ff-themeToggle", SEL_OVERRIDES.themeToggle),
+donate: mergeSelector("[data-ff-open-checkout]", SEL_OVERRIDES.openCheckout || SEL_OVERRIDES.donate),
+amountPreset: mergeSelector("[data-ff-amount]", SEL_OVERRIDES.amountPreset),
+teamId: mergeSelector("[data-ff-team-id]", SEL_OVERRIDES.teamId),
+videoTrigger: mergeSelector("[data-ff-video-src]", SEL_OVERRIDES.videoTrigger),
+sponsorTier: mergeSelector("[data-ff-sponsor-tier]", SEL_OVERRIDES.sponsorTier),
+sponsorAmount: mergeSelector("[data-ff-sponsor-amount]", SEL_OVERRIDES.sponsorAmount),
+drawerOpen: mergeSelector('button[aria-controls="ffDrawerPanel"]', SEL_OVERRIDES.drawerOpen),
+backdrop: mergeSelector(".ff-sheet__backdrop, .ff-modal__backdrop, .ff-drawer__backdrop", SEL_OVERRIDES.backdrop),
+closeBtn: mergeSelector('.ff-iconbtn[aria-label^="Close"]', SEL_OVERRIDES.closeBtn),
+liveRegion: mergeSelector("#ffLive", SEL_OVERRIDES.liveRegion),
+toastRoot: mergeSelector(".ff-toasts", SEL_OVERRIDES.toastRoot),
+qrImg: mergeSelector(".ff-qr__img", SEL_OVERRIDES.qrImg),
+videoFrame: mergeSelector(".ff-videoFrame", SEL_OVERRIDES.videoFrame),
+donationForm: mergeSelector("#donationForm", SEL_OVERRIDES.donationForm),
+donationAmount: mergeSelector("#donationAmount", SEL_OVERRIDES.donationAmount),
+teamIdField: mergeSelector('input[name="team_id"]', SEL_OVERRIDES.teamIdField),
+checkoutErrorText: mergeSelector("#checkoutErrorText", SEL_OVERRIDES.checkoutErrorText),
+};
+
+// -------------------------- Announcer + toasts -----------------------------
+
+let _liveEl = null;
+let _toastHost = null;
+let _announceTimer = 0;
+
+function liveEl() {
+if (_liveEl && doc.contains(_liveEl)) return _liveEl;
+_liveEl = $(SELECTORS.liveRegion);
+return _liveEl;
+}
+
+function toastHost() {
+if (_toastHost && doc.contains(_toastHost)) return _toastHost;
+_toastHost = $(SELECTORS.toastRoot);
+return _toastHost;
+}
+
+function announce(msg) {
+const el = liveEl();
+if (!el) return;
+const text = String(msg == null ? "" : msg);
+try {
+// Clear first to force repeated announcements of identical text.
+el.textContent = "";
+// Next frame, set content
+win.requestAnimationFrame(() => {
+try {
+el.textContent = text;
+} catch (_) {}
+});
+if (_announceTimer) win.clearTimeout(_announceTimer);
+_announceTimer = win.setTimeout(() => {
+try {
+el.textContent = "";
+} catch (_) {}
+}, 1500);
+} catch (_) {}
+}
+
+function toast(msg) {
+const host = toastHost();
+if (!host) return;
+const text = String(msg == null ? "" : msg);
+
+let item = null;
+try {
+  item = doc.createElement("div");
+  item.setAttribute("role", "status");
+  item.setAttribute("aria-live", "polite");
+  item.className = "ff-toast";
+  item.textContent = text;
+  host.appendChild(item);
+} catch (_) {
+  return;
+}
+
+win.setTimeout(() => {
+  try {
+    if (item && item.parentNode) item.parentNode.removeChild(item);
+  } catch (_) {}
+}, 4000);
+
+}
+
+// ------------------------------- Theme ------------------------------------
+
+function getStoredTheme() {
+try {
+const v = (win.localStorage.getItem(STORAGE_THEME_KEY) || "").trim().toLowerCase();
+return v === "dark" || v === "light" ? v : null;
+} catch (_) {
+return null;
+}
+}
+
+function getOsTheme() {
+try {
+return win.matchMedia && win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+} catch (_) {
+return "light";
+}
+}
+
+function getCurrentTheme() {
+try {
+const t = (root.getAttribute("data-theme") || root.dataset.theme || "").trim().toLowerCase();
+return t === "dark" || t === "light" ? t : null;
+} catch (_) {
+return null;
+}
+}
+
+function applyTheme(theme, opts) {
+const o = opts || {};
+const t = theme === "dark" ? "dark" : "light";
+try {
+root.setAttribute("data-theme", t);
+root.dataset.theme = t;
+} catch (_) {}
+
+// Toggle buttons: aria-pressed
+const pressed = t === "dark" ? "true" : "false";
+const toggles = $$(SELECTORS.themeToggle);
+for (let i = 0; i < toggles.length; i++) {
+  try {
+    toggles[i].setAttribute("aria-pressed", pressed);
+  } catch (_) {}
+}
+
+if (o.persist !== false) {
+  try {
+    win.localStorage.setItem(STORAGE_THEME_KEY, t);
+  } catch (_) {}
+}
+
+if (o.announce) {
+  announce(`Theme set to ${t}`);
+  toast(`Theme: ${t}`);
+}
+
+}
+
+function initTheme() {
+const stored = getStoredTheme();
+if (stored) {
+applyTheme(stored, { persist: false });
+return;
+}
+const server = getCurrentTheme();
+if (server) {
+applyTheme(server, { persist: false });
+return;
+}
+applyTheme(getOsTheme(), { persist: false });
+}
+
+function toggleTheme() {
+const cur = getCurrentTheme() || getOsTheme();
+const next = cur === "dark" ? "light" : "dark";
+applyTheme(next, { persist: true, announce: true });
+}
+
+// ---------------------------- Overlay Manager -----------------------------
+
+const overlays = new Map(); // id -> element
+let activeOverlayId = null;
+
+// focus restore
+const openerByOverlay = new Map();
+
+// scroll lock state
+const scrollLock = {
+locked: false,
+bodyOverflow: "",
+bodyPaddingRight: "",
+};
+
+const mainContent = (() => {
+// Optional but helpful: aria-hide main content when overlay open
+return (
+doc.getElementById("content") ||
+doc.querySelector("main") ||
+doc.querySelector('[role="main"]') ||
+null
+);
+})();
+
+function getOverlayEl(id) {
+if (!OVERLAY_SET.has(id)) return null;
+if (overlays.has(id)) {
+const cached = overlays.get(id);
+if (cached && doc.contains(cached)) return cached;
+}
+const el = doc.getElementById(id);
+if (el) overlays.set(id, el);
+return el || null;
+}
+
+function isOverlayOpenByEl(el) {
+const node = toEl(el);
+if (!node) return false;
+try {
+if (node.getAttribute("data-open") === "true") return true;
+if (node.getAttribute("aria-hidden") === "false") return true;
+if (!node.hidden) return true;
+// some overlays may not use hidden; fallback to visibility
+return isVisible(node);
+} catch (_) {
+return false;
+}
+}
+
+function setOverlayOpenState(el, open) {
+const node = toEl(el);
+if (!node) return;
+
+try {
+  if (open) {
+    // remove/disable hidden
+    node.hidden = false;
+    node.removeAttribute("hidden");
+    node.setAttribute("data-open", "true");
+    node.setAttribute("aria-hidden", "false");
+  } else {
+    // reverse: remove data-open, restore hidden where appropriate
+    node.hidden = true;
+    node.setAttribute("aria-hidden", "true");
+    node.removeAttribute("data-open");
+  }
+} catch (_) {}
+
+}
+
+function lockScroll() {
+if (scrollLock.locked) return;
+scrollLock.locked = true;
+try {
+root.setAttribute("data-ff-scroll-locked", "true");
+} catch (_) {}
+try {
+scrollLock.bodyOverflow = doc.body.style.overflow || "";
+scrollLock.bodyPaddingRight = doc.body.style.paddingRight || "";
+doc.body.style.overflow = "hidden";
+} catch (_) {}
+}
+
+function unlockScroll() {
+if (!scrollLock.locked) return;
+scrollLock.locked = false;
+try {
+root.removeAttribute("data-ff-scroll-locked");
+} catch (_) {}
+try {
+doc.body.style.overflow = scrollLock.bodyOverflow;
+doc.body.style.paddingRight = scrollLock.bodyPaddingRight;
+} catch (_) {}
+}
+
+function setMainAriaHidden(hidden) {
+if (!mainContent) return;
+try {
+mainContent.setAttribute("aria-hidden", hidden ? "true" : "false");
+} catch (_) {}
+}
+
+function findOverlayPanel(overlayEl, overlayId) {
+const el = toEl(overlayEl);
+if (!el) return null;
+
+// Drawer has a known panel ID
+if (overlayId === "drawer") {
+  const p = doc.getElementById("ffDrawerPanel");
+  if (p && el.contains(p)) return p;
+}
+
+return (
+  $(".ff-sheet__panel, .ff-modal__panel, .ff-drawer__panel", el) ||
+  el
+);
+
+}
+
+function focusOverlay(overlayEl, overlayId) {
+const el = toEl(overlayEl);
+if (!el) return;
+
+const panel = findOverlayPanel(el, overlayId) || el;
+const focusables = getFocusable(panel);
+
+// Ensure panel can be focused if needed
+try {
+  if (!focusables.length && panel && panel.setAttribute) {
+    const tabindex = panel.getAttribute("tabindex");
+    if (tabindex == null) panel.setAttribute("tabindex", "-1");
+  }
+} catch (_) {}
+
+try {
+  if (focusables.length) {
+    focusables[0].focus({ preventScroll: true });
+  } else if (panel && panel.focus) {
+    panel.focus({ preventScroll: true });
+  }
+} catch (_) {}
+
+}
+
+function currentHashId() {
+try {
+const h = (win.location.hash || "").replace(/^#/, "");
+return h;
+} catch (_) {
+return "";
+}
+}
+
+function pushOverlayState(id) {
+const target = `#${id}`;
+try {
+const prevHash = win.location.hash || "";
+// Required: pushState({ffOverlay:'checkout'}, '', '#checkout')
+win.history.pushState({ ffOverlay: id, ffPrevHash: prevHash }, "", target);
+} catch (_) {
+try {
+// fallback
+win.location.hash = target;
+} catch (_) {}
+}
+}
+
+function replaceHash(hash) {
+try {
+win.history.replaceState(win.history.state || null, "", hash);
+} catch (_) {
+try {
+win.location.hash = hash;
+} catch (_) {}
+}
+}
+
+function openOverlay(id, opts) {
+const o = opts || {};
+if (!OVERLAY_SET.has(id)) return;
+
+const el = getOverlayEl(id);
+if (!el) return;
+
+// store opener (for focus restore)
+if (o.opener && isElement(o.opener)) {
+  openerByOverlay.set(id, o.opener);
+}
+
+// Close others first
+for (let i = 0; i < OVERLAY_IDS.length; i++) {
+  const otherId = OVERLAY_IDS[i];
+  if (otherId === id) continue;
+  const otherEl = getOverlayEl(otherId);
+  if (otherEl && isOverlayOpenByEl(otherEl)) {
+    // internal close; do not touch history here
+    internalCloseOverlay(otherId, { syncHistory: false });
+  }
+}
+
+// Open this overlay
+setOverlayOpenState(el, true);
+activeOverlayId = id;
+
+lockScroll();
+setMainAriaHidden(true);
+
+// Sync history/hash
+if (o.syncHistory !== false) {
+  const cur = win.location.hash || "";
+  const target = `#${id}`;
+  if (cur !== target) pushOverlayState(id);
+}
+
+// Overlay-specific side effects
+if (id === "checkout") {
+  hydrateCheckoutQr();
+  // focus amount input preferentially
+  win.requestAnimationFrame(() => {
+    const amt = $(SELECTORS.donationAmount);
+    try {
+      if (amt && amt.focus) amt.focus({ preventScroll: true });
+    } catch (_) {}
+  });
+}
+
+focusOverlay(el, id);
+
+}
+
+function internalCloseOverlay(id, opts) {
+const o = opts || {};
+const el = getOverlayEl(id);
+if (!el) return;
+
+// Overlay-specific teardown
+if (id === "press-video") {
+  unmountVideo();
+}
+
+setOverlayOpenState(el, false);
+
+// If we closed the active one, clear
+if (activeOverlayId === id) activeOverlayId = null;
+
+unlockScroll();
+setMainAriaHidden(false);
+
+// Restore focus to opener
+const opener = openerByOverlay.get(id);
+openerByOverlay.delete(id);
+if (opener && doc.contains(opener)) {
+  try {
+    opener.focus({ preventScroll: true });
+  } catch (_) {}
+}
+
+if (o.syncHistory === false) return;
+
+// If the current history state is ours, go back so Back closes the overlay.
+try {
+  const st = win.history.state;
+  const curHash = win.location.hash || "";
+  const target = `#${id}`;
+  if (st && st.ffOverlay === id && curHash === target) {
+    win.history.back();
+    return;
+  }
+} catch (_) {}
+
+// Otherwise, remove overlay hash without pushing a new entry.
+const homeHash = doc.getElementById("home") ? "#home" : "";
+try {
+  if ((win.location.hash || "") === `#${id}`) replaceHash(homeHash);
+} catch (_) {}
+
+}
+
+function closeOverlay(id, opts) {
+internalCloseOverlay(id, opts || {});
+}
+
+function closeTopOverlay(opts) {
+const o = opts || {};
+// Close the currently tracked overlay first; else scan
+if (activeOverlayId && OVERLAY_SET.has(activeOverlayId)) {
+const el = getOverlayEl(activeOverlayId);
+if (el && isOverlayOpenByEl(el)) {
+internalCloseOverlay(activeOverlayId, o);
+return true;
+}
+}
+
+for (let i = 0; i < OVERLAY_IDS.length; i++) {
+  const id = OVERLAY_IDS[i];
+  const el = getOverlayEl(id);
+  if (el && isOverlayOpenByEl(el)) {
+    internalCloseOverlay(id, o);
+    return true;
+  }
+}
+return false;
+
+}
+
+function desiredOverlayFromHash() {
+const h = currentHashId();
+if (!h) return null;
+return OVERLAY_SET.has(h) ? h : null;
+}
+
+function syncOverlaysToLocation() {
+const want = desiredOverlayFromHash();
+
+if (want) {
+  // Open without pushing a new state (hash already changed)
+  openOverlay(want, { syncHistory: false });
+  return;
+}
+
+// If hash does not match an overlay, ensure all overlays are closed (no history ops).
+for (let i = 0; i < OVERLAY_IDS.length; i++) {
+  const id = OVERLAY_IDS[i];
+  const el = getOverlayEl(id);
+  if (el && isOverlayOpenByEl(el)) internalCloseOverlay(id, { syncHistory: false });
+}
+activeOverlayId = null;
+unlockScroll();
+setMainAriaHidden(false);
+
+}
+
+// -------------------------- Donation flow ---------------------------------
+
+function donationFormEl() {
+return $(SELECTORS.donationForm);
+}
+
+function donationAmountEl() {
+return $(SELECTORS.donationAmount);
+}
+
+function teamIdFieldEl() {
+const form = donationFormEl();
+if (!form) return null;
+return $(SELECTORS.teamIdField, form);
+}
+
+function checkoutErrorEl() {
+return $(SELECTORS.checkoutErrorText);
+}
+
+function setCheckoutError(msg) {
+const el = checkoutErrorEl();
+if (!el) return;
+const text = String(msg == null ? "" : msg);
+try {
+el.textContent = text;
+el.hidden = !text;
+if (text) el.removeAttribute("hidden");
+} catch (_) {}
+}
+
+function clearCheckoutError() {
+setCheckoutError("");
+}
+
+function setDonationAmount(value) {
+const input = donationAmountEl();
+if (!input) return;
+const normalized = normalizeNumberString(value);
+if (!normalized) return;
+try {
+input.value = normalized;
+// fire input event for any UI logic that depends on it
+input.dispatchEvent(new Event("input", { bubbles: true }));
+} catch (_) {}
+announce(`Amount set to $${normalized}`);
+}
+
+function setTeamId(teamId) {
+const field = teamIdFieldEl();
+if (!field) return;
+const v = String(teamId == null ? "" : teamId).trim();
+if (!v) return;
+try {
+field.value = v;
+field.dispatchEvent(new Event("input", { bubbles: true }));
+} catch (_) {}
+}
+
+function prefillFromDataset(el) {
+const node = toEl(el);
+if (!node) return;
+
+const amt = safeGetAttr(node, "data-ff-amount");
+const tid = safeGetAttr(node, "data-ff-team-id");
+
+if (amt) setDonationAmount(amt);
+if (tid) setTeamId(tid);
+
+}
+
+function validateDonationAmount() {
+const input = donationAmountEl();
+const raw = input ? input.value : "";
+const parsed = parsePositiveAmount(raw);
+if (!parsed.ok) {
+setCheckoutError("Please enter a valid donation amount greater than 0.");
+announce("Invalid amount");
+return { ok: false, amount: 0, text: parsed.text || "" };
+}
+clearCheckoutError();
+return { ok: true, amount: parsed.value, text: parsed.text };
+}
+
+function setProcessingState(isProcessing) {
+const form = donationFormEl();
+if (!form) return;
+
+try {
+  form.setAttribute("data-ff-processing", isProcessing ? "true" : "false");
+} catch (_) {}
+
+const controls = $$(
+  'button, input, select, textarea',
+  form
+);
+
+for (let i = 0; i < controls.length; i++) {
+  const c = controls[i];
+  try {
+    if (isProcessing) {
+      c.setAttribute("aria-busy", "true");
+      if (c.tagName === "BUTTON" || c.tagName === "INPUT") {
+        if (c.type === "submit") c.disabled = true;
+      }
+    } else {
+      c.removeAttribute("aria-busy");
+      if (c.tagName === "BUTTON" || c.tagName === "INPUT") {
+        if (c.type === "submit") c.disabled = false;
+      }
+    }
+  } catch (_) {}
+}
+
+// Update submit button label
+const submitBtn = $("button[type='submit'], input[type='submit']", form);
+if (submitBtn) {
+  try {
+    if (isProcessing) {
+      const prev = submitBtn.value != null ? submitBtn.value : submitBtn.textContent || "";
+      submitBtn.setAttribute("data-ff-prev-label", prev);
+      if (submitBtn.tagName === "INPUT") submitBtn.value = "Processing…";
+      else submitBtn.textContent = "Processing…";
+    } else {
+      const prev = submitBtn.getAttribute("data-ff-prev-label");
+      if (prev != null) {
+        if (submitBtn.tagName === "INPUT") submitBtn.value = prev;
+        else submitBtn.textContent = prev;
+      }
+      submitBtn.removeAttribute("data-ff-prev-label");
+    }
+  } catch (_) {}
+}
+
+}
+
+function runDonationProcessingPlaceholder() {
+const v = validateDonationAmount();
+if (!v.ok) return;
+
+setProcessingState(true);
+toast("Processing…");
+announce("Processing donation");
+
+win.setTimeout(() => {
+  setProcessingState(false);
+  toast("Ready");
+  announce("Ready");
+}, 1200);
+
+}
+
+// ---------------------------- Video modal ---------------------------------
+
+function videoOverlayEl() {
+return getOverlayEl("press-video");
+}
+
+function videoFrameEl() {
+const modal = videoOverlayEl();
+if (!modal) return null;
+return $(SELECTORS.videoFrame, modal);
+}
+
+function clearNodeChildren(node) {
+const el = toEl(node);
+if (!el) return;
+try {
+while (el.firstChild) el.removeChild(el.firstChild);
+} catch (_) {}
+}
+
+function mountVideo(src, title) {
+const frame = videoFrameEl();
+if (!frame) return;
+
+const url = String(src == null ? "" : src).trim();
+if (!url) return;
+
+clearNodeChildren(frame);
+
+let iframe = null;
+try {
+  iframe = doc.createElement("iframe");
+  iframe.setAttribute("src", url);
+  iframe.setAttribute("allow", "autoplay;encrypted-media");
+  iframe.setAttribute("title", String(title || "Video"));
+  iframe.setAttribute("loading", "lazy");
+  iframe.setAttribute("allowfullscreen", "");
+  // Styling via CSS; keep minimal inline styles (allowed) for safety
+  iframe.style.width = "100%";
+  iframe.style.height = "100%";
+  iframe.style.border = "0";
+  frame.appendChild(iframe);
+} catch (_) {}
+
+}
+
+function unmountVideo() {
+const frame = videoFrameEl();
+if (!frame) return;
+clearNodeChildren(frame);
+}
+
+// ---------------------------- QR hydration --------------------------------
+
+function hydrateCheckoutQr() {
+const imgs = $$(SELECTORS.qrImg);
+if (!imgs.length) return;
+
+for (let i = 0; i < imgs.length; i++) {
+  const img = imgs[i];
+  if (!img || img.tagName !== "IMG") continue;
+
+  let src = "";
+  try {
+    src = img.dataset && img.dataset.ffQrSrc ? img.dataset.ffQrSrc : "";
+  } catch (_) {
+    src = "";
+  }
+  if (!src) src = safeGetAttr(img, "data-ff-qr-src") || "";
+
+  src = String(src).trim();
+  if (!src) continue;
+
+  try {
+    // Only set if empty or placeholder
+    const cur = safeGetAttr(img, "src") || "";
+    if (!cur || cur === "about:blank") img.setAttribute("src", src);
+  } catch (_) {}
+}
+
+}
+
+// ------------------------------- Share ------------------------------------
+
+async function copyToClipboard(text) {
+const t = String(text || "");
+if (!t) return false;
+
+// Preferred: Clipboard API
+try {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(t);
+    return true;
+  }
+} catch (_) {}
+
+// Fallback: temporary textarea + execCommand
+try {
+  const ta = doc.createElement("textarea");
+  ta.value = t;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  ta.style.top = "0";
+  doc.body.appendChild(ta);
+  ta.select();
+  const ok = doc.execCommand ? doc.execCommand("copy") : false;
+  doc.body.removeChild(ta);
+  return !!ok;
+} catch (_) {
+  return false;
+}
+
+}
+
+function isShareTrigger(el) {
+const node = toEl(el);
+if (!node) return false;
+
+// Requirement: [aria-label*="Share"]
+const aria = (safeGetAttr(node, "aria-label") || "").toLowerCase();
+if (aria.indexOf("share") !== -1) return true;
+
+// Requirement: .ff-btn with "Share" text
+const btn = closest(node, ".ff-btn");
+if (!btn) return false;
+const txt = (btn.textContent || "").trim().toLowerCase();
+return txt === "share" || txt.indexOf("share") !== -1;
+
+}
+
+async function handleShare() {
+const url = String(win.location.href || "");
+try {
+if (navigator.share && typeof navigator.share === 'function') {
+await navigator.share({ title: doc.title || "Share", url });
+announce("Shared");
+toast("Shared");
+return;
+}
+} catch (_) {
+// Fall through to copy
+}
+
+const ok = await copyToClipboard(url);
+if (ok) {
+  announce("Link copied to clipboard");
+  toast("Link copied");
+} else {
+  announce("Unable to copy link");
+  toast("Copy failed");
+}
+
+}
+
+// -------------------------- Delegated event model --------------------------
+
+const delegateRegistry = {
+click: [],
+};
+
+function delegate(selector, eventType, handler) {
+if (!selector || typeof handler !== "function") return;
+const type = String(eventType || "").toLowerCase();
+if (!delegateRegistry[type]) delegateRegistry[type] = [];
+delegateRegistry[type].push({ selector: String(selector), handler });
+
+// Only attach for click; keep global listeners minimal
+if (type === "click" && !delegateRegistry._clickAttached) {
+  delegateRegistry._clickAttached = true;
+  doc.addEventListener(
+    "click",
+    (e) => {
+      const target = toEl(e.target);
+      if (!target) return;
+
+      const list = delegateRegistry.click;
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (e.defaultPrevented) return;
+        const match = closest(target, item.selector);
+        if (!match) continue;
+
+        try {
+          const handled = item.handler(e, match);
+          if (handled === true) return;
+        } catch (_) {
+          // Defensive: never throw
+        }
+      }
+    },
+    { capture: true }
+  );
+}
+
+}
+
+function overlayIdFromNode(node) {
+const el = toEl(node);
+if (!el) return null;
+const overlay = closest(el, "#checkout, #press-video, #sponsor-interest, #terms, #privacy, #drawer");
+if (!overlay) return null;
+const id = safeGetAttr(overlay, "id");
+return id && OVERLAY_SET.has(id) ? id : null;
+}
+
+function isOverlayHashLink(node) {
+const el = toEl(node);
+if (!el) return null;
+
+const a = closest(el, 'a[href^="#"]');
+if (!a) return null;
+const href = safeGetAttr(a, "href") || "";
+const id = String(href).replace(/^#/, "");
+if (!id) return null;
+return OVERLAY_SET.has(id) ? id : null;
+
+}
+
+// ------------------------------ Click routes -------------------------------
+
+// 1) Theme toggle
+delegate(SELECTORS.themeToggle, "click", (e) => {
+e.preventDefault();
+toggleTheme();
+return true;
+});
+
+// 2) Backdrops close overlays
+delegate(SELECTORS.backdrop, "click", (e, el) => {
+e.preventDefault();
+const id = overlayIdFromNode(el) || activeOverlayId;
+if (id) closeOverlay(id, { syncHistory: true });
+else closeTopOverlay({ syncHistory: true });
+return true;
+});
+
+// 3) Close icon buttons close overlays
+delegate(SELECTORS.closeBtn, "click", (e, el) => {
+e.preventDefault();
+const id = overlayIdFromNode(el) || activeOverlayId;
+if (id) closeOverlay(id, { syncHistory: true });
+else closeTopOverlay({ syncHistory: true });
+return true;
+});
+
+// 4) Overlay hash links (e.g., <a href="#terms">)
+delegate('a[href^="#"]', "click", (e, el) => {
+const id = isOverlayHashLink(el);
+if (!id) return false;
+e.preventDefault();
+openOverlay(id, { syncHistory: true, opener: el });
+return true;
+});
+
+// 5) Video opens press-video + iframe mount
+delegate(SELECTORS.videoTrigger, "click", (e, el) => {
+const src = safeGetAttr(el, "data-ff-video-src") || "";
+if (!src) return false;
+
+const title =
+  safeGetAttr(el, "data-ff-video-title") ||
+  safeGetAttr(el, "aria-label") ||
+  (el.textContent || "").trim() ||
+  "Video";
+
+e.preventDefault();
+openOverlay("press-video", { syncHistory: true, opener: el });
+mountVideo(src, title);
+return true;
+
+});
+
+// 6) Share triggers
+delegate("[aria-label], .ff-btn", "click", (e, el) => {
+if (!isShareTrigger(el)) return false;
+e.preventDefault();
+// async share
+handleShare().catch(noop);
+return true;
+});
+
+// 7) Amount presets (chips/buttons with data-ff-amount)
+delegate(SELECTORS.amountPreset, "click", (e, el) => {
+const amt = safeGetAttr(el, "data-ff-amount");
+if (!amt) return false;
+
+e.preventDefault();
+prefillFromDataset(el);
+openOverlay("checkout", { syncHistory: true, opener: el });
+hydrateCheckoutQr();
+// Focus amount input ASAP
+win.requestAnimationFrame(() => {
+  const input = donationAmountEl();
+  try {
+    if (input && input.focus) input.focus({ preventScroll: true });
+  } catch (_) {}
+});
+return true;
+
+});
+
+// 8) Donate triggers open checkout (prefill amount/team if present)
+delegate(SELECTORS.donate, "click", (e, el) => {
+e.preventDefault();
+prefillFromDataset(el);
+openOverlay("checkout", { syncHistory: true, opener: el });
+hydrateCheckoutQr();
+return true;
+});
+
+// 9) Rail cards with team id (treat as donation intent)
+delegate(".ff-railcard[data-ff-team-id]", "click", (e, el) => {
+e.preventDefault();
+prefillFromDataset(el);
+openOverlay("checkout", { syncHistory: true, opener: el });
+hydrateCheckoutQr();
+return true;
+});
+
+// 10) Drawer open button
+delegate(SELECTORS.drawerOpen, "click", (e, el) => {
+e.preventDefault();
+openOverlay("drawer", { syncHistory: true, opener: el });
+return true;
+});
+
+// 11) Sponsor interest (tier/amount) -> open sponsor-interest and prefill if fields exist
+delegate(`${SELECTORS.sponsorTier}, ${SELECTORS.sponsorAmount}`, "click", (e, el) => {
+const tier = safeGetAttr(el, "data-ff-sponsor-tier");
+const amt = safeGetAttr(el, "data-ff-sponsor-amount");
+
+if (!tier && !amt) return false;
+
+// Allow default navigation if it is a hash link to #sponsor-interest;
+// but we still want deterministic overlay behavior.
+e.preventDefault();
+
+// Prefill within sponsor-interest overlay if inputs exist
+const overlay = getOverlayEl("sponsor-interest");
+if (overlay) {
+  if (tier) {
+    const input = $("input[name='sponsor_tier']", overlay);
+    if (input) {
+      try {
+        input.value = String(tier);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (_) {}
+    }
+  }
+  if (amt) {
+    const input = $("input[name='sponsor_amount']", overlay);
+    if (input) {
+      try {
+        input.value = normalizeNumberString(amt);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (_) {}
+    }
+  }
+}
+
+openOverlay("sponsor-interest", { syncHistory: true, opener: el });
+return true;
+
+});
+
+// 12) Donation submit (click on submit controls) -> validate + processing placeholder
+delegate("#donationForm button[type='submit'], #donationForm input[type='submit']", "click", (e) => {
+e.preventDefault();
+runDonationProcessingPlaceholder();
+return true;
+});
+
+// ------------------------------ Keydown -----------------------------------
+
+doc.addEventListener(
+"keydown",
+(e) => {
+try {
+// Escape closes top overlay
+if (e.key === "Escape") {
+const did = closeTopOverlay({ syncHistory: true });
+if (did) {
+e.preventDefault();
+e.stopPropagation();
+}
+return;
+}
+
+    // Enter on donation form triggers validation (prevent submit navigation)
+    if (e.key === "Enter") {
+      const target = toEl(e.target);
+      if (!target) return;
+      const form = donationFormEl();
+      if (form && form.contains(target)) {
+        // Allow Enter in textarea
+        if (target.tagName === "TEXTAREA") return;
+        e.preventDefault();
+        runDonationProcessingPlaceholder();
+        return;
+      }
+    }
+
+    // Light focus trap: Tab cycles inside active overlay
+    if (e.key === "Tab") {
+      const id = activeOverlayId || desiredOverlayFromHash();
+      if (!id || !OVERLAY_SET.has(id)) return;
+
+      const overlay = getOverlayEl(id);
+      if (!overlay || !isOverlayOpenByEl(overlay)) return;
+
+      const panel = findOverlayPanel(overlay, id) || overlay;
+      const focusables = getFocusable(panel);
+      if (!focusables.length) {
+        // focus panel itself
+        try {
+          if (panel && panel.focus) {
+            panel.setAttribute("tabindex", "-1");
+            panel.focus({ preventScroll: true });
+            e.preventDefault();
+          }
+        } catch (_) {}
+        return;
+      }
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = doc.activeElement;
+
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          try {
+            last.focus({ preventScroll: true });
+          } catch (_) {}
+        }
+      } else {
+        if (active === last) {
+          e.preventDefault();
+          try {
+            first.focus({ preventScroll: true });
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {
+    // Defensive: never throw
+  }
+},
+{ capture: true }
+
+);
+
+// -------------------------- Hash sync & back -------------------------------
+
+win.addEventListener("hashchange", () => {
+syncOverlaysToLocation();
+});
+
+win.addEventListener("popstate", () => {
+syncOverlaysToLocation();
+});
+
+// -------------------------------- Init ------------------------------------
+
+(function init() {
+try {
+initTheme();
+
+  // Apply config defaults if present (safe)
+  try {
+    if (CFG && typeof CFG === "object") {
+      if (CFG.default_team_id) setTeamId(CFG.default_team_id);
+      if (CFG.default_amount) setDonationAmount(CFG.default_amount);
+    }
+  } catch (_) {}
+
+  // Sync initial hash state
+  syncOverlaysToLocation();
+
+  // Signal ready (optional, deterministic)
+  try {
+    doc.dispatchEvent(new CustomEvent("ff:ready", { detail: { version: pageVersion, build: FF_APP_RUNTIME_BUILD } }));
+  } catch (_) {}
+} catch (e) {
+  try {
+    console.debug("[ff-app] init failed:", e);
+  } catch (_) {}
+}
+
+})();
+})();
+
+
+
+/* ============================================================================
+FutureFunded Live Donation Updates
+============================================================================ */
+
+(function(){
+
+/* FF_SOCKETIO_WAIT_V1: wait briefly for socket.io if loaded after ff-app.js */
+var __ffWait = 0;
+while (!window.io && __ffWait < 60) { __ffWait++; /* ~3s total */ }
+if (!window.io) return;
+/* FF_LIVE_SOCKET_CONNECT_V2: non-blocking connect w/ retry when socket.io loads after ff-app.js */
+var socket = null;
+
+function __ffTryConnectLive(maxMs, stepMs){
+  var start = Date.now();
+  (function tick(){
+    try {
+      if (socket) return;
+      if (window.io && typeof window.io === "function") {
+        /* FF_LIVE_SOCKET_SINGLETON_V1: use a single shared socket instance */
+        if (window.__ffLiveSocket && window.__ffLiveSocket.connected) {
+          socket = window.__ffLiveSocket;
+        } else {
+          socket = window.io({ transports: ["websocket","polling"] });
+          window.__ffLiveSocket = socket;
+        }
+        try { console.debug("[ff-live] socket ready", socket && socket.id); } catch (_) {}
+
+        socket.on("connect", function(){ try { console.debug("[ff-live] connected"); } catch (_) {} });
+        if (socket.__ffDonationHooked) return;
+        socket.__ffDonationHooked = true;
+        socket.on("donation_update", function(data){
+          data = data || {};
+          var amount = Number(data.amount || 0) || 0;
+          var donor = String(data.donor || "Anonymous");
+          try { updateDonationMeter(amount); } catch (_) {}
+          try { showDonationToast(amount, donor); } catch (_) {}
+        });
+        return;
+      }
+    } catch (_) {}
+    if ((Date.now() - start) >= maxMs) return;
+    setTimeout(tick, stepMs);
+  })();
+}
+
+__ffTryConnectLive(8000, 80);
+
+socket.on("connect", () => {
+  console.debug("[ff-live] connected");
+});
+
+socket.on("donation_update", (data) => {
+
+  const amount = data.amount || 0;
+  const donor = data.donor || "Anonymous";
+
+  updateDonationMeter(amount);
+  showDonationToast(amount, donor);
+
+});
+
+function updateDonationMeter(amount){
+
+  /* FF_LIVE_UI_HOOKS_V1: align live updates to real page hooks */
+  try {
+    amount = Number(amount || 0) || 0;
+    if (!amount) return;
+
+    var raisedEl = document.querySelector('[data-ff-raised]');
+    var goalEl   = document.querySelector('[data-ff-goal]');
+    var meter    = document.querySelector('[data-ff-meter]');
+    var prog     = meter ? meter.querySelector('progress.ff-meter__progress') : null;
+
+    function parseMoney(s){
+      s = String(s || '');
+      var m = s.replace(/[^0-9.]/g, '');
+      var v = Number(m || 0);
+      return isFinite(v) ? v : 0;
+    }
+
+    var currentRaised = raisedEl ? parseMoney(raisedEl.textContent) : 0;
+    var goalVal = goalEl ? parseMoney(goalEl.textContent) : 0;
+
+    var nextRaised = currentRaised + amount;
+
+    var fmt = null;
+    try {
+      fmt = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    } catch (_) {}
+
+    function money(v){
+      v = Number(v || 0) || 0;
+      if (fmt) return fmt.format(v);
+      return "$" + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    if (raisedEl) {
+      raisedEl.textContent = money(nextRaised);
+      raisedEl.setAttribute("data-ff-raised-raw", String(Math.round(nextRaised)));
+    }
+
+    if (prog) {
+      if (goalVal > 0) {
+        prog.max = goalVal;
+        prog.value = Math.min(nextRaised, goalVal);
+        var pct = Math.max(0, Math.min(100, (nextRaised / goalVal) * 100));
+        prog.textContent = Math.round(pct) + "%";
+      } else {
+        prog.max = 100;
+        prog.value = 0;
+        prog.textContent = "0%";
+      }
+    }
+
+    if (meter) {
+      var label = meter.querySelector('[data-ff-meter-label]');
+      if (label && goalVal > 0) label.textContent = money(nextRaised) + " / " + money(goalVal);
+    }
+
+  } catch (_) {}
+}
+
+function showDonationToast(amount, donor){
+
+  try {
+    amount = Number(amount || 0) || 0;
+    donor = String(donor || "Anonymous");
+
+    var container = document.querySelector("[data-ff-toasts]");
+    if(!container) return;
+
+    var fmt = null;
+    try {
+      fmt = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    } catch (_) {}
+
+    function money(v){
+      v = Number(v || 0) || 0;
+      if (fmt) return fmt.format(v);
+      return "$" + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    var msg = "+ " + money(amount) + " from " + donor;
+
+    var el = document.createElement("div");
+    el.className = "ff-toast";
+    el.setAttribute("data-ff-toast", "");
+    el.textContent = msg;
+
+    container.appendChild(el);
+
+    var live = document.querySelector("[data-ff-live]");
+    if (live) live.textContent = msg;
+
+    try {
+      var kids = container.querySelectorAll("[data-ff-toast]");
+      if (kids && kids.length > 4) {
+        for (var i = 0; i < kids.length - 4; i++) {
+          try { kids[i].remove(); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    setTimeout(function(){ try { el.remove(); } catch (_) {} }, 5200);
+
+  } catch (_) {}
+}
+
+})();
+
+
+/* Sponsor wall rotation */
+
+(function(){
+
+const container = document.querySelector("[data-ff-sponsors]");
+if(!container) return;
+
+const items = [...container.children];
+
+let index = 0;
+
+setInterval(()=>{
+
+  items.forEach(el => el.classList.remove("ff-sponsor--active"));
+
+  items[index].classList.add("ff-sponsor--active");
+
+  index = (index + 1) % items.length;
+
+},4000);
+
+})();
+
+
+/* FF_LIVE_STATUS_BEACON_V1: report Socket.IO state in the aria-live region (no console needed) */
+(function(){
+  try {
+    var live = document.querySelector("[data-ff-live]");
+    if (!live) return;
+
+    function say(s){
+      try { live.textContent = String(s || ""); } catch (_) {}
+    }
+
+    // If socket.io isn't present, say so once.
+    if (!(window.io && typeof window.io === "function")) {
+      say("[ff-live] socket.io missing");
+      return;
+    }
+
+    // If we already have a shared socket instance, attach minimal listeners.
+    var s = window.__ffLiveSocket || null;
+    if (!s) {
+      // Non-invasive: do NOT force-connect here; the main live connect block handles that.
+      say("[ff-live] socket.io present (waiting connect)");
+      return;
+    }
+
+    // Attach listeners once
+    if (!s.__ffStatusHooked) {
+      s.__ffStatusHooked = true;
+      s.on("connect", function(){ say("[ff-live] connected"); });
+      s.on("disconnect", function(){ say("[ff-live] disconnected"); });
+      s.on("connect_error", function(){ say("[ff-live] connect_error"); });
+    }
+
+    // Say current state
+    try { say(s.connected ? "[ff-live] connected" : "[ff-live] connecting…"); } catch (_) {}
+  } catch (_) {}
+})();

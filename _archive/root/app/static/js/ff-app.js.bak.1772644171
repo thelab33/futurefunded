@@ -1,0 +1,442 @@
+/* ============================================================================
+FutureFunded — ff-app.js (v1.1.0 “Overlay+Theme+Boot Marker”)
+- CSP-safe (no inline/eval)
+- Hook-safe (delegated events, uses existing IDs/classes/attrs)
+- Deterministic boot marker: <html data-ff-app="1.1.0">
+============================================================================ */
+
+(() => {
+  "use strict";
+
+  const VERSION = "1.1.0";
+  const doc = document;
+  const root = doc.documentElement;
+
+  // ---- Boot marker (lets probes verify execution even if later code errors) ----
+  try {
+    root.setAttribute("data-ff-app", VERSION);
+    window.__FF_APP__ = { version: VERSION, ts: Date.now() };
+  } catch (_) {}
+
+  const STORAGE_THEME_KEY = "ff:theme";
+  const OVERLAYS = ["checkout", "sponsor-interest", "press-video", "terms", "privacy", "drawer"];
+
+  function safeJsonFromScript(id) {
+    try {
+      const el = doc.getElementById(id);
+      if (!el) return null;
+      const raw = (el.textContent || "").trim();
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      console.error("[ff] JSON parse failed:", id, e);
+      return null;
+    }
+  }
+
+  // Selectors (from #ffSelectors if present)
+  const sel = safeJsonFromScript("ffSelectors") || {};
+  const DONATE_SEL = String(sel.donate || "[data-ff-donate], .ff-donate, button[data-donate], button.ff-btn--donate");
+  const CHECKOUT_SEL = String(sel.checkout || "#checkout");
+
+  function qs(s, el = doc) {
+    try { return el.querySelector(s); } catch { return null; }
+  }
+  function qsa(s, el = doc) {
+    try { return Array.from(el.querySelectorAll(s)); } catch { return []; }
+  }
+
+  // ---- Tiny live announcer (uses #ffLive aria-live) ----
+  function announce(msg) {
+    const live = doc.getElementById("ffLive");
+    if (!live) return;
+    live.textContent = String(msg || "");
+    // Clear quickly so repeated messages re-announce
+    setTimeout(() => { try { live.textContent = ""; } catch {} }, 1200);
+  }
+
+  // ---- Theme ----
+  function getStoredTheme() {
+    try {
+      const v = (localStorage.getItem(STORAGE_THEME_KEY) || "").trim().toLowerCase();
+      if (v === "dark" || v === "light") return v;
+    } catch {}
+    return null;
+  }
+
+  function getPreferredTheme() {
+    try {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  }
+
+  function getCurrentTheme() {
+    const t = (root.getAttribute("data-theme") || "").trim().toLowerCase();
+    return (t === "dark" || t === "light") ? t : null;
+  }
+
+  function applyTheme(theme, { persist = true } = {}) {
+    const t = (theme === "dark") ? "dark" : "light";
+    root.setAttribute("data-theme", t);
+
+    // Update toggles
+    const pressed = (t === "dark");
+    qsa(".ff-themeToggle").forEach((btn) => {
+      try { btn.setAttribute("aria-pressed", pressed ? "true" : "false"); } catch {}
+    });
+
+    if (persist) {
+      try { localStorage.setItem(STORAGE_THEME_KEY, t); } catch {}
+    }
+  }
+
+  function initTheme() {
+    const stored = getStoredTheme();
+    if (stored) return applyTheme(stored, { persist: false });
+
+    // If server rendered a theme, respect it — but if it’s missing/invalid, use OS preference.
+    const current = getCurrentTheme();
+    if (current) return applyTheme(current, { persist: false });
+
+    applyTheme(getPreferredTheme(), { persist: false });
+  }
+
+  function toggleTheme() {
+    const cur = getCurrentTheme() || getPreferredTheme();
+    applyTheme(cur === "dark" ? "light" : "dark", { persist: true });
+    announce(cur === "dark" ? "Light mode" : "Dark mode");
+  }
+
+  // ---- Overlays ----
+  function getOverlay(id) {
+    return doc.getElementById(id);
+  }
+
+  function setOverlayState(el, open) {
+    if (!el) return;
+    try {
+      el.hidden = !open;
+      el.setAttribute("data-open", open ? "true" : "false");
+      el.setAttribute("aria-hidden", open ? "false" : "true");
+    } catch {}
+  }
+
+  function focusPanel(el) {
+    try {
+      // Prefer panel/document viewport
+      const panel = qs(".ff-sheet__panel, .ff-modal__panel, .ff-drawer__panel", el) || el;
+      panel && panel.focus && panel.focus({ preventScroll: true });
+    } catch {}
+  }
+
+  function openOverlay(id, { syncHash = true } = {}) {
+    const el = getOverlay(id);
+    if (!el) return;
+
+    // Close other overlays (keep one open)
+    OVERLAYS.forEach((oid) => {
+      if (oid !== id) setOverlayState(getOverlay(oid), false);
+    });
+
+    setOverlayState(el, true);
+
+    // Hash (so deep links + back button work)
+    if (syncHash) {
+      const target = `#${id}`;
+      if (location.hash !== target) {
+        try { history.pushState(null, "", target); } catch { location.hash = target; }
+      }
+    }
+
+    // Prevent background scroll on mobile
+    try { doc.body.style.overflow = "hidden"; } catch {}
+    focusPanel(el);
+  }
+
+  function closeOverlay(id, { toHash = "#home" } = {}) {
+    const el = getOverlay(id);
+    if (!el) return;
+
+    setOverlayState(el, false);
+
+    // restore scroll
+    try { doc.body.style.overflow = ""; } catch {}
+
+    if (toHash) {
+      try { history.replaceState(null, "", toHash); } catch { location.hash = toHash; }
+    }
+  }
+
+  function closeTopOverlay() {
+    // Close whichever overlay is currently visible (priority order)
+    for (const id of ["drawer", "press-video", "sponsor-interest", "terms", "privacy", "checkout"]) {
+      const el = getOverlay(id);
+      if (!el) continue;
+      const open = (!el.hidden) || el.getAttribute("data-open") === "true" || el.getAttribute("aria-hidden") === "false";
+      if (open) {
+        if (id === "press-video") unmountVideo();
+        closeOverlay(id);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function syncOverlaysToHash() {
+    const h = (location.hash || "").replace(/^#/, "");
+    if (!h) {
+      OVERLAYS.forEach((id) => setOverlayState(getOverlay(id), false));
+      try { doc.body.style.overflow = ""; } catch {}
+      return;
+    }
+
+    if (OVERLAYS.includes(h)) {
+      openOverlay(h, { syncHash: false });
+    }
+  }
+
+  // ---- Checkout preloads ----
+  function setDonationAmount(v) {
+    const input = doc.getElementById("donationAmount");
+    if (!input) return;
+    const s = String(v || "").replace(/[^\d.]/g, "").trim();
+    if (!s) return;
+    input.value = s;
+    try { input.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
+    announce(`Amount set: $${s}`);
+  }
+
+  function setTeamId(teamId) {
+    const form = doc.getElementById("donationForm");
+    if (!form) return;
+    const input = qs('input[name="team_id"]', form);
+    if (!input) return;
+    input.value = String(teamId || "default");
+  }
+
+  // QR swap: if template used placeholder src, promote data-ff-qr-src on open
+  function hydrateQr() {
+    const img = qs(".ff-qr__img");
+    if (!img) return;
+    const src = img.getAttribute("data-ff-qr-src");
+    if (src && src.startsWith("data:") === false && src.trim() !== "") {
+      // allow absolute/relative urls too
+      try { img.setAttribute("src", src); } catch {}
+      return;
+    }
+    if (src && src.trim() !== "") {
+      try { img.setAttribute("src", src); } catch {}
+    }
+  }
+
+  // ---- Video (Trusted Types safe: no innerHTML) ----
+  function mountVideo(src, title) {
+    const modal = getOverlay("press-video");
+    if (!modal) return;
+
+    const frame = modal.querySelector(".ff-videoFrame");
+    if (!frame) return;
+
+    while (frame.firstChild) frame.removeChild(frame.firstChild);
+
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("title", String(title || "Video"));
+    iframe.setAttribute("width", "560");
+    iframe.setAttribute("height", "315");
+    iframe.setAttribute("loading", "lazy");
+    iframe.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
+    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    iframe.setAttribute("allowfullscreen", "");
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.aspectRatio = "16/9";
+    iframe.style.border = "0";
+    iframe.style.borderRadius = "var(--ff-r-3)";
+    iframe.src = String(src || "");
+
+    frame.appendChild(iframe);
+  }
+
+  function unmountVideo() {
+    const modal = getOverlay("press-video");
+    if (!modal) return;
+    const frame = modal.querySelector(".ff-videoFrame");
+    if (!frame) return;
+    while (frame.firstChild) frame.removeChild(frame.firstChild);
+    // keep skeleton if you want:
+    const skel = doc.createElement("div");
+    skel.className = "ff-skeleton ff-skeleton--video";
+    frame.appendChild(skel);
+  }
+
+  // ---- Delegated events ----
+  function closestSafe(el, selector) {
+    try { return el && el.closest ? el.closest(selector) : null; } catch { return null; }
+  }
+
+  function isCloseButton(t) {
+    // Close icon buttons inside overlays use aria-label="Close ..."
+    const btn = closestSafe(t, "button.ff-iconbtn");
+    if (!btn) return null;
+    const a = (btn.getAttribute("aria-label") || "").toLowerCase();
+    if (!a.startsWith("close")) return null;
+    return btn;
+  }
+
+  // Main click delegation
+  doc.addEventListener("click", (e) => {
+    const t = e.target;
+
+    // Theme toggle
+    const themeBtn = closestSafe(t, ".ff-themeToggle");
+    if (themeBtn) {
+      e.preventDefault();
+      toggleTheme();
+      return;
+    }
+
+    // Backdrops close overlays
+    if (closestSafe(t, ".ff-sheet__backdrop, .ff-modal__backdrop, .ff-drawer__backdrop")) {
+      e.preventDefault();
+      if (location.hash === "#press-video") unmountVideo();
+      closeTopOverlay();
+      return;
+    }
+
+    // Close icon buttons
+    if (isCloseButton(t)) {
+      e.preventDefault();
+      if (location.hash === "#press-video") unmountVideo();
+      closeTopOverlay();
+      return;
+    }
+
+    // Video open
+    const videoLink = closestSafe(t, "[data-ff-video-src]");
+    if (videoLink) {
+      const src = videoLink.getAttribute("data-ff-video-src") || "";
+      const title = videoLink.getAttribute("data-ff-video-title") || "Video";
+      if (src) {
+        e.preventDefault();
+        openOverlay("press-video");
+        mountVideo(src, title);
+      }
+      return;
+    }
+
+    // Amount preset (can be chip or link)
+    const amtEl = closestSafe(t, "[data-ff-amount]");
+    if (amtEl) {
+      const amt = amtEl.getAttribute("data-ff-amount");
+      if (amt) {
+        e.preventDefault();
+        setDonationAmount(amt);
+        openOverlay("checkout");
+        hydrateQr();
+      }
+      return;
+    }
+
+    // Sponsor tier selection (sets hidden input if present)
+    const tierBtn = closestSafe(t, "[data-ff-sponsor-tier]");
+    if (tierBtn) {
+      const tier = tierBtn.getAttribute("data-ff-sponsor-tier") || "";
+      const modal = getOverlay("sponsor-interest");
+      if (modal) {
+        const form = qs('form[aria-label="Sponsor inquiry form"]', modal);
+        const hid = form ? qs('input[name="sponsor_tier"]', form) : null;
+        if (hid) hid.value = tier;
+      }
+      // allow navigation to #sponsor-interest as normal
+      return;
+    }
+
+    // Donate buttons (open checkout)
+    const donate = closestSafe(t, DONATE_SEL);
+    if (donate) {
+      e.preventDefault();
+
+      // preload amount/team if present
+      const amt = donate.getAttribute("data-ff-amount");
+      if (amt) setDonationAmount(amt);
+
+      const tid = donate.getAttribute("data-ff-team-id");
+      if (tid) setTeamId(tid);
+
+      openOverlay("checkout");
+      hydrateQr();
+      return;
+    }
+
+    // Menu button opens drawer (aria-controls="ffDrawerPanel")
+    const menuBtn = closestSafe(t, 'button[aria-controls="ffDrawerPanel"]');
+    if (menuBtn) {
+      e.preventDefault();
+      openOverlay("drawer");
+      return;
+    }
+
+    // Share buttons: best-effort
+    // FF_SHARE_SELECTOR_FIX_V1
+    const shareBtn = (
+      closestSafe(t, '[aria-label^="Share"]') ||
+      (() => {
+        const b = closestSafe(t, "button.ff-btn");
+        if (!b) return null;
+        const txt = (b.textContent || "").trim().toLowerCase();
+        return (txt === "share") ? b : null;
+      })()
+    );
+    if (shareBtn) {
+      // :has-text not supported here; just do basic aria-label
+      const url = location.href.split("#")[0];
+      e.preventDefault();
+      (async () => {
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: doc.title, url });
+            announce("Shared");
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            announce("Link copied");
+          } else {
+            announce(url);
+          }
+        } catch {
+          // ignore
+        }
+      })();
+      return;
+    }
+  }, { capture: true });
+
+  // Escape closes top overlay
+  doc.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (location.hash === "#press-video") unmountVideo();
+      if (closeTopOverlay()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  });
+
+  window.addEventListener("hashchange", () => {
+    syncOverlaysToHash();
+  });
+
+  // ---- Init ----
+  try {
+    initTheme();
+    syncOverlaysToHash();
+  } catch (e) {
+    console.error("[ff] init failed:", e);
+  } finally {
+    // Always signal ready (even if init had errors)
+    try {
+      doc.dispatchEvent(new CustomEvent("ff:ready", { detail: { version: VERSION } }));
+    } catch {}
+  }
+})();
