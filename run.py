@@ -585,7 +585,10 @@ def make_runner_config(args: argparse.Namespace) -> RunnerConfig:
         args.env or os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development"
     )
 
-    cfg_path = normalize_config_path(args.config or os.getenv("FLASK_CONFIG"), env_hint=env)
+    # CLI --config is the only true explicit override.
+    # Otherwise, choose config from the resolved runtime env to avoid stale
+    # FLASK_CONFIG values forcing DevelopmentConfig in production.
+    cfg_path = normalize_config_path(args.config, env_hint=env)
 
     debug_env = _env_bool("FLASK_DEBUG")
     if args.debug is not None:
@@ -645,7 +648,7 @@ def make_runner_config(args: argparse.Namespace) -> RunnerConfig:
 
 def make_import_runner_config() -> RunnerConfig:
     env = _normalize_env_name(os.getenv("ENV") or os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development")
-    cfg_path = normalize_config_path(os.getenv("FLASK_CONFIG"), env_hint=env)
+    cfg_path = normalize_config_path(None, env_hint=env)
 
     debug_env = _env_bool("FLASK_DEBUG")
     debug = bool(debug_env) if debug_env is not None else env in {"development", "testing"}
@@ -695,6 +698,7 @@ def configure_process_env(cfg: RunnerConfig) -> None:
     os.environ["ENV"] = cfg.env
     os.environ["APP_ENV"] = cfg.env
     os.environ["FLASK_ENV"] = cfg.env
+    os.environ["FLASK_CONFIG"] = cfg.config_path
     os.environ["FLASK_DEBUG"] = "1" if cfg.debug else "0"
     os.environ["SOCKETIO_ASYNC_MODE"] = cfg.async_mode
     os.environ["TRUST_PROXY"] = "1" if cfg.trust_proxy else "0"

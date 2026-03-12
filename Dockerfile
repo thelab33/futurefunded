@@ -62,7 +62,7 @@ EXPOSE 5000
 ENV FLASK_ENV=production \
     ENV=production \
     USE_SOCKETIO=1 \
-    SOCKETIO_ASYNC_MODE=eventlet \
+    SOCKETIO_ASYNC_MODE=threading \
     LOG_STYLE=json
 
 # ------------------------------------------------------------

@@ -412,6 +412,15 @@ def _normalize_team_config(cfg: Mapping[str, Any]) -> Dict[str, Any]:
         photo = _asset_url(str(t.get("photo") or t.get("image") or t.get("src") or "").strip())
         featured = bool(t.get("featured") or False)
         tags = t.get("tags") if isinstance(t.get("tags"), list) else []
+
+        goal = float(t.get("goal") or t.get("fundraising_goal") or 0.0)
+        raised = float(t.get("raised") or t.get("amount_raised") or 0.0)
+        meta = str(t.get("meta") or "").strip()
+        ask = str(t.get("ask") or "").strip()
+        needs = bool(t.get("needs") or False)
+        restricted = bool(t.get("restricted") or False)
+        sort = t.get("sort", (i + 1) * 10)
+
         teams_out.append(
             {
                 "id": tid,
@@ -419,6 +428,13 @@ def _normalize_team_config(cfg: Mapping[str, Any]) -> Dict[str, Any]:
                 "photo": photo,
                 "featured": featured,
                 "tags": tags,
+                "goal": goal,
+                "raised": raised,
+                "meta": meta,
+                "ask": ask,
+                "needs": needs,
+                "restricted": restricted,
+                "sort": sort,
             }
         )
 
@@ -632,6 +648,19 @@ def _get_fundraising_stats() -> FundraisingStats:
         else:
             sponsors, _, _ = _get_sponsors()
             raised = float(sum((getattr(s, "amount", 0) or 0) for s in sponsors))
+
+        if raised <= 0.0:
+            try:
+                from app.models.donation import Donation
+                if _table_exists(getattr(Donation, "__tablename__", "donation")) or _table_exists(getattr(Donation, "__tablename__", "donations")):
+                    if hasattr(Donation, "amount_cents"):
+                        dq = db.session.query(func.coalesce(func.sum(Donation.amount_cents), 0))
+                        raised = float(dq.scalar() or 0) / 100.0
+                    elif hasattr(Donation, "amount"):
+                        dq = db.session.query(func.coalesce(func.sum(Donation.amount), 0.0))
+                        raised = float(dq.scalar() or 0.0)
+            except Exception:
+                current_app.logger.exception("Failed fetching donation fallback total")
     except Exception:
         current_app.logger.exception("Failed fetching total raised")
         raised = 0.0

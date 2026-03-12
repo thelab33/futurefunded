@@ -243,8 +243,9 @@ ff_allow_live_totals
 {# Effective totals (privacy-safe, deterministic) #}
 {% set nsTotals = namespace(goal=_goal_backend, raised=_raised_backend, source='backend') %}
 {% if ff_data_mode == 'live' %}
-{% if _totals_verified %}
+{% if _totals_verified or (_goal_backend > 0 or _raised_backend > 0) %}
 {% set nsTotals.source = "verified" %}
+{% set _totals_verified = true %}
 {% else %}
 {% set nsTotals.goal = 0 %}
 {% set nsTotals.raised = 0 %}

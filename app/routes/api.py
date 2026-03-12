@@ -29,6 +29,8 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 
 from app.extensions import db
 
+from app.routes.main import _get_fundraising_stats, _get_sponsors
+
 # ─────────────────────────────────────────────────────────────
 # Optional models (fail gracefully if missing)
 # ─────────────────────────────────────────────────────────────
@@ -543,10 +545,24 @@ class StatsResource(Resource):
             # org scoping (optional): accept org_id query param for multi-tenant frontends
             org_id = request.args.get("org_id", type=int)
 
-            raised = _sum_donations(org_id=org_id) + _sum_sponsor_approved(org_id=org_id)
-            goal = _active_goal_amount(org_id=org_id)
-            percent = (raised / goal * 100.0) if goal else 0.0
-            lb = _leaderboard(top, org_id=org_id)
+            if org_id is None:
+                fs = _get_fundraising_stats()
+                raised = float(fs.raised or 0.0)
+                goal = float(fs.goal or 0.0)
+                percent = float(fs.percent_raised or 0.0)
+                sponsors_sorted, _, _ = _get_sponsors()
+                lb = [
+                    {
+                        "name": getattr(s, "name", None) or "Sponsor",
+                        "amount": float(getattr(s, "amount", 0.0) or 0.0),
+                    }
+                    for s in (sponsors_sorted or [])[:top]
+                ]
+            else:
+                raised = _sum_donations(org_id=org_id) + _sum_sponsor_approved(org_id=org_id)
+                goal = _active_goal_amount(org_id=org_id)
+                percent = (raised / goal * 100.0) if goal else 0.0
+                lb = _leaderboard(top, org_id=org_id)
 
             etag = _etag(f"{int(raised)}-{int(goal)}-{len(lb)}-{org_id or 0}")
             return (

@@ -4,12 +4,12 @@
 
 **Reason:** Critical blockers still open. Do not launch publicly.
 
-**Updated at:** 2026-03-11T19:51:47+00:00
+**Updated at:** 2026-03-11T21:43:05+00:00
 
 ## Summary
 
-- PASS: 3
-- FAIL: 2
+- PASS: 0
+- FAIL: 5
 - BLOCKED: 0
 - PENDING: 139
 - N/A: 0
@@ -19,13 +19,28 @@
 - **CB-01** — Production root domain serves successfully (no Cloudflare 530)
   - Status: FAIL
   - Owner: Angel
-  - Note: Cloudflare 530 on root domain
-  - Evidence: curl returned HTTP/2 530
+  - Note: Cloudflare 530 returned for https://getfuturefunded.com
+  - Evidence: curl -s / curl -I returned HTTP/2 530
 - **CB-02** — Production static CSS and JS assets serve successfully
   - Status: FAIL
   - Owner: Angel
-  - Note: Static ff.css / ff-app.js returning 530
-  - Evidence: curl -I static assets returned HTTP/2 530
+  - Note: Static assets returned Cloudflare 530 for ff.css and ff-app.js
+  - Evidence: curl -I "https://getfuturefunded.com/static/css/ff.css?v=15.0.0" and ff-app.js returned 530
+- **CB-03** — Production Socket.IO / WebSocket behavior is non-fatal or correctly configured
+  - Status: FAIL
+  - Owner: Angel
+  - Note: Production / smoke path still attempts ws://127.0.0.1:5000/socket.io/
+  - Evidence: Playwright smoke captured WebSocket handshake 400 against localhost
+- **CB-04** — UI/UX gate has no missing CSS id selector for ffLiveFeedTitle
+  - Status: FAIL
+  - Owner: Angel
+  - Note: UI/UX gate reports missing CSS id selector for #ffLiveFeedTitle
+  - Evidence: pw:ux failed in both light and dark theme
+- **CB-05** — Smoke test has no fatal console errors
+  - Status: FAIL
+  - Owner: Angel
+  - Note: Smoke test failed due to fatal console error
+  - Evidence: pw:smoke failed on WebSocket console error
 - **AN-05** — Successful donation event is tracked
   - Status: PENDING
   - Owner: —
@@ -166,11 +181,11 @@
 
 | ID | Severity | Check | PASS | FAIL | BLOCKED | N/A | Status | Owner | Notes | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CB-01 | critical | Production root domain serves successfully (no Cloudflare 530) |  | X |  |  | fail | Angel | Cloudflare 530 on root domain | curl returned HTTP/2 530 |
-| CB-02 | critical | Production static CSS and JS assets serve successfully |  | X |  |  | fail | Angel | Static ff.css / ff-app.js returning 530 | curl -I static assets returned HTTP/2 530 |
-| CB-03 | critical | Production Socket.IO / WebSocket behavior is non-fatal or correctly configured | X |  |  |  | pass | Angel | Socket.IO made non-fatal for QA via safe stub | pw:smoke passes |
-| CB-04 | critical | UI/UX gate has no missing CSS id selector for ffLiveFeedTitle | X |  |  |  | pass | Angel | #ffLiveFeedTitle selector gap resolved | pw:ux selector issue no longer blocking |
-| CB-05 | critical | Smoke test has no fatal console errors | X |  |  |  | pass | Angel | Smoke test now passes cleanly | npx playwright smoke passed |
+| CB-01 | critical | Production root domain serves successfully (no Cloudflare 530) |  | X |  |  | fail | Angel | Cloudflare 530 returned for https://getfuturefunded.com | curl -s / curl -I returned HTTP/2 530 |
+| CB-02 | critical | Production static CSS and JS assets serve successfully |  | X |  |  | fail | Angel | Static assets returned Cloudflare 530 for ff.css and ff-app.js | curl -I "https://getfuturefunded.com/static/css/ff.css?v=15.0.0" and ff-app.js returned 530 |
+| CB-03 | critical | Production Socket.IO / WebSocket behavior is non-fatal or correctly configured |  | X |  |  | fail | Angel | Production / smoke path still attempts ws://127.0.0.1:5000/socket.io/ | Playwright smoke captured WebSocket handshake 400 against localhost |
+| CB-04 | critical | UI/UX gate has no missing CSS id selector for ffLiveFeedTitle |  | X |  |  | fail | Angel | UI/UX gate reports missing CSS id selector for #ffLiveFeedTitle | pw:ux failed in both light and dark theme |
+| CB-05 | critical | Smoke test has no fatal console errors |  | X |  |  | fail | Angel | Smoke test failed due to fatal console error | pw:smoke failed on WebSocket console error |
 
 ## 1) Revenue-critical launch blockers
 

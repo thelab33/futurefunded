@@ -963,8 +963,8 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
     # FF_ACTIVITY_FEED_REGISTER_V1_START
     try:
-        from app.routes.activity_feed import bp as activity_feed_bp
-        _safe_register(app, activity_feed_bp)
+        if _module_exists("app.routes.activity_feed"):
+            _safe_register(app, "app.routes.activity_feed", "bp", "/")
     except Exception:
         pass
     # FF_ACTIVITY_FEED_REGISTER_V1_END

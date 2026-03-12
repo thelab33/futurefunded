@@ -254,9 +254,34 @@ TEAM_CONFIG_DEFAULT: Dict[str, Any] = {
     # ✅ Teams (photos should live under app/static/images/teams/* by default)
     # Use relative paths like: "images/teams/6th.webp"
     "teams": [
-        {"id": "6th", "name": "6th Grade", "photo": "images/teams/6th.webp", "featured": True},
-        {"id": "7th", "name": "7th Grade", "photo": "images/teams/7th.webp"},
-        {"id": "8th", "name": "8th Grade", "photo": "images/teams/8th.webp"},
+        {
+            "id": "6th",
+            "name": "6th Grade",
+            "photo": "images/teams/6th.webp",
+            "featured": True,
+            "goal": 2500,
+            "raised": 50,
+            "meta": "Early-season development, fundamentals, and tournament reps.",
+            "ask": "Help cover gym time, tournament fees, and player development.",
+        },
+        {
+            "id": "7th",
+            "name": "7th Grade",
+            "photo": "images/teams/7th.webp",
+            "goal": 3500,
+            "raised": 50,
+            "meta": "Competitive reps, travel weekends, and team growth.",
+            "ask": "Support travel, event fees, and weekly training sessions.",
+        },
+        {
+            "id": "8th",
+            "name": "8th Grade",
+            "photo": "images/teams/8th.webp",
+            "goal": 4000,
+            "raised": 75,
+            "meta": "Leadership year, strong finish, and high-intensity development.",
+            "ask": "Help fund gym rentals, training sessions, and season essentials.",
+        },
     ],
 
     # Optional: you can provide gallery_items explicitly. If empty/missing, it will be derived from teams.
@@ -320,7 +345,27 @@ def _normalize_teams(cfg: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Di
         photo = str(t.get("photo") or t.get("image") or t.get("src") or "").strip()
         featured = bool(t.get("featured") or False)
         tags = t.get("tags") if isinstance(t.get("tags"), list) else []
-        teams_out.append({"id": tid, "name": name, "photo": photo, "featured": featured, "tags": tags})
+
+        goal = float(t.get("goal") or t.get("fundraising_goal") or 0.0)
+        raised = float(t.get("raised") or t.get("amount_raised") or 0.0)
+        meta = str(t.get("meta") or "").strip()
+        ask = str(t.get("ask") or "").strip()
+        needs = bool(t.get("needs") or False)
+        restricted = bool(t.get("restricted") or False)
+
+        teams_out.append({
+            "id": tid,
+            "name": name,
+            "photo": photo,
+            "featured": featured,
+            "tags": tags,
+            "goal": goal,
+            "raised": raised,
+            "meta": meta,
+            "ask": ask,
+            "needs": needs,
+            "restricted": restricted,
+        })
 
     gallery_in = _as_list(cfg.get("gallery_items"))
     gallery_out: List[Dict[str, Any]] = []

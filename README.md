@@ -68,3 +68,12 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Package manager
+
+This repository uses **npm** as the canonical package manager.
+
+- Use `npm install`
+- Use `package-lock.json`
+- Do not reintroduce `yarn.lock` unless the toolchain is intentionally migrated
+

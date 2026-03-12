@@ -44,7 +44,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
 # FF_EXT_SOCKETIO_ASYNC_MODE_V1
-socketio = SocketIO(async_mode=os.getenv("SOCKET_ASYNC_MODE", "threading"))
+socketio = SocketIO(async_mode=os.getenv("SOCKETIO_ASYNC_MODE", os.getenv("SOCKET_ASYNC_MODE", "threading")))
 
 login_manager = LoginManagerCls() if LoginManagerCls else None
 babel = BabelCls() if BabelCls else None
