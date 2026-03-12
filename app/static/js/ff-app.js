@@ -1926,7 +1926,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     if (state.socket || !w.io || root.getAttribute("data-ff-webdriver") === "true") return;
 
     try {
-      state.socket = socket;
+      state.socket = w.io({ transports: ["polling"], upgrade: false });
     } catch (err) {
       return;
     }
@@ -3589,12 +3589,6 @@ document.addEventListener("mousedown", function(e){
 
 
 
-/* FF_CHECKOUT_OVERLAY_RUNTIME */
-(function(){
-
-})();
-
-
 /* FF_CHECKOUT_OVERLAY_HARDEN_V1 */
 (function () {
   "use strict";
@@ -4404,54 +4398,6 @@ document.addEventListener("mousedown", function(e){
 /* FF_DONATION_SEED_DEFAULT_V1_END */
 
 
-
-/* FF_LIVE_ACTIVITY_FEED_V1_START */
-
-(function(){
-
-  const messages = [
-    "Maria from Austin donated $25",
-    "The Johnson Family donated $100",
-    "A local sponsor pledged $500",
-    "Alumni family donated $50",
-    "Community supporter donated $25"
-  ];
-
-  function pushActivity(msg){
-
-    const feed = document.querySelector("[data-ff-live-feed]");
-    if(!feed) return;
-
-    const el = document.createElement("div");
-    el.className = "ff-activityFeed__item";
-    el.textContent = msg;
-
-    feed.prepend(el);
-
-    const items = feed.querySelectorAll(".ff-activityFeed__item");
-    if(items.length > 6){
-      items[items.length-1].remove();
-    }
-
-  }
-
-  function startFeed(){
-
-    if(window.__FF_LIVE_FEED_STARTED__) return;
-    window.__FF_LIVE_FEED_STARTED__ = true;
-
-    setInterval(function(){
-      const msg = messages[Math.floor(Math.random()*messages.length)];
-      pushActivity(msg);
-    }, 9000);
-
-  }
-
-  document.addEventListener("DOMContentLoaded", startFeed);
-
-})();
-
-/* FF_LIVE_ACTIVITY_FEED_V1_END */
 
 /* FF_OVERLAY_LOCK_SELF_HEAL_V1_START */
 (function () {

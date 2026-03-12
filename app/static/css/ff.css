@@ -2393,3 +2393,721 @@
   [data-ff-video-title] {}
 }
 /* FF_DATA_ATTR_COVERAGE_SHIM_V1_END */
+
+/* ==========================================================================
+   FF_PIXELS_LOCK_V1_START
+   Contract-safe production hardening layer
+   - strict spacing + radius rhythm
+   - typography/readability lock
+   - cards/tiles/tabs contrast rescue
+   - section/header alignment normalization
+   - image stability + safe content-visibility
+   - overlay/backdrop reliability
+   - skeleton/loading polish
+   ========================================================================== */
+@layer ff.overrides {
+  :root,
+  .ff-root {
+    --ff-space-0: 0;
+    --ff-space-1: 0.25rem;   /* 4px */
+    --ff-space-2: 0.5rem;    /* 8px */
+    --ff-space-3: 0.75rem;   /* 12px */
+    --ff-space-4: 1rem;      /* 16px */
+    --ff-space-5: 1.5rem;    /* 24px */
+    --ff-space-6: 2rem;      /* 32px */
+    --ff-space-7: 2.5rem;    /* 40px */
+    --ff-space-8: 3rem;      /* 48px */
+    --ff-space-9: 4rem;      /* 64px */
+
+    --ff-radius-1: var(--ff-r-1, 0.5rem);
+    --ff-radius-2: var(--ff-r-2, 0.75rem);
+    --ff-radius-3: var(--ff-r-3, 1rem);
+    --ff-radius-4: var(--ff-r-4, 1.25rem);
+    --ff-radius-5: var(--ff-r-5, 1.5rem);
+
+    --ff-stroke-1: 1px;
+    --ff-stroke-2: 1.5px;
+
+    --ff-section-px: clamp(1rem, 3vw, 1.5rem);
+    --ff-section-py: clamp(2.5rem, 5vw, 4rem);
+    --ff-section-gap: clamp(1rem, 2vw, 1.5rem);
+    --ff-card-pad: clamp(1rem, 2.2vw, 1.25rem);
+
+    --ff-line-tight: 1.1;
+    --ff-line-title: 1.15;
+    --ff-line-body: 1.55;
+    --ff-line-copy: 1.65;
+
+    --ff-text-1: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+    --ff-text-2: clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);
+    --ff-text-3: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+    --ff-text-4: clamp(1.125rem, 1.04rem + 0.45vw, 1.375rem);
+    --ff-text-5: clamp(1.375rem, 1.18rem + 0.8vw, 1.875rem);
+    --ff-text-6: clamp(1.75rem, 1.35rem + 1.5vw, 2.75rem);
+
+    --ff-surface-1: color-mix(in srgb, var(--ff-bg, #0b1020) 78%, white 22%);
+    --ff-surface-2: color-mix(in srgb, var(--ff-bg, #0b1020) 86%, white 14%);
+    --ff-surface-3: color-mix(in srgb, var(--ff-bg, #0b1020) 92%, white 8%);
+    --ff-card-border: color-mix(in srgb, var(--ff-text, #f5f7fb) 12%, transparent);
+    --ff-card-border-strong: color-mix(in srgb, var(--ff-text, #f5f7fb) 18%, transparent);
+    --ff-muted-strong: color-mix(in srgb, var(--ff-text, #f5f7fb) 72%, transparent);
+    --ff-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ff-brand, #5dd6ff) 42%, transparent);
+
+    --ff-shadow-1:
+      0 1px 2px rgba(0, 0, 0, 0.18),
+      0 10px 30px rgba(0, 0, 0, 0.12);
+    --ff-shadow-2:
+      0 1px 2px rgba(0, 0, 0, 0.18),
+      0 14px 44px rgba(0, 0, 0, 0.18);
+
+    --ff-z-backdrop: 1200;
+    --ff-z-overlay: 1210;
+    --ff-z-panel: 1220;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: clamp(4.5rem, 8vw, 6rem);
+  }
+
+  body,
+  .ff-body,
+  .ff-root {
+    font-size: var(--ff-text-2);
+    line-height: var(--ff-line-body);
+    text-rendering: optimizeLegibility;
+    overflow-wrap: anywhere;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  :where(img, svg, video, canvas) {
+    max-width: 100%;
+    display: block;
+  }
+
+  :where(img[width][height], video[width][height]) {
+    height: auto;
+  }
+
+  :where(
+    .ff-teamCard__media,
+    .ff-card__media,
+    .ff-tile__media,
+    .ff-sponsorCard__media,
+    .ff-heroMedia,
+    .ff-storyMedia
+  ) {
+    aspect-ratio: var(--ff-media-ar, 16 / 9);
+    overflow: clip;
+    border-radius: inherit;
+  }
+
+  :where(
+    .ff-teamCard__media img,
+    .ff-card__media img,
+    .ff-tile__media img,
+    .ff-sponsorCard__media img,
+    .ff-heroMedia img,
+    .ff-storyMedia img
+  ) {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  :where(h1, .ff-h1) {
+    font-size: var(--ff-text-6);
+    line-height: var(--ff-line-tight);
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  :where(h2, .ff-h2) {
+    font-size: var(--ff-text-5);
+    line-height: var(--ff-line-title);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  :where(h3, .ff-h3) {
+    font-size: var(--ff-text-4);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  :where(h4, .ff-h4) {
+    font-size: var(--ff-text-3);
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  :where(p, li, dd, dt, .ff-copy, .ff-text, .ff-bodyCopy) {
+    line-height: var(--ff-line-copy);
+  }
+
+  :where(
+    .ff-eyebrow,
+    .ff-kicker,
+    .ff-pill,
+    .ff-chip,
+    .ff-meta,
+    .ff-label,
+    small
+  ) {
+    font-size: var(--ff-text-1);
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+  }
+
+  :where(.ff-muted, .ff-subtle, .ff-copyMuted, .ff-meta, .ff-disclosure__hint) {
+    color: var(--ff-muted-strong);
+  }
+
+  :where(main > section, .ff-section, footer, .ff-footer) {
+    padding-inline: var(--ff-section-px);
+  }
+
+  :where(main > section, .ff-section) {
+    padding-block: var(--ff-section-py);
+  }
+
+  :where(.ff-sectionHead, .ff-sectionHeader, .ff-section__head, .ff-sectionIntro) {
+    display: grid;
+    gap: var(--ff-space-2);
+    margin-block-end: clamp(1rem, 2vw, 1.5rem);
+    align-content: start;
+  }
+
+  :where(.ff-sectionHead > *, .ff-sectionHeader > *, .ff-section__head > *, .ff-sectionIntro > *) {
+    margin: 0;
+  }
+
+  :where(.ff-shell, .ff-container, .ff-wrap, .ff-inner, .ff-sectionInner) {
+    inline-size: min(100%, var(--ff-content-max, 72rem));
+    margin-inline: auto;
+  }
+
+  :where(.ff-grid, .ff-row, .ff-stack, .ff-cluster) {
+    gap: var(--ff-space-4);
+  }
+
+  :where(.ff-stack > * + *) {
+    margin-block-start: var(--ff-space-4);
+  }
+
+  :where(.ff-btn, button, [type="button"], [type="submit"], [role="button"]) {
+    min-block-size: 2.75rem;
+    border-radius: var(--ff-radius-2);
+    border-width: var(--ff-stroke-1);
+    font-weight: 650;
+    line-height: 1.2;
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      opacity 160ms ease;
+  }
+
+  :where(.ff-btn) {
+    padding-inline: 1rem;
+    padding-block: 0.75rem;
+  }
+
+  :where(.ff-btn:hover, button:hover, [role="button"]:hover) {
+    transform: translateY(-1px);
+  }
+
+  :where(.ff-btn:active, button:active, [role="button"]:active) {
+    transform: translateY(0);
+  }
+
+  :where(
+    a[href],
+    button,
+    input,
+    select,
+    textarea,
+    [tabindex]:not([tabindex="-1"]),
+    [role="button"],
+    [role="tab"]
+  ):focus-visible {
+    outline: none;
+    box-shadow: var(--ff-focus-ring);
+  }
+
+  :where(.ff-btn, .ff-chip, .ff-pill, .ff-tab, [role="tab"]) {
+    touch-action: manipulation;
+  }
+
+  :where(
+    .ff-card,
+    .ff-tile,
+    .ff-panel,
+    .ff-surface,
+    .ff-teamCard,
+    .ff-sponsorCard,
+    .ff-impactTier,
+    .ff-faqItem,
+    .ff-checkoutCard,
+    .ff-statCard,
+    .ff-proofCard,
+    .ff-storyCard
+  ) {
+    background: color-mix(in srgb, var(--ff-panel, var(--ff-surface-2)) 88%, transparent);
+    border: var(--ff-stroke-1) solid var(--ff-card-border);
+    border-radius: var(--ff-radius-3);
+    box-shadow: var(--ff-shadow-1);
+    padding: var(--ff-card-pad);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  :where(
+    .ff-card:hover,
+    .ff-tile:hover,
+    .ff-teamCard:hover,
+    .ff-sponsorCard:hover,
+    .ff-impactTier:hover,
+    .ff-proofCard:hover
+  ) {
+    border-color: var(--ff-card-border-strong);
+    box-shadow: var(--ff-shadow-2);
+  }
+
+  :where(
+    .ff-card > *,
+    .ff-tile > *,
+    .ff-panel > *,
+    .ff-surface > *,
+    .ff-teamCard > *,
+    .ff-sponsorCard > *,
+    .ff-impactTier > *,
+    .ff-faqItem > *,
+    .ff-checkoutCard > *
+  ) {
+    margin-block: 0;
+  }
+
+  :where(
+    .ff-card > * + *,
+    .ff-tile > * + *,
+    .ff-panel > * + *,
+    .ff-surface > * + *,
+    .ff-teamCard > * + *,
+    .ff-sponsorCard > * + *,
+    .ff-impactTier > * + *,
+    .ff-faqItem > * + *,
+    .ff-checkoutCard > * + *
+  ) {
+    margin-block-start: var(--ff-space-3);
+  }
+
+  :where(.ff-tile, .ff-impactTier, .ff-checkoutCard) {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--ff-panel, var(--ff-surface-2)) 94%, white 6%),
+        color-mix(in srgb, var(--ff-panel, var(--ff-surface-3)) 98%, black 2%)
+      );
+  }
+
+  :where(
+    .ff-tabs,
+    .ff-tablist,
+    [role="tablist"]
+  ) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ff-space-2);
+    padding: var(--ff-space-1);
+    border-radius: var(--ff-radius-3);
+    background: color-mix(in srgb, var(--ff-panel, var(--ff-surface-2)) 82%, transparent);
+    border: var(--ff-stroke-1) solid var(--ff-card-border);
+  }
+
+  :where(
+    .ff-tab,
+    [role="tab"],
+    .ff-pill
+  ) {
+    appearance: none;
+    min-block-size: 2.5rem;
+    padding-inline: 0.875rem;
+    padding-block: 0.625rem;
+    border-radius: var(--ff-radius-2);
+    border: var(--ff-stroke-1) solid transparent;
+    background: transparent;
+    color: inherit;
+    font-size: var(--ff-text-1);
+    font-weight: 650;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  :where(
+    .ff-tab[aria-selected="true"],
+    .ff-tab.is-active,
+    [role="tab"][aria-selected="true"],
+    .ff-pill[aria-selected="true"],
+    .ff-pill.is-active
+  ) {
+    background: color-mix(in srgb, var(--ff-brand, #5dd6ff) 14%, transparent);
+    border-color: color-mix(in srgb, var(--ff-brand, #5dd6ff) 28%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ff-brand, #5dd6ff) 12%, transparent);
+  }
+
+  :where(
+    .ff-hero,
+    .ff-impact,
+    .ff-teams,
+    .ff-sponsors,
+    .ff-faq,
+    .ff-footer
+  ) :where(.ff-btn) {
+    min-inline-size: min(100%, 11.5rem);
+  }
+
+  :where(.ff-heroCtas, .ff-ctaRow, .ff-actions, .ff-footerTop__actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ff-space-3);
+    align-items: center;
+  }
+
+  :where(.ff-heroCtas > .ff-btn, .ff-ctaRow > .ff-btn, .ff-actions > .ff-btn) {
+    flex: 0 0 auto;
+  }
+
+  :where(.ff-checkoutCard, .ff-impactTier, .ff-teamCard, .ff-sponsorCard) :where(.ff-pill, .ff-chip) {
+    background: color-mix(in srgb, var(--ff-brand, #5dd6ff) 10%, transparent);
+    border: var(--ff-stroke-1) solid color-mix(in srgb, var(--ff-brand, #5dd6ff) 22%, transparent);
+  }
+
+  :where(.ff-disclosure, .ff-faqItem) {
+    overflow: clip;
+  }
+
+  :where(.ff-disclosure__sum, summary) {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  :where(.ff-disclosure__sum, summary)::-webkit-details-marker {
+    display: none;
+  }
+
+  :where(.ff-kpi, .ff-stat, .ff-amount, .ff-money, [data-ff-goal], [data-ff-raised]) {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  :where(.ff-skeleton, .is-loading, [aria-busy="true"]) {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  :where(.ff-skeleton, .is-loading, [aria-busy="true"])::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.06) 35%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.06) 65%,
+        transparent 100%
+      );
+    transform: translateX(-100%);
+    animation: ff-skeleton-sheen 1.35s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes ff-skeleton-sheen {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  :where(.ff-modal, .ff-drawer, .ff-sheet, .ff-checkoutSheet) {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: end stretch;
+    padding:
+      max(env(safe-area-inset-top), var(--ff-space-4))
+      max(env(safe-area-inset-right), var(--ff-space-4))
+      max(env(safe-area-inset-bottom), var(--ff-space-4))
+      max(env(safe-area-inset-left), var(--ff-space-4));
+    z-index: var(--ff-z-overlay);
+  }
+
+  @media (min-width: 48rem) {
+    :where(.ff-modal, .ff-sheet, .ff-checkoutSheet) {
+      align-items: center;
+    }
+  }
+
+  :where(
+    .ff-modal__backdrop,
+    .ff-drawer__backdrop,
+    .ff-sheet__backdrop,
+    .ff-backdrop,
+    [data-ff-backdrop]
+  ) {
+    position: absolute;
+    inset: 0;
+    background: rgba(7, 10, 18, 0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: var(--ff-z-backdrop);
+    pointer-events: auto;
+  }
+
+  :where(
+    .ff-modal__panel,
+    .ff-drawer__panel,
+    .ff-sheet__panel,
+    .ff-sheet__dialog,
+    .ff-checkoutSheet__panel,
+    .ff-checkoutCard
+  ) {
+    position: relative;
+    inline-size: min(100%, 42rem);
+    max-inline-size: 100%;
+    max-block-size: min(100dvh - (var(--ff-space-4) * 2), 56rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--ff-radius-4);
+    z-index: var(--ff-z-panel);
+    margin-inline: auto;
+  }
+
+  :where(
+    .ff-modal[hidden],
+    .ff-drawer[hidden],
+    .ff-sheet[hidden],
+    .ff-checkoutSheet[hidden],
+    .ff-modal[aria-hidden="true"],
+    .ff-drawer[aria-hidden="true"],
+    .ff-sheet[aria-hidden="true"],
+    .ff-checkoutSheet[aria-hidden="true"],
+    .ff-modal[data-open="false"],
+    .ff-drawer[data-open="false"],
+    .ff-sheet[data-open="false"],
+    .ff-checkoutSheet[data-open="false"]
+  ) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  :where(
+    .ff-modal:not([hidden], [aria-hidden="true"], [data-open="false"]),
+    .ff-drawer:not([hidden], [aria-hidden="true"], [data-open="false"]),
+    .ff-sheet:not([hidden], [aria-hidden="true"], [data-open="false"]),
+    .ff-checkoutSheet:not([hidden], [aria-hidden="true"], [data-open="false"])
+  ) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  :where(
+    .ff-modal[aria-hidden="true"] .ff-modal__backdrop,
+    .ff-drawer[aria-hidden="true"] .ff-drawer__backdrop,
+    .ff-sheet[aria-hidden="true"] .ff-sheet__backdrop,
+    .ff-checkoutSheet[aria-hidden="true"] .ff-sheet__backdrop,
+    .ff-modal[data-open="false"] .ff-modal__backdrop,
+    .ff-drawer[data-open="false"] .ff-drawer__backdrop,
+    .ff-sheet[data-open="false"] .ff-sheet__backdrop,
+    .ff-checkoutSheet[data-open="false"] .ff-sheet__backdrop
+  ) {
+    pointer-events: none;
+  }
+
+  :where(
+    .ff-modal__panel,
+    .ff-drawer__panel,
+    .ff-sheet__panel,
+    .ff-sheet__dialog,
+    .ff-checkoutSheet__panel
+  ):focus-visible {
+    box-shadow: var(--ff-focus-ring), var(--ff-shadow-2);
+  }
+
+  :where(.ff-checkoutCard, .ff-sheet .ff-modal__foot--sticky, .ff-modal__foot--sticky) {
+    position: sticky;
+    bottom: 0;
+    background: color-mix(in srgb, var(--ff-panel, var(--ff-surface-2)) 92%, black 8%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  :where(.ff-trust, .ff-checkoutTrust, .ff-privacyNote, .ff-receiptNote, .ff-checkoutMeta) {
+    color: var(--ff-muted-strong);
+    font-size: var(--ff-text-1);
+    line-height: 1.45;
+  }
+
+  :where(.ff-trust strong, .ff-checkoutTrust strong, .ff-privacyNote strong, .ff-receiptNote strong) {
+    color: inherit;
+    font-weight: 700;
+  }
+
+  :where(.ff-sponsorCard, .ff-sponsorSpotlight, .ff-sponsorWall__item) {
+    text-align: left;
+  }
+
+  :where(.ff-sponsorCard .ff-kicker, .ff-sponsorSpotlight .ff-kicker) {
+    color: var(--ff-muted-strong);
+    letter-spacing: 0.03em;
+  }
+
+  :where(.ff-scroll, .ff-carousel, .ff-tabs, [role="tablist"]) {
+    scrollbar-width: thin;
+  }
+
+  @supports (content-visibility: auto) {
+    :where(
+      .ff-teamGrid > *,
+      .ff-sponsorGrid > *,
+      .ff-faqList > *,
+      .ff-liveFeed > *,
+      .ff-cardGrid > *,
+      .ff-impactGrid > *
+    ) {
+      content-visibility: auto;
+      contain-intrinsic-size: 320px 460px;
+    }
+  }
+
+  @media (max-width: 22.5rem) {
+    :where(.ff-btn, .ff-tab, [role="tab"], .ff-pill) {
+      min-inline-size: 0;
+      inline-size: 100%;
+    }
+
+    :where(.ff-heroCtas, .ff-ctaRow, .ff-actions, .ff-footerTop__actions) {
+      align-items: stretch;
+    }
+
+    :where(.ff-heroCtas > *, .ff-ctaRow > *, .ff-actions > *, .ff-footerTop__actions > *) {
+      inline-size: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    :where(.ff-skeleton, .is-loading, [aria-busy="true"])::after {
+      animation: none;
+    }
+  }
+}
+/* FF_PIXELS_LOCK_V1_END */
+
+/* ==========================================================================
+   FF_LAUNCH_CSS_RESCUE_V1_START
+   Surgical rescue for over-broad pixels-lock rules
+   - restores local gap rhythm
+   - removes double stack spacing
+   - prevents checkout cards from becoming sticky/scroll containers
+   - keeps onboarding stepper from inheriting generic tablist chrome
+   - preserves checkout sheet sizing authority
+   ========================================================================== */
+@layer ff.overrides {
+  .ff-shell,
+  .ff-wrap,
+  .ff-inner,
+  .ff-sectionInner {
+    inline-size: auto;
+    margin-inline: 0;
+  }
+
+  .ff-row {
+    gap: var(--ff-3);
+  }
+
+  .ff-stack {
+    gap: var(--ff-4);
+  }
+
+  .ff-stack > * + * {
+    margin-block-start: 0;
+  }
+
+  .ff-gap-2 {
+    gap: var(--ff-2) !important;
+  }
+
+  .ff-gap-3 {
+    gap: var(--ff-3) !important;
+  }
+
+  .ff-gap-4 {
+    gap: var(--ff-4) !important;
+  }
+
+  .ff-checkoutCard {
+    inline-size: auto;
+    max-inline-size: none;
+    max-block-size: none;
+    overflow: visible;
+    position: static;
+    bottom: auto;
+  }
+
+  .ff-sheet .ff-modal__foot--sticky,
+  .ff-modal__foot--sticky {
+    position: sticky;
+    bottom: 0;
+  }
+
+  #ff-onboarding .ff-onboardStepper,
+  #ff-onboarding [role="tablist"] {
+    display: grid;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  #checkout .ff-sheet__panel {
+    width: min(100vw - 1rem, 78rem);
+    max-inline-size: min(100vw - 1rem, 78rem);
+    max-block-size: min(94dvh, 58rem);
+    overflow: hidden;
+  }
+
+  #checkout .ff-sheet__scroll {
+    overflow: auto;
+  }
+}
+/* FF_LAUNCH_CSS_RESCUE_V1_END */
