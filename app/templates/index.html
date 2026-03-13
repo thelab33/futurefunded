@@ -896,50 +896,18 @@ Contracts:
 
                 <div class="ff-heroProof ff-mt-3" role="list" aria-label="Why supporters give here">
                   <div class="ff-heroProof__item" role="listitem">
-                    <strong>Clear use of support</strong>
+                    <strong>Clear season support</strong>
                     <span class="ff-help ff-muted">
-                      Travel, tournaments, gym time, gear, and the season costs families feel first.
+                      Travel, gym time, tournament fees, gear, and the recurring costs families feel first.
                     </span>
                   </div>
                   <div class="ff-heroProof__item" role="listitem">
-                    <strong>Fast, trusted giving</strong>
+                    <strong>Fast secure giving</strong>
                     <span class="ff-help ff-muted">
-                      Choose an amount, confirm securely, and receive a receipt by email.
-                    </span>
-                  </div>
-                  <div class="ff-heroProof__item" role="listitem">
-                    <strong>One polished page</strong>
-                    <span class="ff-help ff-muted">
-                      Donors, families, and sponsors can understand the program and act in one place.
+                      Give in a few taps, confirm securely, and receive an email receipt right away.
                     </span>
                   </div>
                 </div>
-
-                <section class="ff-heroActivity ff-mt-3" aria-labelledby="heroActivityTitle">
-                  <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2 ff-mb-2">
-                    <p class="ff-kicker ff-m-0" id="heroActivityTitle">Recent support</p>
-                    <p class="ff-help ff-muted ff-m-0">
-                      {% if ff_data_mode == 'live' %}Live activity{% else %}Preview activity{% endif %}
-                    </p>
-                  </div>
-
-                  <div
-                    class="ff-activityFeed"
-                    data-ff-live-feed=""
-                    data-ff-animate="rise"
-                    aria-label="Recent activity feed"
-                    aria-live="polite"
-                    aria-atomic="true"
-                    role="list"
-                  >
-                    <div class="ff-activityFeed__item" role="listitem">
-                      New donations and sponsor activity appear here as support comes in.
-                    </div>
-                    <div class="ff-activityFeed__item" role="listitem">
-                      Share the page to help more families, alumni, and local partners discover the campaign.
-                    </div>
-                  </div>
-                </section>
               </header>
 
               <footer class="ff-heroFooter">
@@ -964,22 +932,21 @@ Contracts:
                 </nav>
 
                 <div
-                  class="ff-heroTrustStrip ff-mt-3"
+                  class="ff-heroTrustStrip ff-mt-2"
                   role="list"
                   aria-label="Checkout and campaign trust signals"
                 >
                   <span class="ff-heroTrustStrip__item" role="listitem">Secure checkout</span>
                   <span class="ff-heroTrustStrip__item" role="listitem">Instant receipt</span>
-                  <span class="ff-heroTrustStrip__item" role="listitem">No account required</span>
                   <span class="ff-heroTrustStrip__item" role="listitem">Sponsor-ready page</span>
                 </div>
 
-                <div class="ff-heroSignalBar ff-mt-3" aria-label="Support experience and partner value">
+                <div class="ff-heroSignalBar ff-mt-2" aria-label="Support experience and partner value">
                   <article class="ff-heroSignal ff-heroSignal--proof" aria-label="Supporter experience">
                     <span class="ff-heroSignal__kicker">For supporters</span>
-                    <strong class="ff-heroSignal__value">Simple, trusted giving</strong>
+                    <strong class="ff-heroSignal__value">One clear place to give</strong>
                     <span class="ff-heroSignal__meta">
-                      Choose an amount now and confirm securely inside Stripe or PayPal.
+                      Choose an amount, confirm securely, and finish support without friction.
                     </span>
                   </article>
 
@@ -987,17 +954,13 @@ Contracts:
                     class="ff-heroSignal ff-heroSignal--deadline"
                     aria-label="Sponsor and institution value"
                   >
-                    <span class="ff-heroSignal__kicker">For sponsors and partners</span>
+                    <span class="ff-heroSignal__kicker">For partners</span>
                     <strong class="ff-heroSignal__value">Clear program presentation</strong>
                     <span class="ff-heroSignal__meta">
-                      A polished page makes it easier to understand the mission, review the campaign, and step in with confidence.
+                      Families, alumni, and sponsors can understand the need quickly and act with confidence.
                     </span>
                   </article>
                 </div>
-
-                <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  Support helps cover travel, tournament fees, gym time, gear, and the season essentials that keep the program moving.
-                </p>
               </footer>
             </div>
           </article>
@@ -1051,23 +1014,39 @@ Contracts:
               </button>
             </div>
 
-            <div class="ff-heroPanelProof ff-mt-3" role="list" aria-label="Donation panel reassurances">
-              <div class="ff-heroPanelProof__item" role="listitem">
-                <strong>No account needed</strong>
-                <span class="ff-help ff-muted">Start support in a few taps</span>
-              </div>
-              <div class="ff-heroPanelProof__item" role="listitem">
-                <strong>Instant receipt</strong>
-                <span class="ff-help ff-muted">Confirmation is sent by email</span>
-              </div>
-            </div>
-
             <div class="ff-proofMini ff-mt-3" role="note" aria-label="Donation note">
-              <p class="ff-kicker ff-m-0">Why people give</p>
+              <p class="ff-kicker ff-m-0">Why this works</p>
               <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                Every gift helps reduce pressure on families while keeping athletes in the gym, on the road, and ready for the next tournament weekend.
+                A clear giving flow helps families, alumni, and sponsors understand the need and act without friction.
               </p>
             </div>
+
+            <section
+              class="ff-liveFeed ff-heroLiveFeed ff-mt-3"
+              data-ff-live-feed=""
+              aria-labelledby="ffLiveFeedTitle"
+            >
+              <div class="ff-liveFeed__head">
+                <p class="ff-kicker ff-m-0" id="ffLiveFeedTitle">Recent supporters</p>
+                <p class="ff-help ff-muted ff-m-0">New giving and sponsor activity will appear here.</p>
+              </div>
+
+              <div
+                class="ff-liveFeed__list"
+                data-ff-live-feed-list=""
+                aria-live="polite"
+                aria-atomic="false"
+                role="list"
+              >
+                <div class="ff-liveFeed__item ff-liveFeed__item--empty" role="listitem">
+                  <span class="ff-liveFeed__dot" aria-hidden="true"></span>
+                  <div class="ff-liveFeed__content">
+                    <span class="ff-liveFeed__name">Be the first supporter shown here.</span>
+                    <span class="ff-liveFeed__text">New gifts and sponsor activity will update automatically.</span>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             {% if _qr_src %}
             <section class="ff-heroPanelQr ff-mt-3" data-ff-qr="" aria-label="QR code for mobile giving">
@@ -1703,7 +1682,7 @@ Contracts:
 {% set _press_video_id = "p7u09q1q_5w" %}
 {% set _press_watch_url = "https://youtu.be/" ~ _press_video_id %}
 {% set _press_embed_url = "https://www.youtube-nocookie.com/embed/" ~ _press_video_id ~ "?autoplay=1&rel=0&modestbranding=1&playsinline=1" %}
-{% set _press_poster = url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v %}
+{% set _press_poster = url_for("static", filename="images/news-poster.webp") ~ "?v=" ~ _v %}
 
 <section
   id="story"
@@ -2178,18 +2157,72 @@ Contracts:
   </div>
 </section>
 
-      </main>
-
-<footer id="footer" class="ff-footer" data-ff-footer="" role="contentinfo">
+{% if not _whitelabel %}
+<section
+  class="ff-section ff-builderCta"
+  aria-labelledby="ffBuilderCtaTitle"
+  aria-describedby="ffBuilderCtaDesc"
+>
   <div class="ff-container">
-    <div class="ff-footerTray ff-glass ff-surface ff-footerTray--compact">
-      <section class="ff-footerTop" aria-label="Footer quick actions and trust">
-        <div class="ff-minw-0">
-          <p class="ff-help ff-muted ff-m-0 ff-footerTrust" data-ff-footer-trust="">
+    <article class="ff-card ff-glass ff-pad ff-builderCta__card" data-ff-animate="rise">
+      <div class="ff-builderCta__copy">
+        <p class="ff-kicker ff-m-0">Built with FutureFunded</p>
+        <h2 class="ff-h3 ff-mt-1 ff-mb-0" id="ffBuilderCtaTitle">
+          Want a fundraising page like this for your organization?
+        </h2>
+        <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="ffBuilderCtaDesc">
+          Launch a polished page with your logo, colors, donation flow, sponsor tiers, and a clear link for families, donors, and partners.
+        </p>
+
+        <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="list" aria-label="Platform highlights">
+          <span class="ff-pill ff-pill--soft" role="listitem">White-label ready</span>
+          <span class="ff-pill ff-pill--soft" role="listitem">Sponsor-ready</span>
+          <span class="ff-pill ff-pill--ghost" role="listitem">Fast onboarding</span>
+        </div>
+      </div>
+
+      <div class="ff-builderCta__actions">
+        <button
+          type="button"
+          class="ff-btn ff-btn--primary ff-btn--pill"
+          data-ff-open-onboard=""
+          aria-controls="ff-onboarding"
+          aria-haspopup="dialog"
+        >
+          Create your page
+        </button>
+
+        <a
+          class="ff-btn ff-btn--secondary ff-btn--pill"
+          href="{{ _ff_create|e }}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn more
+        </a>
+
+        <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
+          Built for teams, schools, nonprofits, and clubs.
+        </p>
+      </div>
+    </article>
+  </div>
+</section>
+{% endif %}
+
+      </main>
+      
+      <footer id="footer" class="ff-footer" data-ff-footer="" role="contentinfo">
+  <div class="ff-container">
+    <div class="ff-footerTray ff-glass ff-surface ff-footerTray--compact ff-footerTray--flagship">
+      <section class="ff-footerTop ff-footerTop--flagship" aria-label="Footer overview and actions">
+        <div class="ff-footerTop__copy ff-minw-0">
+          <p class="ff-kicker ff-m-0">Support with confidence</p>
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0 ff-footerTrust" data-ff-footer-trust="">
             Secure checkout • Email receipt • Privacy-first support flow
           </p>
-          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-            One clear place for donations, sponsors, and community support.
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
+            One clear place to donate, sponsor, and share the program.
           </p>
         </div>
 
@@ -2206,13 +2239,6 @@ Contracts:
             data-ff-open-checkout=""
           >Donate</a>
 
-          <a
-            class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
-            href="#sponsor-interest"
-            aria-controls="sponsor-interest"
-            data-ff-open-sponsor=""
-          >Sponsor</a>
-
           <button
             type="button"
             class="ff-btn ff-btn--sm ff-btn--ghost ff-btn--pill"
@@ -2222,46 +2248,15 @@ Contracts:
         </div>
       </section>
 
-      {% if not _whitelabel %}
-      <section class="ff-footerLead ff-mt-3" aria-label="FutureFunded platform lead capture">
-        <div class="ff-footerLead__copy">
-          <p class="ff-kicker ff-m-0">FutureFunded</p>
-          <h2 class="ff-footerLead__title ff-mt-1 ff-mb-0">
-            Launch a polished fundraising page for your organization.
-          </h2>
-          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-            Bring your logo, colors, fundraising goal, sponsor tiers, and one clear link for families, donors, and partners.
-          </p>
-          <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="list" aria-label="Platform highlights">
-            <span class="ff-pill ff-pill--soft" role="listitem">White-label ready</span>
-            <span class="ff-pill ff-pill--soft" role="listitem">Sponsor-ready</span>
-            <span class="ff-pill ff-pill--ghost" role="listitem">Fast onboarding</span>
-          </div>
-        </div>
+      <hr class="ff-divider ff-mt-2" aria-hidden="true" />
 
-        <div class="ff-footerLead__actions">
-          <a
-            class="ff-btn ff-btn--sm ff-btn--primary ff-btn--pill"
-            href="{{ _ff_create|e }}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Launch your page</a>
-          <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-            Built for teams, schools, nonprofits, and clubs.
-          </p>
-        </div>
-      </section>
-      {% endif %}
-
-      <hr class="ff-divider ff-mt-3" aria-hidden="true" />
-
-      <div class="ff-footerGridV2">
+      <div class="ff-footerGridV2 ff-footerGridV2--flagship">
         <section class="ff-footerBrandV2" aria-label="Organization information">
           <div class="ff-brand ff-footerBrandV2__head" role="group" aria-label="Organization">
             <img
               src="{{ _org_logo|e }}"
-              width="36"
-              height="36"
+              width="40"
+              height="40"
               loading="lazy"
               decoding="async"
               alt="{{ _org_name|e }} logo"
@@ -2272,23 +2267,28 @@ Contracts:
             </div>
           </div>
 
-          <p class="ff-help ff-muted ff-mt-3 ff-mb-0 ff-footerBrandV2__copy">
+          <p class="ff-help ff-muted ff-m-0 ff-footerBrandV2__copy">
             Support helps fund travel, tournaments, gym time, gear, and the practical essentials that keep the season moving.
           </p>
 
-          <div class="ff-row ff-wrap ff-gap-2 ff-mt-3" role="list" aria-label="Campaign trust highlights">
+          <div
+            class="ff-row ff-wrap ff-gap-2 ff-footerBrandV2__trust"
+            role="list"
+            aria-label="Campaign trust highlights"
+          >
             <span class="ff-pill ff-pill--soft" role="listitem">Fast checkout</span>
             <span class="ff-pill ff-pill--soft" role="listitem">Email receipt</span>
             <span class="ff-pill ff-pill--ghost" role="listitem">Sponsor-ready</span>
           </div>
 
-          <div class="ff-footerBrandV2__meta ff-mt-3">
+          <div class="ff-footerBrandV2__meta">
             <p class="ff-help ff-muted ff-m-0">
-              Questions? <a class="ff-footer__link ff-nowrap" href="mailto:{{ _email|e }}">{{ _email|e }}</a>
+              Questions?
+              <a class="ff-footer__link ff-nowrap" href="mailto:{{ _email|e }}">{{ _email|e }}</a>
             </p>
             {% if not _whitelabel %}
-            <p class="ff-help ff-muted ff-m-0" aria-label="Platform identity">
-              Powered by
+            <p class="ff-help ff-muted ff-mt-1 ff-mb-0" aria-label="Platform identity">
+              Built with
               <a
                 class="ff-footer__link"
                 href="{{ _ff_home|default('https://getfuturefunded.com', true)|e }}"
@@ -2329,21 +2329,7 @@ Contracts:
           </div>
         </nav>
 
-        <section class="ff-footerMetaV2" aria-label="Footer summary">
-          <div class="ff-footerMetaV2__card">
-            <p class="ff-footerMetaV2__eyebrow ff-m-0">Campaign</p>
-            <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-              One clear page for donations, sponsors, and community sharing.
-            </p>
-          </div>
-
-          <div class="ff-footerMetaV2__card">
-            <p class="ff-footerMetaV2__eyebrow ff-m-0">Trust</p>
-            <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-              Receipts by email, privacy-first handling, and clear next steps after support.
-            </p>
-          </div>
-
+        <section class="ff-footerMetaV2" aria-label="Footer contact and legal">
           <div class="ff-footerMetaV2__card">
             <p class="ff-footerMetaV2__eyebrow ff-m-0">Contact</p>
             <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
@@ -2352,7 +2338,7 @@ Contracts:
             </p>
           </div>
 
-          <p class="ff-help ff-muted ff-mt-3 ff-mb-0">© {{ _year }} {{ _org_name }}.</p>
+          <p class="ff-help ff-muted ff-mt-3 ff-mb-0 ff-footerMetaV2__legal">© {{ _year }} {{ _org_name }}.</p>
         </section>
       </div>
     </div>
@@ -2394,7 +2380,7 @@ Contracts:
   </div>
 </nav>
 
-    <section
+<section
   id="checkout"
   class="ff-sheet ff-sheet--checkout ff-sheet--flagship"
   data-ff-checkout-sheet=""
@@ -2873,7 +2859,7 @@ Contracts:
   </div>
 </section>
 
-    <section
+<section
   id="press-video"
   class="ff-modal ff-modal--video ff-modal--flagship"
   data-ff-video-modal=""
@@ -3141,7 +3127,7 @@ Contracts:
   </div>
 </section>
 
-    <section
+<section
   id="ff-onboarding"
   class="ff-modal ff-modal--compact ff-modal--flagship"
   data-ff-onboard-modal=""
