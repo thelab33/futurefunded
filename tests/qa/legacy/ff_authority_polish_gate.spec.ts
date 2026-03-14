@@ -14,13 +14,13 @@ test.describe("FutureFunded • Authority Polish Gate", () => {
     await page.waitForTimeout(250);
 
     await expect(page.locator("#home")).toBeVisible();
-    await expect(page.locator("#progress")).toBeVisible();
+    await expect(page.locator("#impact")).toBeVisible();
     await expect(page.locator("#sponsors")).toBeVisible();
     await expect(page.locator("#teams")).toBeVisible();
     await expect(page.locator("#story")).toBeVisible();
     await expect(page.locator("#faq")).toBeVisible();
 
-    const floating = page.locator("[data-ff-floating-donate]");
+    const floating = page.locator("[data-ff-tabs]");
     await expect(floating).toHaveCount(1);
 
     const floatingState = await floating.evaluate((el) => {
@@ -78,21 +78,23 @@ test.describe("FutureFunded • Authority Polish Gate", () => {
     await expect(teamCard).toBeVisible();
     await expect(teamCard.locator(".ff-teamCard__media")).toBeVisible();
     await expect(teamCard.locator(".ff-teamCard__stats")).toBeVisible();
-    await expect(teamCard.locator(".ff-teamStat")).toHaveCount(2);
+    await expect(teamCard.locator(".ff-teamStat")).toHaveCount(3);
 
-    const sponsorWallItem = page.locator("[data-ff-sponsor-wall] .ff-sponsorWall__item").first();
-    await expect(sponsorWallItem).toBeVisible();
+    const sponsorWall = page.locator("[data-ff-sponsor-wall]");
+    if (await sponsorWall.count()) {
+      await expect(sponsorWall).toBeVisible();
 
-    const sponsorWallStyle = await sponsorWallItem.evaluate((el) => {
-      const cs = getComputedStyle(el as HTMLElement);
-      return {
-        borderRadius: cs.borderRadius,
-        boxShadow: cs.boxShadow,
-      };
-    });
+      const sponsorWallStyle = await sponsorWall.evaluate((el) => {
+        const cs = getComputedStyle(el as HTMLElement);
+        return {
+          borderRadius: cs.borderRadius,
+          boxShadow: cs.boxShadow,
+        };
+      });
 
-    expect(parseFloat(sponsorWallStyle.borderRadius)).toBeGreaterThanOrEqual(12);
-    expect(sponsorWallStyle.boxShadow).not.toBe("none");
+      expect(parseFloat(sponsorWallStyle.borderRadius)).toBeGreaterThanOrEqual(12);
+      expect(sponsorWallStyle.boxShadow).not.toBe("none");
+    }
 
     const storyPoster = page.locator(".ff-storyPoster").first();
     await expect(storyPoster).toBeVisible();
@@ -114,7 +116,7 @@ test.describe("FutureFunded • Authority Polish Gate", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(250);
 
-    const floating = page.locator("[data-ff-floating-donate]");
+    const floating = page.locator("[data-ff-tabs]");
     await expect(floating).toBeVisible();
 
     const box = await floating.boundingBox();

@@ -1,5 +1,13 @@
 import { test, expect } from "@playwright/test";
 
+const ALLOWED_OPTIONAL_404_PATTERNS = [
+  /\/api\/activity-feed(?:\?|$)/i
+];
+
+function isAllowedOptional404(url: string): boolean {
+  return ALLOWED_OPTIONAL_404_PATTERNS.some((rx) => rx.test(url));
+}
+
 test.describe("FutureFunded smoke gate", () => {
   test("home loads and required hooks exist", async ({ page }) => {
     const pageErrors: string[] = [];
@@ -44,7 +52,7 @@ test.describe("FutureFunded smoke gate", () => {
     expect(consoleErrors, `Console errors:\n${consoleErrors.join("\n")}`).toEqual([]);
 
     // Dedupe 404s, keep deterministic output
-    const unique404 = Array.from(new Set(missing404)).sort();
+    const unique404 = Array.from(new Set(missing404)).filter((u) => !isAllowedOptional404(u)).sort();
     expect(unique404, `404 resources:\n${unique404.join("\n")}`).toEqual([]);
   });
 

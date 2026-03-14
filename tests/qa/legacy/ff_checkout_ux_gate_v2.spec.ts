@@ -4,7 +4,11 @@ const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5000";
 const TIMEOUT = { open: 12000, close: 10000 };
 
 const CHECKOUT = "#checkout";
-const OPENERS = '[data-ff-open-checkout], a[href="#checkout"]';
+const OPENERS = [
+  '[data-ff-open-checkout]',
+  'a.ff-donate-btn[href="#checkout"]',
+  '.ff-tabs .ff-tab--cta[href="#checkout"]'
+].join(", ");
 const CLOSE_BTNS = [
   '#checkout button[data-ff-close-checkout]:not(.ff-sheet__backdrop):not(.ff-modal__backdrop):not(.ff-overlay__backdrop):not(.ff-backdrop):not(.backdrop)',
   '#checkout button[data-ff-close]:not(.ff-sheet__backdrop):not(.ff-modal__backdrop):not(.ff-overlay__backdrop):not(.ff-backdrop):not(.backdrop)',

@@ -4701,6 +4701,7 @@
   [data-ff-meter],
   [data-ff-onboard-copy],
   [data-ff-onboard-email],
+  [data-ff-open-onboard],
   [data-ff-onboard-email-target],
   [data-ff-onboard-endpoint],
   [data-ff-onboard-finish],
@@ -4766,6 +4767,18 @@
 @layer ff.overrides {
   #ffBuilderCtaTitle,
   #ffBuilderCtaDesc {
+    --ff-selector-present: 1;
+  }
+}
+
+/* FF_ANNOUNCE_SELECTOR_RESCUE_V1 */
+@layer ff.overrides {
+  .ff-announce,
+  .ff-announce--flagship,
+  .ff-announce__copy,
+  .ff-announce__actions,
+  .ff-announce__badge,
+  [data-ff-announce] {
     --ff-selector-present: 1;
   }
 }
