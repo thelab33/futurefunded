@@ -4782,3 +4782,350 @@
     --ff-selector-present: 1;
   }
 }
+
+/* FF_BUILDER_CTA_PREFOOTER_RAIL_V1 */
+@layer ff.overrides {
+  .ff-builderCta {
+    padding-block: 0.85rem 0.35rem;
+  }
+
+  .ff-builderCta .ff-container {
+    width: min(100% - 1.25rem, 68rem);
+  }
+
+  .ff-builderCta__card {
+    position: relative;
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem 1.05rem;
+    border-radius: 1.1rem;
+    border: 1px solid rgba(249, 115, 22, 0.14);
+    background:
+      linear-gradient(180deg, rgba(249, 115, 22, 0.05), rgba(249, 115, 22, 0)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
+      var(--ff-panel);
+    box-shadow:
+      0 10px 26px rgba(15, 23, 42, 0.05),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+  }
+
+  @supports (overflow: clip) {
+    .ff-builderCta__card {
+      overflow: clip;
+    }
+  }
+
+  .ff-builderCta__card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: linear-gradient(90deg, var(--ff-brand), rgba(249, 115, 22, 0.18));
+    opacity: 0.95;
+    pointer-events: none;
+  }
+
+  .ff-builderCta__copy {
+    display: grid;
+    gap: 0.38rem;
+    min-width: 0;
+  }
+
+  .ff-builderCta__copy .ff-h3,
+  .ff-builderCta__copy #ffBuilderCtaTitle {
+    max-width: 24ch;
+    line-height: 1.08;
+  }
+
+  .ff-builderCta__copy #ffBuilderCtaDesc {
+    max-width: 62ch;
+  }
+
+  .ff-builderCta__copy .ff-row[role="list"] {
+    margin-top: 0.2rem;
+    gap: 0.45rem;
+  }
+
+  .ff-builderCta__copy .ff-pill {
+    min-height: 1.7rem;
+    padding: 0.3rem 0.62rem;
+    font-size: 0.72rem;
+  }
+
+  .ff-builderCta__actions {
+    display: grid;
+    gap: 0.5rem;
+    align-content: center;
+    min-width: 0;
+  }
+
+  .ff-builderCta__actions .ff-row[role="group"] {
+    gap: 0.5rem;
+  }
+
+  .ff-builderCta__actions .ff-btn {
+    min-height: 2.5rem;
+    padding-inline: 0.95rem;
+  }
+
+  .ff-builderCta__actions .ff-help {
+    max-width: 44ch;
+  }
+
+  .ff-builderCta + .ff-footer,
+  .ff-builderCta + footer {
+    margin-top: 0.9rem;
+  }
+
+  @media (min-width: 64rem) {
+    .ff-builderCta__card {
+      grid-template-columns: minmax(0, 1.3fr) auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.05rem 1.15rem;
+    }
+
+    .ff-builderCta__actions {
+      justify-items: start;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-builderCta {
+      padding-block: 0.7rem 0.25rem;
+    }
+
+    .ff-builderCta .ff-container {
+      width: min(100% - 1rem, 68rem);
+    }
+
+    .ff-builderCta__card {
+      padding: 0.9rem;
+      gap: 0.75rem;
+    }
+
+    .ff-builderCta__copy .ff-row[role="list"] {
+      gap: 0.4rem;
+    }
+
+    .ff-builderCta__actions .ff-row[role="group"] {
+      width: 100%;
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .ff-builderCta__actions .ff-btn {
+      width: 100%;
+    }
+  }
+}
+
+/* FF_CSS_PREMIUM_HARDEN_V2 */
+@layer ff.overrides {
+  .ff-builderCta {
+    padding-block: 0.5rem 0.1rem;
+  }
+
+  .ff-builderCta .ff-container {
+    width: min(100% - 1rem, 64rem);
+  }
+
+  .ff-builderCta__card {
+    gap: 0.78rem;
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    border-color: rgba(249, 115, 22, 0.16);
+    box-shadow:
+      0 10px 24px rgba(15, 23, 42, 0.06),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .ff-builderCta__copy .ff-h3,
+  .ff-builderCta__copy #ffBuilderCtaTitle {
+    max-width: 22ch;
+  }
+
+  .ff-builderCta__copy #ffBuilderCtaDesc {
+    max-width: 58ch;
+  }
+
+  .ff-builderCta__actions {
+    gap: 0.45rem;
+  }
+
+  .ff-builderCta__actions .ff-help {
+    max-width: 40ch;
+  }
+
+  .ff-builderCta + .ff-footer,
+  .ff-builderCta + footer {
+    margin-top: 0.72rem;
+  }
+
+  .ff-footer {
+    position: relative;
+    margin-top: clamp(0.95rem, 1.8vw, 1.5rem);
+    padding-top: clamp(0.35rem, 0.8vw, 0.7rem);
+  }
+
+  .ff-footer::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    width: min(100% - 1.25rem, 72rem);
+    height: 1px;
+    margin-inline: auto;
+    background: linear-gradient(90deg, transparent, var(--ff-border-strong), transparent);
+    opacity: 0.95;
+    pointer-events: none;
+  }
+
+  .ff-footer .ff-container {
+    width: min(100% - 1.25rem, 72rem);
+  }
+
+  .ff-footerTray--flagship {
+    gap: 0.8rem;
+    padding: 0.9rem;
+    border-radius: 1.2rem 1.2rem 1.05rem 1.05rem;
+    border-color: var(--ff-border-strong);
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(15, 23, 42, 0)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0)),
+      var(--ff-panel-solid);
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.08),
+      0 1px 2px rgba(15, 23, 42, 0.05);
+  }
+
+  html.ff-root[data-theme="dark"] .ff-footerTray--flagship {
+    background:
+      linear-gradient(180deg, rgba(148, 163, 184, 0.05), rgba(148, 163, 184, 0)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+      var(--ff-panel-solid);
+    box-shadow:
+      0 18px 42px rgba(0, 0, 0, 0.26),
+      0 1px 2px rgba(0, 0, 0, 0.20);
+  }
+
+  .ff-footerTop--flagship,
+  .ff-footerLead--flagship {
+    padding: 0.82rem 0;
+    border-inline: 0;
+    border-top: 0;
+    border-bottom: 1px solid var(--ff-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ff-footerTop--flagship {
+    gap: 0.7rem;
+  }
+
+  .ff-footerTop__copy {
+    gap: 0.3rem;
+  }
+
+  .ff-footerGridV2--flagship {
+    gap: 0.85rem;
+  }
+
+  .ff-footerBrandV2__copy {
+    max-width: 48ch;
+  }
+
+  .ff-footerNavV2__group {
+    padding-top: 0.1rem;
+  }
+
+  .ff-footerMetaV2__card {
+    padding: 0.8rem 0.9rem;
+  }
+
+  #ffTopbar .ff-topbarGoal {
+    padding: 0.72rem 0.8rem;
+  }
+
+  #ffTopbar .ff-topbarGoal__progressHead {
+    gap: 0.45rem;
+  }
+
+  .ff-sectionhead__actions .ff-btn,
+  .ff-teamCard__foot .ff-btn,
+  .ff-impactTier__footer .ff-btn,
+  .ff-builderCta__actions .ff-btn,
+  .ff-footerTop__actions .ff-btn {
+    text-wrap: balance;
+  }
+
+  @media (min-width: 48rem) and (max-width: 63.99rem) {
+    #ffTopbar .ff-topbarGoal__stack {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-builderCta {
+      padding-block: 0.45rem 0.05rem;
+    }
+
+    .ff-builderCta .ff-container,
+    .ff-footer .ff-container {
+      width: min(100% - 0.9rem, 72rem);
+    }
+
+    .ff-builderCta__card,
+    .ff-footerTray--flagship {
+      border-radius: 1rem;
+    }
+
+    .ff-builderCta__card {
+      padding: 0.88rem 0.9rem;
+      gap: 0.72rem;
+    }
+
+    .ff-footerTop--flagship,
+    .ff-footerLead--flagship {
+      padding: 0.75rem 0;
+    }
+
+    .ff-sectionhead__actions,
+    .ff-footerTop__actions,
+    .ff-teamCard__foot,
+    .ff-impactTier__footer,
+    .ff-builderCta__actions .ff-row[role="group"] {
+      display: grid;
+      gap: 0.55rem;
+      width: 100%;
+    }
+
+    .ff-sectionhead__actions .ff-btn,
+    .ff-footerTop__actions .ff-btn,
+    .ff-teamCard__foot .ff-btn,
+    .ff-impactTier__footer .ff-btn,
+    .ff-builderCta__actions .ff-btn {
+      width: 100%;
+      white-space: normal;
+    }
+
+    .ff-tabs {
+      padding-inline: 0.55rem;
+    }
+
+    .ff-tabs__scroller {
+      width: calc(100vw - 1.05rem);
+    }
+
+    .ff-tab {
+      min-height: 2.32rem;
+      padding-inline: 0.78rem;
+    }
+
+    .ff-backtotop {
+      right: max(0.55rem, calc(0.55rem + env(safe-area-inset-right, 0px)));
+    }
+  }
+}
