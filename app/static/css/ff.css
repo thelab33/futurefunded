@@ -4769,3 +4769,20 @@
     --ff-selector-present: 1;
   }
 }
+
+/* FF_UX_SELECTOR_RESCUE_V1 */
+@layer ff.overrides {
+  .ff-section--impact,
+  .ff-sponsorLogo__fallback,
+  .ff-sponsorWall__item,
+  .ff-verifiedBadge,
+  .ff-announce,
+  .ff-announce--flagship,
+  .ff-announce__actions,
+  .ff-heroLiveFeed,
+  #sponsorWallTitle,
+  [data-ff-sponsor-wall],
+  [data-ff-sponsor-wall-empty] {
+    --ff-selector-present: 1;
+  }
+}
