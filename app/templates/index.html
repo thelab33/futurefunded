@@ -367,15 +367,13 @@ Contracts:
   lang="en"
   dir="ltr"
   data-density="{{ density|default('compact', true)|string|trim|e }}"
-  data-ff-brand="{{ brand_key|default('futurefunded', true)|string|trim|e }}"
+  data-ff-brand-key="{{ brand_key|default('futurefunded', true)|string|trim|e }}"
   data-ff-build="{{ FF_BUILD_ID|e }}"
   data-ff-version="{{ FF_VERSION|e }}"
   data-theme="{{ theme|default('light', true)|string|trim|e }}"
   data-ff-theme="{{ ff_theme|default('core')|e }}"
   data-ff-brand="{{ ff_brand|default('connect-atx-elite')|e }}"
-  data-ff-theme="{{ ff_theme|default('core')|e }}"
-  data-ff-brand="{{ ff_brand|default('connect-atx-elite')|e }}"
- data-ff-theme="{{ ff_theme|default(\'core\')|e }}" data-ff-brand="{{ ff_brand|default(\'connect-atx-elite\')|e }}">
+>
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="x-ua-compatible" content="ie=edge" />
