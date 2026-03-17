@@ -970,7 +970,22 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     # FF_ACTIVITY_FEED_REGISTER_V1_END
 
 
+    # -- auto-register theme blueprint & context processor (idempotent, guarded)
+    try:
+        # Attempt to register team_api blueprint if available and not already registered.
+        from app.blueprints.team_api import bp as team_api_bp
+        if "team_api" not in [b.name for b in app.blueprints.values()]:
+            app.register_blueprint(team_api_bp)
+    except Exception:
+        # intentionally silent: if blueprint missing or import fails, app still starts.
+        pass
+
+    try:
+        # Register the inject_theme context processor if available.
+        from app.context_processors import inject_theme
+        app.context_processor(inject_theme)
+    except Exception:
+        pass
+
     return app
-
-
 __all__ = ["create_app"]
