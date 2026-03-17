@@ -934,3 +934,239 @@ iframe {
   }
 }
 /* FF_HERO_RAIL_PREMIUM_PASS_V1_END */
+
+/* ==========================================================================
+   FF_HERO_TOPBAR_CTA_DOMINANCE_V1
+   Premium topbar tightening + primary CTA emphasis
+   ========================================================================== */
+@layer ff.overrides {
+  .ff-chrome {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    padding-top: max(0.45rem, env(safe-area-inset-top, 0px));
+    backdrop-filter: saturate(1.08);
+    -webkit-backdrop-filter: saturate(1.08);
+  }
+
+  .ff-topbar {
+    padding-top: 0.15rem;
+  }
+
+  .ff-topbar__capsule--flagship {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.88));
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 12px 34px rgba(15, 23, 42, 0.07);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .ff-topbar__capsuleInner {
+    gap: 0.8rem;
+  }
+
+  .ff-topbar__mainRow {
+    min-height: 3.35rem;
+  }
+
+  .ff-topbarBrand--flagship img {
+    border-radius: 0.7rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .ff-topbarBrand__text {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .ff-topbarBrand__pill,
+  .ff-pill[aria-label="Live mode"],
+  .ff-pill[aria-label="Preview mode"] {
+    font-weight: 700;
+  }
+
+  .ff-nav--pill,
+  .ff-navPill.ff-nav--pill {
+    padding-inline: 0.25rem;
+    border: 1px solid rgba(15, 23, 42, 0.07);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .ff-nav__link {
+    min-height: 2.35rem;
+    padding-inline: 0.95rem;
+    font-weight: 650;
+    color: #243041;
+  }
+
+  .ff-nav__link:hover {
+    background: rgba(248, 250, 252, 0.96);
+  }
+
+  .ff-topbar__desktop-only .ff-donate-btn,
+  .ff-topbar__mobile-only .ff-donate-btn,
+  .ff-tabs .ff-donate-btn,
+  .ff-footerTop__actions .ff-donate-btn {
+    min-height: 2.7rem;
+    padding-inline: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    box-shadow:
+      0 10px 24px rgba(249, 115, 22, 0.20),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .ff-topbar__desktop-only .ff-donate-btn:hover,
+  .ff-topbar__mobile-only .ff-donate-btn:hover,
+  .ff-tabs .ff-donate-btn:hover,
+  .ff-footerTop__actions .ff-donate-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 14px 30px rgba(249, 115, 22, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .ff-iconbtn,
+  .ff-themeToggle {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .ff-topbarGoal {
+    padding: 0.85rem 0.95rem;
+    border: 1px solid rgba(15, 23, 42, 0.07);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.95));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.48),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .ff-topbarGoal__stack {
+    gap: 0.9rem;
+  }
+
+  .ff-topbarGoal__summary {
+    gap: 1rem;
+  }
+
+  .ff-topbarGoal__metric {
+    min-width: 7rem;
+  }
+
+  .ff-topbarGoal__label,
+  .ff-topbarGoal__progressLabel {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  .ff-topbarGoal__raised,
+  .ff-topbarGoal__goal,
+  .ff-topbarGoal__percent {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+  }
+
+  .ff-topbarGoal__progressHead {
+    margin-bottom: 0.35rem;
+  }
+
+  .ff-topbarGoal .ff-meter__progress {
+    height: 0.52rem;
+    border-radius: 999px;
+    background: #e8edf5;
+  }
+
+  .ff-topbarGoal .ff-meter__progress::-webkit-progress-bar {
+    border-radius: 999px;
+    background: #e8edf5;
+  }
+
+  .ff-topbarGoal .ff-meter__progress::-webkit-progress-value {
+    border-radius: 999px;
+    background: linear-gradient(90deg, #fb923c 0%, #f97316 58%, #ea580c 100%);
+  }
+
+  .ff-topbarGoal .ff-meter__progress::-moz-progress-bar {
+    border-radius: 999px;
+    background: linear-gradient(90deg, #fb923c 0%, #f97316 58%, #ea580c 100%);
+  }
+
+  .ff-topbar .ff-scroll {
+    opacity: 0.5;
+  }
+
+  .ff-topbar__rightCluster {
+    gap: 0.65rem;
+  }
+
+  .ff-topbar__desktop-only .ff-row,
+  .ff-topbar__mobile-only {
+    gap: 0.55rem;
+  }
+
+  .ff-platformBrand--mark {
+    opacity: 0.92;
+  }
+
+  .ff-platformBrand--mark:hover {
+    opacity: 1;
+  }
+
+  .ff-topbarBrand,
+  .ff-platformBrand,
+  .ff-nav__link,
+  .ff-btn,
+  .ff-iconbtn {
+    transition:
+      transform 180ms cubic-bezier(.2, .7, .2, 1),
+      box-shadow 180ms cubic-bezier(.2, .7, .2, 1),
+      background-color 180ms cubic-bezier(.2, .7, .2, 1),
+      border-color 180ms cubic-bezier(.2, .7, .2, 1),
+      color 180ms cubic-bezier(.2, .7, .2, 1);
+  }
+
+  @media (min-width: 64rem) {
+    .ff-topbarGoal__stack {
+      grid-template-columns: minmax(14rem, 0.52fr) minmax(0, 1fr);
+      align-items: center;
+      gap: 1.15rem;
+    }
+
+    .ff-topbarGoal__summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-chrome {
+      padding-top: max(0.25rem, env(safe-area-inset-top, 0px));
+    }
+
+    .ff-topbar__capsuleInner {
+      gap: 0.7rem;
+    }
+
+    .ff-topbar__mainRow {
+      min-height: 3rem;
+    }
+
+    .ff-topbarGoal {
+      padding: 0.8rem 0.85rem;
+    }
+
+    .ff-topbar__mobile-only .ff-donate-btn {
+      min-width: 5.9rem;
+    }
+  }
+}
+/* FF_HERO_TOPBAR_CTA_DOMINANCE_V1_END */
