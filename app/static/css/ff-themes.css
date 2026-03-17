@@ -1,0 +1,53 @@
+/* app/static/css/ff-themes.css
+   Theme presets for FutureFunded. Override tokens here.
+*/
+
+/* core = default/base */
+:root[data-ff-theme="core"] {
+  --ff-bg:  #ffffff;
+  --ff-surface: #ffffff;
+  --ff-foreground: #0b1220;
+  --ff-accent: #06b6d4;
+  --ff-accent-2: #0ea5a4;
+  --ff-glass: rgba(255,255,255,0.55);
+  --ff-muted: #6b7280;
+  --ff-success: #16a34a;
+  --ff-danger: #ef4444;
+  --ff-card-shadow: 0 6px 18px rgba(11,18,32,0.08);
+}
+
+/* signal-glass */
+:root[data-ff-theme="signal-glass"] {
+  --ff-bg: linear-gradient(180deg,#f6fbff 0%, #ffffff 100%);
+  --ff-surface: rgba(255,255,255,0.72);
+  --ff-foreground: #051025;
+  --ff-accent: #0ea5ff;
+  --ff-accent-2: #6366f1;
+  --ff-glass: rgba(14,165,255,0.08);
+  --ff-muted: #475569;
+  --ff-card-shadow: 0 14px 40px rgba(8,18,40,0.06);
+}
+
+/* school-spirit */
+:root[data-ff-theme="school-spirit"] {
+  --ff-bg: #fffaf0;
+  --ff-surface: #fff7ed;
+  --ff-foreground: #1f1147;
+  --ff-accent: #f59e0b;
+  --ff-accent-2: #7c3aed;
+  --ff-glass: rgba(124,58,237,0.06);
+  --ff-muted: #6b5b7b;
+  --ff-card-shadow: 0 10px 34px rgba(31,17,71,0.06);
+}
+
+/* small utilities */
+:root[data-ff-theme] .ff-btn--primary {
+  background: linear-gradient(90deg, var(--ff-accent), var(--ff-accent-2));
+  color: white;
+  box-shadow: var(--ff-card-shadow);
+}
+:root[data-ff-theme] .ff-glass {
+  background: var(--ff-surface);
+  backdrop-filter: blur(8px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.06);
+}
