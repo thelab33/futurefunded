@@ -101,7 +101,6 @@
     --ff-tabbar-h: 4.5rem;
     --ff-ease: 180ms cubic-bezier(.2, .7, .2, 1);
 
-    /* premium foundation tokens */
     --ff-safe-top: env(safe-area-inset-top, 0px);
     --ff-safe-bottom: env(safe-area-inset-bottom, 0px);
     --ff-safe-left: env(safe-area-inset-left, 0px);
@@ -165,11 +164,63 @@
   }
 }
 
-
 /* ==========================================================================
    FF_THEME_SKINS_V1
    Token-only theme and brand packs
    ========================================================================== */
+
+/* FF_THEME_PRESET_COMPAT_V1_START */
+@layer ff.tokens {
+  html.ff-root[data-ff-theme="core"] {
+    --ff-brand: #f97316;
+    --ff-brand-strong: #ea580c;
+    --ff-brand-soft: rgba(249, 115, 22, 0.12);
+    --ff-accent: #0f766e;
+    --ff-accent-soft: rgba(15, 118, 110, 0.12);
+  }
+
+  html.ff-root[data-ff-theme="signal-glass"] {
+    --ff-brand: #7c3aed;
+    --ff-brand-strong: #6d28d9;
+    --ff-brand-soft: rgba(124, 58, 237, 0.16);
+    --ff-accent: #0891b2;
+    --ff-accent-soft: rgba(8, 145, 178, 0.16);
+  }
+
+  html.ff-root[data-ff-theme="school-spirit"] {
+    --ff-brand: #dc2626;
+    --ff-brand-strong: #b91c1c;
+    --ff-brand-soft: rgba(220, 38, 38, 0.14);
+    --ff-accent: #ca8a04;
+    --ff-accent-soft: rgba(202, 138, 4, 0.14);
+  }
+
+  html.ff-root[data-ff-brand="connect-atx-elite"] {
+    --ff-brand: #f97316;
+    --ff-brand-strong: #ea580c;
+    --ff-brand-soft: rgba(249, 115, 22, 0.12);
+    --ff-accent: #0f766e;
+    --ff-accent-soft: rgba(15, 118, 110, 0.12);
+  }
+
+  html.ff-root[data-ff-brand="school-blue-gold"] {
+    --ff-brand: #1d4ed8;
+    --ff-brand-strong: #1e40af;
+    --ff-brand-soft: rgba(29, 78, 216, 0.14);
+    --ff-accent: #ca8a04;
+    --ff-accent-soft: rgba(202, 138, 4, 0.14);
+  }
+
+  html.ff-root[data-ff-brand="crimson-pride"] {
+    --ff-brand: #b91c1c;
+    --ff-brand-strong: #991b1b;
+    --ff-brand-soft: rgba(185, 28, 28, 0.14);
+    --ff-accent: #111827;
+    --ff-accent-soft: rgba(17, 24, 39, 0.12);
+  }
+}
+/* FF_THEME_PRESET_COMPAT_V1_END */
+
 @layer ff.tokens {
   html.ff-root[data-ff-theme="core"] {
     --ff-brand: #f97316;
@@ -4893,3 +4944,75 @@
     --ff-selector-present: 1;
   }
 }
+
+
+/* FF_THEME_PRESETS_START */
+@layer ff.tokens {
+  html.ff-root[data-ff-theme="core"] {
+    --ff-brand: #f97316;
+    --ff-brand-strong: #ea580c;
+    --ff-brand-soft: rgba(249, 115, 22, 0.12);
+    --ff-accent: #0f766e;
+    --ff-accent-soft: rgba(15, 118, 110, 0.12);
+    --ff-blue: #0ea5e9;
+    --ff-blue-soft: rgba(14, 165, 233, 0.12);
+    --ff-panel: rgba(255, 255, 255, 0.82);
+    --ff-panel-strong: rgba(255, 255, 255, 0.94);
+    --ff-border: rgba(15, 23, 42, 0.10);
+    --ff-border-strong: rgba(15, 23, 42, 0.16);
+  }
+
+  html.ff-root[data-ff-theme="signal-glass"] {
+    --ff-brand: #7c3aed;
+    --ff-brand-strong: #6d28d9;
+    --ff-brand-soft: rgba(124, 58, 237, 0.16);
+    --ff-accent: #0891b2;
+    --ff-accent-soft: rgba(8, 145, 178, 0.16);
+    --ff-blue: #38bdf8;
+    --ff-blue-soft: rgba(56, 189, 248, 0.16);
+    --ff-panel: rgba(255, 255, 255, 0.68);
+    --ff-panel-strong: rgba(255, 255, 255, 0.82);
+    --ff-border: rgba(15, 23, 42, 0.12);
+    --ff-border-strong: rgba(15, 23, 42, 0.20);
+  }
+
+  html.ff-root[data-ff-theme="school-spirit"] {
+    --ff-brand: #dc2626;
+    --ff-brand-strong: #b91c1c;
+    --ff-brand-soft: rgba(220, 38, 38, 0.14);
+    --ff-accent: #ca8a04;
+    --ff-accent-soft: rgba(202, 138, 4, 0.14);
+    --ff-blue: #2563eb;
+    --ff-blue-soft: rgba(37, 99, 235, 0.12);
+    --ff-panel: rgba(255, 255, 255, 0.84);
+    --ff-panel-strong: rgba(255, 255, 255, 0.96);
+    --ff-border: rgba(15, 23, 42, 0.10);
+    --ff-border-strong: rgba(15, 23, 42, 0.17);
+  }
+
+  html.ff-root[data-ff-brand="connect-atx-elite"] {
+    --ff-brand: #f97316;
+    --ff-brand-strong: #ea580c;
+    --ff-brand-soft: rgba(249, 115, 22, 0.12);
+    --ff-accent: #0f766e;
+    --ff-accent-soft: rgba(15, 118, 110, 0.12);
+  }
+
+  html.ff-root[data-ff-brand="school-blue-gold"] {
+    --ff-brand: #1d4ed8;
+    --ff-brand-strong: #1e40af;
+    --ff-brand-soft: rgba(29, 78, 216, 0.14);
+    --ff-accent: #ca8a04;
+    --ff-accent-soft: rgba(202, 138, 4, 0.14);
+  }
+
+  html.ff-root[data-ff-brand="crimson-pride"] {
+    --ff-brand: #b91c1c;
+    --ff-brand-strong: #991b1b;
+    --ff-brand-soft: rgba(185, 28, 28, 0.14);
+    --ff-accent: #111827;
+    --ff-accent-soft: rgba(17, 24, 39, 0.12);
+  }
+}
+/* FF_THEME_PRESETS_END */
+
