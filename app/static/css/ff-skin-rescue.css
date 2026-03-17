@@ -860,3 +860,77 @@ iframe {
   }
 }
 /* FF_THEME_COLLISION_KILL_V1_END */
+
+/* ==========================================================================
+   FF_HERO_RAIL_PREMIUM_PASS_V1
+   Tightens hero rail spacing, CTA hierarchy, and new proof-card polish
+   ========================================================================== */
+@layer ff.overrides {
+  .ff-heroPanel .ff-callout--flagship {
+    padding: clamp(0.95rem, 0.85rem + 0.5vw, 1.15rem);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.96));
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 12px 28px rgba(15, 23, 42, 0.06);
+  }
+
+  .ff-heroPanel .ff-callout--flagship .ff-h3 {
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+  }
+
+  .ff-heroPanel .ff-callout--flagship .ff-pill--accent {
+    box-shadow:
+      0 8px 18px rgba(249, 115, 22, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .ff-heroPanel .ff-callout--flagship .ff-proofMini {
+    background: #fbfcfe;
+    border: 1px solid rgba(15, 23, 42, 0.07);
+    border-radius: 1rem;
+    padding: 0.85rem;
+  }
+
+  .ff-heroPanel .ff-liveFeed,
+  .ff-heroPanel .ff-callout--flagship,
+  .ff-heroPanelQr {
+    margin-top: 0.9rem;
+  }
+
+  .ff-heroPanel .ff-btn.ff-w-100,
+  .ff-heroPanel .ff-donate-btn.ff-w-100 {
+    min-height: 3rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .ff-heroPanel .ff-row[aria-label="Checkout trust points"] {
+    row-gap: 0.5rem;
+    column-gap: 0.5rem;
+  }
+
+  .ff-heroPanel .ff-help.ff-muted.ff-m-0,
+  .ff-heroPanel .ff-help.ff-muted.ff-mt-2.ff-mb-0 {
+    max-width: 42ch;
+  }
+
+  .ff-heroPanel .ff-callout--flagship .ff-btn--secondary,
+  .ff-heroPanel .ff-callout--flagship .ff-btn--ghost {
+    min-height: 2.6rem;
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-heroPanel .ff-callout--flagship .ff-h3 {
+      max-width: none;
+    }
+
+    .ff-heroPanel .ff-callout--flagship .ff-proofMini {
+      padding: 0.8rem;
+    }
+  }
+}
+/* FF_HERO_RAIL_PREMIUM_PASS_V1_END */
