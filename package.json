@@ -52,7 +52,7 @@
     "qa:fast": "run-s audit:contracts audit:lint pw:contracts",
     "qa:core": "run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:platform": "run-s audit:contracts audit:lint audit:css pw:mini",
-    "qa:full": "run-s audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
+    "qa:full": "run-s audit:contracts audit:lint audit:css qa:themes pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
     "qa:full:typed": "run-s typecheck audit:contracts audit:lint audit:css pw:smoke pw:contracts pw:flows pw:integration pw:ux pw:assets",
     "qa:release:local": "cross-env PLAYWRIGHT_BASE_URL=http://127.0.0.1:5000 run-s audit:contracts audit:lint audit:css pw:mini",
     "qa:release:site": "cross-env PLAYWRIGHT_BASE_URL=https://getfuturefunded.com run-s audit:contracts audit:lint audit:css pw:mini",
@@ -70,7 +70,8 @@
     "qa:tree": "find tests/qa -maxdepth 2 -type f | sort",
     "qa:which": "node -e \"console.log(['QA ladder:','  qa:fast                -> fastest DOM + mini Playwright sanity','  qa:core                -> contracts + lint + css audit + mini Playwright','  qa:full                -> full local regression pack','  qa:full:typed          -> full regression + TypeScript noEmit check','  qa:release:local       -> release sanity against local app','  qa:release:site        -> release sanity against public site','  qa:launch:local        -> local launch readiness bundle','  qa:launch:site         -> public launch readiness bundle','  qa:release:candidate   -> strongest release-candidate gate','  qa:ship                -> deploy sanity + core audits','  qa:ship:full           -> deploy sanity + full suite','  pw:launch:live-payment -> opt-in live payment preflight (env-gated)'].join('\\n'))\"",
     "qa:browser": "run-s pw:smoke pw:flows pw:integration pw:ux",
-    "repo:map": "bash scripts/ff_repo_map.sh"
+    "repo:map": "bash scripts/ff_repo_map.sh",
+    "qa:themes": "python tools/check_theme_tokens.py"
   },
   "lint-staged": {
     "app/static/css/**/*": [
