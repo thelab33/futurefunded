@@ -1,10 +1,7 @@
-@app.context_processor
-def inject_branding():
-    team = get_current_team()  # however you load your team
-    _logo = team.logo if team and team.logo else "images/logo.webp"
-    logoSrc = (
-        _logo
-        if _logo.startswith("http")
-        else url_for("static", filename=_logo.lstrip("/"))
-    )
-    return dict(global_logo=logoSrc)
+# app/context_processors.py
+from flask import g, current_app, session
+
+def inject_theme():
+    theme = getattr(g, "theme", None) or session.get("ff_theme") or current_app.config.get("FF_DEFAULT_THEME", "core")
+    brand = getattr(g, "brand", None) or session.get("ff_brand") or ""
+    return dict(ff_theme=theme, ff_brand=brand)
