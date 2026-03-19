@@ -11,9 +11,9 @@
 .ff-root,
 :root {
   --ff-bg: #f4f7fb;
-  --ff-bg-elevated: #ffffff;
+  --ff-bg-elevated: #fff;
   --ff-surface: rgba(255, 255, 255, 0.92);
-  --ff-surface-strong: #ffffff;
+  --ff-surface-strong: #fff;
   --ff-surface-muted: #f8fafc;
 
   --ff-text: #0f172a;
@@ -578,7 +578,7 @@ iframe {
     --ff-bg-elev: #fbfdff;
     --ff-panel: rgba(255, 255, 255, 0.94);
     --ff-panel-strong: rgba(255, 255, 255, 0.985);
-    --ff-surface: #ffffff;
+    --ff-surface: #fff;
     --ff-surface-2: #f8fafc;
     --ff-text: #0f172a;
     --ff-text-2: #334155;
@@ -611,7 +611,7 @@ iframe {
     --ff-bg-elev: #fbfdff;
     --ff-panel: rgba(255, 255, 255, 0.94);
     --ff-panel-strong: rgba(255, 255, 255, 0.985);
-    --ff-surface: #ffffff;
+    --ff-surface: #fff;
     --ff-surface-2: #f8fafc;
     --ff-text: #0f172a;
     --ff-text-2: #334155;
@@ -909,8 +909,7 @@ iframe {
   }
 
   .ff-heroPanel .ff-row[aria-label="Checkout trust points"] {
-    row-gap: 0.5rem;
-    column-gap: 0.5rem;
+    gap: 0.5rem 0.5rem;
   }
 
   .ff-heroPanel .ff-help.ff-muted.ff-m-0,
@@ -1195,8 +1194,7 @@ iframe {
   }
 
   .ff-heroMeta {
-    row-gap: 0.45rem;
-    column-gap: 0.45rem;
+    gap: 0.45rem 0.45rem;
     margin-bottom: 0.05rem;
   }
 
@@ -1350,8 +1348,7 @@ iframe {
     .ff-heroCtas--flagship {
       grid-template-columns: auto 1fr;
       align-items: center;
-      column-gap: 0.75rem;
-      row-gap: 0.75rem;
+      gap: 0.75rem 0.75rem;
     }
 
     .ff-heroCtas--flagship > .ff-donate-btn {
@@ -1385,3 +1382,296 @@ iframe {
   }
 }
 /* FF_HERO_LEFT_COLUMN_RHYTHM_V1_END */
+
+/* ==========================================================================
+   FutureFunded — Hook-only text restore
+   SHIPSAFE_HOOK_TEXT_RESTORE_V1
+   - restores topbar KPI text
+   - restores donate preset chip text
+   - no layout changes
+   ========================================================================== */
+
+.ff-topbarGoal [data-ff-raised],
+.ff-topbarGoal [data-ff-goal],
+.ff-topbarGoal [data-ff-percent],
+.ff-topbarGoal__raised,
+.ff-topbarGoal__goal,
+.ff-topbarGoal__percent,
+.ff-topbarGoal .ff-num {
+  color: rgb(15 23 42 / 0.96) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.96) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  text-shadow: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.ff-topbarGoal__label,
+.ff-topbarGoal__progressLabel {
+  color: rgb(15 23 42 / 0.56) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.56) !important;
+  opacity: 1 !important;
+}
+
+.ff-heroPanel [data-ff-amount],
+.ff-heroPanel [data-ff-amount] .ff-chip__amt,
+.ff-heroPanel [data-ff-amount] .ff-chip__meta,
+.ff-heroPanel [data-ff-amount] span {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  text-shadow: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.ff-heroPanel [data-ff-amount],
+.ff-heroPanel [data-ff-amount] .ff-chip__amt {
+  color: rgb(15 23 42 / 0.96) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.96) !important;
+}
+
+.ff-heroPanel [data-ff-amount] .ff-chip__meta,
+.ff-heroPanel .ff-help,
+.ff-heroLiveFeed .ff-liveFeed__text,
+.ff-heroPanelQr__copy .ff-help {
+  color: rgb(15 23 42 / 0.66) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.66) !important;
+}
+
+.ff-heroLiveFeed .ff-liveFeed__name,
+.ff-heroPanelQr__title {
+  color: rgb(15 23 42 / 0.92) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.92) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ff-topbarGoal [data-ff-raised],
+  .ff-topbarGoal [data-ff-goal],
+  .ff-topbarGoal [data-ff-percent],
+  .ff-topbarGoal__raised,
+  .ff-topbarGoal__goal,
+  .ff-topbarGoal__percent,
+  .ff-topbarGoal .ff-num,
+  .ff-heroPanel [data-ff-amount],
+  .ff-heroPanel [data-ff-amount] .ff-chip__amt,
+  .ff-heroLiveFeed .ff-liveFeed__name,
+  .ff-heroPanelQr__title {
+    color: rgb(255 255 255 / 0.94) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.94) !important;
+  }
+
+  .ff-topbarGoal__label,
+  .ff-topbarGoal__progressLabel,
+  .ff-heroPanel [data-ff-amount] .ff-chip__meta,
+  .ff-heroPanel .ff-help,
+  .ff-heroLiveFeed .ff-liveFeed__text,
+  .ff-heroPanelQr__copy .ff-help {
+    color: rgb(255 255 255 / 0.68) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.68) !important;
+  }
+}
+
+/* ==========================================================================
+   FutureFunded — Hook-only text restore
+   SHIPSAFE_HOOK_TEXT_RESTORE_V1
+   - restores topbar KPI text
+   - restores donate preset chip text
+   - no layout changes
+   ========================================================================== */
+
+.ff-topbarGoal [data-ff-raised],
+.ff-topbarGoal [data-ff-goal],
+.ff-topbarGoal [data-ff-percent],
+.ff-topbarGoal__raised,
+.ff-topbarGoal__goal,
+.ff-topbarGoal__percent,
+.ff-topbarGoal .ff-num {
+  color: rgb(15 23 42 / 0.96) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.96) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  text-shadow: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.ff-topbarGoal__label,
+.ff-topbarGoal__progressLabel {
+  color: rgb(15 23 42 / 0.56) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.56) !important;
+  opacity: 1 !important;
+}
+
+.ff-heroPanel [data-ff-amount],
+.ff-heroPanel [data-ff-amount] .ff-chip__amt,
+.ff-heroPanel [data-ff-amount] .ff-chip__meta,
+.ff-heroPanel [data-ff-amount] span {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  text-shadow: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.ff-heroPanel [data-ff-amount],
+.ff-heroPanel [data-ff-amount] .ff-chip__amt {
+  color: rgb(15 23 42 / 0.96) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.96) !important;
+}
+
+.ff-heroPanel [data-ff-amount] .ff-chip__meta,
+.ff-heroPanel .ff-help,
+.ff-heroLiveFeed .ff-liveFeed__text,
+.ff-heroPanelQr__copy .ff-help {
+  color: rgb(15 23 42 / 0.66) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.66) !important;
+}
+
+.ff-heroLiveFeed .ff-liveFeed__name,
+.ff-heroPanelQr__title {
+  color: rgb(15 23 42 / 0.92) !important;
+  -webkit-text-fill-color: rgb(15 23 42 / 0.92) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ff-topbarGoal [data-ff-raised],
+  .ff-topbarGoal [data-ff-goal],
+  .ff-topbarGoal [data-ff-percent],
+  .ff-topbarGoal__raised,
+  .ff-topbarGoal__goal,
+  .ff-topbarGoal__percent,
+  .ff-topbarGoal .ff-num,
+  .ff-heroPanel [data-ff-amount],
+  .ff-heroPanel [data-ff-amount] .ff-chip__amt,
+  .ff-heroLiveFeed .ff-liveFeed__name,
+  .ff-heroPanelQr__title {
+    color: rgb(255 255 255 / 0.94) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.94) !important;
+  }
+
+  .ff-topbarGoal__label,
+  .ff-topbarGoal__progressLabel,
+  .ff-heroPanel [data-ff-amount] .ff-chip__meta,
+  .ff-heroPanel .ff-help,
+  .ff-heroLiveFeed .ff-liveFeed__text,
+  .ff-heroPanelQr__copy .ff-help {
+    color: rgb(255 255 255 / 0.68) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.68) !important;
+  }
+}
+
+/* ==========================================================================
+   FutureFunded — Canonical theme-safe visibility rescue
+   FF_CANONICAL_THEME_SAFE_VISIBILITY_V1
+   - final authority for topbar KPI visibility
+   - final authority for donate rail chip text visibility
+   - uses explicit app theme, not OS preference
+   ========================================================================== */
+
+@layer ff.pages {
+  html.ff-root[data-theme="light"] .ff-topbarGoal,
+  html.ff-root[data-theme="light"] #ffTopbar .ff-topbarGoal {
+    background: rgb(255 255 255 / 0.92) !important;
+    border-color: rgb(15 23 42 / 0.08) !important;
+    color: rgb(15 23 42 / 0.96) !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal [data-ff-raised],
+  html.ff-root[data-theme="light"] .ff-topbarGoal [data-ff-goal],
+  html.ff-root[data-theme="light"] .ff-topbarGoal [data-ff-percent],
+  html.ff-root[data-theme="light"] .ff-topbarGoal__raised,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__goal,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__percent,
+  html.ff-root[data-theme="light"] .ff-topbarGoal .ff-num,
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-raised],
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-goal],
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-percent],
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount],
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__amt,
+  html.ff-root[data-theme="light"] .ff-liveFeed__name,
+  html.ff-root[data-theme="light"] .ff-heroPanelQr__title {
+    color: rgb(15 23 42 / 0.96) !important;
+    -webkit-text-fill-color: rgb(15 23 42 / 0.96) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: none !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal__label,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__progressLabel,
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__meta,
+  html.ff-root[data-theme="light"] .ff-heroPanel .ff-help,
+  html.ff-root[data-theme="light"] .ff-liveFeed__text,
+  html.ff-root[data-theme="light"] .ff-heroPanelQr__copy .ff-help {
+    color: rgb(15 23 42 / 0.64) !important;
+    -webkit-text-fill-color: rgb(15 23 42 / 0.64) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal__raised,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__goal,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__percent,
+  html.ff-root[data-theme="light"] .ff-topbarGoal .ff-num,
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__amt {
+    font-size: clamp(0.95rem, 0.88rem + 0.2vw, 1.02rem) !important;
+    line-height: 1.1 !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal__label,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__progressLabel,
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__meta {
+    font-size: 0.72rem !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+  }
+
+  html.ff-root[data-theme="dark"] .ff-topbarGoal,
+  html.ff-root[data-theme="dark"] #ffTopbar .ff-topbarGoal {
+    background: rgb(255 255 255 / 0.04) !important;
+    border-color: rgb(255 255 255 / 0.08) !important;
+    color: rgb(255 255 255 / 0.94) !important;
+  }
+
+  html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-raised],
+  html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-goal],
+  html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-percent],
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__raised,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__goal,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__percent,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal .ff-num,
+  html.ff-root[data-theme="dark"] .ff-proofMini [data-ff-raised],
+  html.ff-root[data-theme="dark"] .ff-proofMini [data-ff-goal],
+  html.ff-root[data-theme="dark"] .ff-proofMini [data-ff-percent],
+  html.ff-root[data-theme="dark"] .ff-heroPanel [data-ff-amount],
+  html.ff-root[data-theme="dark"] .ff-heroPanel [data-ff-amount] .ff-chip__amt,
+  html.ff-root[data-theme="dark"] .ff-liveFeed__name,
+  html.ff-root[data-theme="dark"] .ff-heroPanelQr__title {
+    color: rgb(255 255 255 / 0.94) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.94) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: none !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__label,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__progressLabel,
+  html.ff-root[data-theme="dark"] .ff-heroPanel [data-ff-amount] .ff-chip__meta,
+  html.ff-root[data-theme="dark"] .ff-heroPanel .ff-help,
+  html.ff-root[data-theme="dark"] .ff-liveFeed__text,
+  html.ff-root[data-theme="dark"] .ff-heroPanelQr__copy .ff-help {
+    color: rgb(255 255 255 / 0.68) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.68) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}

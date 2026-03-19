@@ -18,8 +18,7 @@
      overflow hardening, scrollbar stability, long-page render optimization
    ========================================================================== */
 
-@layer ff.tokens, ff.base, ff.type, ff.layout, ff.surfaces, ff.controls, ff.components, ff.overlays, ff.states, ff.utilities, ff.overrides;
-
+@layer ff.tokens, ff.base, ff.type, ff.layout, ff.surfaces, ff.controls, ff.components, ff.overlays, ff.states, ff.utilities, ff.overrides, ff.pages;
 /* ==========================================================================
    LAYER FF TOKENS
    ========================================================================== */
@@ -169,58 +168,6 @@
    Token-only theme and brand packs
    ========================================================================== */
 
-/* FF_THEME_PRESET_COMPAT_V1_START */
-@layer ff.tokens {
-  html.ff-root[data-ff-theme="core"] {
-    --ff-brand: #f97316;
-    --ff-brand-strong: #ea580c;
-    --ff-brand-soft: rgba(249, 115, 22, 0.12);
-    --ff-accent: #0f766e;
-    --ff-accent-soft: rgba(15, 118, 110, 0.12);
-  }
-
-  html.ff-root[data-ff-theme="signal-glass"] {
-    --ff-brand: #7c3aed;
-    --ff-brand-strong: #6d28d9;
-    --ff-brand-soft: rgba(124, 58, 237, 0.16);
-    --ff-accent: #0891b2;
-    --ff-accent-soft: rgba(8, 145, 178, 0.16);
-  }
-
-  html.ff-root[data-ff-theme="school-spirit"] {
-    --ff-brand: #dc2626;
-    --ff-brand-strong: #b91c1c;
-    --ff-brand-soft: rgba(220, 38, 38, 0.14);
-    --ff-accent: #ca8a04;
-    --ff-accent-soft: rgba(202, 138, 4, 0.14);
-  }
-
-  html.ff-root[data-ff-brand="connect-atx-elite"] {
-    --ff-brand: #f97316;
-    --ff-brand-strong: #ea580c;
-    --ff-brand-soft: rgba(249, 115, 22, 0.12);
-    --ff-accent: #0f766e;
-    --ff-accent-soft: rgba(15, 118, 110, 0.12);
-  }
-
-  html.ff-root[data-ff-brand="school-blue-gold"] {
-    --ff-brand: #1d4ed8;
-    --ff-brand-strong: #1e40af;
-    --ff-brand-soft: rgba(29, 78, 216, 0.14);
-    --ff-accent: #ca8a04;
-    --ff-accent-soft: rgba(202, 138, 4, 0.14);
-  }
-
-  html.ff-root[data-ff-brand="crimson-pride"] {
-    --ff-brand: #b91c1c;
-    --ff-brand-strong: #991b1b;
-    --ff-brand-soft: rgba(185, 28, 28, 0.14);
-    --ff-accent: #111827;
-    --ff-accent-soft: rgba(17, 24, 39, 0.12);
-  }
-}
-/* FF_THEME_PRESET_COMPAT_V1_END */
-
 @layer ff.tokens {
   html.ff-root[data-ff-theme="core"] {
     --ff-brand: #f97316;
@@ -318,7 +265,6 @@
     --ff-accent-soft: rgba(17, 24, 39, 0.12);
   }
 }
-
 
 /* ==========================================================================
    LAYER FF BASE
@@ -4945,74 +4891,751 @@
   }
 }
 
+/* ==========================================================================
+   FutureFunded — Premium hierarchy pass
+   SHIPSAFE_HIERARCHY_PASS_V2
+   - strengthens topbar/readability
+   - balances hero rail density
+   - improves section rhythm
+   - calms team cards
+   - upgrades footer clarity
+   ========================================================================== */
 
-/* FF_THEME_PRESETS_START */
-@layer ff.tokens {
-  html.ff-root[data-ff-theme="core"] {
-    --ff-brand: #f97316;
-    --ff-brand-strong: #ea580c;
-    --ff-brand-soft: rgba(249, 115, 22, 0.12);
-    --ff-accent: #0f766e;
-    --ff-accent-soft: rgba(15, 118, 110, 0.12);
-    --ff-blue: #0ea5e9;
-    --ff-blue-soft: rgba(14, 165, 233, 0.12);
-    --ff-panel: rgba(255, 255, 255, 0.82);
-    --ff-panel-strong: rgba(255, 255, 255, 0.94);
-    --ff-border: rgba(15, 23, 42, 0.10);
-    --ff-border-strong: rgba(15, 23, 42, 0.16);
+@layer ff.pages {
+  .ff-topbar__capsule--flagship,
+  .ff-hero__capsule,
+  .ff-heroPanel .ff-card,
+  .ff-impactCard--premium,
+  .ff-teamsShell,
+  .ff-storyCard,
+  .ff-footerTray--flagship {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.5) inset,
+      0 10px 30px rgb(15 23 42 / 0.06);
   }
 
-  html.ff-root[data-ff-theme="signal-glass"] {
-    --ff-brand: #7c3aed;
-    --ff-brand-strong: #6d28d9;
-    --ff-brand-soft: rgba(124, 58, 237, 0.16);
-    --ff-accent: #0891b2;
-    --ff-accent-soft: rgba(8, 145, 178, 0.16);
-    --ff-blue: #38bdf8;
-    --ff-blue-soft: rgba(56, 189, 248, 0.16);
-    --ff-panel: rgba(255, 255, 255, 0.68);
-    --ff-panel-strong: rgba(255, 255, 255, 0.82);
-    --ff-border: rgba(15, 23, 42, 0.12);
-    --ff-border-strong: rgba(15, 23, 42, 0.20);
+  .ff-topbarGoal {
+    border: 1px solid rgb(15 23 42 / 0.08);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.88), rgb(255 255 255 / 0.82));
   }
 
-  html.ff-root[data-ff-theme="school-spirit"] {
-    --ff-brand: #dc2626;
-    --ff-brand-strong: #b91c1c;
-    --ff-brand-soft: rgba(220, 38, 38, 0.14);
-    --ff-accent: #ca8a04;
-    --ff-accent-soft: rgba(202, 138, 4, 0.14);
-    --ff-blue: #2563eb;
-    --ff-blue-soft: rgba(37, 99, 235, 0.12);
-    --ff-panel: rgba(255, 255, 255, 0.84);
-    --ff-panel-strong: rgba(255, 255, 255, 0.96);
-    --ff-border: rgba(15, 23, 42, 0.10);
-    --ff-border-strong: rgba(15, 23, 42, 0.17);
+  .ff-topbarGoal__label,
+  .ff-topbarGoal__progressLabel,
+  .ff-teamStat__label,
+  .ff-kicker,
+  .ff-footerNavV2__title,
+  .ff-footerMetaV2__eyebrow {
+    letter-spacing: 0.08em;
   }
 
-  html.ff-root[data-ff-brand="connect-atx-elite"] {
-    --ff-brand: #f97316;
-    --ff-brand-strong: #ea580c;
-    --ff-brand-soft: rgba(249, 115, 22, 0.12);
-    --ff-accent: #0f766e;
-    --ff-accent-soft: rgba(15, 118, 110, 0.12);
+  .ff-topbarGoal__raised,
+  .ff-topbarGoal__goal,
+  .ff-topbarGoal__percent,
+  .ff-teamCard__summaryValue,
+  .ff-teamStat__value,
+  .ff-h2,
+  .ff-h3 {
+    color: rgb(15 23 42 / 0.96);
   }
 
-  html.ff-root[data-ff-brand="school-blue-gold"] {
-    --ff-brand: #1d4ed8;
-    --ff-brand-strong: #1e40af;
-    --ff-brand-soft: rgba(29, 78, 216, 0.14);
-    --ff-accent: #ca8a04;
-    --ff-accent-soft: rgba(202, 138, 4, 0.14);
+  .ff-meter__progress,
+  .ff-teamCard__meterBar {
+    block-size: 0.44rem;
+    border-radius: 999px;
+    overflow: hidden;
   }
 
-  html.ff-root[data-ff-brand="crimson-pride"] {
-    --ff-brand: #b91c1c;
-    --ff-brand-strong: #991b1b;
-    --ff-brand-soft: rgba(185, 28, 28, 0.14);
-    --ff-accent: #111827;
-    --ff-accent-soft: rgba(17, 24, 39, 0.12);
+  .ff-section {
+    padding-block: clamp(2.75rem, 4vw, 4.5rem);
+  }
+
+  .ff-hero__grid,
+  .ff-storyGrid,
+  .ff-checkoutLayout {
+    align-items: start;
+  }
+
+  .ff-hero__capsuleInner,
+  .ff-heroPanel .ff-card {
+    min-height: 100%;
+  }
+
+  .ff-heroProof,
+  .ff-heroSignalBar,
+  .ff-teamCard__stats,
+  .ff-footerGridV2--flagship {
+    gap: 0.9rem;
+  }
+
+  .ff-heroPanel .ff-card {
+    padding: clamp(1rem, 1.6vw, 1.25rem);
+  }
+
+  .ff-liveFeed__item,
+  .ff-proofMini,
+  .ff-trustSignal,
+  .ff-sponsorCell,
+  .ff-checkoutCard,
+  .ff-teamCard,
+  .ff-impactTier {
+    border: 1px solid rgb(15 23 42 / 0.07);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  .ff-teamCard__media {
+    aspect-ratio: 16 / 10;
+  }
+
+  .ff-teamCard__body {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .ff-teamCard__foot {
+    padding-top: 0.25rem;
+    border-top: 1px solid rgb(15 23 42 / 0.06);
+  }
+
+  .ff-teamCard__title {
+    font-size: 0.98rem;
+  }
+
+  .ff-teamCard__meta,
+  .ff-help,
+  .ff-footerBrandV2__copy,
+  .ff-footerTrust {
+    color: rgb(15 23 42 / 0.68);
+  }
+
+  .ff-proofMini strong,
+  .ff-trustSignal strong,
+  .ff-heroSignal__value,
+  .ff-impactProofItem .ff-progressMini__value {
+    color: rgb(15 23 42 / 0.92);
+  }
+
+  .ff-btn--primary,
+  .ff-donate-btn {
+    box-shadow:
+      0 8px 18px rgb(249 115 22 / 0.22),
+      0 1px 0 rgb(255 255 255 / 0.35) inset;
+  }
+
+  .ff-btn--primary:hover,
+  .ff-donate-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .ff-footerTray--flagship {
+    padding: clamp(1rem, 1.8vw, 1.35rem);
+  }
+
+  .ff-footerGridV2--flagship {
+    align-items: start;
+  }
+
+  .ff-footer__link,
+  .ff-footer__link--button {
+    color: rgb(15 23 42 / 0.82);
+  }
+
+  .ff-footerMetaV2__legal {
+    color: rgb(15 23 42 / 0.58);
+  }
+
+  @media (max-width: 980px) {
+    .ff-section {
+      padding-block: 2.25rem;
+    }
+
+    .ff-hero__grid,
+    .ff-storyGrid,
+    .ff-checkoutLayout,
+    .ff-footerGridV2--flagship {
+      gap: 1rem;
+    }
+
+    .ff-teamGrid {
+      gap: 0.9rem;
+    }
+
+    .ff-teamCard__media {
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+}
+
+/* ==========================================================================
+   FutureFunded — Team card compression pass
+   SHIPSAFE_TEAM_COMPRESSION_V1
+   - reduces density in teams section
+   - improves scan speed
+   - strengthens CTA hierarchy
+   - keeps all hooks/contracts intact
+   ========================================================================== */
+
+@layer ff.pages {
+  .ff-teamsShell {
+    padding: clamp(0.95rem, 1.5vw, 1.2rem);
+  }
+
+  .ff-teamGrid {
+    gap: 1rem;
+  }
+
+  .ff-teamCard {
+    padding: 0.9rem;
+    border-radius: 1rem;
+  }
+
+  .ff-teamCard__inner {
+    display: grid;
+    gap: 0.8rem;
+    min-height: 100%;
+  }
+
+  .ff-teamCard__head {
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  .ff-teamCard__eyebrow {
+    gap: 0.4rem;
+  }
+
+  .ff-teamCard__title {
+    font-size: 0.96rem;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+
+  .ff-teamCard__meta {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    max-width: 34ch;
+  }
+
+  .ff-teamCard__summary {
+    min-width: 4.25rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid rgb(15 23 42 / 0.07);
+    border-radius: 0.8rem;
+    background: rgb(255 255 255 / 0.58);
+    text-align: right;
+  }
+
+  .ff-teamCard__summaryLabel {
+    display: block;
+    margin-bottom: 0.1rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(15 23 42 / 0.52);
+  }
+
+  .ff-teamCard__summaryValue {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .ff-teamCard__media {
+    aspect-ratio: 16 / 9;
+    border-radius: 0.9rem;
+    overflow: hidden;
+  }
+
+  .ff-teamCard__mediaTop {
+    gap: 0.35rem;
+    padding: 0.55rem;
+  }
+
+  .ff-teamCard__mediaPill {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+  }
+
+  .ff-teamCard__fallbackMark {
+    font-size: 1rem;
+  }
+
+  .ff-teamCard__fallbackCopy strong {
+    font-size: 0.85rem;
+  }
+
+  .ff-teamCard__fallbackCopy span {
+    font-size: 0.74rem;
+  }
+
+  .ff-teamCard__body {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .ff-teamCard__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .ff-teamStat {
+    padding: 0.5rem 0.55rem;
+    border: 1px solid rgb(15 23 42 / 0.06);
+    border-radius: 0.8rem;
+    background: rgb(255 255 255 / 0.58);
+  }
+
+  .ff-teamStat__label {
+    display: block;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(15 23 42 / 0.5);
+    margin-bottom: 0.15rem;
+  }
+
+  .ff-teamStat__value {
+    font-size: 0.84rem;
+    line-height: 1.15;
+  }
+
+  .ff-teamCard__meter {
+    gap: 0.3rem;
+  }
+
+  .ff-teamCard__meterText {
+    font-size: 0.76rem;
+    color: rgb(15 23 42 / 0.6);
+  }
+
+  .ff-teamCard__ask,
+  .ff-teamCard .ff-proofMini {
+    padding: 0.7rem 0.75rem;
+    border-radius: 0.85rem;
+    background: rgb(255 255 255 / 0.46);
+    border: 1px solid rgb(15 23 42 / 0.05);
+  }
+
+  .ff-teamCard__ask .ff-help,
+  .ff-teamCard .ff-proofMini .ff-help {
+    font-size: 0.8rem;
+    line-height: 1.48;
+  }
+
+  .ff-teamCard__foot {
+    margin-top: auto;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgb(15 23 42 / 0.06);
+    gap: 0.55rem;
+  }
+
+  .ff-teamCard__foot .ff-btn {
+    min-height: 2.5rem;
+  }
+
+  .ff-teamCard__foot .ff-btn--primary {
+    font-size: 0.8rem;
+  }
+
+  .ff-teamCard__foot .ff-btn--secondary {
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 820px) {
+    .ff-teamCard {
+      padding: 0.82rem;
+    }
+
+    .ff-teamCard__stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ff-teamCard__stats .ff-teamStat:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .ff-teamCard__meta {
+      max-width: none;
+    }
+
+    .ff-teamCard__summary {
+      min-width: 3.9rem;
+      padding: 0.32rem 0.46rem;
+    }
+
+    .ff-teamCard__summaryValue {
+      font-size: 0.94rem;
+    }
+
+    .ff-teamCard__stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ff-teamCard__stats .ff-teamStat:last-child {
+      display: none;
+    }
+
+    .ff-teamCard__foot {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .ff-teamCard__foot .ff-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+}
+
+/* ==========================================================================
+   FutureFunded — Conversion rail + topbar rescue
+   SHIPSAFE_CONVERSION_RAIL_RESCUE_V1
+   - restores topbar metric contrast
+   - upgrades donate rail hierarchy
+   - improves QR/live support rhythm
+   - keeps contracts unchanged
+   ========================================================================== */
+
+@layer ff.pages {
+  .ff-topbarGoal {
+    padding: 0.9rem 1rem;
+    border: 1px solid rgb(15 23 42 / 0.08);
+    border-radius: 1rem;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.88));
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.55) inset,
+      0 10px 24px rgb(15 23 42 / 0.05);
+  }
+
+  .ff-topbarGoal__summary {
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .ff-topbarGoal__metric {
+    min-width: 5.5rem;
+  }
+
+  .ff-topbarGoal__label,
+  .ff-topbarGoal__progressLabel {
+    display: block;
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(15 23 42 / 0.56);
+  }
+
+  .ff-topbarGoal__raised,
+  .ff-topbarGoal__goal,
+  .ff-topbarGoal__percent {
+    display: block;
+    margin-top: 0.18rem;
+    font-size: 0.96rem;
+    line-height: 1.1;
+    font-weight: 800;
+    color: rgb(15 23 42 / 0.96);
+  }
+
+  .ff-topbarGoal__progressWrap {
+    gap: 0.4rem;
+  }
+
+  .ff-topbarGoal__progress {
+    padding-top: 0.08rem;
+  }
+
+  .ff-meter__progress {
+    block-size: 0.44rem;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .ff-heroPanel--flagship {
+    display: grid;
+    gap: 0.9rem;
+    align-content: start;
+  }
+
+  .ff-heroPanel .ff-card {
+    padding: 1rem;
+    border: 1px solid rgb(15 23 42 / 0.07);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.45) inset,
+      0 14px 32px rgb(15 23 42 / 0.06);
+  }
+
+  .ff-heroPanelHead {
+    gap: 0.35rem;
+  }
+
+  .ff-heroPanelHead .ff-h2 {
+    line-height: 1.05;
+  }
+
+  .ff-heroPanel .ff-chip {
+    min-height: 4.3rem;
+    padding: 0.8rem 0.7rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgb(15 23 42 / 0.07);
+    background: rgb(255 255 255 / 0.7);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  .ff-heroPanel .ff-chip__amt {
+    font-size: 1.02rem;
+    line-height: 1.05;
+    color: rgb(15 23 42 / 0.96);
+  }
+
+  .ff-heroPanel .ff-chip__meta {
+    margin-top: 0.22rem;
+    font-size: 0.76rem;
+    line-height: 1.35;
+    color: rgb(15 23 42 / 0.66);
+  }
+
+  .ff-heroLiveFeed,
+  .ff-heroPanelQr__card,
+  .ff-callout--flagship {
+    border: 1px solid rgb(15 23 42 / 0.07);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  .ff-heroLiveFeed {
+    padding: 0.85rem;
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.62);
+  }
+
+  .ff-liveFeed__head {
+    margin-bottom: 0.45rem;
+  }
+
+  .ff-liveFeed__item {
+    padding: 0.72rem 0;
+  }
+
+  .ff-liveFeed__item + .ff-liveFeed__item {
+    border-top: 1px solid rgb(15 23 42 / 0.06);
+  }
+
+  .ff-liveFeed__name {
+    color: rgb(15 23 42 / 0.92);
+  }
+
+  .ff-liveFeed__text {
+    color: rgb(15 23 42 / 0.64);
+  }
+
+  .ff-heroPanelQr__card {
+    display: grid;
+    grid-template-columns: minmax(0, 112px) minmax(0, 1fr);
+    gap: 0.85rem;
+    align-items: center;
+    padding: 0.85rem;
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.64);
+  }
+
+  .ff-heroPanelQr__media {
+    inline-size: 100%;
+  }
+
+  .ff-heroPanelQr__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    background: white;
+  }
+
+  .ff-heroPanelQr__title {
+    font-size: 0.95rem;
+    line-height: 1.1;
+    color: rgb(15 23 42 / 0.94);
+  }
+
+  .ff-heroPanelQr__copy .ff-help {
+    color: rgb(15 23 42 / 0.64);
+  }
+
+  .ff-heroPanel .ff-w-100.ff-donate-btn {
+    min-height: 2.9rem;
+    font-weight: 800;
+    box-shadow:
+      0 10px 22px rgb(249 115 22 / 0.24),
+      0 1px 0 rgb(255 255 255 / 0.35) inset;
+  }
+
+  .ff-heroPanel > .ff-callout--flagship {
+    padding: 0.95rem;
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.58);
+  }
+
+  .ff-heroPanel .ff-proofMini {
+    border: 1px solid rgb(15 23 42 / 0.05);
+    background: rgb(255 255 255 / 0.52);
+  }
+
+  @media (min-width: 981px) {
+    .ff-heroPanel--flagship {
+      position: sticky;
+      top: calc(var(--ff-header-offset, 5.5rem) + 0.4rem);
+    }
+  }
+
+  @media (max-width: 980px) {
+    .ff-topbarGoal {
+      padding: 0.78rem 0.85rem;
+    }
+
+    .ff-topbarGoal__summary {
+      gap: 0.75rem;
+    }
+
+    .ff-heroPanelQr__card {
+      grid-template-columns: 1fr;
+      justify-items: start;
+    }
+
+    .ff-heroPanelQr__media {
+      max-width: 10rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .ff-topbarGoal__summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ff-topbarGoal__metric {
+      min-width: 0;
+    }
+
+    .ff-heroPanel .ff-chip {
+      min-height: 3.9rem;
+      padding: 0.7rem 0.62rem;
+    }
+
+    .ff-heroPanel .ff-chip__amt {
+      font-size: 0.96rem;
+    }
+
+    .ff-heroPanel .ff-chip__meta {
+      font-size: 0.73rem;
+    }
+  }
+
+}
+
+/* ==========================================================================
+   FutureFunded — Final stat/theme visibility authority
+   FF_TOPBAR_STAT_VISIBILITY_RESCUE_V2
+   - explicit app-theme scoped
+   - no prefers-color-scheme collisions
+   - covers topbar + hero snapshot + donate rail chips
+   ========================================================================== */
+
+@layer ff.pages {
+  html.ff-root[data-theme="light"] .ff-topbarGoal,
+  html.ff-root[data-theme="light"] #ffTopbar .ff-topbarGoal {
+    background: rgb(255 255 255 / 0.92) !important;
+    border-color: rgb(15 23 42 / 0.08) !important;
+    color: rgb(15 23 42 / 0.96) !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal [data-ff-raised],
+  html.ff-root[data-theme="light"] .ff-topbarGoal [data-ff-goal],
+  html.ff-root[data-theme="light"] .ff-topbarGoal [data-ff-percent],
+  html.ff-root[data-theme="light"] .ff-topbarGoal__raised,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__goal,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__percent,
+  html.ff-root[data-theme="light"] .ff-topbarGoal .ff-num,
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-raised],
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-goal],
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-percent],
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount],
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__amt {
+    color: rgb(15 23 42 / 0.96) !important;
+    -webkit-text-fill-color: rgb(15 23 42 / 0.96) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal__label,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__progressLabel,
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__meta,
+  html.ff-root[data-theme="light"] .ff-heroPanel .ff-help,
+  html.ff-root[data-theme="light"] .ff-heroLiveFeed .ff-liveFeed__text,
+  html.ff-root[data-theme="light"] .ff-heroPanelQr__copy .ff-help {
+    color: rgb(15 23 42 / 0.64) !important;
+    -webkit-text-fill-color: rgb(15 23 42 / 0.64) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-heroLiveFeed .ff-liveFeed__name,
+  html.ff-root[data-theme="light"] .ff-heroPanelQr__title {
+    color: rgb(15 23 42 / 0.92) !important;
+    -webkit-text-fill-color: rgb(15 23 42 / 0.92) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  html.ff-root[data-theme="light"] .ff-topbarGoal__raised,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__goal,
+  html.ff-root[data-theme="light"] .ff-topbarGoal__percent,
+  html.ff-root[data-theme="light"] .ff-topbarGoal .ff-num,
+  html.ff-root[data-theme="light"] .ff-heroPanel [data-ff-amount] .ff-chip__amt,
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-raised],
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-goal],
+  html.ff-root[data-theme="light"] .ff-proofMini [data-ff-percent] {
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  html.ff-root[data-theme="dark"] .ff-topbarGoal,
+  html.ff-root[data-theme="dark"] #ffTopbar .ff-topbarGoal {
+    color: rgb(255 255 255 / 0.94) !important;
+  }
+
+  html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-raised],
+  html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-goal],
+  html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-percent],
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__raised,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__goal,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__percent,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal .ff-num,
+  html.ff-root[data-theme="dark"] .ff-proofMini [data-ff-raised],
+  html.ff-root[data-theme="dark"] .ff-proofMini [data-ff-goal],
+  html.ff-root[data-theme="dark"] .ff-proofMini [data-ff-percent],
+  html.ff-root[data-theme="dark"] .ff-heroPanel [data-ff-amount],
+  html.ff-root[data-theme="dark"] .ff-heroPanel [data-ff-amount] .ff-chip__amt,
+  html.ff-root[data-theme="dark"] .ff-heroLiveFeed .ff-liveFeed__name,
+  html.ff-root[data-theme="dark"] .ff-heroPanelQr__title {
+    color: rgb(255 255 255 / 0.94) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.94) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__label,
+  html.ff-root[data-theme="dark"] .ff-topbarGoal__progressLabel,
+  html.ff-root[data-theme="dark"] .ff-heroPanel [data-ff-amount] .ff-chip__meta,
+  html.ff-root[data-theme="dark"] .ff-heroPanel .ff-help,
+  html.ff-root[data-theme="dark"] .ff-heroLiveFeed .ff-liveFeed__text,
+  html.ff-root[data-theme="dark"] .ff-heroPanelQr__copy .ff-help {
+    color: rgb(255 255 255 / 0.68) !important;
+    -webkit-text-fill-color: rgb(255 255 255 / 0.68) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 }
-/* FF_THEME_PRESETS_END */
-
