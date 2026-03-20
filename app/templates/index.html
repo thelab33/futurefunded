@@ -135,11 +135,11 @@ Contracts:
 {% if _campaign_name|length > 48 %}
   {% set _campaign_name = _org_name %}
 {% endif %}
-{% set _campaign_tagline = (campaign_tagline|default('Support travel, training, gym time, and team costs with one secure gift.', true))|string|trim %}
+{% set _campaign_tagline = (campaign_tagline|default('Support the season with a clear, secure gift that helps fund travel, training, gym time, and shared team costs.', true))|string|trim %}
 {% if not _campaign_tagline %}
   {% set _campaign_tagline = "Support travel, training, gym time, and team costs with one secure gift." %}
 {% endif %}
-{% set _proof_blurb = (proof_blurb|default('Your support helps fund training, travel, and tournament reps.', true))|string|trim %}
+{% set _proof_blurb = (proof_blurb|default('Your support helps fund the work behind every practice, trip, and tournament weekend — so athletes can stay focused on growth, not cost barriers.', true))|string|trim %}
 {% set _policy_blurb = (policy_blurb|default('Questions, corrections, or receipts: email the organizer address listed on this page. Refunds and disputes follow the payment processor policy and organizer response.', true))|string|trim %}
 
 {# ============================ Logos / platform ============================ #}
@@ -1059,21 +1059,21 @@ Contracts:
                       <div class="ff-heroProof__item" role="listitem">
                         <strong>Clear season goal</strong>
                         <span class="ff-help ff-muted">
-                          See how support moves the season forward.
+                          Travel, training, tournaments, and the practical costs families feel first.
                         </span>
                       </div>
 
                       <div class="ff-heroProof__item" role="listitem">
                         <strong>Fast mobile giving</strong>
                         <span class="ff-help ff-muted">
-                          Give in seconds from phone or desktop.
+                          Give in a few taps, confirm securely, and receive an email receipt right away.
                         </span>
                       </div>
 
                       <div class="ff-heroProof__item" role="listitem">
                         <strong>Secure support flow</strong>
                         <span class="ff-help ff-muted">
-                          Clear next steps for families, donors, and sponsors.
+                          One clean page helps families, alumni, and local businesses understand the need and act quickly.
                         </span>
                       </div>
                     </div>
@@ -1143,7 +1143,7 @@ Contracts:
                           Support the season
                         </strong>
                         <span class="ff-heroSignal__meta">
-                          Choose an amount and support real season costs.
+                          Choose an amount, give securely, and help fund travel, training, and shared team costs this season.
                         </span>
                       </article>
 
@@ -1333,7 +1333,7 @@ Contracts:
                         <p class="ff-kicker ff-m-0">Mobile option</p>
                         <p class="ff-heroPanelQr__title ff-mt-1 ff-mb-0">Scan to give</p>
                         <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                          Open the secure donation page on your phone.
+                          Open the secure donation page on your phone and give in a few taps.
                         </p>
 
                         {% if _qr_href %}
@@ -1388,7 +1388,7 @@ Contracts:
                 </div>
 
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="heroRailProofDesc">
-                  A simpler way to give, sponsor, and share.
+                  A simpler way to give, sponsor, and share with confidence.
                 </p>
 
                 <div
@@ -1468,7 +1468,7 @@ Contracts:
               <p class="ff-kicker ff-m-0">Impact</p>
               <h2 class="ff-h2" id="impactTitle">What support covers</h2>
               <p class="ff-lead ff-m-0" id="impactLead">
-                Every gift helps cover season costs so athletes can train, travel, and compete.
+                Every contribution helps cover practical season costs so athletes can train, travel, and compete with confidence.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="impactHint">
                 Pick a level now and adjust it in checkout.
@@ -1855,7 +1855,7 @@ Contracts:
                 One program. Multiple teams. Shared momentum.
               </h2>
               <p class="ff-lead ff-m-0" id="teamsLead">
-                Support one team or strengthen the full program.
+                Support can start with one team and still strengthen the full program across the season.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="teamsUnity">
                 {{ _teams_count }} teams • one shared fund • one season goal
@@ -2331,7 +2331,7 @@ Contracts:
 
               <div class="ff-storyCopy ff-minw-0">
                 <p class="ff-help ff-muted ff-m-0">
-                  <strong>Typical season costs include:</strong>
+                  <strong>Typical season costs supported here include:</strong>
                 </p>
 
                 <ul class="ff-storyList ff-mt-2" role="list" aria-label="Season cost overview">
@@ -2402,15 +2402,15 @@ Contracts:
             <div class="ff-sectionhead__text ff-minw-0">
               <p class="ff-kicker ff-m-0">Sponsors</p>
               <h2 class="ff-h2" id="sponsorsTitle">
-                Community sponsorships that reduce family costs and visibly back the
+                Community sponsorships that reduce family costs and strengthen the
                 program.
               </h2>
               <p class="ff-lead ff-m-0" id="sponsorsLead">
-                Sponsor support helps cover shared program needs while giving local
-                businesses visible community recognition.
+                Sponsor support helps cover real program needs while giving local
+                businesses visible, credible community recognition.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="sponsorsHint">
-                Built for local businesses that want to support youth athletes.
+                Built for local businesses that want to support youth athletes and be recognized clearly.
               </p>
             </div>
 
@@ -2480,7 +2480,7 @@ Contracts:
                 <p class="ff-kicker ff-m-0">Community</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0">Entry support</h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  A simple way to show support and help fund the season.
+                  A simple way for families, alumni, and local supporters to help fund the season.
                 </p>
 
                 <div
@@ -2513,8 +2513,8 @@ Contracts:
                 <p class="ff-kicker ff-m-0">Partner</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0">Visible support</h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  A stronger sponsorship option with more visible recognition across
-                  the program.
+                  A strong fit for local businesses that want recognition while helping
+                  keep the program moving.
                 </p>
 
                 <div
@@ -2547,8 +2547,8 @@ Contracts:
                 <p class="ff-kicker ff-m-0">VIP</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0">Featured recognition</h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  A lead sponsorship placement for businesses that want the clearest
-                  visibility and strongest community signal.
+                  A lead support option for sponsors who want the clearest visibility
+                  during major campaign pushes.
                 </p>
 
                 <div
@@ -2971,7 +2971,7 @@ Contracts:
           </div>
 
           <p class="ff-help ff-muted ff-m-0 ff-footerBrandV2__copy">
-            Support helps fund travel, tournaments, gym time, gear, and the practical essentials
+            Support helps fund travel, training, tournaments, gym time, gear, and the practical essentials
             that keep the season moving.
           </p>
 

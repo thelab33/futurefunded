@@ -8971,3 +8971,1200 @@
   }
 }
 
+
+/* ==========================================================================
+   FutureFunded — Option B2 density + conversion pass
+   FF_OPTION_B2_DENSITY_CONVERSION_V1
+   - compresses team-card internals on mobile/tablet
+   - strengthens sponsor-card hierarchy and CTA rhythm
+   - tightens trust/faq spacing and disclosure rhythm
+   - clarifies donate / sponsor / share priority
+   - append-only, contract-safe
+   ========================================================================== */
+
+@layer ff.pages {
+  :root,
+  html.ff-root {
+    --ff-b2-gap: clamp(0.82rem, 0.74rem + 0.32vw, 1rem);
+    --ff-b2-card-pad: clamp(0.88rem, 0.8rem + 0.4vw, 1.08rem);
+    --ff-b2-soft-border: rgba(15, 23, 42, 0.08);
+    --ff-b2-soft-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 10px 22px rgba(15, 23, 42, 0.06);
+  }
+
+  .ff-root[data-theme="dark"] {
+    --ff-b2-soft-border: rgba(148, 163, 184, 0.16);
+    --ff-b2-soft-shadow:
+      0 14px 30px rgba(0, 0, 0, 0.28),
+      0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  /* ----------------------------------------------------------------------
+     Section-head breathing room
+     ---------------------------------------------------------------------- */
+  #sponsors .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #trust-faq .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #faq .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #teams .ff-sectionhead__text > .ff-h2 + .ff-lead {
+    margin-top: 0.88rem;
+    max-width: 60ch;
+  }
+
+  #sponsors .ff-sectionhead,
+  #trust-faq .ff-sectionhead,
+  #faq .ff-sectionhead,
+  #teams .ff-sectionhead,
+  #sponsors .ff-sectionHead,
+  #trust-faq .ff-sectionHead,
+  #faq .ff-sectionHead,
+  #teams .ff-sectionHead {
+    margin-bottom: 1rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     CTA hierarchy: donate > sponsor > share
+     ---------------------------------------------------------------------- */
+  [data-ff-open-checkout],
+  .ff-donate-btn {
+    font-weight: 800;
+    letter-spacing: -0.012em;
+    box-shadow:
+      0 10px 24px rgba(249, 115, 22, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  [data-ff-open-sponsor] {
+    font-weight: 700;
+    border-color: rgba(15, 23, 42, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  [data-ff-share] {
+    opacity: 0.9;
+    box-shadow: none;
+  }
+
+  .ff-root[data-theme="dark"] [data-ff-open-sponsor] {
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .ff-root[data-theme="dark"] [data-ff-share] {
+    opacity: 0.96;
+  }
+
+  /* ----------------------------------------------------------------------
+     Sponsors: stronger premium hierarchy
+     ---------------------------------------------------------------------- */
+  #sponsors .ff-sponsorCell {
+    gap: 0.9rem;
+    border-color: var(--ff-b2-soft-border);
+    box-shadow: var(--ff-b2-soft-shadow);
+  }
+
+  #sponsors .ff-sponsorCell[data-featured="true"],
+  #sponsors .ff-sponsorCell[data-tier="vip"] {
+    border-color: rgba(249, 115, 22, 0.26);
+    box-shadow:
+      0 14px 28px rgba(249, 115, 22, 0.08),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  #sponsors .ff-sponsorCell .ff-h3,
+  #sponsors .ff-sponsorCell__title {
+    line-height: 1.12;
+  }
+
+  #sponsors .ff-sponsorCell .ff-help,
+  #sponsors .ff-sponsorCell p {
+    max-width: 48ch;
+  }
+
+  #sponsors .ff-sponsorCell .ff-btn--primary,
+  #sponsors .ff-sponsorCell [data-ff-open-sponsor] {
+    min-height: 2.85rem;
+    font-weight: 800;
+  }
+
+  #sponsors .ff-sponsorCell [data-ff-share] {
+    min-height: 2.55rem;
+  }
+
+  #sponsors .ff-sectionhead__actions [data-ff-open-sponsor] {
+    min-width: 10.25rem;
+  }
+
+  #sponsors .ff-sectionhead__actions [data-ff-share] {
+    opacity: 0.92;
+  }
+
+  /* ----------------------------------------------------------------------
+     Trust / FAQ: tighter spacing + cleaner scan rhythm
+     ---------------------------------------------------------------------- */
+  #trust-faq .ff-trustCard,
+  #faq .ff-faqCard {
+    gap: 0.9rem;
+    padding: 1rem;
+    border-color: var(--ff-b2-soft-border);
+    box-shadow: var(--ff-b2-soft-shadow);
+  }
+
+  #trust-faq .ff-trustSignals,
+  #trust-faq .ff-faqList,
+  #faq .ff-faqList {
+    gap: 0.72rem;
+  }
+
+  #trust-faq .ff-proofMini,
+  #trust-faq .ff-callout,
+  #faq .ff-proofMini,
+  #faq .ff-callout {
+    padding: 0.88rem 0.92rem;
+  }
+
+  #trust-faq .ff-disclosure,
+  #faq .ff-disclosure {
+    border-color: var(--ff-b2-soft-border);
+  }
+
+  #trust-faq .ff-disclosure__sum,
+  #faq .ff-disclosure__sum {
+    min-height: 3.2rem;
+    padding: 0.88rem 0.95rem;
+    align-items: center;
+  }
+
+  #trust-faq .ff-disclosure__panel,
+  #faq .ff-disclosure__panel {
+    padding: 0 0.95rem 0.95rem;
+  }
+
+  #trust-faq .ff-disclosure__sum .ff-help,
+  #faq .ff-disclosure__sum .ff-help {
+    line-height: 1.4;
+  }
+
+  /* ----------------------------------------------------------------------
+     Teams: compress internals without killing readability
+     ---------------------------------------------------------------------- */
+  #teams .ff-teamGrid {
+    gap: 0.95rem;
+  }
+
+  #teams .ff-teamCard {
+    padding: 0.86rem;
+    border-color: var(--ff-b2-soft-border);
+    box-shadow: var(--ff-b2-soft-shadow);
+  }
+
+  #teams .ff-teamCard__inner {
+    gap: 0.72rem;
+  }
+
+  #teams .ff-teamCard__head {
+    gap: 0.62rem;
+  }
+
+  #teams .ff-teamCard__title {
+    font-size: 0.95rem;
+    line-height: 1.14;
+  }
+
+  #teams .ff-teamCard__meta,
+  #teams .ff-teamCard .ff-help {
+    font-size: 0.86rem;
+    line-height: 1.46;
+  }
+
+  #teams .ff-teamCard__media {
+    aspect-ratio: 16 / 9.5;
+  }
+
+  #teams .ff-teamCard__stats {
+    gap: 0.42rem;
+    padding: 0.62rem;
+  }
+
+  #teams .ff-teamStat {
+    padding: 0.48rem 0.52rem;
+  }
+
+  #teams .ff-teamStat__value {
+    font-size: 0.82rem;
+    line-height: 1.14;
+  }
+
+  #teams .ff-teamCard__meter {
+    margin-top: 0.62rem;
+    gap: 0.28rem;
+  }
+
+  #teams .ff-teamCard__ask,
+  #teams .ff-teamCard .ff-proofMini {
+    padding: 0.64rem 0.7rem;
+  }
+
+  #teams .ff-teamCard__foot {
+    gap: 0.5rem;
+    padding-top: 0.66rem;
+  }
+
+  #teams .ff-teamCard__foot .ff-btn {
+    min-height: 2.46rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Tablet
+     ---------------------------------------------------------------------- */
+  @media (max-width: 980px) {
+    #teams .ff-teamGrid,
+    #sponsors .ff-grid,
+    #trust-faq .ff-grid,
+    #faq .ff-grid {
+      gap: 0.9rem;
+    }
+
+    #sponsors .ff-sectionhead__actions,
+    #trust-faq .ff-sectionhead__actions,
+    #faq .ff-sectionhead__actions {
+      gap: 0.65rem;
+    }
+  }
+
+  /* ----------------------------------------------------------------------
+     Mobile: compress cards + make sponsor CTA rhythm obvious
+     ---------------------------------------------------------------------- */
+  @media (max-width: 760px) {
+    #teams .ff-teamCard,
+    #sponsors .ff-sponsorCell,
+    #trust-faq .ff-trustCard,
+    #faq .ff-faqCard {
+      padding: 0.92rem;
+    }
+
+    #teams .ff-teamCard__meta,
+    #teams .ff-teamCard .ff-help,
+    #sponsors .ff-sponsorCell .ff-help,
+    #trust-faq .ff-help,
+    #faq .ff-help {
+      font-size: 0.94rem;
+      line-height: 1.58;
+    }
+
+    #sponsors .ff-sponsorCell .ff-btn--primary,
+    #sponsors .ff-sponsorCell [data-ff-open-sponsor],
+    #sponsors .ff-sectionhead__actions [data-ff-open-sponsor] {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #sponsors .ff-sponsorCell [data-ff-share],
+    #sponsors .ff-sectionhead__actions [data-ff-share] {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #trust-faq .ff-disclosure__sum,
+    #faq .ff-disclosure__sum {
+      min-height: 3.05rem;
+      padding: 0.84rem 0.9rem;
+    }
+
+    #trust-faq .ff-disclosure__panel,
+    #faq .ff-disclosure__panel {
+      padding: 0 0.9rem 0.9rem;
+    }
+  }
+
+  /* ----------------------------------------------------------------------
+     Very small screens: team cards get cleaner and faster
+     ---------------------------------------------------------------------- */
+  @media (max-width: 560px) {
+    #teams .ff-teamCard {
+      padding: 0.84rem;
+    }
+
+    #teams .ff-teamCard__inner {
+      gap: 0.66rem;
+    }
+
+    #teams .ff-teamCard__stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.38rem;
+      padding: 0.58rem;
+    }
+
+    #teams .ff-teamCard__stats .ff-teamStat:last-child {
+      grid-column: 1 / -1;
+    }
+
+    #teams .ff-teamCard__foot {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    #teams .ff-teamCard__foot .ff-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #sponsors .ff-sponsorCell,
+    #trust-faq .ff-trustCard,
+    #faq .ff-faqCard {
+      padding: 0.88rem;
+    }
+
+    #sponsors .ff-sectionhead__text > .ff-h2 + .ff-lead,
+    #trust-faq .ff-sectionhead__text > .ff-h2 + .ff-lead,
+    #faq .ff-sectionhead__text > .ff-h2 + .ff-lead,
+    #teams .ff-sectionhead__text > .ff-h2 + .ff-lead {
+      margin-top: 0.72rem;
+    }
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Option B3 micro-authority pass
+   FF_OPTION_B3_MICRO_AUTHORITY_V1
+   - strengthens section opening rhythm
+   - improves sponsor CTA emphasis consistency
+   - adds premium polish to hero rail
+   - keeps contracts/layout intact
+   ========================================================================== */
+
+@layer ff.pages {
+  /* ----------------------------------------------------------------------
+     Section-opening authority
+     ---------------------------------------------------------------------- */
+  #impact .ff-sectionhead,
+  #teams .ff-sectionhead,
+  #story .ff-sectionhead,
+  #sponsors .ff-sectionhead,
+  #trust-faq .ff-sectionhead,
+  #faq .ff-sectionhead,
+  #impact .ff-sectionHead,
+  #teams .ff-sectionHead,
+  #story .ff-sectionHead,
+  #sponsors .ff-sectionHead,
+  #trust-faq .ff-sectionHead,
+  #faq .ff-sectionHead {
+    margin-bottom: 1.15rem;
+  }
+
+  #impact .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #teams .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #story .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #sponsors .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #trust-faq .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  #faq .ff-sectionhead__text > .ff-h2 + .ff-lead {
+    margin-top: 0.88rem;
+    max-width: 60ch;
+  }
+
+  /* ----------------------------------------------------------------------
+     Hero rail polish
+     ---------------------------------------------------------------------- */
+  #home .ff-heroPanel .ff-card--premium,
+  #home .ff-heroPanel .ff-card,
+  #home .ff-heroPanelQr__card,
+  #home .ff-heroLiveFeed {
+    border-color: rgba(15, 23, 42, 0.1);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 14px 30px rgba(15, 23, 42, 0.07);
+  }
+
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-card--premium,
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-card,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelQr__card,
+  .ff-root[data-theme="dark"] #home .ff-heroLiveFeed {
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow:
+      0 16px 34px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  #home .ff-heroPanelHead {
+    gap: 0.42rem;
+  }
+
+  #home .ff-heroPanelHead .ff-h2 {
+    max-width: 11ch;
+    line-height: 1.04;
+  }
+
+  #home .ff-heroPanelHead .ff-help {
+    max-width: 34ch;
+  }
+
+  /* ----------------------------------------------------------------------
+     Sponsor CTA hierarchy
+     ---------------------------------------------------------------------- */
+  #sponsors .ff-sponsorCell__foot,
+  #sponsors .ff-sponsorCell .ff-impactTier__footer,
+  #sponsors .ff-sponsorCell .ff-teamCard__foot,
+  #sponsors .ff-sponsorCell .ff-row[role="group"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  #sponsors .ff-sponsorCell .ff-btn--primary,
+  #sponsors .ff-sponsorCell [data-ff-open-sponsor] {
+    min-height: 2.8rem;
+    font-weight: 800;
+    box-shadow:
+      0 10px 22px rgba(249, 115, 22, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  #sponsors .ff-sponsorCell .ff-btn--secondary,
+  #sponsors .ff-sponsorCell .ff-btn--ghost,
+  #sponsors .ff-sponsorCell [data-ff-share] {
+    min-height: 2.55rem;
+    opacity: 0.94;
+  }
+
+  #sponsors .ff-sponsorCell .ff-btn--primary:hover,
+  #sponsors .ff-sponsorCell [data-ff-open-sponsor]:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 12px 26px rgba(249, 115, 22, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  /* ----------------------------------------------------------------------
+     Trust / FAQ card structure
+     ---------------------------------------------------------------------- */
+  #trust-faq .ff-trustCard,
+  #faq .ff-faqCard {
+    gap: 0.95rem;
+  }
+
+  #trust-faq .ff-disclosure__sum,
+  #faq .ff-disclosure__sum {
+    min-height: 3.15rem;
+  }
+
+  #trust-faq .ff-disclosure + .ff-disclosure,
+  #faq .ff-disclosure + .ff-disclosure {
+    margin-top: 0.1rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Mobile restraint
+     ---------------------------------------------------------------------- */
+  @media (max-width: 760px) {
+    #impact .ff-sectionhead,
+    #teams .ff-sectionhead,
+    #story .ff-sectionhead,
+    #sponsors .ff-sectionhead,
+    #trust-faq .ff-sectionhead,
+    #faq .ff-sectionhead,
+    #impact .ff-sectionHead,
+    #teams .ff-sectionHead,
+    #story .ff-sectionHead,
+    #sponsors .ff-sectionHead,
+    #trust-faq .ff-sectionHead,
+    #faq .ff-sectionHead {
+      margin-bottom: 0.95rem;
+    }
+
+    #sponsors .ff-sponsorCell .ff-btn--primary,
+    #sponsors .ff-sponsorCell [data-ff-open-sponsor],
+    #sponsors .ff-sponsorCell [data-ff-share] {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Founder-mode conversion polish
+   FF_FOUNDER_MODE_CONVERSION_POLISH_V1
+   - strengthens first-fold hierarchy
+   - upgrades donate rail authority
+   - sharpens sponsor CTA structure
+   - makes trust / faq feel more product-grade
+   ========================================================================== */
+
+@layer ff.pages {
+  #home,
+  #checkout,
+  #impact,
+  #teams,
+  #story,
+  #sponsors,
+  #trust-faq,
+  #faq {
+    scroll-margin-top: 5.5rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Hero authority
+     ---------------------------------------------------------------------- */
+  #home .ff-hero__grid {
+    align-items: start;
+    gap: clamp(1rem, 2vw, 1.4rem);
+  }
+
+  #home [data-ff-hero-capsule] {
+    padding: clamp(1rem, 1.1vw + 0.85rem, 1.35rem);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 12px 32px rgba(2, 8, 23, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  [data-theme="light"] #home [data-ff-hero-capsule] {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  #home [data-ff-hero-capsule] h1,
+  #home [data-ff-hero-capsule] .ff-display {
+    max-width: 11ch;
+    line-height: 0.94;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.78rem;
+  }
+
+  #home [data-ff-hero-capsule] p,
+  #home [data-ff-hero-capsule] .ff-muted,
+  #home [data-ff-hero-capsule] .ff-help {
+    max-width: 62ch;
+  }
+
+  #home .ff-heroMeta,
+  #home [data-ff-hero-capsule] [role="list"] {
+    row-gap: 0.38rem;
+  }
+
+  #home [data-ff-hero-capsule] .ff-btn--primary,
+  #home [data-ff-hero-capsule] [data-ff-open-donate],
+  #home [data-ff-hero-capsule] [data-ff-open-checkout] {
+    min-height: 2.8rem;
+    padding-inline: 1rem;
+    font-weight: 700;
+  }
+
+  /* ----------------------------------------------------------------------
+     Donate rail authority
+     ---------------------------------------------------------------------- */
+  @media (min-width: 980px) {
+    #checkout .ff-checkoutCard,
+    #checkout [data-ff-checkout-card] {
+      position: sticky;
+      top: calc(var(--ff-header-h, 4.75rem) + 0.75rem);
+    }
+  }
+
+  #checkout .ff-checkoutCard,
+  #checkout [data-ff-checkout-card] {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 14px 32px rgba(2, 8, 23, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+  }
+
+  [data-theme="light"] #checkout .ff-checkoutCard,
+  [data-theme="light"] #checkout [data-ff-checkout-card] {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 16px 34px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  #checkout .ff-checkoutCard .ff-btn--primary,
+  #checkout [data-ff-checkout-card] .ff-btn--primary,
+  #checkout .ff-checkoutCard [data-ff-open-donate] {
+    min-height: 3rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  #checkout .ff-checkoutCard .ff-pill,
+  #checkout [data-ff-checkout-card] .ff-pill {
+    min-height: 1.7rem;
+  }
+
+  #checkout .ff-checkoutCard .ff-card,
+  #checkout .ff-checkoutCard .ff-callout,
+  #checkout [data-ff-checkout-card] .ff-card,
+  #checkout [data-ff-checkout-card] .ff-callout {
+    border-radius: 0.95rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Section header authority
+     ---------------------------------------------------------------------- */
+  #impact .ff-sectionhead,
+  #teams .ff-sectionhead,
+  #story .ff-sectionhead,
+  #sponsors .ff-sectionhead,
+  #trust-faq .ff-sectionhead,
+  #faq .ff-sectionhead,
+  #impact .ff-sectionHead,
+  #teams .ff-sectionHead,
+  #story .ff-sectionHead,
+  #sponsors .ff-sectionHead,
+  #trust-faq .ff-sectionHead,
+  #faq .ff-sectionHead {
+    gap: 0.75rem;
+    margin-bottom: 1.05rem;
+  }
+
+  #impact .ff-sectionhead h2,
+  #teams .ff-sectionhead h2,
+  #story .ff-sectionhead h2,
+  #sponsors .ff-sectionhead h2,
+  #trust-faq .ff-sectionhead h2,
+  #faq .ff-sectionhead h2,
+  #impact .ff-sectionHead h2,
+  #teams .ff-sectionHead h2,
+  #story .ff-sectionHead h2,
+  #sponsors .ff-sectionHead h2,
+  #trust-faq .ff-sectionHead h2,
+  #faq .ff-sectionHead h2 {
+    letter-spacing: -0.025em;
+    line-height: 1.02;
+  }
+
+  #impact .ff-sectionhead .ff-help,
+  #teams .ff-sectionhead .ff-help,
+  #story .ff-sectionhead .ff-help,
+  #sponsors .ff-sectionhead .ff-help,
+  #trust-faq .ff-sectionhead .ff-help,
+  #faq .ff-sectionhead .ff-help,
+  #impact .ff-sectionHead .ff-help,
+  #teams .ff-sectionHead .ff-help,
+  #story .ff-sectionHead .ff-help,
+  #sponsors .ff-sectionHead .ff-help,
+  #trust-faq .ff-sectionHead .ff-help,
+  #faq .ff-sectionHead .ff-help,
+  #impact .ff-sectionhead .ff-muted,
+  #teams .ff-sectionhead .ff-muted,
+  #story .ff-sectionhead .ff-muted,
+  #sponsors .ff-sectionhead .ff-muted,
+  #trust-faq .ff-sectionhead .ff-muted,
+  #faq .ff-sectionhead .ff-muted,
+  #impact .ff-sectionHead .ff-muted,
+  #teams .ff-sectionHead .ff-muted,
+  #story .ff-sectionHead .ff-muted,
+  #sponsors .ff-sectionHead .ff-muted,
+  #trust-faq .ff-sectionHead .ff-muted,
+  #faq .ff-sectionHead .ff-muted {
+    max-width: 62ch;
+    opacity: 0.92;
+  }
+
+  /* ----------------------------------------------------------------------
+     Sponsor offer structure
+     ---------------------------------------------------------------------- */
+  #sponsors .ff-sponsorCell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  #sponsors .ff-sponsorCell .ff-btn--primary,
+  #sponsors .ff-sponsorCell [data-ff-open-sponsor] {
+    margin-top: auto;
+    min-height: 2.8rem;
+    font-weight: 700;
+  }
+
+  /* ----------------------------------------------------------------------
+     Trust / FAQ product-grade cleanup
+     ---------------------------------------------------------------------- */
+  #trust-faq .ff-card,
+  #trust-faq .ff-callout,
+  #faq .ff-disclosure {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 10px 24px rgba(2, 8, 23, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  [data-theme="light"] #trust-faq .ff-card,
+  [data-theme="light"] #trust-faq .ff-callout,
+  [data-theme="light"] #faq .ff-disclosure {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 12px 28px rgba(15, 23, 42, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  #trust-faq .ff-disclosure__sum,
+  #faq .ff-disclosure__sum {
+    min-height: 3.25rem;
+    padding-inline: 0.95rem;
+    font-weight: 650;
+  }
+
+  #trust-faq .ff-disclosure[open],
+  #faq .ff-disclosure[open] {
+    transform: translateY(-1px);
+  }
+
+  #trust-faq .ff-disclosure + .ff-disclosure,
+  #faq .ff-disclosure + .ff-disclosure {
+    margin-top: 0.18rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Mobile restraint
+     ---------------------------------------------------------------------- */
+  @media (max-width: 980px) {
+    #home [data-ff-hero-capsule] h1,
+    #home [data-ff-hero-capsule] .ff-display {
+      max-width: 12ch;
+    }
+  }
+
+  @media (max-width: 760px) {
+    #home [data-ff-hero-capsule] {
+      padding: 1rem;
+    }
+
+    #home [data-ff-hero-capsule] h1,
+    #home [data-ff-hero-capsule] .ff-display {
+      max-width: none;
+      margin-bottom: 0.65rem;
+    }
+
+    #checkout .ff-checkoutCard .ff-btn--primary,
+    #checkout [data-ff-checkout-card] .ff-btn--primary,
+    #checkout .ff-checkoutCard [data-ff-open-donate],
+    #sponsors .ff-sponsorCell .ff-btn--primary,
+    #sponsors .ff-sponsorCell [data-ff-open-sponsor] {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #trust-faq .ff-card,
+    #trust-faq .ff-callout,
+    #faq .ff-disclosure {
+      box-shadow:
+        0 8px 20px rgba(2, 8, 23, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Premium depth + footer prestige pass
+   FF_PREMIUM_DEPTH_FOOTER_PRESTIGE_V1
+   - improves section separation
+   - adds light-theme depth without muddying dark mode
+   - upgrades footer tray and utility panels
+   - gives top metrics strip a little more authority
+   ========================================================================== */
+
+@layer ff.pages {
+  /* ----------------------------------------------------------------------
+     Section separation / scan rhythm
+     ---------------------------------------------------------------------- */
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) {
+    position: relative;
+  }
+
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq)::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.08) 16%,
+      rgba(255, 255, 255, 0.08) 84%,
+      rgba(255, 255, 255, 0)
+    );
+  }
+
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq)::before {
+    background: linear-gradient(
+      90deg,
+      rgba(15, 23, 42, 0),
+      rgba(15, 23, 42, 0.08) 16%,
+      rgba(15, 23, 42, 0.08) 84%,
+      rgba(15, 23, 42, 0)
+    );
+  }
+
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sectionhead,
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sectionHead {
+    margin-bottom: clamp(1rem, 1.2vw, 1.25rem);
+    gap: 0.78rem;
+  }
+
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sectionhead .ff-pill,
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sectionHead .ff-pill {
+    min-height: 1.45rem;
+    padding-inline: 0.56rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.045em;
+  }
+
+  /* ----------------------------------------------------------------------
+     Light-theme depth rescue
+     ---------------------------------------------------------------------- */
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-card,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-surface,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-callout,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-disclosure,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-teamCard,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sponsorCell,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-proofMini {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 10px 24px rgba(15, 23, 42, 0.055),
+      0 1px 0 rgba(255, 255, 255, 0.78) inset;
+  }
+
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-card:hover,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-teamCard:hover,
+  [data-theme="light"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sponsorCell:hover {
+    box-shadow:
+      0 14px 30px rgba(15, 23, 42, 0.07),
+      0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  }
+
+  /* ----------------------------------------------------------------------
+     Dark-theme restraint consistency
+     ---------------------------------------------------------------------- */
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-card,
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-surface,
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-callout,
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-disclosure,
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-teamCard,
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sponsorCell,
+  [data-theme="dark"] :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-proofMini {
+    border-color: rgba(255, 255, 255, 0.07);
+    box-shadow:
+      0 12px 28px rgba(2, 8, 23, 0.16),
+      0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  }
+
+  /* ----------------------------------------------------------------------
+     Top metrics strip authority
+     ---------------------------------------------------------------------- */
+  .ff-topbarGoal,
+  [data-ff-topbar-goal] {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 10px 22px rgba(2, 8, 23, 0.16),
+      0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    backdrop-filter: blur(10px) saturate(125%);
+  }
+
+  [data-theme="light"] .ff-topbarGoal,
+  [data-theme="light"] [data-ff-topbar-goal] {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 8px 18px rgba(15, 23, 42, 0.055),
+      0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  }
+
+  /* ----------------------------------------------------------------------
+     Footer flagship pass
+     ---------------------------------------------------------------------- */
+  #footer {
+    margin-top: clamp(1.25rem, 2vw, 2rem);
+  }
+
+  #footer .ff-footerTray,
+  #footer .ff-footerTray--compact,
+  #footer .ff-footerTray--flagship {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 18px 40px rgba(2, 8, 23, 0.22),
+      0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    overflow: clip;
+  }
+
+  [data-theme="light"] #footer .ff-footerTray,
+  [data-theme="light"] #footer .ff-footerTray--compact,
+  [data-theme="light"] #footer .ff-footerTray--flagship {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 14px 30px rgba(15, 23, 42, 0.06),
+      0 1px 0 rgba(255, 255, 255, 0.84) inset;
+  }
+
+  #footer .ff-footerTop,
+  #footer .ff-footerTop--flagship {
+    align-items: start;
+    gap: clamp(0.9rem, 2vw, 1.25rem);
+  }
+
+  #footer .ff-footerTop__copy {
+    max-width: 48ch;
+  }
+
+  #footer .ff-footerTrust {
+    opacity: 0.94;
+  }
+
+  #footer .ff-card,
+  #footer .ff-callout,
+  #footer .ff-surface {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    box-shadow:
+      0 10px 24px rgba(2, 8, 23, 0.14),
+      0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  }
+
+  [data-theme="light"] #footer .ff-card,
+  [data-theme="light"] #footer .ff-callout,
+  [data-theme="light"] #footer .ff-surface {
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 10px 22px rgba(15, 23, 42, 0.05),
+      0 1px 0 rgba(255, 255, 255, 0.82) inset;
+  }
+
+  #footer .ff-btn--primary,
+  #footer [data-ff-footer] .ff-btn--primary {
+    min-height: 2.8rem;
+    font-weight: 700;
+  }
+
+  #footer a:not(.ff-btn) {
+    text-underline-offset: 0.13em;
+  }
+
+  #footer a:not(.ff-btn):hover {
+    text-decoration-thickness: 0.08em;
+  }
+
+  /* ----------------------------------------------------------------------
+     FAQ / trust alignment polish
+     ---------------------------------------------------------------------- */
+  #trust-faq .ff-card,
+  #faq .ff-disclosure {
+    border-radius: 1rem;
+  }
+
+  #trust-faq .ff-help,
+  #faq .ff-help,
+  #trust-faq .ff-muted,
+  #faq .ff-muted {
+    opacity: 0.94;
+  }
+
+  /* ----------------------------------------------------------------------
+     Mobile restraint
+     ---------------------------------------------------------------------- */
+  @media (max-width: 760px) {
+    :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sectionhead,
+    :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq) .ff-sectionHead {
+      margin-bottom: 0.92rem;
+    }
+
+    #footer .ff-footerTray,
+    #footer .ff-footerTray--compact,
+    #footer .ff-footerTray--flagship {
+      box-shadow:
+        0 12px 26px rgba(2, 8, 23, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    }
+
+    #footer .ff-btn--primary,
+    #footer [data-ff-footer] .ff-btn--primary {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Micro-contrast + interaction polish
+   FF_MICRO_CONTRAST_INTERACTION_POLISH_V1
+   - sharpens small-copy authority
+   - improves secondary action surfaces
+   - adds cleaner hover / active / focus polish
+   - finishes faq / disclosure interaction feel
+   ========================================================================== */
+
+@layer ff.pages {
+  /* ----------------------------------------------------------------------
+     Copy authority / readability finish
+     ---------------------------------------------------------------------- */
+  :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-kicker {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-help,
+  :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-muted {
+    line-height: 1.48;
+  }
+
+  [data-theme="light"] :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-help,
+  [data-theme="light"] :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-muted {
+    color: rgba(15, 23, 42, 0.74);
+  }
+
+  [data-theme="dark"] :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-help,
+  [data-theme="dark"] :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-muted {
+    color: rgba(226, 232, 240, 0.78);
+  }
+
+  :is(#impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) h3 {
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+
+  /* ----------------------------------------------------------------------
+     Action surface polish
+     ---------------------------------------------------------------------- */
+  :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) :is(.ff-btn, button, summary) {
+    transition:
+      transform 160ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease,
+      color 180ms ease,
+      opacity 180ms ease;
+  }
+
+  :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+    :is(.ff-btn:not(.ff-btn--primary), .ff-btn--secondary, .ff-btn--quiet, .ff-btn--ghost) {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 6px 16px rgba(2, 8, 23, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  [data-theme="light"]
+    :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+    :is(.ff-btn:not(.ff-btn--primary), .ff-btn--secondary, .ff-btn--quiet, .ff-btn--ghost) {
+    border-color: rgba(15, 23, 42, 0.09);
+    box-shadow:
+      0 6px 14px rgba(15, 23, 42, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  }
+
+  :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+    :is(.ff-btn--primary, [data-ff-open-donate], [data-ff-open-sponsor]) {
+    box-shadow:
+      0 10px 22px rgba(249, 115, 22, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  [data-theme="light"]
+    :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+    :is(.ff-btn--primary, [data-ff-open-donate], [data-ff-open-sponsor]) {
+    box-shadow:
+      0 10px 18px rgba(249, 115, 22, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+      :is(.ff-btn--primary, [data-ff-open-donate], [data-ff-open-sponsor]):hover {
+      transform: translateY(-1px);
+    }
+
+    :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+      :is(.ff-btn:not(.ff-btn--primary), .ff-btn--secondary, .ff-btn--quiet, .ff-btn--ghost):hover {
+      transform: translateY(-1px);
+    }
+
+    :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+      :is(.ff-btn, button, summary):active {
+      transform: translateY(0);
+    }
+  }
+
+  :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+    :is(.ff-btn, button, summary):focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 1px rgba(249, 115, 22, 0.52),
+      0 0 0 4px rgba(249, 115, 22, 0.18);
+  }
+
+  /* ----------------------------------------------------------------------
+     FAQ / disclosure finish
+     ---------------------------------------------------------------------- */
+  #trust-faq .ff-disclosure,
+  #faq .ff-disclosure {
+    overflow: hidden;
+  }
+
+  #trust-faq .ff-disclosure__sum,
+  #faq .ff-disclosure__sum {
+    border-radius: inherit;
+  }
+
+  [data-theme="light"] #trust-faq .ff-disclosure__sum,
+  [data-theme="light"] #faq .ff-disclosure__sum {
+    background: rgba(248, 250, 252, 0.84);
+  }
+
+  [data-theme="dark"] #trust-faq .ff-disclosure__sum,
+  [data-theme="dark"] #faq .ff-disclosure__sum {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  [data-theme="light"] #trust-faq .ff-disclosure[open] .ff-disclosure__sum,
+  [data-theme="light"] #faq .ff-disclosure[open] .ff-disclosure__sum {
+    box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08);
+  }
+
+  [data-theme="dark"] #trust-faq .ff-disclosure[open] .ff-disclosure__sum,
+  [data-theme="dark"] #faq .ff-disclosure[open] .ff-disclosure__sum {
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* ----------------------------------------------------------------------
+     Small card heading / label finish
+     ---------------------------------------------------------------------- */
+  #impact .ff-card,
+  #teams .ff-teamCard,
+  #sponsors .ff-sponsorCell,
+  #trust-faq .ff-card,
+  #footer .ff-card {
+    overflow-wrap: anywhere;
+  }
+
+  #impact .ff-card .ff-kicker,
+  #teams .ff-teamCard .ff-kicker,
+  #sponsors .ff-sponsorCell .ff-kicker,
+  #trust-faq .ff-card .ff-kicker,
+  #footer .ff-card .ff-kicker {
+    opacity: 0.9;
+  }
+
+  /* ----------------------------------------------------------------------
+     Mobile restraint
+     ---------------------------------------------------------------------- */
+  @media (max-width: 760px) {
+    :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-help,
+    :is(#home, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer) .ff-muted {
+      line-height: 1.42;
+    }
+
+    :is(#home, #checkout, #impact, #teams, #story, #sponsors, #trust-faq, #faq, #footer)
+      :is(.ff-btn:not(.ff-btn--primary), .ff-btn--secondary, .ff-btn--quiet, .ff-btn--ghost) {
+      box-shadow:
+        0 4px 12px rgba(2, 8, 23, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+  }
+}
+
