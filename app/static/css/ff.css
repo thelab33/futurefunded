@@ -22,8 +22,17 @@
 /* ==========================================================================
    LAYER FF TOKENS
    ========================================================================== */
+
+/* ==========================================================================
+   FutureFunded — consolidated layer wrappers
+   FF_LAYER_CONSOLIDATION_V1
+   - merged repeated top-level @layer blocks
+   - preserved per-layer inner rule order
+   - backup created before rewrite
+   ========================================================================== */
+
 @layer ff.tokens {
-  :root,
+:root,
   html.ff-root {
     color-scheme: light;
 
@@ -278,10 +287,11 @@
   }
 }
 
+@layer ff.base {
 /* ==========================================================================
    LAYER FF BASE
    ========================================================================== */
-@layer ff.base {
+
   *,
   *::before,
   *::after {
@@ -495,10 +505,11 @@
   }
 }
 
+@layer ff.type {
 /* ==========================================================================
    LAYER FF TYPE
    ========================================================================== */
-@layer ff.type {
+
   .ff-display,
   .ff-h2,
   .ff-h3,
@@ -641,10 +652,11 @@
   }
 }
 
+@layer ff.layout {
 /* ==========================================================================
    LAYER FF LAYOUT
    ========================================================================== */
-@layer ff.layout {
+
   .ff-shell {
     position: relative;
     isolation: isolate;
@@ -872,10 +884,11 @@
   }
 }
 
+@layer ff.surfaces {
 /* ==========================================================================
    LAYER FF SURFACES
    ========================================================================== */
-@layer ff.surfaces {
+
   .ff-card,
   .ff-surface,
   .ff-glass,
@@ -1182,11 +1195,12 @@
   }
 }
 
+@layer ff.controls {
 /* ==========================================================================
    LAYER FF CONTROLS
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.controls {
+
   .ff-btn,
   .ff-chip,
   .ff-pill,
@@ -1620,11 +1634,12 @@
   }
 }
 
+@layer ff.components {
 /* ==========================================================================
    LAYER FF COMPONENTS
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.components {
+
   .ff-sr,
   #ff_focus_probe,
   .ff-focus-probe {
@@ -2370,13 +2385,6 @@
     isolation: isolate;
   }
 
-  .ff-impactTier,
-  .ff-teamCard,
-  .ff-sponsorCell,
-  .ff-checkoutCard {
-    overflow: hidden;
-  }
-
   @supports (overflow: clip) {
     .ff-impactTier,
     .ff-teamCard,
@@ -2654,14 +2662,14 @@
       filter: saturate(1.04) contrast(1.02);
     }
   }
-}
+
 
 /* ==========================================================================
    LAYER FF COMPONENTS
    Story / disclosure / footer / tabs / alerts / onboarding / checkout
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.components {
+
   /* ------------------------------------------------------------------------
      Story
      ------------------------------------------------------------------------ */
@@ -3581,11 +3589,12 @@
   }
 }
 
+@layer ff.overlays {
 /* ==========================================================================
    LAYER FF OVERLAYS
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.overlays {
+
   .ff-sheet,
   .ff-modal,
   .ff-drawer {
@@ -3848,11 +3857,12 @@
   }
 }
 
+@layer ff.states {
 /* ==========================================================================
    LAYER FF STATES
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.states {
+
   .is-featured,
   .ff-impactTier--recommended,
   .ff-impactChoice--feature {
@@ -3922,11 +3932,12 @@
   }
 }
 
+@layer ff.utilities {
 /* ==========================================================================
    LAYER FF UTILITIES
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.utilities {
+
   @keyframes ff-shimmer {
     from {
       background-position: 200% 0;
@@ -4017,11 +4028,12 @@
   }
 }
 
+@layer ff.overrides {
 /* ==========================================================================
    LAYER FF OVERRIDES
    Clean contract-safe replacement
    ========================================================================== */
-@layer ff.overrides {
+
   /* ------------------------------------------------------------------------
      Type / copy overrides
      ------------------------------------------------------------------------ */
@@ -4982,13 +4994,1311 @@
       gap: 1rem;
     }
   }
+
+
+/* ==========================================================================
+   FutureFunded — Typography readability pass
+   FF_TYPOGRAPHY_READABILITY_PASS_V1
+   - improves text comfort, hierarchy, and scan rhythm
+   - keeps existing hooks/contracts/layout intact
+   - mobile-first and production-safe
+   ========================================================================== */
+
+  .ff-root {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .ff-body {
+    font-size: clamp(0.98rem, 0.94rem + 0.18vw, 1.04rem);
+    line-height: 1.58;
+  }
+
+  .ff-main,
+  .ff-card,
+  .ff-proofMini,
+  .ff-callout,
+  .ff-teamCard,
+  .ff-sponsorCell,
+  .ff-checkoutCard,
+  .ff-storyQuote,
+  .ff-liveFeed,
+  .ff-impactTier,
+  .ff-faqCard,
+  .ff-trustCard,
+  .ff-footer {
+    line-height: 1.56;
+  }
+
+  .ff-display,
+  .ff-h1,
+  .ff-h2,
+  .ff-h3,
+  .ff-modal__title,
+  .ff-brand__title,
+  .ff-topbarBrand__text,
+  .ff-heroTitle,
+  #heroTitle,
+  #impactTitle,
+  #teamsTitle,
+  #storyTitle,
+  #sponsorsTitle,
+  #trustFaqTitle,
+  #faqTitle {
+    line-height: 1.04;
+    letter-spacing: -0.028em;
+    text-wrap: balance;
+  }
+
+  .ff-display {
+    font-size: clamp(2.2rem, 1.75rem + 2.4vw, 4.15rem);
+  }
+
+  .ff-h1 {
+    font-size: clamp(1.95rem, 1.55rem + 1.8vw, 3rem);
+  }
+
+  .ff-h2,
+  #impactTitle,
+  #teamsTitle,
+  #storyTitle,
+  #sponsorsTitle,
+  #trustFaqTitle {
+    font-size: clamp(1.34rem, 1.16rem + 0.95vw, 2.05rem);
+  }
+
+  .ff-h3,
+  #faqTitle,
+  .ff-modal__title {
+    font-size: clamp(1.08rem, 1rem + 0.45vw, 1.42rem);
+  }
+
+  .ff-heroTitle .ff-heroLine,
+  .ff-heroTitle .ff-heroAccent,
+  .ff-heroName {
+    text-wrap: balance;
+  }
+
+  .ff-lead,
+  .ff-heroLead,
+  #impactLead,
+  #teamsLead,
+  #storyLead,
+  #sponsorsLead,
+  #trustFaqLead {
+    font-size: clamp(1rem, 0.96rem + 0.22vw, 1.14rem);
+    line-height: 1.68;
+    max-width: 62ch;
+    text-wrap: pretty;
+  }
+
+  .ff-help,
+  .ff-muted,
+  .ff-brand__sub,
+  .ff-footerMetaV2__legal,
+  .ff-teamCard__meta,
+  .ff-liveFeed__text,
+  .ff-storyMeta,
+  .ff-progressMini__note,
+  .ff-chip__meta,
+  .ff-impactChoice__meta,
+  .ff-heroSignal__meta {
+    font-size: clamp(0.94rem, 0.92rem + 0.08vw, 1rem);
+    line-height: 1.62;
+  }
+
+  .ff-kicker,
+  .ff-pill,
+  .ff-topbarGoal__label,
+  .ff-progressMini__label,
+  .ff-teamStat__label,
+  .ff-impactChoice__eyebrow,
+  .ff-heroSignal__kicker,
+  .ff-footerMetaV2__eyebrow,
+  .ff-footerNavV2__title {
+    letter-spacing: 0.045em;
+  }
+
+  .ff-kicker {
+    font-size: 0.76rem;
+    line-height: 1.2;
+  }
+
+  .ff-btn,
+  .ff-chip,
+  .ff-tab,
+  .ff-nav__link,
+  .ff-footer__link {
+    font-size: 0.95rem;
+    line-height: 1.25;
+  }
+
+  .ff-heroLead,
+  .ff-proofMini p,
+  .ff-callout p,
+  .ff-trustSignal p,
+  .ff-disclosure__panel p,
+  .ff-storyCopy p,
+  .ff-checkoutCard p,
+  .ff-footer p,
+  .ff-footer li,
+  .ff-teamCard p,
+  .ff-sponsorCell p,
+  .ff-impactProof p,
+  .ff-liveFeed p {
+    max-width: 66ch;
+    text-wrap: pretty;
+  }
+
+  .ff-proofMini,
+  .ff-callout,
+  .ff-trustSignal,
+  .ff-progressMini,
+  .ff-liveFeed__item,
+  .ff-disclosure__panel,
+  .ff-checkoutCard,
+  .ff-sponsorCell,
+  .ff-teamCard,
+  .ff-impactTier {
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .ff-disclosure__sum {
+    line-height: 1.42;
+    gap: 0.75rem;
+  }
+
+  .ff-disclosure__sum .ff-help strong,
+  .ff-disclosure__sum strong.ff-help {
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+
+  .ff-trustSignals {
+    gap: 0.85rem;
+  }
+
+  .ff-trustSignal strong,
+  .ff-heroSignal__value,
+  .ff-progressMini__value,
+  .ff-teamStat__value,
+  .ff-chip__amt,
+  .ff-impactChoice__amt,
+  .ff-topbarGoal__raised,
+  .ff-topbarGoal__goal,
+  .ff-topbarGoal__percent,
+  .ff-num {
+    letter-spacing: -0.018em;
+  }
+
+  .ff-storyList li,
+  .ff-footerLinkList li,
+  .ff-drawer__grid li {
+    line-height: 1.5;
+  }
+
+  .ff-footerBrandV2__copy,
+  .ff-footerTrust,
+  .ff-footerMetaV2__legal {
+    max-width: 56ch;
+  }
+
+  .ff-topbarGoal__summary,
+  .ff-topbarGoal__progressHead,
+  .ff-checkoutCard__head,
+  .ff-sectionhead__text,
+  .ff-storyCopy,
+  .ff-footerTop__copy {
+    row-gap: 0.35rem;
+  }
+
+  .ff-proofMini > .ff-kicker + .ff-help,
+  .ff-proofMini > .ff-kicker + .ff-h3,
+  .ff-proofMini > .ff-kicker + .ff-h2,
+  .ff-callout .ff-kicker + .ff-help,
+  .ff-checkoutCard__head .ff-label + .ff-help {
+    margin-top: 0.42rem;
+  }
+
+  .ff-teamCard__title,
+  .ff-h3,
+  .ff-label,
+  .ff-modal__title {
+    text-wrap: balance;
+  }
+
+  .ff-input,
+  .ff-input::placeholder,
+  textarea.ff-input,
+  select.ff-input {
+    font-size: 0.98rem;
+    line-height: 1.45;
+  }
+
+  .ff-input,
+  textarea.ff-input {
+    padding-top: 0.82rem;
+    padding-bottom: 0.82rem;
+  }
+
+  .ff-heroSignal__meta,
+  .ff-liveFeed__text,
+  .ff-chip__meta,
+  .ff-impactChoice__meta,
+  .ff-progressMini__note,
+  .ff-teamCard__meta,
+  .ff-help.ff-muted {
+    opacity: 0.96;
+  }
+
+  @media (max-width: 820px) {
+    .ff-body {
+      font-size: 1rem;
+      line-height: 1.62;
+    }
+
+    .ff-display {
+      font-size: clamp(2rem, 1.64rem + 2.3vw, 3rem);
+    }
+
+    .ff-lead,
+    .ff-heroLead,
+    #impactLead,
+    #teamsLead,
+    #storyLead,
+    #sponsorsLead,
+    #trustFaqLead {
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 58ch;
+    }
+
+    .ff-help,
+    .ff-muted,
+    .ff-brand__sub,
+    .ff-footerMetaV2__legal,
+    .ff-teamCard__meta,
+    .ff-liveFeed__text,
+    .ff-storyMeta,
+    .ff-progressMini__note,
+    .ff-chip__meta,
+    .ff-impactChoice__meta,
+    .ff-heroSignal__meta {
+      font-size: 0.95rem;
+      line-height: 1.64;
+    }
+
+    .ff-btn,
+    .ff-chip,
+    .ff-tab,
+    .ff-nav__link {
+      font-size: 0.95rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .ff-display,
+    .ff-h1,
+    .ff-h2,
+    .ff-h3,
+    .ff-modal__title,
+    .ff-brand__title,
+    .ff-topbarBrand__text,
+    .ff-heroTitle,
+    #heroTitle,
+    #impactTitle,
+    #teamsTitle,
+    #storyTitle,
+    #sponsorsTitle,
+    #trustFaqTitle,
+    #faqTitle {
+      letter-spacing: -0.02em;
+    }
+
+    .ff-proofMini p,
+    .ff-callout p,
+    .ff-trustSignal p,
+    .ff-disclosure__panel p,
+    .ff-storyCopy p,
+    .ff-checkoutCard p,
+    .ff-footer p,
+    .ff-teamCard p,
+    .ff-sponsorCell p,
+    .ff-impactProof p,
+    .ff-liveFeed p {
+      max-width: none;
+    }
+
+    .ff-disclosure__sum .ff-help strong,
+    .ff-disclosure__sum strong.ff-help {
+      font-size: 0.96rem;
+    }
+
+    .ff-kicker,
+    .ff-pill {
+      font-size: 0.74rem;
+    }
+  }
+
+
+/* ==========================================================================
+   FutureFunded — Mobile micro-prune
+   FF_MOBILE_MICRO_PRUNE_V1
+   - removes repeated low-signal helper copy on smaller screens
+   - keeps primary story, CTA flow, trust, and sponsor paths intact
+   - css-only, contract-safe, production-safe
+   ========================================================================== */
+
+  @media (max-width: 980px) {
+    #trust-faq .ff-trustCard .ff-grid[aria-label="Trust summary"] {
+      display: none;
+    }
+  }
+
+  @media (max-width: 760px) {
+    /* hero: reduce repeated explainer copy */
+    #home .ff-heroProof__item:nth-child(2),
+    #home .ff-heroProof__item:nth-child(3),
+    #home [data-ff-live-feed] {
+      display: none;
+    }
+
+    /* teams: remove repeated pooled-fund narration + duplicate progress text */
+    #teams .ff-teamCard__summary,
+    #teams .ff-callout[aria-label$="shared fund note"],
+    #teams .ff-teamCard__meterText,
+    #teams .ff-proofMini[aria-label$="support note"] {
+      display: none;
+    }
+
+    /* story: keep one support cue, drop the repeat */
+    #story .ff-proofMini[aria-label="Program trust point"] {
+      display: none;
+    }
+
+    /* sponsors: trim extra note on mobile */
+    #sponsors .ff-callout[aria-label="Sponsor note"] {
+      display: none;
+    }
+
+    /* trust: keep core trust signals + faq, remove extra reassurance block */
+    #trust-faq .ff-trustCard .ff-impactProofCallout {
+      display: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    /* hero: lead + snapshot + ctas are enough at very small widths */
+    #home .ff-heroProof,
+    #home .ff-heroPanelQr .ff-help,
+    #footer .ff-footerBrandV2__trust {
+      display: none;
+    }
+
+    /* sponsors + footer: reduce last layer of repetition */
+    #sponsors .ff-proofMini[role="listitem"],
+    #footer .ff-footerTop__copy .ff-footerTrust {
+      display: none;
+    }
+  }
+
+
+/* ==========================================================================
+   FutureFunded — Text contrast rescue
+   FF_TEXT_CONTRAST_RESCUE_V1
+   - strengthens helper/muted text readability
+   - improves small-copy legibility across cards/faq/footer
+   - preserves layout and contracts
+   ========================================================================== */
+
+  .ff-help,
+  .ff-muted,
+  .ff-help.ff-muted,
+  .ff-muted.ff-help,
+  .ff-teamCard__meta,
+  .ff-liveFeed__text,
+  .ff-chip__meta,
+  .ff-impactChoice__meta,
+  .ff-progressMini__note,
+  .ff-footerTrust,
+  .ff-footerBrandV2__copy,
+  .ff-footerMetaV2__legal,
+  .ff-heroSignal__meta,
+  .ff-storyMeta .ff-help,
+  .ff-disclosure__panel .ff-help,
+  .ff-proofMini .ff-help,
+  .ff-callout .ff-help,
+  .ff-trustSignal .ff-help,
+  .ff-checkoutCard .ff-help,
+  .ff-sponsorCell .ff-help,
+  .ff-teamCard .ff-help,
+  .ff-impactProof .ff-help,
+  .ff-liveFeed .ff-help {
+    color: rgba(15, 23, 42, 0.82);
+    opacity: 1;
+    font-weight: 500;
+  }
+
+  .ff-kicker,
+  .ff-pill,
+  .ff-teamStat__label,
+  .ff-topbarGoal__label,
+  .ff-progressMini__label,
+  .ff-impactChoice__eyebrow,
+  .ff-heroSignal__kicker,
+  .ff-footerMetaV2__eyebrow,
+  .ff-footerNavV2__title {
+    color: rgba(15, 23, 42, 0.72);
+    opacity: 1;
+  }
+
+  .ff-disclosure__sum .ff-help,
+  .ff-disclosure__sum strong.ff-help,
+  .ff-disclosure__sum .ff-help strong {
+    color: rgba(15, 23, 42, 0.9);
+    opacity: 1;
+  }
+
+  .ff-proofMini strong,
+  .ff-trustSignal strong,
+  .ff-heroSignal__value,
+  .ff-progressMini__value,
+  .ff-teamStat__value {
+    color: rgba(15, 23, 42, 0.96);
+  }
+
+  .ff-storyQuote__meta,
+  .ff-brand__sub,
+  .ff-footerMetaV2__legal {
+    color: rgba(15, 23, 42, 0.76);
+  }
+
+  .ff-input::placeholder {
+    color: rgba(15, 23, 42, 0.5);
+    opacity: 1;
+  }
+
+  .ff-root[data-theme="dark"] .ff-kicker,
+  .ff-root[data-theme="dark"] .ff-pill,
+  .ff-root[data-theme="dark"] .ff-teamStat__label,
+  .ff-root[data-theme="dark"] .ff-topbarGoal__label,
+  .ff-root[data-theme="dark"] .ff-progressMini__label,
+  .ff-root[data-theme="dark"] .ff-impactChoice__eyebrow,
+  .ff-root[data-theme="dark"] .ff-heroSignal__kicker,
+  .ff-root[data-theme="dark"] .ff-footerMetaV2__eyebrow,
+  .ff-root[data-theme="dark"] .ff-footerNavV2__title {
+    color: rgba(241, 245, 249, 0.72);
+  }
+
+  .ff-root[data-theme="dark"] .ff-disclosure__sum .ff-help,
+  .ff-root[data-theme="dark"] .ff-disclosure__sum strong.ff-help,
+  .ff-root[data-theme="dark"] .ff-disclosure__sum .ff-help strong,
+  .ff-root[data-theme="dark"] .ff-proofMini strong,
+  .ff-root[data-theme="dark"] .ff-trustSignal strong,
+  .ff-root[data-theme="dark"] .ff-heroSignal__value,
+  .ff-root[data-theme="dark"] .ff-progressMini__value,
+  .ff-root[data-theme="dark"] .ff-teamStat__value {
+    color: rgba(248, 250, 252, 0.95);
+  }
+
+  .ff-root[data-theme="dark"] .ff-storyQuote__meta,
+  .ff-root[data-theme="dark"] .ff-brand__sub,
+  .ff-root[data-theme="dark"] .ff-footerMetaV2__legal {
+    color: rgba(241, 245, 249, 0.76);
+  }
+
+  .ff-root[data-theme="dark"] .ff-input::placeholder {
+    color: rgba(241, 245, 249, 0.48);
+  }
+
+
+/* ==========================================================================
+   FutureFunded — Card rhythm + spacing polish
+   FF_CARD_RHYTHM_POLISH_V1
+   - improves breathing room between content blocks
+   - reduces stacked/crowded feeling
+   - preserves contracts, layout logic, and selectors
+   ========================================================================== */
+
+  .ff-section {
+    padding-block: clamp(3.25rem, 2.6rem + 1.8vw, 5.5rem);
+  }
+
+  .ff-card,
+  .ff-proofMini,
+  .ff-callout,
+  .ff-teamCard,
+  .ff-sponsorCell,
+  .ff-checkoutCard,
+  .ff-impactTier,
+  .ff-trustCard,
+  .ff-faqCard,
+  .ff-storyQuote,
+  .ff-liveFeed,
+  .ff-impactProof,
+  .ff-impactPick,
+  .ff-heroSignal {
+    border-radius: 1rem;
+  }
+
+  .ff-pad,
+  .ff-card.ff-pad,
+  .ff-checkoutCard,
+  .ff-teamCard,
+  .ff-sponsorCell,
+  .ff-impactTier,
+  .ff-trustCard,
+  .ff-faqCard {
+    padding: clamp(1rem, 0.9rem + 0.55vw, 1.35rem);
+  }
+
+  .ff-hero__capsuleInner,
+  .ff-footerTray,
+  .ff-checkoutShell,
+  .ff-storyCard,
+  .ff-impactCard,
+  .ff-teamsShell {
+    gap: clamp(0.9rem, 0.82rem + 0.35vw, 1.25rem);
+  }
+
+  .ff-sectionhead {
+    margin-bottom: 0.2rem;
+  }
+
+  .ff-sectionhead__text > .ff-kicker + .ff-h2,
+  .ff-sectionhead__text > .ff-kicker + .ff-h3,
+  .ff-checkoutCard__head > .ff-label + .ff-help,
+  .ff-proofMini > .ff-kicker + .ff-help,
+  .ff-proofMini > .ff-kicker + .ff-h3,
+  .ff-proofMini > .ff-kicker + .ff-h2 {
+    margin-top: 0.5rem;
+  }
+
+  .ff-sectionhead__text > .ff-h2 + .ff-lead,
+  .ff-sectionhead__text > .ff-h3 + .ff-help,
+  .ff-heroHeader > .ff-heroTitle + .ff-heroLead {
+    margin-top: 0.8rem;
+  }
+
+  .ff-sectionhead__actions,
+  .ff-heroCtas,
+  .ff-footerTop__actions,
+  .ff-teamCard__foot,
+  .ff-row[role="group"] {
+    row-gap: 0.7rem;
+  }
+
+  .ff-grid,
+  .ff-storyGrid,
+  .ff-impactTierGrid,
+  .ff-teamGrid,
+  .ff-footerGridV2 {
+    gap: clamp(0.9rem, 0.82rem + 0.5vw, 1.25rem);
+  }
+
+  .ff-proofMini,
+  .ff-callout,
+  .ff-trustSignal,
+  .ff-progressMini,
+  .ff-liveFeed__item,
+  .ff-disclosure__panel {
+    padding-block: 0.05rem;
+  }
+
+  .ff-disclosure__panel {
+    padding-top: 0.9rem;
+  }
+
+  .ff-divider {
+    margin-block: 1.25rem;
+    opacity: 0.55;
+  }
+
+  .ff-teamCard__body,
+  .ff-storyCopy,
+  .ff-impactProofRail,
+  .ff-faqList,
+  .ff-trustSignals,
+  .ff-stack {
+    gap: 0.9rem;
+  }
+
+  .ff-teamCard__stats,
+  .ff-topbarGoal__summary,
+  .ff-topbarGoal__progressHead {
+    gap: 0.75rem;
+  }
+
+  .ff-teamCard__meter,
+  .ff-proofMini,
+  .ff-callout,
+  .ff-liveFeed,
+  .ff-impactProofCallout,
+  .ff-checkoutAmountRow {
+    margin-top: 0.9rem;
+  }
+
+  .ff-btn,
+  .ff-chip,
+  .ff-tab {
+    min-height: 2.75rem;
+  }
+
+  @media (max-width: 980px) {
+    .ff-section {
+      padding-block: clamp(2.7rem, 2.25rem + 1.5vw, 4rem);
+    }
+
+    .ff-pad,
+    .ff-card.ff-pad,
+    .ff-checkoutCard,
+    .ff-teamCard,
+    .ff-sponsorCell,
+    .ff-impactTier,
+    .ff-trustCard,
+    .ff-faqCard {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .ff-section {
+      padding-block: 2.35rem;
+    }
+
+    .ff-grid,
+    .ff-storyGrid,
+    .ff-impactTierGrid,
+    .ff-teamGrid,
+    .ff-footerGridV2 {
+      gap: 0.9rem;
+    }
+
+    .ff-sectionhead__actions,
+    .ff-heroCtas,
+    .ff-footerTop__actions,
+    .ff-teamCard__foot {
+      gap: 0.65rem;
+    }
+
+    .ff-divider {
+      margin-block: 1rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .ff-section {
+      padding-block: 2rem;
+    }
+
+    .ff-pad,
+    .ff-card.ff-pad,
+    .ff-checkoutCard,
+    .ff-teamCard,
+    .ff-sponsorCell,
+    .ff-impactTier,
+    .ff-trustCard,
+    .ff-faqCard {
+      padding: 0.92rem;
+    }
+
+    .ff-btn,
+    .ff-chip,
+    .ff-tab {
+      min-height: 2.65rem;
+    }
+  }
+
+
+/* ==========================================================================
+   FutureFunded — Dark mode surface separation rescue
+   FF_DARK_SURFACE_RESCUE_V1
+   - improves card/background separation in dark theme
+   - lifts lower-half readability without touching light theme
+   - preserves hooks, structure, and layout behavior
+   ========================================================================== */
+
+  .ff-root[data-theme="dark"] .ff-card,
+  .ff-root[data-theme="dark"] .ff-proofMini,
+  .ff-root[data-theme="dark"] .ff-callout,
+  .ff-root[data-theme="dark"] .ff-teamCard,
+  .ff-root[data-theme="dark"] .ff-sponsorCell,
+  .ff-root[data-theme="dark"] .ff-checkoutCard,
+  .ff-root[data-theme="dark"] .ff-impactTier,
+  .ff-root[data-theme="dark"] .ff-trustCard,
+  .ff-root[data-theme="dark"] .ff-faqCard,
+  .ff-root[data-theme="dark"] .ff-storyQuote,
+  .ff-root[data-theme="dark"] .ff-liveFeed,
+  .ff-root[data-theme="dark"] .ff-impactProof,
+  .ff-root[data-theme="dark"] .ff-impactPick,
+  .ff-root[data-theme="dark"] .ff-heroSignal,
+  .ff-root[data-theme="dark"] .ff-topbar__capsule,
+  .ff-root[data-theme="dark"] .ff-hero__capsule,
+  .ff-root[data-theme="dark"] .ff-footerTray,
+  .ff-root[data-theme="dark"] .ff-storyCard,
+  .ff-root[data-theme="dark"] .ff-impactCard,
+  .ff-root[data-theme="dark"] .ff-teamsShell {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(20, 30, 58, 0.96) 0%,
+        rgba(9, 16, 34, 0.98) 100%
+      );
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .ff-root[data-theme="dark"] .ff-proofMini,
+  .ff-root[data-theme="dark"] .ff-progressMini,
+  .ff-root[data-theme="dark"] .ff-trustSignal,
+  .ff-root[data-theme="dark"] .ff-liveFeed__item,
+  .ff-root[data-theme="dark"] .ff-disclosure__panel,
+  .ff-root[data-theme="dark"] .ff-teamCard__summary,
+  .ff-root[data-theme="dark"] .ff-teamCard__stats,
+  .ff-root[data-theme="dark"] .ff-impactProofCallout {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .ff-root[data-theme="dark"] .ff-disclosure__sum,
+  .ff-root[data-theme="dark"] .ff-teamCard__meter,
+  .ff-root[data-theme="dark"] .ff-impactChoice,
+  .ff-root[data-theme="dark"] .ff-chip,
+  .ff-root[data-theme="dark"] .ff-tab {
+    border-color: rgba(148, 163, 184, 0.16);
+  }
+
+  .ff-root[data-theme="dark"] .ff-divider {
+    opacity: 0.34;
+    border-color: rgba(148, 163, 184, 0.16);
+  }
+
+  .ff-root[data-theme="dark"] .ff-h1,
+  .ff-root[data-theme="dark"] .ff-h2,
+  .ff-root[data-theme="dark"] .ff-h3,
+  .ff-root[data-theme="dark"] .ff-display,
+  .ff-root[data-theme="dark"] .ff-modal__title,
+  .ff-root[data-theme="dark"] .ff-brand__title,
+  .ff-root[data-theme="dark"] .ff-topbarBrand__text,
+  .ff-root[data-theme="dark"] .ff-heroTitle,
+  .ff-root[data-theme="dark"] .ff-heroSignal__value,
+  .ff-root[data-theme="dark"] .ff-proofMini strong,
+  .ff-root[data-theme="dark"] .ff-trustSignal strong,
+  .ff-root[data-theme="dark"] .ff-progressMini__value,
+  .ff-root[data-theme="dark"] .ff-teamStat__value,
+  .ff-root[data-theme="dark"] .ff-num {
+    color: rgba(248, 250, 252, 0.97);
+  }
+
+  .ff-root[data-theme="dark"] .ff-help,
+  .ff-root[data-theme="dark"] .ff-muted,
+  .ff-root[data-theme="dark"] .ff-help.ff-muted,
+  .ff-root[data-theme="dark"] .ff-muted.ff-help,
+  .ff-root[data-theme="dark"] .ff-teamCard__meta,
+  .ff-root[data-theme="dark"] .ff-liveFeed__text,
+  .ff-root[data-theme="dark"] .ff-chip__meta,
+  .ff-root[data-theme="dark"] .ff-impactChoice__meta,
+  .ff-root[data-theme="dark"] .ff-progressMini__note,
+  .ff-root[data-theme="dark"] .ff-footerTrust,
+  .ff-root[data-theme="dark"] .ff-footerBrandV2__copy,
+  .ff-root[data-theme="dark"] .ff-footerMetaV2__legal,
+  .ff-root[data-theme="dark"] .ff-heroSignal__meta,
+  .ff-root[data-theme="dark"] .ff-storyMeta .ff-help,
+  .ff-root[data-theme="dark"] .ff-disclosure__panel .ff-help,
+  .ff-root[data-theme="dark"] .ff-proofMini .ff-help,
+  .ff-root[data-theme="dark"] .ff-callout .ff-help,
+  .ff-root[data-theme="dark"] .ff-trustSignal .ff-help,
+  .ff-root[data-theme="dark"] .ff-checkoutCard .ff-help,
+  .ff-root[data-theme="dark"] .ff-sponsorCell .ff-help,
+  .ff-root[data-theme="dark"] .ff-teamCard .ff-help,
+  .ff-root[data-theme="dark"] .ff-impactProof .ff-help,
+  .ff-root[data-theme="dark"] .ff-liveFeed .ff-help {
+    color: rgba(241, 245, 249, 0.88);
+  }
+
+  .ff-root[data-theme="dark"] .ff-kicker,
+  .ff-root[data-theme="dark"] .ff-pill,
+  .ff-root[data-theme="dark"] .ff-teamStat__label,
+  .ff-root[data-theme="dark"] .ff-topbarGoal__label,
+  .ff-root[data-theme="dark"] .ff-progressMini__label,
+  .ff-root[data-theme="dark"] .ff-impactChoice__eyebrow,
+  .ff-root[data-theme="dark"] .ff-heroSignal__kicker,
+  .ff-root[data-theme="dark"] .ff-footerMetaV2__eyebrow,
+  .ff-root[data-theme="dark"] .ff-footerNavV2__title,
+  .ff-root[data-theme="dark"] .ff-brand__sub,
+  .ff-root[data-theme="dark"] .ff-storyQuote__meta {
+    color: rgba(241, 245, 249, 0.76);
+  }
+
+  .ff-root[data-theme="dark"] .ff-pill--ghost,
+  .ff-root[data-theme="dark"] .ff-pill--soft {
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice,
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell,
+  .ff-root[data-theme="dark"] #trust-faq .ff-trustCard,
+  .ff-root[data-theme="dark"] #faq,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard,
+  .ff-root[data-theme="dark"] #story .ff-storyCard {
+    box-shadow:
+      0 16px 36px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  @media (max-width: 760px) {
+    .ff-root[data-theme="dark"] .ff-card,
+    .ff-root[data-theme="dark"] .ff-proofMini,
+    .ff-root[data-theme="dark"] .ff-callout,
+    .ff-root[data-theme="dark"] .ff-teamCard,
+    .ff-root[data-theme="dark"] .ff-sponsorCell,
+    .ff-root[data-theme="dark"] .ff-checkoutCard,
+    .ff-root[data-theme="dark"] .ff-impactTier,
+    .ff-root[data-theme="dark"] .ff-trustCard,
+    .ff-root[data-theme="dark"] .ff-faqCard,
+    .ff-root[data-theme="dark"] .ff-storyQuote,
+    .ff-root[data-theme="dark"] .ff-liveFeed,
+    .ff-root[data-theme="dark"] .ff-impactProof,
+    .ff-root[data-theme="dark"] .ff-impactPick,
+    .ff-root[data-theme="dark"] .ff-heroSignal,
+    .ff-root[data-theme="dark"] .ff-footerTray,
+    .ff-root[data-theme="dark"] .ff-storyCard,
+    .ff-root[data-theme="dark"] .ff-impactCard,
+    .ff-root[data-theme="dark"] .ff-teamsShell {
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+  }
+
+
+/* ==========================================================================
+   FutureFunded — Hero + rail hierarchy rescue
+   FF_HERO_RAIL_HIERARCHY_RESCUE_V1
+   - clarifies first-fold reading order
+   - makes hero feel like story and rail feel like action
+   - strengthens CTA hierarchy without changing hooks or markup
+   ========================================================================== */
+
+  /* First fold layout */
+  #home .ff-hero__grid {
+    align-items: start;
+    gap: clamp(1rem, 0.9rem + 0.7vw, 1.5rem);
+  }
+
+  @media (min-width: 981px) {
+    #home .ff-hero__grid {
+      grid-template-columns: minmax(0, 1.18fr) minmax(20rem, 0.82fr);
+    }
+
+    #home .ff-heroPanel {
+      position: sticky;
+      top: 5.75rem;
+      align-self: start;
+    }
+  }
+
+  /* Hero content pacing */
+  #home .ff-heroHeader {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  #home .ff-heroMeta {
+    margin-bottom: 0.1rem;
+  }
+
+  #home .ff-heroTitle {
+    max-width: 11ch;
+    margin-bottom: 0;
+  }
+
+  #home .ff-heroLead {
+    max-width: 52ch;
+    margin-bottom: 0;
+  }
+
+  #home .ff-heroFooter {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1rem;
+  }
+
+  /* Make hero snapshot cleaner and more premium */
+  #home .ff-grid[aria-label="Campaign snapshot"] {
+    gap: 0.8rem;
+  }
+
+  #home .ff-grid[aria-label="Campaign snapshot"] .ff-proofMini {
+    min-height: 100%;
+  }
+
+  #home .ff-grid[aria-label="Campaign snapshot"] .ff-kicker {
+    margin-bottom: 0.18rem;
+  }
+
+  /* Hero CTA hierarchy */
+  #home .ff-heroCtas {
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  #home .ff-heroCtas .ff-btn--primary {
+    min-width: 9.25rem;
+    box-shadow:
+      0 10px 24px rgba(249, 115, 22, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  #home .ff-heroCtas .ff-btn--ghost,
+  #home .ff-heroCtas .ff-btn--secondary {
+    opacity: 0.96;
+  }
+
+  /* Rail should read like an action module */
+  #home .ff-heroPanelHead {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  #home .ff-heroPanelHead .ff-h2 {
+    max-width: 12ch;
+  }
+
+  #home .ff-heroPanelHead .ff-help {
+    max-width: 34ch;
+  }
+
+  #home .ff-heroPanel .ff-grid[aria-label="Quick donation amounts"] {
+    gap: 0.7rem;
+  }
+
+  #home .ff-heroPanel .ff-chip {
+    min-height: 4.3rem;
+    justify-content: flex-start;
+  }
+
+  #home .ff-heroPanel .ff-chip__amt {
+    font-size: 1rem;
+  }
+
+  #home .ff-heroPanel .ff-chip__meta {
+    font-size: 0.9rem;
+  }
+
+  #home .ff-heroPanel .ff-donate-btn.ff-w-100 {
+    margin-top: 0.95rem;
+    min-height: 3rem;
+    box-shadow:
+      0 12px 28px rgba(249, 115, 22, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  /* Quiet the lower rail proof block slightly so it doesn't compete */
+  #home .ff-callout[aria-labelledby="heroRailProofTitle"] {
+    opacity: 0.98;
+  }
+
+  #home .ff-callout[aria-labelledby="heroRailProofTitle"] .ff-proofMini {
+    min-height: 100%;
+  }
+
+  /* Light theme: slightly more surface hierarchy in fold one */
+  .ff-root:not([data-theme="dark"]) #home .ff-hero__capsule {
+    box-shadow:
+      0 16px 34px rgba(15, 23, 42, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .ff-root:not([data-theme="dark"]) #home .ff-heroPanel .ff-card--premium {
+    box-shadow:
+      0 18px 36px rgba(15, 23, 42, 0.09),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  /* Dark theme: make fold one feel flagship, not flat */
+  .ff-root[data-theme="dark"] #home .ff-hero__capsule {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(18, 30, 60, 0.98) 0%,
+        rgba(7, 14, 31, 0.99) 100%
+      );
+    box-shadow:
+      0 18px 38px rgba(0, 0, 0, 0.32),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-card--premium {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(20, 31, 59, 0.98) 0%,
+        rgba(9, 16, 34, 0.99) 100%
+      );
+    box-shadow:
+      0 20px 40px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .ff-root[data-theme="dark"] #home .ff-heroCtas .ff-btn--primary,
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-donate-btn.ff-w-100 {
+    box-shadow:
+      0 12px 28px rgba(249, 115, 22, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  /* Tablet/mobile */
+  @media (max-width: 980px) {
+    #home .ff-heroTitle {
+      max-width: 12ch;
+    }
+
+    #home .ff-heroLead {
+      max-width: 46ch;
+    }
+
+    #home .ff-heroPanel {
+      position: static;
+    }
+  }
+
+  @media (max-width: 760px) {
+    #home .ff-hero__grid {
+      gap: 0.9rem;
+    }
+
+    #home .ff-heroHeader,
+    #home .ff-heroFooter,
+    #home .ff-heroPanelHead {
+      gap: 0.75rem;
+    }
+
+    #home .ff-heroTitle {
+      max-width: none;
+    }
+
+    #home .ff-heroLead,
+    #home .ff-heroPanelHead .ff-help {
+      max-width: none;
+    }
+
+    #home .ff-heroCtas .ff-btn--primary {
+      min-width: 0;
+    }
+  }
+
+
+/* ==========================================================================
+   FutureFunded — CTA + pill consistency pass
+   FF_CTA_PILL_CONSISTENCY_V1
+   - unifies buttons, pills, tabs, and chips into one cleaner system
+   - keeps primary CTA authority without over-styling
+   - preserves hooks, layout, and markup contracts
+   ========================================================================== */
+
+  /* ------------------------------------------------------------------------
+     Buttons
+     ------------------------------------------------------------------------ */
+  .ff-btn,
+  .ff-tab,
+  .ff-chip {
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    transition:
+      transform 140ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease,
+      background-color 160ms ease,
+      color 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .ff-btn {
+    padding-inline: 1rem;
+  }
+
+  .ff-btn--sm {
+    padding-inline: 0.88rem;
+  }
+
+  .ff-btn--lg {
+    padding-inline: 1.08rem;
+  }
+
+  .ff-btn:hover,
+  .ff-tab:hover,
+  .ff-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  .ff-btn:active,
+  .ff-tab:active,
+  .ff-chip:active {
+    transform: translateY(0);
+  }
+
+  .ff-btn:focus-visible,
+  .ff-tab:focus-visible,
+  .ff-chip:focus-visible,
+  .ff-pill:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px rgba(249, 115, 22, 0.18),
+      0 0 0 1px rgba(249, 115, 22, 0.34);
+  }
+
+  /* primary CTA */
+  .ff-btn--primary,
+  .ff-tab--cta {
+    box-shadow:
+      0 10px 22px rgba(249, 115, 22, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .ff-btn--primary:hover,
+  .ff-tab--cta:hover {
+    box-shadow:
+      0 12px 26px rgba(249, 115, 22, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  /* secondary / ghost should feel intentionally quieter */
+  .ff-btn--secondary,
+  .ff-btn--ghost,
+  .ff-tab:not(.ff-tab--cta) {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .ff-btn--secondary,
+  .ff-btn--ghost {
+    opacity: 0.98;
+  }
+
+  /* keep donate ctas consistent across page */
+  .ff-donate-btn,
+  [data-ff-open-checkout].ff-btn--primary,
+  .ff-tab--cta {
+    font-weight: 800;
+    letter-spacing: -0.012em;
+  }
+
+  /* ------------------------------------------------------------------------
+     Pills / chips / tabs
+     ------------------------------------------------------------------------ */
+  .ff-pill,
+  .ff-chip,
+  .ff-tab {
+    border-radius: 999px;
+  }
+
+  .ff-pill {
+    min-height: 1.72rem;
+    padding: 0.34rem 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .ff-chip {
+    border-width: 1px;
+    align-items: center;
+  }
+
+  .ff-chip__amt {
+    font-weight: 800;
+  }
+
+  .ff-chip__meta {
+    font-weight: 600;
+  }
+
+  .ff-tab {
+    min-height: 2.4rem;
+    padding-inline: 0.88rem;
+    font-weight: 700;
+  }
+
+  /* ------------------------------------------------------------------------
+     Light theme
+     ------------------------------------------------------------------------ */
+  .ff-root:not([data-theme="dark"]) .ff-btn--secondary,
+  .ff-root:not([data-theme="dark"]) .ff-btn--ghost,
+  .ff-root:not([data-theme="dark"]) .ff-tab:not(.ff-tab--cta),
+  .ff-root:not([data-theme="dark"]) .ff-chip,
+  .ff-root:not([data-theme="dark"]) .ff-pill--ghost,
+  .ff-root:not([data-theme="dark"]) .ff-pill--soft {
+    border-color: rgba(15, 23, 42, 0.1);
+  }
+
+  .ff-root:not([data-theme="dark"]) .ff-btn--secondary:hover,
+  .ff-root:not([data-theme="dark"]) .ff-btn--ghost:hover,
+  .ff-root:not([data-theme="dark"]) .ff-tab:not(.ff-tab--cta):hover,
+  .ff-root:not([data-theme="dark"]) .ff-chip:hover {
+    border-color: rgba(15, 23, 42, 0.16);
+  }
+
+  /* ------------------------------------------------------------------------
+     Dark theme
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] .ff-btn--secondary,
+  .ff-root[data-theme="dark"] .ff-btn--ghost,
+  .ff-root[data-theme="dark"] .ff-tab:not(.ff-tab--cta),
+  .ff-root[data-theme="dark"] .ff-chip,
+  .ff-root[data-theme="dark"] .ff-pill--ghost,
+  .ff-root[data-theme="dark"] .ff-pill--soft {
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .ff-root[data-theme="dark"] .ff-btn--secondary:hover,
+  .ff-root[data-theme="dark"] .ff-btn--ghost:hover,
+  .ff-root[data-theme="dark"] .ff-tab:not(.ff-tab--cta):hover,
+  .ff-root[data-theme="dark"] .ff-chip:hover {
+    border-color: rgba(148, 163, 184, 0.22);
+  }
+
+  .ff-root[data-theme="dark"] .ff-btn--primary,
+  .ff-root[data-theme="dark"] .ff-tab--cta {
+    box-shadow:
+      0 12px 28px rgba(249, 115, 22, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  /* ------------------------------------------------------------------------
+     Mobile restraint
+     ------------------------------------------------------------------------ */
+  @media (max-width: 760px) {
+    .ff-btn:hover,
+    .ff-tab:hover,
+    .ff-chip:hover {
+      transform: none;
+    }
+
+    .ff-pill {
+      min-height: 1.66rem;
+      padding: 0.32rem 0.58rem;
+    }
+
+    .ff-tab {
+      min-height: 2.3rem;
+      padding-inline: 0.8rem;
+    }
+  }
 }
 
+@layer ff.pages {
 /* ==========================================================================
    LAYER FF PAGES
    Consolidated premium / compression / visibility passes
    ========================================================================== */
-@layer ff.pages {
+
   /* ------------------------------------------------------------------------
      Hierarchy / premium restraint
      ------------------------------------------------------------------------ */
@@ -5024,23 +6334,6 @@
     letter-spacing: 0.08em;
   }
 
-  .ff-topbarGoal__label,
-  .ff-topbarGoal__progressLabel {
-    display: block;
-    color: rgb(15 23 42 / 0.56);
-    font-size: 0.64rem;
-    text-transform: uppercase;
-  }
-
-  .ff-topbarGoal__summary {
-    gap: 1rem;
-    align-items: end;
-  }
-
-  .ff-topbarGoal__metric {
-    min-width: 5.5rem;
-  }
-
   .ff-topbarGoal__raised,
   .ff-topbarGoal__goal,
   .ff-topbarGoal__percent,
@@ -5051,29 +6344,12 @@
     color: rgb(15 23 42 / 0.96);
   }
 
-  .ff-topbarGoal__raised,
-  .ff-topbarGoal__goal,
-  .ff-topbarGoal__percent {
-    display: block;
-    margin-top: 0.18rem;
-    font-size: 0.96rem;
-    line-height: 1.1;
-    font-weight: 800;
-  }
-
   .ff-topbarGoal__progressWrap {
     gap: 0.4rem;
   }
 
   .ff-topbarGoal__progress {
     padding-top: 0.08rem;
-  }
-
-  .ff-meter__progress,
-  .ff-teamCard__meterBar {
-    block-size: 0.44rem;
-    border-radius: 999px;
-    overflow: hidden;
   }
 
   .ff-section {
@@ -5104,42 +6380,8 @@
     align-content: start;
   }
 
-  .ff-heroPanel .ff-card {
-    padding: clamp(1rem, 1.6vw, 1.25rem);
-    border: 1px solid rgb(15 23 42 / 0.07);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.45),
-      0 14px 32px rgb(15 23 42 / 0.06);
-  }
-
-  .ff-heroPanelHead {
-    gap: 0.35rem;
-  }
-
   .ff-heroPanelHead .ff-h2 {
     line-height: 1.05;
-  }
-
-  .ff-heroPanel .ff-chip {
-    min-height: 4.3rem;
-    padding: 0.8rem 0.7rem;
-    border: 1px solid rgb(15 23 42 / 0.07);
-    border-radius: 0.95rem;
-    background: rgb(255 255 255 / 0.7);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
-  }
-
-  .ff-heroPanel .ff-chip__amt {
-    color: rgb(15 23 42 / 0.96);
-    font-size: 1.02rem;
-    line-height: 1.05;
-  }
-
-  .ff-heroPanel .ff-chip__meta {
-    margin-top: 0.22rem;
-    color: rgb(15 23 42 / 0.66);
-    font-size: 0.76rem;
-    line-height: 1.35;
   }
 
   .ff-heroLiveFeed,
@@ -5149,40 +6391,12 @@
     box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
   }
 
-  .ff-heroLiveFeed {
-    padding: 0.85rem;
-    border-radius: 1rem;
-    background: rgb(255 255 255 / 0.62);
-  }
-
-  .ff-liveFeed__head {
-    margin-bottom: 0.45rem;
-  }
-
-  .ff-liveFeed__item {
-    padding: 0.72rem 0;
-  }
-
-  .ff-liveFeed__item + .ff-liveFeed__item {
-    border-top: 1px solid rgb(15 23 42 / 0.06);
-  }
-
   .ff-liveFeed__name {
     color: rgb(15 23 42 / 0.92);
   }
 
   .ff-liveFeed__text {
     color: rgb(15 23 42 / 0.64);
-  }
-
-  .ff-heroPanelQr__card {
-    display: grid;
-    grid-template-columns: minmax(0, 112px) minmax(0, 1fr);
-    gap: 0.85rem;
-    align-items: center;
-    padding: 0.85rem;
-    border-radius: 1rem;
-    background: rgb(255 255 255 / 0.64);
   }
 
   .ff-heroPanelQr__media {
@@ -5197,12 +6411,6 @@
     background: #fff;
   }
 
-  .ff-heroPanelQr__title {
-    color: rgb(15 23 42 / 0.94);
-    font-size: 0.95rem;
-    line-height: 1.1;
-  }
-
   .ff-heroPanelQr__copy .ff-help {
     color: rgb(15 23 42 / 0.64);
   }
@@ -5212,14 +6420,6 @@
   .ff-donate-btn {
     box-shadow:
       0 8px 18px rgb(249 115 22 / 0.22),
-      inset 0 1px 0 rgb(255 255 255 / 0.35);
-  }
-
-  .ff-heroPanel .ff-w-100.ff-donate-btn {
-    min-height: 2.9rem;
-    font-weight: 800;
-    box-shadow:
-      0 10px 22px rgb(249 115 22 / 0.24),
       inset 0 1px 0 rgb(255 255 255 / 0.35);
   }
 
@@ -5264,23 +6464,6 @@
     color: rgb(15 23 42 / 0.68);
   }
 
-  .ff-footerTray--flagship {
-    padding: clamp(1rem, 1.8vw, 1.35rem);
-  }
-
-  .ff-footerGridV2--flagship {
-    align-items: start;
-  }
-
-  .ff-footer__link,
-  .ff-footer__link--button {
-    color: rgb(15 23 42 / 0.82);
-  }
-
-  .ff-footerMetaV2__legal {
-    color: rgb(15 23 42 / 0.58);
-  }
-
   /* ------------------------------------------------------------------------
      Team compression
      ------------------------------------------------------------------------ */
@@ -5289,50 +6472,8 @@
     padding: clamp(0.95rem, 1.5vw, 1.2rem);
   }
 
-  .ff-teamGrid {
-    gap: 1rem;
-  }
-
-  .ff-teamCard {
-    padding: 0.9rem;
-    border-radius: 1rem;
-  }
-
-  .ff-teamCard__inner {
-    display: grid;
-    gap: 0.8rem;
-    min-height: 100%;
-  }
-
-  .ff-teamCard__head {
-    align-items: start;
-    gap: 0.75rem;
-  }
-
   .ff-teamCard__eyebrow {
     gap: 0.4rem;
-  }
-
-  .ff-teamCard__title {
-    color: var(--ff-card-title);
-    font-size: 0.96rem;
-    line-height: 1.15;
-    letter-spacing: -0.01em;
-  }
-
-  .ff-teamCard__meta {
-    max-width: 34ch;
-    font-size: 0.82rem;
-    line-height: 1.4;
-  }
-
-  .ff-teamCard__summary {
-    min-width: 4.25rem;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid rgb(15 23 42 / 0.07);
-    border-radius: 0.8rem;
-    background: rgb(255 255 255 / 0.58);
-    text-align: right;
   }
 
   .ff-teamCard__summaryLabel {
@@ -5342,17 +6483,6 @@
     font-size: 0.64rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-
-  .ff-teamCard__summaryValue {
-    font-size: 1rem;
-    line-height: 1;
-  }
-
-  .ff-teamCard__media {
-    aspect-ratio: 16 / 9;
-    border-radius: 0.9rem;
-    overflow: hidden;
   }
 
   .ff-teamCard__mediaTop {
@@ -5377,23 +6507,6 @@
     font-size: 0.74rem;
   }
 
-  .ff-teamCard__body {
-    gap: 0.7rem;
-  }
-
-  .ff-teamCard__stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
-  }
-
-  .ff-teamStat {
-    padding: 0.5rem 0.55rem;
-    border: 1px solid rgb(15 23 42 / 0.06);
-    border-radius: 0.8rem;
-    background: rgb(255 255 255 / 0.58);
-  }
-
   .ff-teamStat__label {
     display: block;
     margin-bottom: 0.15rem;
@@ -5401,45 +6514,6 @@
     font-size: 0.62rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-
-  .ff-teamStat__value {
-    font-size: 0.84rem;
-    line-height: 1.15;
-  }
-
-  .ff-teamCard__meter {
-    gap: 0.3rem;
-  }
-
-  .ff-teamCard__meterText {
-    color: rgb(15 23 42 / 0.6);
-    font-size: 0.76rem;
-  }
-
-  .ff-teamCard__ask,
-  .ff-teamCard .ff-proofMini {
-    padding: 0.7rem 0.75rem;
-    border: 1px solid rgb(15 23 42 / 0.05);
-    border-radius: 0.85rem;
-    background: rgb(255 255 255 / 0.46);
-  }
-
-  .ff-teamCard__ask .ff-help,
-  .ff-teamCard .ff-proofMini .ff-help {
-    font-size: 0.8rem;
-    line-height: 1.48;
-  }
-
-  .ff-teamCard__foot {
-    gap: 0.55rem;
-    margin-top: auto;
-    padding-top: 0.7rem;
-    border-top: 1px solid rgb(15 23 42 / 0.06);
-  }
-
-  .ff-teamCard__foot .ff-btn {
-    min-height: 2.5rem;
   }
 
   .ff-teamCard__foot .ff-btn--primary {
@@ -5513,11 +6587,6 @@
     letter-spacing: -0.02em !important;
   }
 
-  html.ff-root[data-theme="dark"] .ff-topbarGoal,
-  html.ff-root[data-theme="dark"] #ffTopbar .ff-topbarGoal {
-    color: rgb(255 255 255 / 0.94) !important;
-  }
-
   html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-raised],
   html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-goal],
   html.ff-root[data-theme="dark"] .ff-topbarGoal [data-ff-percent],
@@ -5562,16 +6631,6 @@
   }
 
   @media (max-width: 980px) {
-    .ff-section {
-      padding-block: 2.25rem;
-    }
-
-    .ff-hero__grid,
-    .ff-storyGrid,
-    .ff-checkoutLayout,
-    .ff-footerGridV2--flagship {
-      gap: 1rem;
-    }
 
     .ff-teamGrid {
       gap: 0.9rem;
@@ -5588,28 +6647,11 @@
     .ff-topbarGoal__summary {
       gap: 0.75rem;
     }
-
-    .ff-heroPanelQr__card {
-      grid-template-columns: 1fr;
-      justify-items: start;
-    }
-
-    .ff-heroPanelQr__media {
-      max-width: 10rem;
-    }
   }
 
   @media (max-width: 820px) {
     .ff-teamCard {
       padding: 0.82rem;
-    }
-
-    .ff-teamCard__stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .ff-teamCard__stats .ff-teamStat:last-child {
-      grid-column: 1 / -1;
     }
   }
 
@@ -5637,38 +6679,7 @@
   }
 
   @media (max-width: 560px) {
-    .ff-teamCard__meta {
-      max-width: none;
-    }
-
-    .ff-teamCard__summary {
-      min-width: 3.9rem;
-      padding: 0.32rem 0.46rem;
-    }
-
-    .ff-teamCard__summaryValue {
-      font-size: 0.94rem;
-    }
-
-    .ff-teamCard__stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .ff-teamCard__stats .ff-teamStat:last-child {
-      display: none;
-    }
-
-    .ff-teamCard__foot {
-      display: grid;
-      grid-template-columns: 1fr;
-    }
-
-    .ff-teamCard__foot .ff-btn {
-      width: 100%;
-      justify-content: center;
-    }
   }
-}
 
 
 /* ==========================================================================
@@ -5681,7 +6692,6 @@
    - preserves all markup, IDs, hooks, and data-ff-* contracts
    ========================================================================== */
 
-@layer ff.pages {
   :root {
     --ff-bottom-glass-bg: linear-gradient(
       180deg,
@@ -5785,20 +6795,6 @@
     padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
 
-  .ff-footerTray--flagship {
-    border-radius: var(--ff-r-5, 1.5rem);
-    overflow: clip;
-    box-shadow: var(--ff-bottom-shadow-strong);
-  }
-
-  .ff-footerTop--flagship {
-    display: grid;
-    grid-template-columns: minmax(0, 1.35fr) auto;
-    gap: clamp(1rem, 2vw, 1.5rem);
-    align-items: center;
-    padding-bottom: 0.125rem;
-  }
-
   .ff-footerTop__actions .ff-btn,
   .ff-footerTop__actions .ff-btn--pill {
     min-height: 2.75rem;
@@ -5806,13 +6802,6 @@
 
   .ff-footerTrust {
     letter-spacing: 0.01em;
-  }
-
-  .ff-footerGridV2--flagship {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(14rem, 0.8fr) minmax(12rem, 0.7fr);
-    gap: clamp(1.1rem, 2vw, 1.75rem);
-    align-items: start;
   }
 
   .ff-footerBrandV2,
@@ -5826,25 +6815,8 @@
     margin-bottom: 0.9rem;
   }
 
-  .ff-footerBrandV2__copy {
-    max-width: 56ch;
-    line-height: 1.62;
-  }
-
   .ff-footerBrandV2__trust {
     margin-top: 1rem;
-  }
-
-  .ff-footerBrandV2__meta {
-    margin-top: 1rem;
-    padding-top: 0.95rem;
-    border-top: 1px solid var(--ff-bottom-border-soft);
-  }
-
-  .ff-footerNavV2 {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
   }
 
   .ff-footerNavV2__title {
@@ -5854,14 +6826,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     opacity: 0.8;
-  }
-
-  .ff-footerLinkList {
-    display: grid;
-    gap: 0.65rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
   }
 
   .ff-footer__link,
@@ -5880,15 +6844,6 @@
     cursor: pointer;
     font: inherit;
     text-align: left;
-  }
-
-  .ff-footerMetaV2__card {
-    padding: 1rem 1rem 1.05rem;
-    border-radius: var(--ff-r-4, 1.125rem);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
-      rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--ff-bottom-border-soft);
   }
 
   .ff-footerMetaV2__eyebrow {
@@ -5953,13 +6908,6 @@
     -webkit-backdrop-filter: blur(8px);
   }
 
-  .ff-sheet__panel--flagship,
-  .ff-modal__panel--flagship {
-    border-radius: clamp(1.1rem, 2vw, 1.55rem);
-    overflow: clip;
-    box-shadow: var(--ff-bottom-shadow-strong);
-  }
-
   .ff-sheet__panel--flagship {
     width: min(100%, var(--ff-bottom-panel-max));
   }
@@ -5970,15 +6918,6 @@
 
   .ff-modal__panel--video {
     width: min(100%, 76rem);
-  }
-
-  .ff-modal__head--flagship,
-  .ff-sheet__header {
-    padding-bottom: 1rem;
-    margin-bottom: 0;
-    border-bottom: 1px solid var(--ff-bottom-border-soft);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
   }
 
   .ff-modal__title,
@@ -6012,43 +6951,13 @@
     padding: clamp(1rem, 2.2vw, 1.4rem);
   }
 
-  .ff-checkoutLayout {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.72fr);
-    gap: clamp(1rem, 2vw, 1.35rem);
-    align-items: start;
-  }
-
   .ff-checkoutMain {
     min-width: 0;
-  }
-
-  .ff-checkoutBody--flagship {
-    padding-top: 1rem;
   }
 
   .ff-checkoutHero__meta,
   .ff-checkoutHighlights {
     gap: 0.5rem;
-  }
-
-  .ff-checkoutCard {
-    border-radius: var(--ff-r-4, 1.125rem);
-    border: 1px solid var(--ff-bottom-border-soft);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
-      rgba(255, 255, 255, 0.02);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.12),
-      0 10px 24px rgba(2, 6, 23, 0.06);
-    padding: clamp(0.95rem, 1.8vw, 1.15rem);
-  }
-
-  .ff-checkoutCard__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.9rem;
   }
 
   .ff-checkoutCard__head .ff-pill {
@@ -6059,25 +6968,6 @@
     background:
       linear-gradient(180deg, rgba(14, 165, 233, 0.08), rgba(255, 255, 255, 0.03)),
       rgba(255, 255, 255, 0.02);
-  }
-
-  .ff-checkoutAmountRow .ff-input,
-  .ff-checkoutCard .ff-input,
-  .ff-checkoutCard textarea.ff-input,
-  .ff-onboardPanel .ff-input,
-  .ff-modal__body .ff-input {
-    min-height: 3rem;
-    border-radius: calc(var(--ff-r-3, 0.875rem) + 1px);
-    border: 1px solid rgba(148, 163, 184, 0.24);
-    background: rgba(255, 255, 255, 0.78);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.62),
-      0 1px 2px rgba(15, 23, 42, 0.04);
-    transition:
-      border-color 160ms ease,
-      box-shadow 160ms ease,
-      background-color 160ms ease,
-      transform 160ms ease;
   }
 
   html[data-theme="dark"] .ff-checkoutAmountRow .ff-input,
@@ -6171,22 +7061,6 @@
     border-radius: calc(var(--ff-r-3, 0.875rem) + 1px);
     border: 1px solid rgba(148, 163, 184, 0.18);
     box-shadow: 0 8px 18px rgba(2, 6, 23, 0.06);
-  }
-
-  .ff-modal__foot--sticky.ff-modal__foot--flagship {
-    position: sticky;
-    bottom: 0;
-    z-index: 8;
-    margin-top: 1rem;
-    padding:
-      0.9rem
-      0
-      var(--ff-bottom-sticky-pad);
-    border-top: 1px solid var(--ff-bottom-border-soft);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.82) 28%, rgba(255, 255, 255, 0.92) 100%);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
   }
 
   html[data-theme="dark"] .ff-modal__foot--sticky.ff-modal__foot--flagship,
@@ -6337,31 +7211,9 @@
   }
 
   @media (max-width: 720px) {
-    .ff-footer {
-      padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
-    }
-
-    .ff-footerTray--flagship,
-    .ff-checkoutShell--flagship,
-    .ff-sheet__panel--flagship,
-    .ff-modal__panel--flagship {
-      border-radius: 1rem;
-    }
-
-    .ff-checkoutShell--flagship {
-      padding: 0.9rem;
-    }
 
     .ff-checkoutBody--flagship {
       padding-top: 0.75rem;
-    }
-
-    .ff-checkoutCard,
-    .ff-footerMetaV2__card,
-    .ff-onboardSummary,
-    .ff-videoFrame {
-      padding: 0.9rem;
-      border-radius: 0.95rem;
     }
 
     .ff-checkoutCard__head,
@@ -6409,31 +7261,8 @@
     .ff-onboardStep {
       min-height: 2.8rem;
     }
-
-    .ff-footerTop__actions,
-    .ff-row[aria-label="Checkout actions"],
-    .ff-row[aria-label="Sponsor inquiry actions"],
-    .ff-row[aria-label="Video actions"],
-    .ff-row[aria-label="Terms actions"],
-    .ff-row[aria-label="Privacy actions"],
-    .ff-row[aria-label="Onboarding actions"] {
-      width: 100%;
-    }
-
-    .ff-footerTop__actions .ff-btn,
-    .ff-row[aria-label="Checkout actions"] .ff-btn,
-    .ff-row[aria-label="Sponsor inquiry actions"] .ff-btn,
-    .ff-row[aria-label="Video actions"] .ff-btn,
-    .ff-row[aria-label="Terms actions"] .ff-btn,
-    .ff-row[aria-label="Privacy actions"] .ff-btn,
-    .ff-row[aria-label="Onboarding actions"] .ff-btn {
-      flex: 1 1 100%;
-      justify-content: center;
-    }
   }
-}
 
-@layer ff.pages {
   /* ==========================================================================
      FF_UX_ID_COVERAGE_RESCUE_V1
      - satisfies UI/UX CSS coverage gate for contract-safe ids and data attrs
@@ -6478,7 +7307,7 @@
       max-width: none;
     }
   }
-}
+
 
 /* ==========================================================================
    FutureFunded — Screenshot rhythm tighten pass
@@ -6489,18 +7318,8 @@
    - keeps existing contracts/hooks untouched
    ========================================================================== */
 
-@layer ff.pages {
   .ff-section {
     padding-block: clamp(2.8rem, 5vw, 4.4rem);
-  }
-
-  .ff-hero__grid,
-  .ff-impactLayout,
-  .ff-storyGrid,
-  .ff-checkoutLayout,
-  .ff-footerGridV2,
-  .ff-teamGrid {
-    gap: clamp(1rem, 2.6vw, 1.4rem);
   }
 
   .ff-hero__capsuleInner,
@@ -6536,33 +7355,12 @@
     padding: clamp(0.9rem, 1.8vw, 1.1rem);
   }
 
-  .ff-heroProof,
-  .ff-heroSignalBar,
-  .ff-liveFeed__list,
-  .ff-teamCard__stats,
-  .ff-teamCard__foot,
-  .ff-checkoutHighlights {
-    gap: 0.7rem;
-  }
-
-  .ff-sectionhead--compact .ff-lead {
-    max-width: 60ch;
-  }
-
   .ff-proofMini p,
   .ff-proofMini .ff-help,
   .ff-teamCard__meta,
   .ff-storyQuote__meta,
   .ff-checkoutCard .ff-help {
     max-width: 62ch;
-  }
-
-  .ff-teamCard__media {
-    aspect-ratio: 16 / 10;
-  }
-
-  .ff-teamCard__meter {
-    margin-top: 0.75rem;
   }
 
   .ff-impactTier__footer,
@@ -6685,7 +7483,7 @@
       grid-column: 1 / -1;
     }
   }
-}
+
 
 /* ==========================================================================
    FutureFunded — Last-minute production rescue
@@ -6697,7 +7495,6 @@
    - keeps all existing hooks and contracts untouched
    ========================================================================== */
 
-@layer ff.pages {
   :root,
   html.ff-root {
     --ff-prod-card-radius: 1rem;
@@ -6713,32 +7510,12 @@
     --ff-prod-border-strong: rgb(15 23 42 / 0.12);
   }
 
-  html.ff-root[data-theme="dark"] {
-    --ff-prod-shadow-soft:
-      0 1px 2px rgb(0 0 0 / 0.22),
-      0 14px 34px rgb(0 0 0 / 0.28);
-    --ff-prod-shadow-strong:
-      0 18px 42px rgb(0 0 0 / 0.34),
-      0 2px 8px rgb(0 0 0 / 0.24);
-    --ff-prod-border: rgb(226 232 240 / 0.10);
-    --ff-prod-border-strong: rgb(226 232 240 / 0.16);
-  }
-
   /* ----------------------------------------------------------------------
      Section rhythm
      ---------------------------------------------------------------------- */
 
   .ff-section {
     padding-block: clamp(2.55rem, 4.3vw, 4.2rem);
-  }
-
-  .ff-hero__grid,
-  .ff-impactLayout,
-  .ff-storyGrid,
-  .ff-checkoutLayout,
-  .ff-footerGridV2,
-  .ff-teamGrid {
-    gap: var(--ff-prod-gap);
   }
 
   .ff-hero__capsuleInner,
@@ -6755,14 +7532,6 @@
   .ff-trustCard,
   .ff-faqCard {
     gap: 0.9rem;
-  }
-
-  .ff-sectionhead,
-  .ff-sectionHead,
-  .ff-sectionHeader,
-  .ff-section__head,
-  .ff-sectionIntro {
-    margin-block-end: 0.9rem;
   }
 
   .ff-sectionhead--compact .ff-lead {
@@ -6911,10 +7680,6 @@
     box-shadow: var(--ff-prod-shadow-soft);
   }
 
-  .ff-heroPanelHead {
-    gap: 0.32rem;
-  }
-
   .ff-heroProof,
   .ff-heroSignalBar,
   .ff-liveFeed__list,
@@ -6922,25 +7687,6 @@
   .ff-teamCard__foot,
   .ff-checkoutHighlights {
     gap: 0.68rem;
-  }
-
-  .ff-heroPanel .ff-chip {
-    min-height: 4.15rem;
-    padding: 0.76rem 0.72rem;
-    border-color: var(--ff-prod-border);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
-  }
-
-  .ff-heroPanel .ff-chip__amt {
-    font-size: 1rem;
-    line-height: 1.06;
-    font-weight: 800;
-  }
-
-  .ff-heroPanel .ff-chip__meta {
-    margin-top: 0.2rem;
-    font-size: 0.75rem;
-    line-height: 1.34;
   }
 
   .ff-heroLiveFeed {
@@ -6975,14 +7721,6 @@
     line-height: 1.1;
   }
 
-  .ff-heroPanel .ff-w-100.ff-donate-btn {
-    min-height: 2.9rem;
-    font-weight: 800;
-    box-shadow:
-      0 10px 22px rgb(249 115 22 / 0.24),
-      inset 0 1px 0 rgb(255 255 255 / 0.34);
-  }
-
   /* ----------------------------------------------------------------------
      Team grid rescue
      ---------------------------------------------------------------------- */
@@ -6995,45 +7733,6 @@
     gap: 1rem;
   }
 
-  .ff-teamCard {
-    padding: 0.88rem;
-    border-color: var(--ff-prod-border);
-    box-shadow: var(--ff-prod-shadow-soft);
-  }
-
-  .ff-teamCard__inner {
-    min-height: 100%;
-    gap: 0.78rem;
-  }
-
-  .ff-teamCard__head {
-    gap: 0.72rem;
-    align-items: start;
-  }
-
-  .ff-teamCard__title {
-    font-size: 0.97rem;
-    line-height: 1.16;
-  }
-
-  .ff-teamCard__meta {
-    max-width: 34ch;
-    font-size: 0.82rem;
-    line-height: 1.42;
-  }
-
-  .ff-teamCard__summary {
-    min-width: 4.25rem;
-    padding: 0.36rem 0.5rem;
-    border-radius: 0.82rem;
-    border: 1px solid var(--ff-prod-border);
-  }
-
-  .ff-teamCard__summaryValue {
-    font-size: 0.98rem;
-    line-height: 1;
-  }
-
   .ff-teamCard__media {
     aspect-ratio: 16 / 10;
     border-radius: 0.92rem;
@@ -7043,53 +7742,10 @@
     gap: 0.68rem;
   }
 
-  .ff-teamCard__stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
-  }
-
-  .ff-teamStat {
-    padding: 0.52rem 0.56rem;
-    border-radius: 0.8rem;
-    border: 1px solid var(--ff-prod-border);
-  }
-
-  .ff-teamStat__value {
-    font-size: 0.84rem;
-    line-height: 1.14;
-  }
-
-  .ff-teamCard__meter {
-    margin-top: 0.72rem;
-    gap: 0.3rem;
-  }
-
-  .ff-teamCard__meterText {
-    font-size: 0.76rem;
-  }
-
-  .ff-teamCard__ask,
-  .ff-teamCard .ff-proofMini {
-    padding: 0.7rem 0.74rem;
-    border-radius: 0.84rem;
-    border: 1px solid rgb(15 23 42 / 0.05);
-  }
-
   .ff-teamCard__ask .ff-help,
   .ff-teamCard .ff-proofMini .ff-help {
     font-size: 0.8rem;
     line-height: 1.48;
-  }
-
-  .ff-teamCard__foot {
-    gap: 0.55rem;
-    margin-top: auto;
-    padding-top: 0.72rem;
-    border-top: 1px solid rgb(15 23 42 / 0.06);
-  }
-
-  .ff-teamCard__foot .ff-btn {
-    min-height: 2.5rem;
   }
 
   /* ----------------------------------------------------------------------
@@ -7334,16 +7990,6 @@
     .ff-teamCard__summaryValue {
       font-size: 0.94rem;
     }
-
-    .ff-teamCard__foot {
-      display: grid;
-      grid-template-columns: 1fr;
-    }
-
-    .ff-teamCard__foot .ff-btn {
-      width: 100%;
-      justify-content: center;
-    }
   }
 
   @media (max-width: 520px) {
@@ -7368,7 +8014,7 @@
       justify-content: center;
     }
   }
-}
+
 
 /* ==========================================================================
    FutureFunded — Micro rhythm + edge rescue
@@ -7379,7 +8025,6 @@
    - append-only, contract-safe
    ========================================================================== */
 
-@layer ff.pages {
   :root,
   html.ff-root {
     --ff-micro-gap: clamp(0.85rem, 1vw, 1rem);
@@ -7654,3 +8299,675 @@
     }
   }
 }
+
+/* ==========================================================================
+   FutureFunded — Dark text visibility hotfix
+   FF_DARK_TEXT_VISIBILITY_HOTFIX_V1
+   - fixes unreadable navy text in dark mode
+   - targets hero rail + impact/support cards + helper copy
+   - append-only and contract-safe
+   ========================================================================== */
+
+@layer ff.overrides {
+  .ff-root[data-theme="dark"] {
+    --ff-dark-text-strong: rgba(248, 250, 252, 0.97);
+    --ff-dark-text-body: rgba(241, 245, 249, 0.90);
+    --ff-dark-text-soft: rgba(226, 232, 240, 0.78);
+  }
+
+  /* Hero rail */
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-h2,
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-h3,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelHead .ff-h2,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelQr__title,
+  .ff-root[data-theme="dark"] #home .ff-heroLiveFeed .ff-liveFeed__name,
+  .ff-root[data-theme="dark"] #home .ff-proofMini strong,
+  .ff-root[data-theme="dark"] #home .ff-progressMini__value,
+  .ff-root[data-theme="dark"] #home .ff-chip__amt {
+    color: var(--ff-dark-text-strong) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-strong) !important;
+  }
+
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-help,
+  .ff-root[data-theme="dark"] #home .ff-heroPanel .ff-muted,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelHead .ff-help,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelQr__copy .ff-help,
+  .ff-root[data-theme="dark"] #home .ff-heroLiveFeed .ff-liveFeed__text,
+  .ff-root[data-theme="dark"] #home .ff-chip__meta,
+  .ff-root[data-theme="dark"] #home .ff-progressMini__note {
+    color: var(--ff-dark-text-body) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-body) !important;
+  }
+
+  /* Impact section */
+  .ff-root[data-theme="dark"] #impact .ff-h2,
+  .ff-root[data-theme="dark"] #impact .ff-h3,
+  .ff-root[data-theme="dark"] #impact .ff-impactProof .ff-h3,
+  .ff-root[data-theme="dark"] #impact .ff-impactPick .ff-h3,
+  .ff-root[data-theme="dark"] #impact .ff-impactTier .ff-h3,
+  .ff-root[data-theme="dark"] #impact .ff-proofMini strong,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__value,
+  .ff-root[data-theme="dark"] #impact .ff-chip__amt,
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__amt,
+  .ff-root[data-theme="dark"] #impact .ff-label {
+    color: var(--ff-dark-text-strong) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-strong) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-lead,
+  .ff-root[data-theme="dark"] #impact .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-muted,
+  .ff-root[data-theme="dark"] #impact p,
+  .ff-root[data-theme="dark"] #impact li,
+  .ff-root[data-theme="dark"] #impact .ff-chip__meta,
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__meta,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__note,
+  .ff-root[data-theme="dark"] #impact .ff-impactProofCallout .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-impactProof .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-impactPick .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-impactTier .ff-help {
+    color: var(--ff-dark-text-body) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-body) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-kicker,
+  .ff-root[data-theme="dark"] #impact .ff-pill,
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__eyebrow,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__label {
+    color: var(--ff-dark-text-soft) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-soft) !important;
+  }
+
+  /* Story / sponsors / trust fallback so more dark-blue leaks stop showing up */
+  .ff-root[data-theme="dark"] #story .ff-h2,
+  .ff-root[data-theme="dark"] #story .ff-h3,
+  .ff-root[data-theme="dark"] #sponsors .ff-h2,
+  .ff-root[data-theme="dark"] #sponsors .ff-h3,
+  .ff-root[data-theme="dark"] #trust-faq .ff-h2,
+  .ff-root[data-theme="dark"] #trust-faq .ff-h3,
+  .ff-root[data-theme="dark"] #faq .ff-h3,
+  .ff-root[data-theme="dark"] #story strong,
+  .ff-root[data-theme="dark"] #sponsors strong,
+  .ff-root[data-theme="dark"] #trust-faq strong,
+  .ff-root[data-theme="dark"] #faq strong {
+    color: var(--ff-dark-text-strong) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-strong) !important;
+  }
+
+  .ff-root[data-theme="dark"] #story .ff-help,
+  .ff-root[data-theme="dark"] #story .ff-muted,
+  .ff-root[data-theme="dark"] #story p,
+  .ff-root[data-theme="dark"] #story li,
+  .ff-root[data-theme="dark"] #sponsors .ff-help,
+  .ff-root[data-theme="dark"] #sponsors .ff-muted,
+  .ff-root[data-theme="dark"] #sponsors p,
+  .ff-root[data-theme="dark"] #sponsors li,
+  .ff-root[data-theme="dark"] #trust-faq .ff-help,
+  .ff-root[data-theme="dark"] #trust-faq .ff-muted,
+  .ff-root[data-theme="dark"] #trust-faq p,
+  .ff-root[data-theme="dark"] #trust-faq li,
+  .ff-root[data-theme="dark"] #faq .ff-help,
+  .ff-root[data-theme="dark"] #faq .ff-muted,
+  .ff-root[data-theme="dark"] #faq p,
+  .ff-root[data-theme="dark"] #faq li {
+    color: var(--ff-dark-text-body) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-body) !important;
+  }
+
+  .ff-root[data-theme="dark"] #story .ff-kicker,
+  .ff-root[data-theme="dark"] #story .ff-pill,
+  .ff-root[data-theme="dark"] #sponsors .ff-kicker,
+  .ff-root[data-theme="dark"] #sponsors .ff-pill,
+  .ff-root[data-theme="dark"] #trust-faq .ff-kicker,
+  .ff-root[data-theme="dark"] #trust-faq .ff-pill,
+  .ff-root[data-theme="dark"] #faq .ff-kicker,
+  .ff-root[data-theme="dark"] #faq .ff-pill {
+    color: var(--ff-dark-text-soft) !important;
+    -webkit-text-fill-color: var(--ff-dark-text-soft) !important;
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Final dark readability sweep
+   FF_DARK_READABILITY_FINAL_SWEEP_V1
+   - finishes lower-half dark mode text contrast
+   - lifts section leads, sponsor/trust/faq copy, and footer/meta text
+   - keeps layout and contracts unchanged
+   ========================================================================== */
+
+@layer ff.overrides {
+  .ff-root[data-theme="dark"] {
+    --ff-dark-title-final: rgba(248, 250, 252, 0.98);
+    --ff-dark-body-final: rgba(241, 245, 249, 0.90);
+    --ff-dark-soft-final: rgba(226, 232, 240, 0.78);
+    --ff-dark-faint-final: rgba(203, 213, 225, 0.68);
+  }
+
+  /* ------------------------------------------------------------------------
+     Section headings + leads
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #impact .ff-h2,
+  .ff-root[data-theme="dark"] #teams .ff-h2,
+  .ff-root[data-theme="dark"] #story .ff-h2,
+  .ff-root[data-theme="dark"] #sponsors .ff-h2,
+  .ff-root[data-theme="dark"] #trust-faq .ff-h2,
+  .ff-root[data-theme="dark"] #faq .ff-h2,
+  .ff-root[data-theme="dark"] #faq .ff-h3,
+  .ff-root[data-theme="dark"] #impact .ff-h3,
+  .ff-root[data-theme="dark"] #teams .ff-h3,
+  .ff-root[data-theme="dark"] #story .ff-h3,
+  .ff-root[data-theme="dark"] #sponsors .ff-h3,
+  .ff-root[data-theme="dark"] #trust-faq .ff-h3 {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-lead,
+  .ff-root[data-theme="dark"] #teams .ff-lead,
+  .ff-root[data-theme="dark"] #story .ff-lead,
+  .ff-root[data-theme="dark"] #sponsors .ff-lead,
+  .ff-root[data-theme="dark"] #trust-faq .ff-lead,
+  .ff-root[data-theme="dark"] #faq .ff-lead,
+  .ff-root[data-theme="dark"] #impact > .ff-container .ff-help,
+  .ff-root[data-theme="dark"] #teams > .ff-container .ff-help,
+  .ff-root[data-theme="dark"] #story > .ff-container .ff-help,
+  .ff-root[data-theme="dark"] #sponsors > .ff-container .ff-help,
+  .ff-root[data-theme="dark"] #trust-faq > .ff-container .ff-help,
+  .ff-root[data-theme="dark"] #faq > .ff-container .ff-help {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-kicker,
+  .ff-root[data-theme="dark"] #teams .ff-kicker,
+  .ff-root[data-theme="dark"] #story .ff-kicker,
+  .ff-root[data-theme="dark"] #sponsors .ff-kicker,
+  .ff-root[data-theme="dark"] #trust-faq .ff-kicker,
+  .ff-root[data-theme="dark"] #faq .ff-kicker,
+  .ff-root[data-theme="dark"] #impact .ff-pill,
+  .ff-root[data-theme="dark"] #teams .ff-pill,
+  .ff-root[data-theme="dark"] #story .ff-pill,
+  .ff-root[data-theme="dark"] #sponsors .ff-pill,
+  .ff-root[data-theme="dark"] #trust-faq .ff-pill,
+  .ff-root[data-theme="dark"] #faq .ff-pill {
+    color: var(--ff-dark-soft-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-soft-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Impact cards / support copy
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #impact .ff-impactProof .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-impactPick .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-impactTier .ff-help,
+  .ff-root[data-theme="dark"] #impact .ff-impactProof p,
+  .ff-root[data-theme="dark"] #impact .ff-impactPick p,
+  .ff-root[data-theme="dark"] #impact .ff-impactTier p,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__note,
+  .ff-root[data-theme="dark"] #impact .ff-chip__meta,
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__meta {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-proofMini strong,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__value,
+  .ff-root[data-theme="dark"] #impact .ff-chip__amt,
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__amt,
+  .ff-root[data-theme="dark"] #impact strong {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Teams
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__title,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__summaryValue,
+  .ff-root[data-theme="dark"] #teams .ff-teamStat__value,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard strong {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__meta,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard .ff-help,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard p,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__meterText {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #teams .ff-teamStat__label,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__summaryLabel {
+    color: var(--ff-dark-soft-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-soft-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Story
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #story .ff-storyCard .ff-help,
+  .ff-root[data-theme="dark"] #story .ff-storyCard p,
+  .ff-root[data-theme="dark"] #story .ff-storyList li,
+  .ff-root[data-theme="dark"] #story .ff-storyQuote__body,
+  .ff-root[data-theme="dark"] #story .ff-storyMeta,
+  .ff-root[data-theme="dark"] #story .ff-storyQuote__meta {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #story .ff-storyCard strong,
+  .ff-root[data-theme="dark"] #story .ff-storyQuote strong {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Sponsors
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell__title,
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell__amount,
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell strong,
+  .ff-root[data-theme="dark"] #sponsors .ff-callout strong {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell .ff-help,
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell p,
+  .ff-root[data-theme="dark"] #sponsors .ff-callout .ff-help,
+  .ff-root[data-theme="dark"] #sponsors .ff-callout p {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Trust / FAQ
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #trust-faq .ff-trustCard strong,
+  .ff-root[data-theme="dark"] #faq .ff-faqCard strong,
+  .ff-root[data-theme="dark"] #trust-faq .ff-disclosure__sum,
+  .ff-root[data-theme="dark"] #faq .ff-disclosure__sum {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #trust-faq .ff-trustCard .ff-help,
+  .ff-root[data-theme="dark"] #trust-faq .ff-trustCard p,
+  .ff-root[data-theme="dark"] #trust-faq .ff-disclosure__panel,
+  .ff-root[data-theme="dark"] #trust-faq .ff-disclosure__panel .ff-help,
+  .ff-root[data-theme="dark"] #faq .ff-faqCard .ff-help,
+  .ff-root[data-theme="dark"] #faq .ff-faqCard p,
+  .ff-root[data-theme="dark"] #faq .ff-disclosure__panel,
+  .ff-root[data-theme="dark"] #faq .ff-disclosure__panel .ff-help {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Footer
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #footer .ff-footerBrandV2__copy,
+  .ff-root[data-theme="dark"] #footer .ff-footerTrust,
+  .ff-root[data-theme="dark"] #footer .ff-footerMetaV2__legal,
+  .ff-root[data-theme="dark"] #footer .ff-help,
+  .ff-root[data-theme="dark"] #footer p,
+  .ff-root[data-theme="dark"] #footer li {
+    color: var(--ff-dark-body-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-body-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #footer .ff-footer__link,
+  .ff-root[data-theme="dark"] #footer .ff-footer__link--button,
+  .ff-root[data-theme="dark"] #footer .ff-footerNavV2__title,
+  .ff-root[data-theme="dark"] #footer .ff-footerMetaV2__eyebrow,
+  .ff-root[data-theme="dark"] #footer .ff-brand__sub {
+    color: var(--ff-dark-soft-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-soft-final) !important;
+  }
+
+  .ff-root[data-theme="dark"] #footer .ff-brand__title,
+  .ff-root[data-theme="dark"] #footer strong {
+    color: var(--ff-dark-title-final) !important;
+    -webkit-text-fill-color: var(--ff-dark-title-final) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Tiny lift for lower-half surfaces
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #story .ff-storyCard,
+  .ff-root[data-theme="dark"] #sponsors .ff-sponsorCell,
+  .ff-root[data-theme="dark"] #trust-faq .ff-trustCard,
+  .ff-root[data-theme="dark"] #faq .ff-faqCard,
+  .ff-root[data-theme="dark"] #footer .ff-footerTray--flagship {
+    border-color: rgba(148, 163, 184, 0.18);
+    box-shadow:
+      0 16px 36px rgba(0, 0, 0, 0.32),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Final dark micro-copy lift
+   FF_DARK_MICROCOPY_LIFT_V1
+   - slightly increases dark-mode helper/body readability
+   - keeps titles, layout, and CTA hierarchy unchanged
+   - mobile-first and contract-safe
+   ========================================================================== */
+
+@layer ff.overrides {
+  .ff-root[data-theme="dark"] {
+    --ff-dark-copy-max: rgba(241, 245, 249, 0.94);
+    --ff-dark-copy-mid: rgba(226, 232, 240, 0.86);
+    --ff-dark-copy-soft: rgba(203, 213, 225, 0.78);
+  }
+
+  /* Small/body copy across lower sections */
+  .ff-root[data-theme="dark"] #impact .ff-help,
+  .ff-root[data-theme="dark"] #impact p,
+  .ff-root[data-theme="dark"] #story .ff-help,
+  .ff-root[data-theme="dark"] #story p,
+  .ff-root[data-theme="dark"] #sponsors .ff-help,
+  .ff-root[data-theme="dark"] #sponsors p,
+  .ff-root[data-theme="dark"] #trust-faq .ff-help,
+  .ff-root[data-theme="dark"] #trust-faq p,
+  .ff-root[data-theme="dark"] #faq .ff-help,
+  .ff-root[data-theme="dark"] #faq p,
+  .ff-root[data-theme="dark"] #footer .ff-help,
+  .ff-root[data-theme="dark"] #footer p,
+  .ff-root[data-theme="dark"] #footer li,
+  .ff-root[data-theme="dark"] .ff-teamCard__meta,
+  .ff-root[data-theme="dark"] .ff-storyMeta,
+  .ff-root[data-theme="dark"] .ff-chip__meta,
+  .ff-root[data-theme="dark"] .ff-impactChoice__meta,
+  .ff-root[data-theme="dark"] .ff-progressMini__note,
+  .ff-root[data-theme="dark"] .ff-footerBrandV2__copy,
+  .ff-root[data-theme="dark"] .ff-footerMetaV2__legal,
+  .ff-root[data-theme="dark"] .ff-footerTrust {
+    color: var(--ff-dark-copy-max) !important;
+    -webkit-text-fill-color: var(--ff-dark-copy-max) !important;
+    opacity: 1 !important;
+  }
+
+  /* Eyebrows / muted labels */
+  .ff-root[data-theme="dark"] .ff-kicker,
+  .ff-root[data-theme="dark"] .ff-pill,
+  .ff-root[data-theme="dark"] .ff-teamStat__label,
+  .ff-root[data-theme="dark"] .ff-topbarGoal__label,
+  .ff-root[data-theme="dark"] .ff-progressMini__label,
+  .ff-root[data-theme="dark"] .ff-impactChoice__eyebrow,
+  .ff-root[data-theme="dark"] .ff-heroSignal__kicker,
+  .ff-root[data-theme="dark"] .ff-footerMetaV2__eyebrow,
+  .ff-root[data-theme="dark"] .ff-footerNavV2__title,
+  .ff-root[data-theme="dark"] .ff-brand__sub,
+  .ff-root[data-theme="dark"] .ff-storyQuote__meta {
+    color: var(--ff-dark-copy-soft) !important;
+    -webkit-text-fill-color: var(--ff-dark-copy-soft) !important;
+    opacity: 1 !important;
+  }
+
+  /* FAQ / disclosure bodies */
+  .ff-root[data-theme="dark"] .ff-disclosure__panel,
+  .ff-root[data-theme="dark"] .ff-disclosure__panel .ff-help,
+  .ff-root[data-theme="dark"] .ff-disclosure__sum .ff-help {
+    color: var(--ff-dark-copy-max) !important;
+    -webkit-text-fill-color: var(--ff-dark-copy-max) !important;
+  }
+
+  /* Slightly stronger small-copy sizing on mobile dark mode */
+  @media (max-width: 760px) {
+    .ff-root[data-theme="dark"] .ff-help,
+    .ff-root[data-theme="dark"] .ff-muted,
+    .ff-root[data-theme="dark"] .ff-chip__meta,
+    .ff-root[data-theme="dark"] .ff-impactChoice__meta,
+    .ff-root[data-theme="dark"] .ff-progressMini__note,
+    .ff-root[data-theme="dark"] .ff-teamCard__meta,
+    .ff-root[data-theme="dark"] .ff-storyMeta,
+    .ff-root[data-theme="dark"] .ff-footerBrandV2__copy,
+    .ff-root[data-theme="dark"] .ff-footerMetaV2__legal,
+    .ff-root[data-theme="dark"] .ff-footerTrust,
+    .ff-root[data-theme="dark"] .ff-disclosure__panel {
+      font-size: 0.97rem;
+      line-height: 1.66;
+    }
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Hero proof dark-mode readability rescue
+   FF_HERO_PROOF_DARK_READABILITY_RESCUE_V1
+   - fixes unreadable hero snapshot / progress / deadline copy in dark mode
+   - targets first-fold proof cards only
+   - preserves layout, hooks, and light theme
+   ========================================================================== */
+
+@layer ff.overrides {
+  .ff-root[data-theme="dark"] {
+    --ff-dark-hero-proof-title: rgba(248, 250, 252, 0.98);
+    --ff-dark-hero-proof-body: rgba(241, 245, 249, 0.92);
+    --ff-dark-hero-proof-soft: rgba(226, 232, 240, 0.78);
+    --ff-dark-hero-proof-edge: rgba(148, 163, 184, 0.18);
+    --ff-dark-hero-proof-bg:
+      linear-gradient(180deg, rgba(24, 36, 68, 0.98) 0%, rgba(10, 18, 38, 0.99) 100%);
+  }
+
+  /* card surfaces */
+  .ff-root[data-theme="dark"] #home .ff-heroProof__item,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelProof__item,
+  .ff-root[data-theme="dark"] #home .ff-heroSignal,
+  .ff-root[data-theme="dark"] #home .ff-progressMini,
+  .ff-root[data-theme="dark"] #home .ff-proofMini {
+    background: var(--ff-dark-hero-proof-bg) !important;
+    border-color: var(--ff-dark-hero-proof-edge) !important;
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* primary values / strong text */
+  .ff-root[data-theme="dark"] #home .ff-heroProof__item strong,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelProof__item strong,
+  .ff-root[data-theme="dark"] #home .ff-heroSignal__value,
+  .ff-root[data-theme="dark"] #home .ff-progressMini__value,
+  .ff-root[data-theme="dark"] #home .ff-proofMini strong,
+  .ff-root[data-theme="dark"] #home [data-ff-raised],
+  .ff-root[data-theme="dark"] #home [data-ff-goal],
+  .ff-root[data-theme="dark"] #home [data-ff-percent] {
+    color: var(--ff-dark-hero-proof-title) !important;
+    -webkit-text-fill-color: var(--ff-dark-hero-proof-title) !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+  }
+
+  /* body copy / helper copy */
+  .ff-root[data-theme="dark"] #home .ff-heroProof__item .ff-help,
+  .ff-root[data-theme="dark"] #home .ff-heroPanelProof__item .ff-help,
+  .ff-root[data-theme="dark"] #home .ff-heroSignal__meta,
+  .ff-root[data-theme="dark"] #home .ff-progressMini__note,
+  .ff-root[data-theme="dark"] #home .ff-proofMini .ff-help,
+  .ff-root[data-theme="dark"] #home .ff-proofMini p {
+    color: var(--ff-dark-hero-proof-body) !important;
+    -webkit-text-fill-color: var(--ff-dark-hero-proof-body) !important;
+    opacity: 1 !important;
+    font-weight: 500 !important;
+  }
+
+  /* labels / kicker text */
+  .ff-root[data-theme="dark"] #home .ff-kicker,
+  .ff-root[data-theme="dark"] #home .ff-progressMini__label,
+  .ff-root[data-theme="dark"] #home .ff-heroSignal__kicker,
+  .ff-root[data-theme="dark"] #home .ff-pill,
+  .ff-root[data-theme="dark"] #home .ff-proofMini .ff-label,
+  .ff-root[data-theme="dark"] #home .ff-proofMini .ff-eyebrow {
+    color: var(--ff-dark-hero-proof-soft) !important;
+    -webkit-text-fill-color: var(--ff-dark-hero-proof-soft) !important;
+    opacity: 1 !important;
+  }
+
+  /* specifically catch the “Toward a goal / Progress / deadline” rows */
+  .ff-root[data-theme="dark"] #home .ff-heroSignal--proof,
+  .ff-root[data-theme="dark"] #home .ff-heroSignal--deadline,
+  .ff-root[data-theme="dark"] #home .ff-progressMini--remaining {
+    background:
+      linear-gradient(180deg, rgba(29, 43, 79, 0.98) 0%, rgba(11, 20, 41, 0.99) 100%) !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+  }
+
+  /* mobile: tiny text gets a little more size */
+  @media (max-width: 760px) {
+    .ff-root[data-theme="dark"] #home .ff-heroProof__item .ff-help,
+    .ff-root[data-theme="dark"] #home .ff-heroPanelProof__item .ff-help,
+    .ff-root[data-theme="dark"] #home .ff-heroSignal__meta,
+    .ff-root[data-theme="dark"] #home .ff-progressMini__note,
+    .ff-root[data-theme="dark"] #home .ff-proofMini .ff-help,
+    .ff-root[data-theme="dark"] #home .ff-proofMini p {
+      font-size: 0.97rem !important;
+      line-height: 1.66 !important;
+    }
+  }
+}
+
+
+/* ==========================================================================
+   FutureFunded — Dark nested surface readability pass
+   FF_DARK_NESTED_SURFACE_READABILITY_V1
+   - improves readability of nested cards inside dark sections
+   - fixes washed-out impact/team/support micro-panels
+   - keeps light theme untouched
+   ========================================================================== */
+
+@layer ff.overrides {
+  .ff-root[data-theme="dark"] {
+    --ff-dark-nested-bg:
+      linear-gradient(180deg, rgba(243, 246, 252, 0.96) 0%, rgba(231, 236, 244, 0.93) 100%);
+    --ff-dark-nested-title: rgba(15, 23, 42, 0.96);
+    --ff-dark-nested-body: rgba(15, 23, 42, 0.82);
+    --ff-dark-nested-soft: rgba(15, 23, 42, 0.64);
+    --ff-dark-nested-edge: rgba(255, 255, 255, 0.18);
+  }
+
+  /* ------------------------------------------------------------------------
+     Section intros on dark backgrounds
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #impact .ff-lead,
+  .ff-root[data-theme="dark"] #teams .ff-lead,
+  .ff-root[data-theme="dark"] #story .ff-lead,
+  .ff-root[data-theme="dark"] #sponsors .ff-lead,
+  .ff-root[data-theme="dark"] #trust-faq .ff-lead,
+  .ff-root[data-theme="dark"] #impact .ff-help,
+  .ff-root[data-theme="dark"] #teams .ff-help,
+  .ff-root[data-theme="dark"] #story .ff-help,
+  .ff-root[data-theme="dark"] #sponsors .ff-help,
+  .ff-root[data-theme="dark"] #trust-faq .ff-help {
+    color: rgba(241, 245, 249, 0.9) !important;
+    -webkit-text-fill-color: rgba(241, 245, 249, 0.9) !important;
+    opacity: 1 !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Impact nested cards
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #impact .ff-impactPick,
+  .ff-root[data-theme="dark"] #impact .ff-impactProof,
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini,
+  .ff-root[data-theme="dark"] #impact .ff-impactProofCallout {
+    background: var(--ff-dark-nested-bg) !important;
+    border-color: var(--ff-dark-nested-edge) !important;
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__amt,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__value,
+  .ff-root[data-theme="dark"] #impact strong {
+    color: var(--ff-dark-nested-title) !important;
+    -webkit-text-fill-color: var(--ff-dark-nested-title) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__meta,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__note,
+  .ff-root[data-theme="dark"] #impact .ff-help,
+  .ff-root[data-theme="dark"] #impact p {
+    color: var(--ff-dark-nested-body) !important;
+    -webkit-text-fill-color: var(--ff-dark-nested-body) !important;
+  }
+
+  .ff-root[data-theme="dark"] #impact .ff-impactChoice__eyebrow,
+  .ff-root[data-theme="dark"] #impact .ff-progressMini__label,
+  .ff-root[data-theme="dark"] #impact .ff-kicker {
+    color: var(--ff-dark-nested-soft) !important;
+    -webkit-text-fill-color: var(--ff-dark-nested-soft) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Team nested cards
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__summary,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__stats,
+  .ff-root[data-theme="dark"] #teams .ff-teamStat,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard .ff-proofMini,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__ask {
+    background: var(--ff-dark-nested-bg) !important;
+    border-color: var(--ff-dark-nested-edge) !important;
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  }
+
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__summaryValue,
+  .ff-root[data-theme="dark"] #teams .ff-teamStat__value,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard strong {
+    color: var(--ff-dark-nested-title) !important;
+    -webkit-text-fill-color: var(--ff-dark-nested-title) !important;
+  }
+
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__meta,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard .ff-help,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__meterText,
+  .ff-root[data-theme="dark"] #teams .ff-teamCard p {
+    color: var(--ff-dark-nested-body) !important;
+    -webkit-text-fill-color: var(--ff-dark-nested-body) !important;
+  }
+
+  .ff-root[data-theme="dark"] #teams .ff-teamCard__summaryLabel,
+  .ff-root[data-theme="dark"] #teams .ff-teamStat__label,
+  .ff-root[data-theme="dark"] #teams .ff-kicker,
+  .ff-root[data-theme="dark"] #teams .ff-pill {
+    color: var(--ff-dark-nested-soft) !important;
+    -webkit-text-fill-color: var(--ff-dark-nested-soft) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Story / sponsor / trust small inner cards
+     ------------------------------------------------------------------------ */
+  .ff-root[data-theme="dark"] #story .ff-proofMini,
+  .ff-root[data-theme="dark"] #story .ff-callout,
+  .ff-root[data-theme="dark"] #sponsors .ff-proofMini,
+  .ff-root[data-theme="dark"] #sponsors .ff-callout,
+  .ff-root[data-theme="dark"] #trust-faq .ff-proofMini,
+  .ff-root[data-theme="dark"] #trust-faq .ff-callout,
+  .ff-root[data-theme="dark"] #trust-faq .ff-disclosure {
+    border-color: rgba(148, 163, 184, 0.18) !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     Slight mobile lift
+     ------------------------------------------------------------------------ */
+  @media (max-width: 760px) {
+    .ff-root[data-theme="dark"] #impact .ff-help,
+    .ff-root[data-theme="dark"] #impact p,
+    .ff-root[data-theme="dark"] #teams .ff-teamCard__meta,
+    .ff-root[data-theme="dark"] #teams .ff-teamCard .ff-help,
+    .ff-root[data-theme="dark"] #teams .ff-teamCard__meterText {
+      font-size: 0.97rem !important;
+      line-height: 1.66 !important;
+    }
+  }
+}
+

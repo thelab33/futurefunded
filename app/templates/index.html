@@ -135,11 +135,11 @@ Contracts:
 {% if _campaign_name|length > 48 %}
   {% set _campaign_name = _org_name %}
 {% endif %}
-{% set _campaign_tagline = (campaign_tagline|default('Travel, gym time, gear, and tournament fees — your gift keeps them playing.', true))|string|trim %}
+{% set _campaign_tagline = (campaign_tagline|default('Support travel, training, gym time, and team costs with one secure gift.', true))|string|trim %}
 {% if not _campaign_tagline %}
-  {% set _campaign_tagline = "Travel, gym time, gear, and tournament fees — your gift keeps them playing." %}
+  {% set _campaign_tagline = "Support travel, training, gym time, and team costs with one secure gift." %}
 {% endif %}
-{% set _proof_blurb = (proof_blurb|default('Your support keeps training, travel, and tournament reps funded — with fast, secure checkout and instant email receipts.', true))|string|trim %}
+{% set _proof_blurb = (proof_blurb|default('Your support helps fund training, travel, and tournament reps.', true))|string|trim %}
 {% set _policy_blurb = (policy_blurb|default('Questions, corrections, or receipts: email the organizer address listed on this page. Refunds and disputes follow the payment processor policy and organizer response.', true))|string|trim %}
 
 {# ============================ Logos / platform ============================ #}
@@ -1057,26 +1057,23 @@ Contracts:
                       aria-label="Why supporters give here"
                     >
                       <div class="ff-heroProof__item" role="listitem">
-                        <strong>Clear season support</strong>
+                        <strong>Clear season goal</strong>
                         <span class="ff-help ff-muted">
-                          Travel, gym time, tournament fees, gear, and the recurring
-                          costs families feel first.
+                          See how support moves the season forward.
                         </span>
                       </div>
 
                       <div class="ff-heroProof__item" role="listitem">
-                        <strong>Fast secure giving</strong>
+                        <strong>Fast mobile giving</strong>
                         <span class="ff-help ff-muted">
-                          Give in a few taps, confirm securely, and receive an email
-                          receipt right away.
+                          Give in seconds from phone or desktop.
                         </span>
                       </div>
 
                       <div class="ff-heroProof__item" role="listitem">
-                        <strong>Early momentum matters</strong>
+                        <strong>Secure support flow</strong>
                         <span class="ff-help ff-muted">
-                          Every contribution helps reduce season pressure for families
-                          and sets the pace for the campaign.
+                          Clear next steps for families, donors, and sponsors.
                         </span>
                       </div>
                     </div>
@@ -1091,7 +1088,7 @@ Contracts:
                         data-ff-donate=""
                         data-ff-open-checkout=""
                       >
-                        Donate
+                        Donate now
                       </a>
 
                       <div
@@ -1105,14 +1102,14 @@ Contracts:
                           data-ff-share=""
                           aria-label="Share this fundraiser"
                         >
-                          Share
+                          Share campaign
                         </button>
 
                         <a
                           class="ff-btn ff-btn--secondary ff-btn--lg ff-btn--pill"
                           href="#sponsors"
                         >
-                          Sponsor
+                          Become a sponsor
                         </a>
                       </div>
                     </nav>
@@ -1126,10 +1123,10 @@ Contracts:
                         Secure checkout
                       </span>
                       <span class="ff-heroTrustStrip__item" role="listitem">
-                        Instant receipt
+                        Email receipt
                       </span>
                       <span class="ff-heroTrustStrip__item" role="listitem">
-                        Sponsor-ready page
+                        Mobile-friendly giving
                       </span>
                     </div>
 
@@ -1143,11 +1140,10 @@ Contracts:
                       >
                         <span class="ff-heroSignal__kicker">For supporters</span>
                         <strong class="ff-heroSignal__value">
-                          One clear place to give
+                          Support the season
                         </strong>
                         <span class="ff-heroSignal__meta">
-                          Choose an amount, confirm securely, and finish support
-                          without friction.
+                          Choose an amount and support real season costs.
                         </span>
                       </article>
 
@@ -1157,11 +1153,11 @@ Contracts:
                       >
                         <span class="ff-heroSignal__kicker">For partners</span>
                         <strong class="ff-heroSignal__value">
-                          Clear program presentation
+                          Visible community support
                         </strong>
                         <span class="ff-heroSignal__meta">
-                          Families, alumni, and sponsors can understand the need
-                          quickly and act with confidence.
+                          Local businesses can support youth athletes and be
+                          recognized clearly.
                         </span>
                       </article>
                     </div>
@@ -1203,8 +1199,7 @@ Contracts:
                   </div>
 
                   <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                    Choose an amount to preload checkout. You can adjust it before
-                    paying.
+                    Choose an amount and support real season costs.
                   </p>
                 </header>
 
@@ -1257,8 +1252,8 @@ Contracts:
                 <div class="ff-proofMini ff-mt-3" role="note" aria-label="Donation note">
                   <p class="ff-kicker ff-m-0">Why this works</p>
                   <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                    A clear giving flow helps families, alumni, and sponsors
-                    understand the need quickly and act without friction.
+                    Clear giving paths, visible sponsorship options, and a
+                    simpler way to support the program.
                   </p>
                 </div>
 
@@ -1270,8 +1265,7 @@ Contracts:
                   <div class="ff-liveFeed__head">
                     <p class="ff-kicker ff-m-0" id="ffLiveFeedTitle">Recent supporters</p>
                     <p class="ff-help ff-muted ff-m-0">
-                      New giving and sponsor activity will appear here. Momentum starts
-                      with a few people choosing to help.
+                      New support activity appears here as momentum builds.
                     </p>
                   </div>
 
@@ -1289,8 +1283,7 @@ Contracts:
                           Be the first supporter shown here.
                         </span>
                         <span class="ff-liveFeed__text">
-                          Early support helps reduce season pressure for families and
-                          sets campaign momentum.
+                          Early support helps close real season costs.
                         </span>
                       </div>
                     </div>
@@ -1340,7 +1333,7 @@ Contracts:
                         <p class="ff-kicker ff-m-0">Mobile option</p>
                         <p class="ff-heroPanelQr__title ff-mt-1 ff-mb-0">Scan to give</p>
                         <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                          Open the donation page on your phone and complete checkout there.
+                          Open the secure donation page on your phone.
                         </p>
 
                         {% if _qr_href %}
@@ -1371,11 +1364,11 @@ Contracts:
                   data-ff-donate=""
                   data-ff-open-checkout=""
                 >
-                  Donate
+                  Donate now
                 </a>
 
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  Secure checkout powered by Stripe / PayPal.
+                  Secure checkout with email confirmation after payment.
                 </p>
               </article>
 
@@ -1395,8 +1388,7 @@ Contracts:
                 </div>
 
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="heroRailProofDesc">
-                  One clean page makes it easier to understand the need, support the
-                  team quickly, and share the fundraiser with confidence.
+                  A simpler way to give, sponsor, and share.
                 </p>
 
                 <div
@@ -1422,7 +1414,7 @@ Contracts:
                   <div class="ff-proofMini" role="listitem">
                     <p class="ff-kicker ff-m-0">Clear next step</p>
                     <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                      Give now, sponsor the program, or share the page in seconds.
+                      Donate, sponsor, or share in seconds.
                     </p>
                   </div>
 
@@ -1476,11 +1468,10 @@ Contracts:
               <p class="ff-kicker ff-m-0">Impact</p>
               <h2 class="ff-h2" id="impactTitle">What support covers</h2>
               <p class="ff-lead ff-m-0" id="impactLead">
-                Direct program costs — tournaments, travel, gym time, gear, and the
-                practical essentials that keep the season moving.
+                Every gift helps cover season costs so athletes can train, travel, and compete.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="impactHint">
-                Pick a level to preload checkout, then adjust it in checkout if needed.
+                Pick a level now and adjust it in checkout.
               </p>
             </div>
           </header>
@@ -1511,16 +1502,14 @@ Contracts:
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">How people give</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Start with a practical amount, confirm securely, and receive a
-                  receipt by email.
+                  Choose an amount, pay securely, and get a receipt by email.
                 </p>
               </div>
 
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">Why it matters</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Clear support lowers pressure on families and keeps the season funded
-                  where costs show up first.
+                  Support lowers pressure on families and covers real season costs.
                 </p>
               </div>
             </div>
@@ -1642,8 +1631,7 @@ Contracts:
                   The season runs on practical costs
                 </h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="impactProofDesc">
-                  Support helps cover real expenses across the program without
-                  guesswork, vague promises, or wasted motion.
+                  Support helps cover real expenses across the program.
                 </p>
 
                 <div class="ff-impactProofRail ff-mt-3" aria-label="Where support goes">
@@ -1867,7 +1855,7 @@ Contracts:
                 One program. Multiple teams. Shared momentum.
               </h2>
               <p class="ff-lead ff-m-0" id="teamsLead">
-                Support can begin with one team and still strengthen the full season.
+                Support one team or strengthen the full program.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="teamsUnity">
                 {{ _teams_count }} teams • one shared fund • one season goal
@@ -2275,16 +2263,14 @@ Contracts:
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">What supporters see</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  A clear, sponsor-safe story with a fast path to give, share, and
-                  understand the mission.
+                  A clear story with a fast path to give and share.
                 </p>
               </div>
 
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">Why this matters</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Consistent support protects access to training, travel, and
-                  tournament opportunities across the season.
+                  Support protects access to training, travel, and tournament play.
                 </p>
               </div>
             </div>
@@ -2365,8 +2351,7 @@ Contracts:
                 <div class="ff-proofMini ff-mt-3" aria-label="Program trust point">
                   <p class="ff-kicker ff-m-0">Why families and sponsors respond</p>
                   <p class="ff-help ff-mt-1 ff-mb-0">
-                    The story is simple: real athletes, real costs, and one clear place
-                    to support the work behind the season.
+                    Real athletes, real costs, and one clear place to support the season.
                   </p>
                 </div>
 
@@ -2421,12 +2406,11 @@ Contracts:
                 program.
               </h2>
               <p class="ff-lead ff-m-0" id="sponsorsLead">
-                Businesses and supporters can help cover real season needs while being
-                recognized by families, supporters, and the broader community.
+                Sponsor support helps cover shared program needs while giving local
+                businesses visible community recognition.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="sponsorsHint">
-                Sponsorship can start with a simple package or expand into custom,
-                in-kind, and featured recognition support.
+                Built for local businesses that want to support youth athletes.
               </p>
             </div>
 
@@ -2469,16 +2453,16 @@ Contracts:
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">Why sponsors step in</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Sponsorship reduces pressure on families and helps keep athletes
-                  funded for tournaments, travel, and training.
+                  Sponsor support helps reduce family costs and keep athletes funded
+                  for travel, training, and shared season needs.
                 </p>
               </div>
 
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">What sponsors get</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  A clear recognition path, visible community support, and a more
-                  credible page for business-friendly participation.
+                  Visible community recognition and a clearer, business-friendly way
+                  to support the program.
                 </p>
               </div>
             </div>
@@ -2496,8 +2480,7 @@ Contracts:
                 <p class="ff-kicker ff-m-0">Community</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0">Entry support</h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  A practical way for local supporters and smaller businesses to help
-                  reduce basic season costs.
+                  A simple way to show support and help fund the season.
                 </p>
 
                 <div
@@ -2530,8 +2513,8 @@ Contracts:
                 <p class="ff-kicker ff-m-0">Partner</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0">Visible support</h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  A strong fit for community businesses that want clearer visibility
-                  while helping keep the season moving.
+                  A stronger sponsorship option with more visible recognition across
+                  the program.
                 </p>
 
                 <div
@@ -2552,7 +2535,7 @@ Contracts:
                   aria-controls="sponsor-interest"
                   data-ff-open-sponsor=""
                 >
-                  Ask about partner support
+                  Ask about sponsor support
                 </a>
               </section>
 
@@ -2564,8 +2547,8 @@ Contracts:
                 <p class="ff-kicker ff-m-0">VIP</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0">Featured recognition</h3>
                 <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                  For supporters who want to make a visible contribution to the season
-                  and be featured during major campaign pushes.
+                  A lead sponsorship placement for businesses that want the clearest
+                  visibility and strongest community signal.
                 </p>
 
                 <div
@@ -2639,8 +2622,8 @@ Contracts:
               <p class="ff-kicker ff-m-0">Trust &amp; FAQ</p>
               <h2 class="ff-h2" id="trustFaqTitle">Quick trust. Clear answers.</h2>
               <p class="ff-lead ff-m-0" id="trustFaqLead">
-                Secure checkout, email receipts, privacy-first handling, and clear next
-                steps for donors, families, and sponsors.
+                Secure giving, clear use of funds, and fast answers for donors and
+                sponsors.
               </p>
             </div>
 
@@ -2807,8 +2790,7 @@ Contracts:
                 <div class="ff-minw-0">
                   <h3 class="ff-h3 ff-m-0" id="faqTitle">Frequently asked questions</h3>
                   <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                    Quick answers for donors, families, and sponsors before they take
-                    action.
+                    Quick answers before donors, families, and sponsors take action.
                   </p>
                 </div>
 
@@ -2955,17 +2937,17 @@ Contracts:
             data-ff-donate=""
             data-ff-open-checkout=""
           >
-            Donate
+            Donate now
           </a>
 
-          <button
-            type="button"
-            class="ff-btn ff-btn--sm ff-btn--ghost ff-btn--pill"
-            data-ff-share=""
-            aria-label="Share this fundraiser"
+          <a
+            class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
+            href="#sponsor-interest"
+            aria-controls="sponsor-interest"
+            data-ff-open-sponsor=""
           >
-            Share
-          </button>
+            Become a sponsor
+          </a>
         </div>
       </section>
 
