@@ -257,7 +257,7 @@ TEAM_CONFIG_DEFAULT: Dict[str, Any] = {
         {
             "id": "6th",
             "name": "6th Grade",
-            "photo": "images/teams/6th.webp",
+            "photo": "images/connect-atx-team.jpg",
             "featured": True,
             "goal": 2500,
             "raised": 50,
@@ -267,7 +267,7 @@ TEAM_CONFIG_DEFAULT: Dict[str, Any] = {
         {
             "id": "7th",
             "name": "7th Grade",
-            "photo": "images/teams/7th.webp",
+            "photo": "images/7thGold.jpg",
             "goal": 3500,
             "raised": 50,
             "meta": "Competitive reps, travel weekends, and team growth.",
@@ -276,7 +276,7 @@ TEAM_CONFIG_DEFAULT: Dict[str, Any] = {
         {
             "id": "8th",
             "name": "8th Grade",
-            "photo": "images/teams/8th.webp",
+            "photo": "images/8thGold.jpg",
             "goal": 4000,
             "raised": 75,
             "meta": "Leadership year, strong finish, and high-intensity development.",

@@ -135,6 +135,10 @@ Contracts:
 {% if _campaign_name|length > 48 %}
   {% set _campaign_name = _org_name %}
 {% endif %}
+{% set _supporting_label = _org_name %}
+{% if _campaign_name and _campaign_name != _org_name %}
+  {% set _supporting_label = _org_name ~ ' — ' ~ _campaign_name %}
+{% endif %}
 {% set _campaign_tagline = (campaign_tagline|default('Support the season with a clear, secure gift that helps fund travel, training, gym time, and shared team costs.', true))|string|trim %}
 {% if not _campaign_tagline %}
   {% set _campaign_tagline = "Support travel, training, gym time, and team costs with one secure gift." %}
@@ -1926,19 +1930,35 @@ Contracts:
                   {% set tname = (t.name|default('Team', true))|string|trim %}
                   {% set tmeta = (t.meta|default('', true))|string|trim %}
                   {% set task = (t.ask|default('Support this team’s training, travel, and tournament costs for the season.', true))|string|trim %}
-                  {% set _fallback_team_photo = "" %}
+                  {% set _tname_l = (tname|lower) %}
+                  {% set _tid_l = (tid|lower) %}
+                  {% set _fallback_team_photo = url_for('static', filename='images/connect-atx-team.jpg') ~ '?v=' ~ _v %}
 
-                  {% if tid == '6g' %}
+                  {% if _tid_l in ['6g', '6th', '6th-grade', '6th_grade', '6th-gold', '6th_grade_gold', '6thgold'] or ('6th' in _tname_l) %}
                     {% set _fallback_team_photo = url_for('static', filename='images/connect-atx-team.jpg') ~ '?v=' ~ _v %}
-                  {% elif tid == '7g' %}
+                  {% elif _tid_l in ['7g', '7th', '7th-grade', '7th_grade', '7th-gold', '7th_grade_gold', '7thgold'] or ('7th' in _tname_l and 'black' not in _tname_l) %}
                     {% set _fallback_team_photo = url_for('static', filename='images/7thGold.jpg') ~ '?v=' ~ _v %}
-                  {% elif tid == '7b' %}
+                  {% elif _tid_l in ['7b', '7th-black', '7th_grade_black', '7thblack'] or ('7th' in _tname_l and 'black' in _tname_l) %}
                     {% set _fallback_team_photo = url_for('static', filename='images/7thBlack.png') ~ '?v=' ~ _v %}
-                  {% elif tid == '8g' %}
+                  {% elif _tid_l in ['8g', '8th', '8th-grade', '8th_grade', '8th-gold', '8th_grade_gold', '8thgold'] or ('8th' in _tname_l and 'black' not in _tname_l) %}
                     {% set _fallback_team_photo = url_for('static', filename='images/8thGold.jpg') ~ '?v=' ~ _v %}
+                  {% elif _tid_l in ['8b', '8th-black', '8th_grade_black', '8thblack'] or ('8th' in _tname_l and 'black' in _tname_l) %}
+                    {% set _fallback_team_photo = url_for('static', filename='images/connect-atx-team_3.jpg') ~ '?v=' ~ _v %}
                   {% endif %}
 
                   {% set _raw_team_photo = (t.photo|default('', true))|string|trim %}
+                  {% if _raw_team_photo %}
+                    {% set _team_photo_norm = _raw_team_photo.lstrip('/') %}
+                    {% if '://' not in _raw_team_photo and not _raw_team_photo.startswith('/static/') %}
+                      {% if _team_photo_norm.startswith('static/') %}
+                        {% set _team_photo_norm = _team_photo_norm[7:] %}
+                      {% endif %}
+                      {% set _raw_team_photo = url_for('static', filename=_team_photo_norm) ~ '?v=' ~ _v %}
+                    {% endif %}
+                  {% endif %}
+                  {% if 'images/teams/' in _raw_team_photo or '/static/images/teams/' in _raw_team_photo %}
+                    {% set _raw_team_photo = '' %}
+                  {% endif %}
                   {% set _team_photo = (_raw_team_photo if _raw_team_photo else _fallback_team_photo) %}
                   {% set _t_goal = _program_goal_shared %}
                   {% set _t_raised = _program_raised_shared %}
@@ -2201,7 +2221,7 @@ Contracts:
       {% set _press_video_id = "p7u09q1q_5w" %}
       {% set _press_watch_url = "https://youtu.be/" ~ _press_video_id %}
       {% set _press_embed_url = "https://www.youtube-nocookie.com/embed/" ~ _press_video_id ~ "?autoplay=1&rel=0&modestbranding=1&playsinline=1" %}
-      {% set _press_poster = url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v %}
+      {% set _press_poster = url_for("static", filename="images/news-poster.webp") ~ "?v=" ~ _v %}
 
       <section
         id="story"
@@ -2290,15 +2310,21 @@ Contracts:
                     data-ff-video-src="{{ _press_embed_url|e }}"
                     data-ff-video-title="Connect ATX Elite — Video"
                   >
-                    <img
-                      class="ff-storyPoster__img"
-                      src="{{ _press_poster|e }}"
-                      width="1200"
-                      height="675"
-                      loading="lazy"
-                      decoding="async"
-                      alt="Connect ATX Elite program photo"
-                    />
+                    <picture class="ff-storyPoster__picture">
+                      <source
+                        srcset="{{ url_for('static', filename='images/news-poster.webp') ~ '?v=' ~ _v }}"
+                        type="image/webp"
+                      />
+                      <img
+                        class="ff-storyPoster__img"
+                        src="{{ url_for('static', filename='images/connect-atx-team.jpg') ~ '?v=' ~ _v }}"
+                        width="1200"
+                        height="675"
+                        loading="lazy"
+                        decoding="async"
+                        alt="Connect ATX Elite program photo"
+                      />
+                    </picture>
                     <span class="ff-storyPoster__overlay" aria-hidden="true">
                       <span class="ff-storyPoster__play">▶</span>
                       <span class="ff-storyPoster__label">Watch</span>
@@ -3614,8 +3640,7 @@ Contracts:
                     <div class="ff-proofMini">
                       <p class="ff-kicker ff-m-0">Supported program</p>
                       <p class="ff-help ff-mt-1 ff-mb-0">
-                        <strong>{{ _org_name|e }}</strong>{% if _campaign_name %} —
-                        {{ _campaign_name|e }}{% endif %}
+                        <strong>{{ _supporting_label|e }}</strong>
                       </p>
                     </div>
                   </section>
