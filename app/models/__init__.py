@@ -70,3 +70,4 @@ def available_models() -> Dict[str, Any]:
         for name in _MODEL_MAP.keys()
         if globals().get(name) is not None
     }
+from .sponsor_lead import SponsorLead

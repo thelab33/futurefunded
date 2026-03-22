@@ -498,6 +498,7 @@ Intent:
   {% endif %}
 
   <script defer src="{{ _app|e }}" {{ nonce_attr() }}></script>
+  <script defer src="{{ url_for('static', filename='js/ff-sponsor-leads-v1.js') }}?v={{ _v }}" {{ nonce_attr() }}></script>
 
   <!-- FF_STRUCTURED_DATA_V1_START -->
   <script type="application/ld+json" {{ nonce_attr() }}>
