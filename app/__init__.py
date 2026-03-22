@@ -989,10 +989,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
     
     from app.blueprints.sponsor_interest import bp as sponsor_interest_bp
-    try:
-        _safe_register(app, sponsor_interest_bp)
-    except NameError:
-        app.register_blueprint(sponsor_interest_bp)
+    app.register_blueprint(sponsor_interest_bp)
 
     return app
 __all__ = ["create_app"]
