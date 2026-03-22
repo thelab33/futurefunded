@@ -4285,3 +4285,404 @@
   }
 }
 /* FF_DATA_SELECTOR_CONTRACT_RESCUE_V1_END */
+
+/* FF_VISUAL_PREMIUM_PASS_V1_START */
+@layer ff.pages {
+  /* ----------------------------------------------------------------------
+     Global section density refinement
+     ---------------------------------------------------------------------- */
+  .ff-section {
+    padding-block: clamp(1.65rem, 1.2rem + 1.45vw, 2.7rem);
+  }
+
+  .ff-sectionhead {
+    margin-bottom: clamp(0.72rem, 0.6rem + 0.4vw, 0.98rem);
+  }
+
+  .ff-sectionhead__text {
+    display: grid;
+    gap: 0.28rem;
+  }
+
+  .ff-sectionhead__actions {
+    align-self: start;
+  }
+
+  /* ----------------------------------------------------------------------
+     Shared flagship card rhythm
+     ---------------------------------------------------------------------- */
+  :is(
+    #impact .ff-impactTier,
+    #teams .ff-teamCard,
+    #sponsors .ff-impactTier
+  ) {
+    border-radius: var(--ff-r-3);
+  }
+
+  :is(
+    #impact .ff-impactTier__head,
+    #teams .ff-teamCard__head,
+    #sponsors .ff-impactTier__head
+  ) {
+    gap: 0.32rem;
+  }
+
+  :is(
+    #impact .ff-impactTier__footer,
+    #teams .ff-teamCard__foot,
+    #sponsors .ff-impactTier__footer
+  ) {
+    padding-top: 0.15rem;
+    border-top: 1px solid rgb(15 23 42 / 0.06);
+  }
+
+  html.ff-root[data-theme="dark"] :is(
+    #impact .ff-impactTier__footer,
+    #teams .ff-teamCard__foot,
+    #sponsors .ff-impactTier__footer
+  ) {
+    border-top-color: rgb(226 232 240 / 0.08);
+  }
+
+  /* ----------------------------------------------------------------------
+     Impact — slightly tighter and more premium
+     ---------------------------------------------------------------------- */
+  #impact .ff-impactCard {
+    gap: 0.95rem;
+  }
+
+  #impact .ff-impactPick,
+  #impact .ff-impactProof {
+    gap: 0.85rem;
+  }
+
+  #impact .ff-impactChoiceGrid {
+    gap: 0.72rem;
+  }
+
+  #impact .ff-impactChoice {
+    box-shadow: none;
+  }
+
+  #impact .ff-impactProofRail {
+    gap: 0.65rem;
+  }
+
+  #impact .ff-progressMini {
+    padding: 0.8rem 0.9rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Teams — closer to impact tile rhythm
+     ---------------------------------------------------------------------- */
+  #teams .ff-teamGrid {
+    gap: 0.85rem;
+  }
+
+  #teams .ff-teamCard {
+    grid-template-rows: auto 1fr;
+  }
+
+  #teams .ff-teamCard__inner {
+    gap: 0.82rem;
+  }
+
+  #teams .ff-teamCard__body {
+    gap: 0.78rem;
+  }
+
+  #teams .ff-teamCard__summary {
+    padding: 0.68rem 0.74rem;
+  }
+
+  #teams .ff-teamCard__stats {
+    gap: 0.48rem;
+    padding: 0.64rem;
+  }
+
+  #teams .ff-teamStat {
+    padding: 0.48rem 0.52rem;
+  }
+
+  #teams .ff-teamCard__meterText {
+    font-size: 0.84rem;
+  }
+
+  #teams .ff-teamCard__ask,
+  #teams .ff-teamCard__body .ff-proofMini {
+    min-height: 100%;
+  }
+
+  #teams .ff-teamCard__foot {
+    gap: 0.55rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Story — slightly denser copy rhythm
+     ---------------------------------------------------------------------- */
+  #story .ff-storyCard {
+    gap: 0.95rem;
+  }
+
+  #story .ff-storyGrid {
+    gap: 0.95rem;
+  }
+
+  #story .ff-storySupportGrid,
+  #story .ff-storyNotes {
+    gap: 0.72rem;
+  }
+
+  #story .ff-storyPanel,
+  #story .ff-proofMini--tile,
+  #story .ff-proofMini--feature {
+    padding: 0.88rem 0.94rem;
+  }
+
+  #story .ff-storyQuote {
+    padding: 0.95rem 1rem 0.95rem 1.02rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Sponsors — make it feel closer to impact tiles
+     ---------------------------------------------------------------------- */
+  #sponsors .ff-sponsorsBoard {
+    gap: 0.95rem;
+  }
+
+  #sponsors .ff-sponsorWallBlock {
+    gap: 0.78rem;
+    padding: 0.92rem 0.96rem;
+  }
+
+  #sponsors .ff-sponsorWallRail {
+    gap: 0.7rem;
+  }
+
+  #sponsors .ff-sponsorGhost {
+    min-height: 4.3rem;
+    border-style: solid;
+    opacity: 0.92;
+  }
+
+  #sponsors .ff-sponsorTierWrap {
+    gap: 0.72rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid {
+    gap: 0.8rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid > li {
+    min-height: 100%;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier {
+    gap: 0.82rem;
+    padding: 0.92rem 0.95rem;
+    border-radius: var(--ff-r-3);
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier__head {
+    gap: 0.28rem;
+    padding-bottom: 0;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-proofMini {
+    padding: 0.76rem 0.84rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer {
+    gap: 0.52rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-btn {
+    min-height: 2.18rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-h2 {
+    letter-spacing: -0.025em;
+  }
+
+  /* ----------------------------------------------------------------------
+     Footer — calmer + less crowded
+     ---------------------------------------------------------------------- */
+  #footer {
+    padding-block: 0 0.55rem;
+  }
+
+  #footer .ff-footerTray {
+    gap: 0.78rem;
+    padding: 0.88rem 0.94rem;
+  }
+
+  #footer .ff-footerTop {
+    gap: 0.62rem;
+  }
+
+  #footer .ff-footerTop__copy {
+    gap: 0.12rem;
+  }
+
+  #footer .ff-footerTrust {
+    font-size: 0.88rem;
+  }
+
+  #footer .ff-footerGridV2 {
+    gap: 0.82rem;
+  }
+
+  #footer .ff-footerBrandV2,
+  #footer .ff-footerNavV2,
+  #footer .ff-footerMetaV2 {
+    gap: 0.52rem;
+  }
+
+  #footer .ff-footerBrandV2__copy {
+    max-width: 42ch;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  #footer .ff-footerBrandV2__trust {
+    gap: 0.38rem;
+  }
+
+  #footer .ff-footerBrandV2__trust .ff-pill {
+    min-height: 1.5rem;
+    padding-inline: 0.54rem;
+    font-size: 0.65rem;
+  }
+
+  #footer .ff-footerNavV2 {
+    gap: 0.72rem 0.9rem;
+  }
+
+  #footer .ff-footerNavV2__group {
+    gap: 0.28rem;
+  }
+
+  #footer .ff-footerLinkList {
+    gap: 0.2rem;
+  }
+
+  #footer .ff-footerMetaV2__card {
+    padding: 0.8rem 0.86rem;
+  }
+
+  #footer .ff-footerMetaV2__legal {
+    font-size: 0.9rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Bottom dock — smaller, calmer, less dominant
+     ---------------------------------------------------------------------- */
+  .ff-tabs {
+    bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    max-width: min(90vw, 31rem);
+  }
+
+  .ff-tabs__scroller {
+    padding: 0.22rem;
+    box-shadow: 0 10px 22px rgb(15 23 42 / 0.08);
+  }
+
+  .ff-tab {
+    min-height: 2.05rem;
+    padding: 0.46rem 0.72rem;
+    font-size: 0.88rem;
+  }
+
+  .ff-backtotop {
+    min-height: 2.14rem;
+    padding: 0.44rem 0.64rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Dark theme refinement — more readable, less muddy
+     ---------------------------------------------------------------------- */
+  html.ff-root[data-theme="dark"] {
+    --ff-copy-body: #ecf2ff;
+    --ff-copy-muted: #c9d4e6;
+    --ff-copy-soft: #aebad0;
+    --ff-border: rgb(226 232 240 / 0.12);
+    --ff-border-strong: rgb(226 232 240 / 0.18);
+    --ff-line: rgb(226 232 240 / 0.10);
+  }
+
+  html.ff-root[data-theme="dark"] :is(
+    #story .ff-storyCard,
+    #impact .ff-impactCard,
+    #teams .ff-teamsShell,
+    #sponsors .ff-sponsorsBoard,
+    #trust-faq .ff-trustCard,
+    #trust-faq .ff-faqCard,
+    #footer .ff-footerTray
+  ) {
+    box-shadow:
+      0 16px 38px rgb(0 0 0 / 0.24),
+      inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  html.ff-root[data-theme="dark"] :is(
+    #impact .ff-impactPick,
+    #impact .ff-impactProof,
+    #teams .ff-teamCard,
+    #sponsors .ff-sponsorWallBlock,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier,
+    #story .ff-storyPanel,
+    #story .ff-proofMini--tile,
+    #trust-faq .ff-disclosure,
+    #footer .ff-footerMetaV2__card
+  ) {
+    border-color: rgb(148 163 184 / 0.17);
+  }
+
+  html.ff-root[data-theme="dark"] #sponsors .ff-sponsorGhost {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.025), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, rgba(19, 28, 49, 0.9) 0%, rgba(10, 17, 32, 0.96) 100%);
+  }
+
+  /* ----------------------------------------------------------------------
+     Responsive
+     ---------------------------------------------------------------------- */
+  @media (min-width: 48rem) {
+    #footer .ff-footerGridV2 {
+      grid-template-columns: minmax(0, 1.12fr) minmax(11rem, 0.7fr) minmax(15rem, 0.86fr);
+      gap: 0.92rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-section {
+      padding-block: 1.45rem;
+    }
+
+    #footer .ff-footerTray {
+      gap: 0.72rem;
+      padding: 0.82rem 0.86rem;
+    }
+
+    #footer .ff-footerBrandV2__copy {
+      max-width: none;
+    }
+
+    #footer .ff-footerTop__actions {
+      gap: 0.5rem;
+    }
+
+    .ff-tabs {
+      left: 0.56rem;
+      right: 0.56rem;
+      max-width: none;
+    }
+
+    .ff-tab {
+      min-height: 2rem;
+      padding: 0.44rem 0.66rem;
+      font-size: 0.86rem;
+    }
+  }
+}
+/* FF_VISUAL_PREMIUM_PASS_V1_END */

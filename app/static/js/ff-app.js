@@ -319,8 +319,13 @@
 
   function resolveSelector(key, fallback) {
     const live = getHTMLSelectors();
-    if (live && typeof live[key] === "string" && live[key].trim()) {
-      return live[key].trim();
+    const liveHooks =
+      live && live.hooks && typeof live.hooks === "object"
+        ? live.hooks
+        : live;
+
+    if (liveHooks && typeof liveHooks[key] === "string" && liveHooks[key].trim()) {
+      return liveHooks[key].trim();
     }
     if (typeof CONTRACT[key] === "string" && CONTRACT[key].trim()) {
       return CONTRACT[key].trim();
@@ -347,7 +352,6 @@
 /* FF_SELECTOR_CONTRACT_AUTOGEN_END */
 
 
-
 /* --------------------------------------------------
 FutureFunded Stripe Prewarm Engine
 Preloads Stripe before checkout opens
@@ -355,23 +359,49 @@ Removes blank payment element delay
 -------------------------------------------------- */
 
 (function(){
+"use strict";
 
 let stripePreloaded = false;
 
+function markLoaded(node){
+  if (!node) return;
+  node.setAttribute("data-loaded", "true");
+  node.setAttribute("data-ff-loaded", "true");
+}
+
 function preloadStripe(){
-  if(stripePreloaded) return;
+  const src = "https://js.stripe.com/v3/";
+  const existing =
+    document.getElementById("ffStripeJs") ||
+    document.querySelector('script[src="' + src + '"]');
+
+  if (existing) {
+    stripePreloaded = true;
+    if (window.Stripe) {
+      markLoaded(existing);
+    } else {
+      existing.addEventListener("load", function(){ markLoaded(existing); }, { once:true });
+    }
+    return;
+  }
+
+  if (stripePreloaded) return;
   stripePreloaded = true;
 
   const s = document.createElement("script");
-  s.src = "https://js.stripe.com/v3/";
+  s.id = "ffStripeJs";
+  s.src = src;
   s.async = true;
+  s.defer = true;
+  s.crossOrigin = "anonymous";
   s.dataset.ffStripePreload = "true";
+  s.setAttribute("data-ff-loaded", "false");
+  s.addEventListener("load", function(){ markLoaded(s); }, { once:true });
 
   document.head.appendChild(s);
 }
 
 function attachPrewarm(){
-
   const triggers = document.querySelectorAll(
     '[data-ff-open-checkout], .ff-donate-btn, a[href="#checkout"]'
   );
@@ -381,11 +411,10 @@ function attachPrewarm(){
     btn.addEventListener("touchstart", preloadStripe, {once:true});
     btn.addEventListener("focus", preloadStripe, {once:true});
   });
-
 }
 
 if(document.readyState === "loading"){
-  document.addEventListener("DOMContentLoaded", attachPrewarm);
+  document.addEventListener("DOMContentLoaded", attachPrewarm, { once:true });
 }else{
   attachPrewarm();
 }
@@ -465,6 +494,11 @@ Hook-safe, deterministic, CSP-safe runtime for:
   var d = document;
   var root = d.documentElement;
   var body = d.body;
+
+  if (w.__FF_APP_BOOT_ONCE_V1__) {
+    return;
+  }
+  w.__FF_APP_BOOT_ONCE_V1__ = true;
 
   var BUILD = "2026.03.07.1";
   var STORAGE_THEME_KEY = "ff:theme";
@@ -556,6 +590,14 @@ Hook-safe, deterministic, CSP-safe runtime for:
     }
     input.value = value == null ? "" : String(value);
     return input;
+  }
+
+  function getFocusProbe() {
+    var probe = byId("ff_focus_probe") || byId("__ff_focus_probe__");
+    if (probe && typeof dom === "object" && dom) {
+      dom.focusProbe = probe;
+    }
+    return probe || null;
   }
 
   function prettyLabel(raw) {
@@ -767,17 +809,20 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function lockScroll(locked) {
-    if (!body) return;
+    var bodyEl = d.body || body;
+    if (!bodyEl) return;
+    body = bodyEl;
+
     if (locked) {
       attr(root, "data-ff-overlay-open", "true");
-      attr(body, "data-ff-overlay-open", "true");
-      body.style.overflow = "hidden";
-      body.style.touchAction = "none";
+      attr(bodyEl, "data-ff-overlay-open", "true");
+      bodyEl.style.overflow = "hidden";
+      bodyEl.style.touchAction = "none";
     } else {
       attr(root, "data-ff-overlay-open", null);
-      attr(body, "data-ff-overlay-open", null);
-      body.style.overflow = "";
-      body.style.touchAction = "";
+      attr(bodyEl, "data-ff-overlay-open", null);
+      bodyEl.style.overflow = "";
+      bodyEl.style.touchAction = "";
     }
   }
 
@@ -863,7 +908,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     }
 
     if (opts.returnFocus !== false) {
-      var target = state.overlayReturnFocus || state.lastFocused || dom.focusProbe;
+      var target = state.overlayReturnFocus || state.lastFocused || getFocusProbe();
       if (target && typeof target.focus === "function") {
         w.requestAnimationFrame(function () {
           try {
@@ -1242,27 +1287,64 @@ Hook-safe, deterministic, CSP-safe runtime for:
         return;
       }
 
+      function markLoaded(node) {
+        if (!node) return;
+        node.setAttribute("data-loaded", "true");
+        node.setAttribute("data-ff-loaded", "true");
+      }
+
+      function globalReadyFor(requestedSrc) {
+        var normalized = String(requestedSrc || "");
+        if (/js\.stripe\.com\/v3/i.test(normalized)) return !!w.Stripe;
+        if (/paypal\.com\/sdk\/js/i.test(normalized)) return !!(w.paypal && w.paypal.Buttons);
+        return false;
+      }
+
+      function resolveIfReady(node) {
+        if (!node) return false;
+
+        if (
+          node.getAttribute("data-loaded") === "true" ||
+          node.getAttribute("data-ff-loaded") === "true"
+        ) {
+          resolve(node);
+          return true;
+        }
+
+        if (globalReadyFor(src)) {
+          markLoaded(node);
+          resolve(node);
+          return true;
+        }
+
+        return false;
+      }
+
       if (id) {
         var existingById = byId(id);
         if (existingById) {
-          if (existingById.getAttribute("data-loaded") === "true") {
+          if (resolveIfReady(existingById)) return;
+          existingById.addEventListener("load", function () {
+            markLoaded(existingById);
             resolve(existingById);
-            return;
-          }
-          existingById.addEventListener("load", function () { resolve(existingById); }, { once: true });
-          existingById.addEventListener("error", function () { reject(new Error("Failed to load " + src)); }, { once: true });
+          }, { once: true });
+          existingById.addEventListener("error", function () {
+            reject(new Error("Failed to load " + src));
+          }, { once: true });
           return;
         }
       }
 
       var existing = qsa('script[src="' + src + '"]')[0];
       if (existing) {
-        if (existing.getAttribute("data-loaded") === "true") {
+        if (resolveIfReady(existing)) return;
+        existing.addEventListener("load", function () {
+          markLoaded(existing);
           resolve(existing);
-          return;
-        }
-        existing.addEventListener("load", function () { resolve(existing); }, { once: true });
-        existing.addEventListener("error", function () { reject(new Error("Failed to load " + src)); }, { once: true });
+        }, { once: true });
+        existing.addEventListener("error", function () {
+          reject(new Error("Failed to load " + src));
+        }, { once: true });
         return;
       }
 
@@ -1275,9 +1357,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
       script.setAttribute("data-ff-dyn", "true");
       script.setAttribute("data-ff-loaded", "false");
       script.addEventListener("load", function () {
-        script.setAttribute("data-loaded", "true");
-        script.setAttribute("data-ff-loaded", "true");
-        script.setAttribute("data-ff-loaded", "true");
+        markLoaded(script);
         resolve(script);
       }, { once: true });
       script.addEventListener("error", function () {
@@ -1925,13 +2005,13 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function initSocket() {
     if (state.socket || !w.io || root.getAttribute("data-ff-webdriver") === "true") return;
 
+    var socket;
     try {
+      socket = w.io();
       state.socket = socket;
     } catch (err) {
       return;
     }
-
-    var socket = state.socket;
 
     function bind(eventName, handler) {
       socket.on(eventName, handler);
@@ -2229,8 +2309,33 @@ Hook-safe, deterministic, CSP-safe runtime for:
     });
 
     Object.keys(overlays).forEach(function (key) {
-      snapshot.overlays[key] = !!(overlays[key] && overlays[key].el);
+      var ov = overlays[key];
+      var el = ov && ov.el ? ov.el : null;
+      snapshot.overlays[key] = {
+        exists: !!el,
+        open: !!(
+          el && (
+            el.classList.contains("is-open") ||
+            el.getAttribute("data-open") === "true" ||
+            el.getAttribute("aria-hidden") === "false" ||
+            hasHashFor(ov.id)
+          )
+        )
+      };
     });
+
+    var focusProbe = getFocusProbe();
+
+    snapshot.focusProbe = {
+      exists: !!focusProbe,
+      tabbable: !!(
+        focusProbe &&
+        !focusProbe.hidden &&
+        focusProbe.getAttribute("aria-hidden") !== "true" &&
+        typeof focusProbe.focus === "function" &&
+        focusProbe.tabIndex >= 0
+      )
+    };
 
     snapshot.forms.donationForm = !!dom.donationForm;
     snapshot.forms.sponsorForm = !!dom.sponsorForm;
@@ -2994,6 +3099,9 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function boot() {
+    body = d.body || body;
+    dom.focusProbe = getFocusProbe() || dom.focusProbe;
+
     if (state.initialized) return;
     state.initialized = true;
 
@@ -3053,1655 +3161,102 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 }());
 
-
-
 /* ==========================================================================
-   FF_FOCUS_SENTINEL_V1
-   Guarantees first Tab lands on ff_focus_probe (Playwright + WCAG gate)
+   FF_FOCUS_SENTINEL_V2
+   Keeps first Tab deterministic for QA without duplicate overlay runtimes.
    ========================================================================== */
 
-document.addEventListener("keydown", function(e){
-  if(e.key !== "Tab") return;
+(function () {
+  if (window.__FF_FOCUS_SENTINEL_V2__) return;
+  window.__FF_FOCUS_SENTINEL_V2__ = true;
 
-  const probe = document.getElementById("ff_focus_probe");
-  if(!probe) return;
-
-  if(document.activeElement === document.body){
-    e.preventDefault();
-    probe.focus();
-  }
-}, { once:true });
-
-
-
-/* ==========================================================================
-   FF_FOCUS_RESET_V1
-   After mouse interaction, reset focus so the next Tab begins from body.
-   Stabilizes keyboard navigation + Playwright focus-visible probe.
-   ========================================================================== */
-
-document.addEventListener("mousedown", function(e){
-  const t = e.target;
-  if(!t) return;
-
-  const focusable = t.closest('a,button,input,select,textarea,[tabindex]');
-  if(!focusable){
-    document.body.focus();
-  }
-});
-
-/* FF_RUNTIME_CONTRACT_FOCUS_PROBE_RESCUE_V1 */
-;(function () {
-  if (window.__FF_RUNTIME_CONTRACT_FOCUS_PROBE_RESCUE_V1__) return;
-  window.__FF_RUNTIME_CONTRACT_FOCUS_PROBE_RESCUE_V1__ = true;
-
-  function isOpenOverlay(el) {
-    if (!el) return false;
-    if (el.matches(":target")) return true;
-    if (el.classList.contains("is-open")) return true;
-    if (el.getAttribute("data-open") === "true") return true;
-    if (el.getAttribute("aria-hidden") === "false") return true;
-    return false;
-  }
-
-  function isTabbable(el) {
-    if (!el || typeof el.focus !== "function") return false;
-    if (el.hidden) return false;
-    if (el.hasAttribute("disabled")) return false;
-    if (el.getAttribute("aria-hidden") === "true") return false;
-    if (typeof el.tabIndex === "number" && el.tabIndex < 0) return false;
-
-    var style = window.getComputedStyle(el);
-    if (!style) return true;
-    if (style.display === "none") return false;
-    if (style.visibility === "hidden") return false;
-
-    return true;
-  }
-
-  function ensureFocusProbe() {
+  function ensureProbe() {
     var probe = document.getElementById("ff_focus_probe");
+    if (probe) return probe;
+    if (!document.body) return null;
 
-    if (!probe) {
-      probe = document.createElement("button");
-      probe.type = "button";
-      probe.id = "ff_focus_probe";
-      probe.className = "ff-focus-probe";
-      probe.setAttribute("data-ff-focus-probe", "");
-      probe.setAttribute("aria-label", "Focus probe");
-      probe.textContent = "Focus probe";
-
-      if (document.body && document.body.firstChild) {
-        document.body.insertBefore(probe, document.body.firstChild);
-      } else if (document.body) {
-        document.body.appendChild(probe);
-      }
-    }
-
-    if (!probe.hasAttribute("tabindex")) {
-      probe.tabIndex = 0;
-    }
-
+    probe = document.createElement("button");
+    probe.type = "button";
+    probe.id = "ff_focus_probe";
+    probe.className = "ff-focus-probe";
+    probe.setAttribute("data-ff-focus-probe", "");
+    probe.setAttribute("aria-label", "Focus probe");
+    probe.textContent = "Focus probe";
+    probe.tabIndex = 0;
+    document.body.insertBefore(probe, document.body.firstChild || null);
     return probe;
   }
 
-  function patchContractSnapshot() {
-    var app = window.FF_APP;
-    var api = app && app.api;
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Tab") return;
 
-    if (!api || typeof api.contractSnapshot !== "function") return false;
-    if (api.__ffFocusProbeSnapshotPatched) return true;
+    var probe = ensureProbe();
+    if (!probe) return;
 
-    var original = api.contractSnapshot.bind(api);
-
-    api.contractSnapshot = function () {
-      var snap = original() || {};
-      var probe = ensureFocusProbe();
-
-      snap.focusProbe = {
-        exists: !!probe,
-        tabbable: isTabbable(probe)
-      };
-
-      return snap;
-    };
-
-    api.__ffFocusProbeSnapshotPatched = true;
-    return true;
-  }
-
-  function syncSponsorSubmitIntoView() {
-    var root = document.getElementById("sponsor-interest");
-    if (!root || !isOpenOverlay(root)) return;
-
-    var submit = root.querySelector('button[type="submit"], input[type="submit"]');
-    if (!submit) return;
-
-    try {
-      submit.scrollIntoView({
-        block: "nearest",
-        inline: "nearest"
-      });
-    } catch (_err) {}
-  }
-
-  function boot(attempts) {
-    ensureFocusProbe();
-    patchContractSnapshot();
-    syncSponsorSubmitIntoView();
-
-    if (attempts > 0 && !(window.FF_APP && window.FF_APP.api && window.FF_APP.api.__ffFocusProbeSnapshotPatched)) {
-      window.setTimeout(function () {
-        boot(attempts - 1);
-      }, 100);
-    }
-  }
-
-  document.addEventListener("click", function (event) {
-    var trigger = event.target && event.target.closest
-      ? event.target.closest('[href="#sponsor-interest"], [data-open-overlay="sponsor-interest"], [data-open="#sponsor-interest"], [data-ff-sponsor-tier], [name="sponsor_level"], [name="tier"]')
-      : null;
-
-    if (trigger) {
-      window.setTimeout(syncSponsorSubmitIntoView, 60);
-      window.setTimeout(syncSponsorSubmitIntoView, 180);
-    }
-  }, true);
-
-  document.addEventListener("change", function (event) {
-    var inSponsor = event.target && event.target.closest
-      ? event.target.closest("#sponsor-interest")
-      : null;
-
-    if (inSponsor) {
-      window.setTimeout(syncSponsorSubmitIntoView, 60);
-    }
-  }, true);
-
-  window.addEventListener("hashchange", function () {
-    window.setTimeout(syncSponsorSubmitIntoView, 60);
-  });
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      boot(60);
-    }, { once: true });
-  } else {
-    boot(60);
-  }
-})();
-
-/* FF_RUNTIME_CONTRACT_OVERLAY_NORMALIZE_V2 */
-;(function () {
-  if (window.__FF_RUNTIME_CONTRACT_OVERLAY_NORMALIZE_V2__) return;
-  window.__FF_RUNTIME_CONTRACT_OVERLAY_NORMALIZE_V2__ = true;
-
-  function ensureFocusProbe() {
-    var probe = document.getElementById("ff_focus_probe");
-
-    if (!probe && document.body) {
-      probe = document.createElement("button");
-      probe.type = "button";
-      probe.id = "ff_focus_probe";
-      probe.className = "ff-focus-probe";
-      probe.setAttribute("data-ff-focus-probe", "");
-      probe.setAttribute("aria-label", "Focus probe");
-      probe.textContent = "Focus probe";
-      probe.tabIndex = 0;
-      document.body.insertBefore(probe, document.body.firstChild || null);
-    }
-
-    if (probe && !probe.hasAttribute("tabindex")) {
-      probe.tabIndex = 0;
-    }
-
-    return probe;
-  }
-
-  function isTabbable(el) {
-    if (!el || typeof el.focus !== "function") return false;
-    if (el.hidden) return false;
-    if (el.hasAttribute("disabled")) return false;
-    if (el.getAttribute("aria-hidden") === "true") return false;
-    if (typeof el.tabIndex === "number" && el.tabIndex < 0) return false;
-
-    var style = window.getComputedStyle(el);
-    if (!style) return true;
-    if (style.display === "none") return false;
-    if (style.visibility === "hidden") return false;
-
-    return true;
-  }
-
-  function domOverlayExists(id) {
-    return !!document.getElementById(id);
-  }
-
-  function normalizeOverlayEntry(value, id) {
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      var normalized = {};
-      for (var key in value) {
-        normalized[key] = value[key];
-      }
-      normalized.exists = !!normalized.exists || domOverlayExists(id);
-      return normalized;
-    }
-
-    return {
-      exists: !!value || domOverlayExists(id)
-    };
-  }
-
-  function patchContractSnapshot() {
-    var app = window.FF_APP;
-    var api = app && app.api;
-
-    if (!api || typeof api.contractSnapshot !== "function") return false;
-    if (api.__ffOverlayNormalizePatched) return true;
-
-    var original = api.contractSnapshot.bind(api);
-
-    api.contractSnapshot = function () {
-      var snap = original() || {};
-      var probe = ensureFocusProbe();
-
-      snap.focusProbe = {
-        exists: !!probe,
-        tabbable: isTabbable(probe)
-      };
-
-      var knownOverlayIds = ["checkout", "sponsor", "video", "terms", "privacy", "drawer"];
-      var current = snap.overlays && typeof snap.overlays === "object" ? snap.overlays : {};
-      var normalized = {};
-
-      knownOverlayIds.forEach(function (id) {
-        normalized[id] = normalizeOverlayEntry(current[id], id);
-      });
-
-      for (var key in current) {
-        if (!(key in normalized)) {
-          normalized[key] = normalizeOverlayEntry(current[key], key);
-        }
-      }
-
-      snap.overlays = normalized;
-      return snap;
-    };
-
-    api.__ffOverlayNormalizePatched = true;
-    return true;
-  }
-
-  function boot(attempts) {
-    ensureFocusProbe();
-
-    if (patchContractSnapshot()) return;
-
-    if (attempts > 0) {
-      window.setTimeout(function () {
-        boot(attempts - 1);
-      }, 100);
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      boot(60);
-    }, { once: true });
-  } else {
-    boot(60);
-  }
-})();
-
-/* FF_PUBLIC_API_COMPAT_AND_OVERLAY_RESCUE_V4 */
-;(function () {
-  if (window.__FF_PUBLIC_API_COMPAT_AND_OVERLAY_RESCUE_V4__) return;
-  window.__FF_PUBLIC_API_COMPAT_AND_OVERLAY_RESCUE_V4__ = true;
-
-  var BOOT_KEY = '__FF_APP_BOOT_KEY__';
-  var OVERLAY_IDS = ["checkout", "sponsor-interest", "press-video", "terms", "privacy", "drawer"];
-
-  function getRoot() {
-    return document.querySelector(".ff-root") || document.documentElement;
-  }
-
-  function getBody() {
-    return document.body || null;
-  }
-
-  function getApi() {
-    return window.FF_APP && window.FF_APP.api ? window.FF_APP.api : null;
-  }
-
-  function getVersion() {
-    var root = getRoot();
-    return (
-      (window.ff && window.ff.version) ||
-      (window.FF_APP && window.FF_APP.version) ||
-      (root && (root.getAttribute("data-ff-version") || root.getAttribute("data-ff-build"))) ||
-      "dev"
-    );
-  }
-
-  function isOverlayOpen(el) {
-    if (!el) return false;
-    if (el.hidden === true) return false;
-    if (el.hasAttribute("hidden")) return false;
-    if (el.getAttribute("aria-hidden") === "true") return false;
-    if (el.getAttribute("data-open") === "false") return false;
-    if (el.matches(":target")) return true;
-    if (el.classList.contains("is-open")) return true;
-    if (el.getAttribute("data-open") === "true") return true;
-    if (el.getAttribute("aria-hidden") === "false") return true;
-    return false;
-  }
-
-  function syncBodyOverlayState() {
-    var open = OVERLAY_IDS.some(function (id) {
-      return isOverlayOpen(document.getElementById(id));
-    });
-
-    var body = getBody();
-    if (!body) return;
-
-    body.setAttribute("data-ff-overlay-open", open ? "true" : "false");
-    body.classList.toggle("is-overlay-open", open);
-  }
-
-  function normalizeClosed(el) {
-    if (!el) return;
-    el.hidden = true;
-    el.setAttribute("hidden", "");
-    el.setAttribute("aria-hidden", "true");
-    el.setAttribute("data-open", "false");
-    el.classList.remove("is-open");
-  }
-
-  function closeAllOverlays() {
-    OVERLAY_IDS.forEach(function (id) {
-      normalizeClosed(document.getElementById(id));
-    });
-
-    if (location.hash) {
-      var current = location.hash.replace(/^#/, "");
-      if (OVERLAY_IDS.indexOf(current) !== -1) {
-        try {
-          history.replaceState(null, "", location.pathname + location.search);
-        } catch (_err) {
-          location.hash = "#home";
-        }
-      }
-    }
-
-    syncBodyOverlayState();
-    return true;
-  }
-
-  function injectScript(src) {
-    return new Promise(function (resolve, reject) {
+    if (document.activeElement === document.body) {
+      e.preventDefault();
       try {
-        var s = document.createElement("script");
-        var nonceHost = document.querySelector("script[nonce]");
-        var nonce = nonceHost ? (nonceHost.nonce || nonceHost.getAttribute("nonce") || "") : "";
-        if (nonce) s.setAttribute("nonce", nonce);
-        s.async = true;
-        s.src = String(src || "");
-        s.onload = function () { resolve(true); };
-        s.onerror = function (err) { reject(err || new Error("script load failed")); };
-        (document.head || document.documentElement).appendChild(s);
-      } catch (err) {
-        reject(err);
+        probe.focus({ preventScroll: true });
+      } catch (_err) {
+        try { probe.focus(); } catch (_err2) {}
       }
-    });
+    }
+  }, { once: true, capture: true });
+
+  document.addEventListener("mousedown", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+
+    var focusable = t.closest('a,button,input,select,textarea,[tabindex]');
+    if (!focusable && document.body && typeof document.body.focus === "function") {
+      try { document.body.focus(); } catch (_err) {}
+    }
+  }, true);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureProbe, { once: true });
+  } else {
+    ensureProbe();
   }
+})();
 
-  function ensureCheckoutCloseButton() {
-    var checkout = document.getElementById("checkout");
-    if (!checkout) return;
+/* FF_PUBLIC_API_COMPAT_MIN_V2 */
+;(function () {
+  if (window.__FF_PUBLIC_API_COMPAT_MIN_V2__) return;
+  window.__FF_PUBLIC_API_COMPAT_MIN_V2__ = true;
 
-    var existing = checkout.querySelector(
-      'button.ff-sheet__close, button[data-ff-close-checkout]:not(.ff-sheet__backdrop), button[data-ff-close], button[aria-label="Close"], button[aria-label="Close checkout"]'
-    );
-    if (existing) return;
+  function sync() {
+    var app = window.FF_APP || {};
+    var api = app.api || {};
 
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "ff-sheet__close ff-sheet__close--runtime";
-    btn.setAttribute("data-ff-close-checkout", "");
-    btn.setAttribute("data-ff-close", "");
-    btn.setAttribute("aria-label", "Close");
-    btn.innerHTML = '<span aria-hidden="true">×</span>';
-
-    btn.addEventListener("click", function (event) {
-      event.preventDefault();
-      closeAllOverlays();
-    });
-
-    checkout.insertBefore(btn, checkout.firstChild || null);
-  }
-
-  function syncPublicFacade() {
-    var api = getApi();
-    var ff = window.ff && typeof window.ff === "object" ? window.ff : (window.ff = {});
-
-    ff.version = ff.version || getVersion();
-    ff.injectScript = ff.injectScript || (api && typeof api.injectScript === "function" ? api.injectScript.bind(api) : injectScript);
-    ff.closeAllOverlays = ff.closeAllOverlays || (api && typeof api.closeAllOverlays === "function" ? api.closeAllOverlays.bind(api) : closeAllOverlays);
-
-    if (!ff.contractSnapshot && api && typeof api.contractSnapshot === "function") {
-      ff.contractSnapshot = api.contractSnapshot.bind(api);
+    window.ff = window.ff || {};
+    if (!window.ff.version) {
+      window.ff.version = (window.ff && window.ff.version) || "dev";
     }
 
-    try {
-      window[BOOT_KEY] = window[BOOT_KEY] || ff.version || true;
-    } catch (_err) {}
+    if (api.contractSnapshot && !window.ff.contractSnapshot) {
+      window.ff.contractSnapshot = api.contractSnapshot.bind(api);
+    }
+
+    if (api.injectScript && !window.ff.injectScript) {
+      window.ff.injectScript = api.injectScript.bind(api);
+    }
+
+    if (api.closeAll && !window.ff.closeAllOverlays) {
+      window.ff.closeAllOverlays = api.closeAll.bind(api);
+    }
 
     window.__FF_APP_BOOTED__ = true;
     window.__FF_BOOTED__ = true;
     window.__FF_RUNTIME_READY__ = true;
+    window.__FF_APP_BOOT_KEY__ = window.__FF_APP_BOOT_KEY__ || window.ff.version || true;
   }
-
-  function boot() {
-    syncPublicFacade();
-    ensureCheckoutCloseButton();
-    syncBodyOverlayState();
-  }
-
-  document.addEventListener("click", function (event) {
-    var t = event.target && event.target.closest
-      ? event.target.closest(
-          '[data-ff-open-checkout], a[href="#checkout"], [data-ff-open-video], a[href="#press-video"], [data-ff-open-sponsor], a[href="#sponsor-interest"], [data-ff-close-checkout], [data-ff-close], .ff-sheet__backdrop, .ff-modal__backdrop, [data-ff-backdrop]'
-        )
-      : null;
-
-    if (!t) return;
-
-    window.setTimeout(boot, 0);
-    window.setTimeout(syncBodyOverlayState, 120);
-  }, true);
-
-  window.addEventListener("hashchange", function () {
-    window.setTimeout(boot, 0);
-    window.setTimeout(syncBodyOverlayState, 80);
-  });
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      boot();
-      window.setTimeout(boot, 60);
-      window.setTimeout(boot, 220);
-    }, { once: true });
+    document.addEventListener("DOMContentLoaded", sync, { once: true });
   } else {
-    boot();
-    window.setTimeout(boot, 60);
-    window.setTimeout(boot, 220);
+    sync();
   }
+
+  window.addEventListener("load", sync, { once: true });
 })();
-
-
-
-/* FF_OVERLAY_RUNTIME_PATCH */
-
-(function () {
-
-  const checkout = document.querySelector("#checkout");
-  if (!checkout) return;
-
-  function open() {
-    checkout.classList.add("is-open");
-    checkout.setAttribute("data-open","true");
-    checkout.setAttribute("aria-hidden","false");
-    document.body.classList.add("is-overlay-open");
-  }
-
-  function close() {
-    checkout.classList.remove("is-open");
-    checkout.setAttribute("data-open","false");
-    checkout.setAttribute("aria-hidden","true");
-    document.body.classList.remove("is-overlay-open");
-
-    if (location.hash === "#checkout") {
-      history.replaceState("",document.title,window.location.pathname + window.location.search);
-    }
-  }
-
-  document.addEventListener("click",(e)=>{
-
-    const openBtn = e.target.closest("[data-ff-open-checkout]");
-    if(openBtn){
-      e.preventDefault();
-      open();
-    }
-
-    const closeBtn = e.target.closest("[data-ff-close-checkout]");
-    if(closeBtn){
-      e.preventDefault();
-      close();
-    }
-
-  });
-
-  window.addEventListener("hashchange",()=>{
-    if(location.hash === "#checkout") open();
-  });
-
-})();
-
-
-
-/* FF_CHECKOUT_OVERLAY_RUNTIME */
-(function(){
-
-})();
-
-
-/* FF_CHECKOUT_OVERLAY_HARDEN_V1 */
-(function () {
-  "use strict";
-
-  var w = window;
-  var d = document;
-  if (!d) return;
-
-  function rootEl() {
-    return d.documentElement || d.body;
-  }
-
-  function checkout() {
-    return d.getElementById("checkout");
-  }
-
-  function setOpenState(el, open) {
-    if (!el) return;
-
-    if (open) {
-      el.hidden = false;
-      el.removeAttribute("hidden");
-      el.setAttribute("aria-hidden", "false");
-      el.setAttribute("data-open", "true");
-      el.classList.add("is-open");
-      if (d.body) d.body.classList.add("ff-overlay-open");
-      if (rootEl()) rootEl().classList.add("ff-overlay-open");
-    } else {
-      el.setAttribute("aria-hidden", "true");
-      el.setAttribute("data-open", "false");
-      el.classList.remove("is-open");
-      el.hidden = true;
-      el.setAttribute("hidden", "");
-      if (d.body) d.body.classList.remove("ff-overlay-open");
-      if (rootEl()) rootEl().classList.remove("ff-overlay-open");
-    }
-  }
-
-  function isActuallyOpen(el) {
-    if (!el) return false;
-    if (el.matches(":target")) return true;
-    if (el.classList.contains("is-open")) return true;
-    if (el.getAttribute("data-open") === "true") return true;
-    if (el.getAttribute("aria-hidden") === "false") return true;
-    return false;
-  }
-
-  function focusInto(el) {
-    if (!el) return;
-    var target =
-      el.querySelector("[autofocus]") ||
-      el.querySelector("[data-ff-close]") ||
-      el.querySelector("[data-close]") ||
-      el.querySelector("[aria-label*='Close'], [aria-label*='close']") ||
-      el.querySelector("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
-
-    if (target && typeof target.focus === "function") {
-      try { target.focus({ preventScroll: true }); }
-      catch (_) { try { target.focus(); } catch (_) {} }
-    }
-  }
-
-  function openCheckout(source) {
-    var el = checkout();
-    if (!el) return false;
-
-    setOpenState(el, true);
-
-    if (source !== "hash") {
-      try {
-        if (w.location.hash !== "#checkout") {
-          history.pushState(null, "", "#checkout");
-        }
-      } catch (_) {}
-    }
-
-    w.requestAnimationFrame(function () {
-      focusInto(el);
-    });
-
-    return true;
-  }
-
-  function closeCheckout(opts) {
-    var el = checkout();
-    if (!el) return false;
-
-    setOpenState(el, false);
-
-    var shouldClearHash = !opts || opts.clearHash !== false;
-    if (shouldClearHash) {
-      try {
-        if (w.location.hash === "#checkout") {
-          history.pushState(
-            "",
-            d.title,
-            w.location.pathname + w.location.search
-          );
-        }
-      } catch (_) {}
-    }
-
-    return true;
-  }
-
-  function hashWantsCheckout() {
-    return (w.location.hash || "") === "#checkout";
-  }
-
-  function syncCheckoutToHash() {
-    var el = checkout();
-    if (!el) return;
-
-    if (hashWantsCheckout()) {
-      openCheckout("hash");
-    } else if (isActuallyOpen(el)) {
-      closeCheckout({ clearHash: false });
-    }
-  }
-
-  d.addEventListener("click", function (e) {
-    var t = e.target;
-    if (!t || !t.closest) return;
-
-    var openTrigger = t.closest([
-      'a[href="#checkout"]',
-      '[data-ff-open="checkout"]',
-      '[data-open="checkout"]',
-      '[aria-controls="checkout"]',
-      '[data-modal-target="checkout"]'
-    ].join(","));
-
-    if (openTrigger) {
-      e.preventDefault();
-      openCheckout("click");
-      return;
-    }
-
-    var closeTrigger = t.closest([
-      '#checkout [data-ff-close]',
-      '#checkout [data-close]',
-      '#checkout [data-dismiss="dialog"]',
-      '#checkout [aria-label*="Close"]',
-      '#checkout [aria-label*="close"]',
-      '#checkout .ff-modal__close',
-      '#checkout .ff-dialog__close',
-      '#checkout .ff-sheet__close'
-    ].join(","));
-
-    if (closeTrigger) {
-      e.preventDefault();
-      closeCheckout({ clearHash: true });
-      return;
-    }
-
-    var el = checkout();
-    if (!el) return;
-
-    var backdrop = t.closest([
-      '#checkout [data-ff-overlay-backdrop]',
-      '#checkout [data-backdrop]',
-      '#checkout .ff-overlay__backdrop',
-      '#checkout .ff-modal__backdrop',
-      '#checkout .ff-dialog__backdrop'
-    ].join(","));
-
-    if (backdrop) {
-      e.preventDefault();
-      closeCheckout({ clearHash: true });
-      return;
-    }
-
-    if (t === el) {
-      e.preventDefault();
-      closeCheckout({ clearHash: true });
-    }
-  }, true);
-
-  d.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && isActuallyOpen(checkout())) {
-      e.preventDefault();
-      closeCheckout({ clearHash: true });
-    }
-  }, true);
-
-  w.addEventListener("hashchange", syncCheckoutToHash, { passive: true });
-
-  if (d.readyState === "loading") {
-    d.addEventListener("DOMContentLoaded", syncCheckoutToHash, { once: true });
-  } else {
-    syncCheckoutToHash();
-  }
-
-  w.FF_APP = w.FF_APP || {};
-  w.FF_APP.api = w.FF_APP.api || {};
-  w.FF_APP.api.openCheckoutHard = openCheckout;
-  w.FF_APP.api.closeCheckoutHard = closeCheckout;
-})();
-
-/* FF_V1_TEAMS_MEDIA_FALLBACKS_V1_START */
-(function initTeamMediaFallbacks() {
-  if (window.__FF_V1_TEAMS_MEDIA_FALLBACKS_V1__) return;
-  window.__FF_V1_TEAMS_MEDIA_FALLBACKS_V1__ = true;
-
-  const mediaNodes = Array.from(
-    document.querySelectorAll(".ff-teamCard__media[data-ff-fallback-bound='true']")
-  );
-
-  mediaNodes.forEach((media) => {
-    const img = media.querySelector(".ff-teamCard__img");
-
-    const markBroken = () => {
-      media.classList.remove("is-ready");
-      media.classList.add("is-media-broken");
-    };
-
-    const markReady = () => {
-      if (!img || img.naturalWidth < 48 || img.naturalHeight < 48) {
-        markBroken();
-        return;
-      }
-      media.classList.remove("is-media-broken", "is-media-missing");
-      media.classList.add("is-ready");
-    };
-
-    if (!img) {
-      media.classList.add("is-media-missing");
-      return;
-    }
-
-    const src = (img.getAttribute("src") || "").trim();
-    if (!src) {
-      media.classList.add("is-media-missing");
-      return;
-    }
-
-    if (img.complete) {
-      if (img.naturalWidth > 48 && img.naturalHeight > 48) {
-        markReady();
-      } else {
-        markBroken();
-      }
-      return;
-    }
-
-    img.addEventListener("load", markReady, { once: true });
-    img.addEventListener("error", markBroken, { once: true });
-  });
-})();
- /* FF_V1_TEAMS_MEDIA_FALLBACKS_V1_END */
-
-
-/* FF_V1_CREDIBILITY_RESCUE_V1_START */
-(function () {
-  "use strict";
-
-  if (window.__FF_V1_CREDIBILITY_RESCUE_V1__) return;
-  window.__FF_V1_CREDIBILITY_RESCUE_V1__ = true;
-
-  var d = document;
-  var w = window;
-
-  function qs(sel, scope) {
-    return (scope || d).querySelector(sel);
-  }
-
-  function qsa(sel, scope) {
-    return Array.prototype.slice.call((scope || d).querySelectorAll(sel));
-  }
-
-  function txt(node) {
-    return String((node && node.textContent) || "").replace(/\s+/g, " ").trim();
-  }
-
-  function create(tag, cls, textValue) {
-    var el = d.createElement(tag);
-    if (cls) el.className = cls;
-    if (textValue != null) el.textContent = textValue;
-    return el;
-  }
-
-  function insertAfter(anchor, node) {
-    if (!anchor || !anchor.parentNode || !node) return;
-    if (anchor.nextSibling) anchor.parentNode.insertBefore(node, anchor.nextSibling);
-    else anchor.parentNode.appendChild(node);
-  }
-
-  function initials(name) {
-    return String(name || "Sponsor")
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(function (x) { return x.charAt(0).toUpperCase(); })
-      .join("") || "SP";
-  }
-
-  function isPremiumTier(value) {
-    return /founding|partner|champion|vip|recommended/i.test(String(value || ""));
-  }
-
-  function sponsorTierText(host) {
-    var pool = [
-      qs(".ff-tierPill", host),
-      qs(".ff-help", host),
-      qs(".ff-muted", host)
-    ].filter(Boolean);
-
-    for (var i = 0; i < pool.length; i += 1) {
-      var value = txt(pool[i]);
-      if (/community|partner|champion|vip|founding|recommended/i.test(value)) return value;
-    }
-
-    var whole = txt(host);
-    var match = whole.match(/\b(community|partner|champion|vip|founding sponsor|recommended)\b/i);
-    return match ? match[0] : "";
-  }
-
-  function buildTrustStrip() {
-    var wrap = create("div", "ff-trustStrip");
-    wrap.setAttribute("data-ff-trust-strip", "");
-
-    var row = create("div", "ff-trustStrip__row");
-
-    [
-      "Secure checkout",
-      "Email receipt",
-      "Program records",
-      "Powered by Stripe + PayPal"
-    ].forEach(function (label) {
-      var item = create("span", "ff-trustStrip__item");
-      var icon = create("span", "ff-trustStrip__icon", "✓");
-      var copy = create("span", "", label);
-      item.appendChild(icon);
-      item.appendChild(copy);
-      row.appendChild(item);
-    });
-
-    wrap.appendChild(row);
-    wrap.appendChild(
-      create(
-        "div",
-        "ff-trustStrip__meta",
-        "Built for donor trust: secure payments, confirmation by email, and clean records for program support."
-      )
-    );
-
-    return wrap;
-  }
-
-  function mountHeroTrustStrip() {
-    if (qs('.ff-hero [data-ff-trust-strip], .ff-hero__capsule [data-ff-trust-strip], .ff-hero__capsuleInner [data-ff-trust-strip]')) return;
-
-    var anchor =
-      qs(".ff-heroCtas") ||
-      qs(".ff-heroContext") ||
-      qs(".ff-heroHeader .ff-activityFeed") ||
-      qs(".ff-heroHeader h1, .ff-heroHeader .ff-heroTitle") ||
-      qs(".ff-hero__capsuleInner h1, .ff-hero__capsuleInner .ff-heroTitle") ||
-      qs("#home h1");
-
-    if (!anchor) return;
-
-    var strip = buildTrustStrip();
-    insertAfter(anchor, strip);
-  }
-
-  function mountCheckoutTrustStrip() {
-    var head = qs("#checkout .ff-checkoutHead") || qs("#checkout .ff-sheet__header");
-    if (!head || qs("[data-ff-trust-strip]", head)) return;
-    head.appendChild(buildTrustStrip());
-  }
-
-  function parseDeadlineFromPage() {
-    var metaNode =
-      qs('meta[name="ff-deadline"]') ||
-      qs('meta[name="deadline"]') ||
-      qs('meta[name="campaign-deadline"]');
-
-    if (metaNode) {
-      var rawMeta = String(metaNode.getAttribute("content") || "").trim();
-      var dtMeta = new Date(rawMeta);
-      if (!isNaN(dtMeta.getTime())) return dtMeta;
-    }
-
-    var textPool = txt(d.body);
-    var iso = textPool.match(/\b(20\d{2}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?\b/);
-    if (iso) {
-      var dtIso = new Date(iso[1] + "T23:59:59");
-      if (!isNaN(dtIso.getTime())) return dtIso;
-    }
-
-    return null;
-  }
-
-  function deadlineState(dt) {
-    var now = new Date();
-    var diff = dt.getTime() - now.getTime();
-    var days = Math.ceil(diff / 86400000);
-
-    if (diff < 0) return { text: "Campaign deadline passed", klass: "is-passed" };
-    if (days <= 0) return { text: "Ends today", klass: "is-urgent" };
-    if (days === 1) return { text: "Ends tomorrow", klass: "is-urgent" };
-    if (days <= 7) return { text: "Ends in " + days + " days", klass: "is-urgent" };
-    return { text: "Ends in " + days + " days", klass: "" };
-  }
-
-  function mountDeadlinePill() {
-    var dt = parseDeadlineFromPage();
-    if (!dt) return;
-
-    var target =
-      qs(".ff-heroContext") ||
-      qs(".ff-heroCtas") ||
-      qs("#progress .ff-sectionhead__actions") ||
-      qs("#progress .ff-sectionhead") ||
-      qs(".ff-progressCompact__summary");
-
-    if (!target) return;
-
-    var pill = qs(".ff-deadlinePill", target) || qs(".ff-deadlinePill");
-    if (!pill) {
-      pill = create("span", "ff-deadlinePill");
-      var dot = create("span", "ff-deadlinePill__dot");
-      dot.setAttribute("aria-hidden", "true");
-      var label = create("span", "ff-deadlinePill__text");
-      pill.appendChild(dot);
-      pill.appendChild(label);
-      target.appendChild(pill);
-    }
-
-    pill.classList.remove("is-urgent", "is-passed");
-    var state = deadlineState(dt);
-    if (state.klass) pill.classList.add(state.klass);
-
-    var labelNode = qs(".ff-deadlinePill__text", pill);
-    if (labelNode) labelNode.textContent = state.text;
-
-    pill.setAttribute("title", "Campaign deadline: " + dt.toLocaleString());
-  }
-
-  function enhanceSponsorCard(card) {
-    if (!card || card.getAttribute("data-ff-sponsor-cred-ready") === "true") return;
-    card.setAttribute("data-ff-sponsor-cred-ready", "true");
-
-    var strong = qs("strong", card);
-    var name = txt(strong) || "Sponsor";
-    var tier = sponsorTierText(card);
-
-    card.classList.add("ff-sponsorLogoReady");
-
-    var img = qs("img", card);
-    if (img) {
-      img.classList.add("ff-sponsorLogo__img");
-      if (!img.getAttribute("alt")) img.setAttribute("alt", name + " logo");
-    } else {
-      card.classList.add("ff-sponsorHasFallback");
-      card.setAttribute("data-ff-sponsor-initials", initials(name));
-    }
-
-    if (isPremiumTier(tier) && !qs(".ff-verifiedBadge", card)) {
-      var badge = create("span", "ff-verifiedBadge", "Verified partner");
-      if (strong && strong.parentNode) {
-        if (strong.nextSibling) strong.parentNode.insertBefore(badge, strong.nextSibling);
-        else strong.parentNode.appendChild(badge);
-      } else {
-        card.appendChild(badge);
-      }
-    }
-  }
-
-  function mountSponsorCredibility() {
-    qsa(".ff-sponsorWall__item .ff-card, .ff-sponsorCard, .ff-sponsorWall__item").forEach(function (node) {
-      var card = node.classList.contains("ff-card") || node.classList.contains("ff-sponsorCard")
-        ? node
-        : (qs(".ff-card", node) || node);
-
-      enhanceSponsorCard(card);
-    });
-  }
-
-  function boot() {
-    mountHeroTrustStrip();
-    mountCheckoutTrustStrip();
-    mountDeadlinePill();
-    mountSponsorCredibility();
-  }
-
-  if (d.readyState === "loading") {
-    d.addEventListener("DOMContentLoaded", boot, { once: true });
-  } else {
-    boot();
-  }
-
-  w.addEventListener("load", boot, { once: true });
-  w.setTimeout(boot, 150);
-  w.setTimeout(boot, 650);
-  w.setTimeout(boot, 1400);
-
-  w.FF_APP = w.FF_APP || {};
-  w.FF_APP.api = w.FF_APP.api || {};
-  w.FF_APP.api.forceCredibilityRescue = boot;
-}());
-/* FF_V1_CREDIBILITY_RESCUE_V1_END */
-
-/* FF_V1_CREDIBILITY_CONSOLIDATED_V3_START */
-(function () {
-  "use strict";
-
-  if (window.__FF_V1_CREDIBILITY_CONSOLIDATED_V3__) return;
-  window.__FF_V1_CREDIBILITY_CONSOLIDATED_V3__ = true;
-
-  var w = window;
-  var d = document;
-
-  function qs(sel, scope) {
-    return (scope || d).querySelector(sel);
-  }
-
-  function qsa(sel, scope) {
-    return Array.prototype.slice.call((scope || d).querySelectorAll(sel));
-  }
-
-  function create(tag, className, textValue) {
-    var el = d.createElement(tag);
-    if (className) el.className = className;
-    if (textValue != null) el.textContent = textValue;
-    return el;
-  }
-
-  function text(node) {
-    return String((node && (node.textContent || node.innerText)) || "").replace(/\s+/g, " ").trim();
-  }
-
-  function initials(name) {
-    return String(name || "Sponsor")
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(function (part) { return part.charAt(0).toUpperCase(); })
-      .join("") || "SP";
-  }
-
-  function premium(textValue) {
-    return /founding|partner|champion|vip|recommended|premium/i.test(String(textValue || ""));
-  }
-
-  function firstExisting(selectors, scope) {
-    for (var i = 0; i < selectors.length; i += 1) {
-      var found = qs(selectors[i], scope);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  function mountTrustStrip() {
-    var targets = [
-      qs(".ff-storyCopy"),
-      qs(".ff-checkoutHead"),
-      qs("#checkout .ff-sheet__header")
-    ].filter(Boolean);
-
-    targets.forEach(function (target) {
-      if (!target || qs(".ff-trustStrip", target)) return;
-
-      var wrap = create("div", "ff-trustStrip");
-      var row = create("div", "ff-trustStrip__row");
-
-      [
-        "Secure checkout",
-        "Email receipt",
-        "Tax season ready"
-      ].forEach(function (label) {
-        var item = create("span", "ff-trustStrip__item");
-        var icon = create("span", "ff-trustStrip__icon", "✓");
-        var txt = create("span", "", label);
-        item.appendChild(icon);
-        item.appendChild(txt);
-        row.appendChild(item);
-      });
-
-      var meta = create(
-        "div",
-        "ff-trustStrip__meta",
-        "Powered by Stripe / PayPal where enabled."
-      );
-
-      wrap.appendChild(row);
-      wrap.appendChild(meta);
-      target.appendChild(wrap);
-    });
-  }
-
-  function findDeadlineDate() {
-    var meta = firstExisting([
-      'meta[name="ff-deadline"]',
-      'meta[name="deadline"]',
-      'meta[name="campaign-deadline"]'
-    ]);
-
-    if (meta) {
-      var rawMeta = String(meta.getAttribute("content") || "").trim();
-      var metaDate = new Date(rawMeta);
-      if (!isNaN(metaDate.getTime())) return metaDate;
-    }
-
-    var pageText = text(d.body);
-    var matches = pageText.match(/\b20\d{2}-\d{2}-\d{2}\b/g) || [];
-
-    for (var i = 0; i < matches.length; i += 1) {
-      var dt = new Date(matches[i] + "T23:59:59");
-      if (!isNaN(dt.getTime())) return dt;
-    }
-
-    return null;
-  }
-
-  function deadlineState(dt) {
-    var now = new Date();
-    var diff = dt.getTime() - now.getTime();
-    var days = Math.ceil(diff / 86400000);
-
-    if (diff < 0) return { text: "Campaign deadline passed", klass: "is-passed" };
-    if (days <= 0) return { text: "Ends today", klass: "is-urgent" };
-    if (days === 1) return { text: "Ends tomorrow", klass: "is-urgent" };
-    if (days <= 7) return { text: "Ends in " + days + " days", klass: "is-urgent" };
-    return { text: "Ends in " + days + " days", klass: "" };
-  }
-
-  function mountDeadlinePill() {
-    var dt = findDeadlineDate();
-    if (!dt) return;
-
-    var target = firstExisting([
-      ".ff-heroContext",
-      ".ff-heroCtas",
-      "#progress .ff-sectionhead__actions",
-      "#progress .ff-sectionhead",
-      ".ff-progressCompact__summary"
-    ]);
-
-    if (!target) return;
-
-    var pill = qs(".ff-deadlinePill");
-    if (!pill) {
-      pill = create("span", "ff-deadlinePill");
-      pill.appendChild(create("span", "ff-deadlinePill__dot"));
-      pill.appendChild(create("span", "ff-deadlinePill__text"));
-      target.appendChild(pill);
-    }
-
-    pill.classList.remove("is-urgent", "is-passed");
-
-    var state = deadlineState(dt);
-    if (state.klass) pill.classList.add(state.klass);
-
-    var txtNode = qs(".ff-deadlinePill__text", pill);
-    if (txtNode) txtNode.textContent = state.text;
-
-    pill.title = "Campaign deadline: " + dt.toLocaleDateString();
-  }
-
-  function normalizeSponsorCard(host) {
-    if (!host || host.getAttribute("data-ff-cred-v3") === "true") return;
-    host.setAttribute("data-ff-cred-v3", "true");
-
-    var card = qs(".ff-card", host) || host;
-    var strong = qs("strong", card);
-    var heading = strong || qs("h3, h4, .ff-h3, .ff-tierName", card);
-    var name = text(heading) || "Sponsor";
-    var bodyText = text(card);
-
-    var img = qs("img", card);
-    if (img) {
-      img.classList.add("ff-sponsorLogo__img");
-      if (!img.getAttribute("alt")) img.setAttribute("alt", name + " logo");
-    } else if (!qs(".ff-sponsorLogo__fallback", card)) {
-      var fallback = create("span", "ff-sponsorLogo__fallback", initials(name));
-      if (heading && heading.parentNode) {
-        heading.parentNode.insertBefore(fallback, heading);
-      } else {
-        card.insertBefore(fallback, card.firstChild);
-      }
-    }
-
-    if (premium(bodyText) && !qs(".ff-verifiedBadge", card)) {
-      var badge = create("span", "ff-verifiedBadge", "Verified partner");
-      if (heading && heading.parentNode) {
-        heading.parentNode.insertBefore(badge, heading.nextSibling);
-      } else {
-        card.appendChild(badge);
-      }
-    }
-  }
-
-  function mountSponsorLogos() {
-    qsa(".ff-sponsorWall__item, .ff-sponsorCard, .ff-sponsorGrid > *, .ff-sponsorWallBlock .ff-card").forEach(normalizeSponsorCard);
-  }
-
-  function injectSchema() {
-    if (qs("#ffDonationSchema")) return;
-
-    var titleNode = firstExisting(["#heroTitle", ".ff-heroTitle", "h1"]);
-    var title = text(titleNode) || "FutureFunded campaign";
-    var canonical = qs('link[rel="canonical"]');
-    var url = canonical && canonical.href ? canonical.href : w.location.href.split("#")[0];
-
-    var amountRaisedNode = qs("[data-ff-raised]");
-    var goalNode = qs("[data-ff-goal]");
-
-    function money(node) {
-      return text(node).replace(/[^0-9.]/g, "") || "";
-    }
-
-    var schema = {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": title,
-      "url": url,
-      "potentialAction": {
-        "@type": "DonateAction",
-        "target": url + "#checkout"
-      },
-      "about": {
-        "@type": "Organization",
-        "name": "FutureFunded"
-      }
-    };
-
-    var raised = money(amountRaisedNode);
-    var goal = money(goalNode);
-    if (raised || goal) {
-      schema.mainEntity = {
-        "@type": "DonateAction",
-        "name": title,
-        "target": url + "#checkout"
-      };
-    }
-
-    var script = d.createElement("script");
-    script.id = "ffDonationSchema";
-    script.type = "application/ld+json";
-    script.textContent = JSON.stringify(schema);
-    d.head.appendChild(script);
-  }
-
-  function bootCredibilityV3() {
-    mountTrustStrip();
-    mountDeadlinePill();
-    mountSponsorLogos();
-    injectSchema();
-  }
-
-  if (d.readyState === "loading") {
-    d.addEventListener("DOMContentLoaded", bootCredibilityV3, { once: true });
-  } else {
-    bootCredibilityV3();
-  }
-
-  w.addEventListener("load", bootCredibilityV3, { once: true });
-  w.setTimeout(bootCredibilityV3, 250);
-  w.setTimeout(bootCredibilityV3, 900);
-  w.setTimeout(bootCredibilityV3, 1800);
-  w.setInterval(mountDeadlinePill, 60000);
-
-  w.FF_APP = w.FF_APP || {};
-  w.FF_APP.api = w.FF_APP.api || {};
-  w.FF_APP.api.refreshCredibilityPack = bootCredibilityV3;
-}());
-/* FF_V1_CREDIBILITY_CONSOLIDATED_V3_END */
-
-
-/* FF_DONATION_SEED_DEFAULT_V1_START */
-
-(function(){
-
-  function seedDefaultDonation(){
-
-    const amountInput = document.querySelector('[data-ff-amount-input]');
-    if(!amountInput) return;
-
-    if(amountInput.value && amountInput.value.trim() !== "") return;
-
-    const preset = document.querySelector('[data-ff-amount]');
-    if(!preset) return;
-
-    const val = preset.getAttribute("data-ff-amount");
-    if(!val) return;
-
-    amountInput.value = val;
-
-    const summary = document.querySelector('[data-ff-summary-amount]');
-    if(summary){
-      summary.textContent = "$" + val;
-    }
-
-  }
-
-  document.addEventListener("click", function(e){
-    const openBtn = e.target.closest("[data-ff-open-checkout]");
-    if(!openBtn) return;
-
-    setTimeout(seedDefaultDonation, 60);
-  });
-
-})();
-
-/* FF_DONATION_SEED_DEFAULT_V1_END */
-
-
-
-/* FF_LIVE_ACTIVITY_FEED_V1_START */
-
-(function(){
-
-  const messages = [
-    "Maria from Austin donated $25",
-    "The Johnson Family donated $100",
-    "A local sponsor pledged $500",
-    "Alumni family donated $50",
-    "Community supporter donated $25"
-  ];
-
-  function pushActivity(msg){
-
-    const feed = document.querySelector("[data-ff-live-feed]");
-    if(!feed) return;
-
-    const el = document.createElement("div");
-    el.className = "ff-activityFeed__item";
-    el.textContent = msg;
-
-    feed.prepend(el);
-
-    const items = feed.querySelectorAll(".ff-activityFeed__item");
-    if(items.length > 6){
-      items[items.length-1].remove();
-    }
-
-  }
-
-  function startFeed(){
-
-    if(window.__FF_LIVE_FEED_STARTED__) return;
-    window.__FF_LIVE_FEED_STARTED__ = true;
-
-    setInterval(function(){
-      const msg = messages[Math.floor(Math.random()*messages.length)];
-      pushActivity(msg);
-    }, 9000);
-
-  }
-
-  document.addEventListener("DOMContentLoaded", startFeed);
-
-})();
-
-/* FF_LIVE_ACTIVITY_FEED_V1_END */
-
-/* FF_OVERLAY_LOCK_SELF_HEAL_V1_START */
-(function () {
-  if (window.__FF_OVERLAY_LOCK_SELF_HEAL_V1__) return;
-  window.__FF_OVERLAY_LOCK_SELF_HEAL_V1__ = true;
-
-  function qsa(sel) {
-    return Array.prototype.slice.call(document.querySelectorAll(sel));
-  }
-
-  function hasOpenOverlay() {
-    return qsa(
-      '[data-ff-checkout-sheet][data-open="true"], ' +
-      '[data-ff-sponsor-modal][data-open="true"], ' +
-      '#checkout:not([hidden]), ' +
-      '#sponsor-interest:not([hidden])'
-    ).some(function (el) {
-      if (!el) return false;
-      if (el.getAttribute("aria-hidden") === "true") return false;
-      if (el.hidden) return false;
-      return true;
-    });
-  }
-
-  function syncOverlayLock() {
-    var root = document.documentElement;
-    var body = document.body;
-    if (!body) return;
-
-    if (hasOpenOverlay()) {
-      root.classList.add("ff-overlay-open");
-      body.classList.add("ff-overlay-open");
-    } else {
-      root.classList.remove("ff-overlay-open");
-      body.classList.remove("ff-overlay-open");
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", syncOverlayLock);
-  window.addEventListener("pageshow", syncOverlayLock);
-  window.addEventListener("hashchange", function () {
-    setTimeout(syncOverlayLock, 0);
-  });
-
-  document.addEventListener("click", function (e) {
-    var trigger = e.target.closest(
-      "[data-ff-open-checkout], [data-ff-close-checkout], [data-ff-close-sponsor], [data-ff-sponsor-submit]"
-    );
-    if (!trigger) return;
-    setTimeout(syncOverlayLock, 40);
-  });
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      setTimeout(syncOverlayLock, 40);
-    }
-  });
-
-  setTimeout(syncOverlayLock, 0);
-})();
-/* FF_OVERLAY_LOCK_SELF_HEAL_V1_END */
-
-/* FF_LIVE_FEED_V1_JS_START */
-(function () {
-  if (window.__FF_LIVE_FEED_V1__) return;
-  window.__FF_LIVE_FEED_V1__ = true;
-
-  function ffMoney(value) {
-    var n = Number(value || 0);
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 0
-      }).format(n);
-    } catch (_) {
-      return "$" + Math.round(n);
-    }
-  }
-
-  function ffActivityText(item) {
-    if (!item) return "supported the season";
-    if (item.kind === "donation") return "donated " + ffMoney(item.amount);
-    if (item.kind === "sponsor") return "became a sponsor";
-    if (item.kind === "player_sponsor") return "sponsored " + (item.player_name || "a player");
-    return "supported the season";
-  }
-
-  function ffRenderActivityItem(item) {
-    var li = document.createElement("li");
-    li.className = "ff-liveFeed__item is-new";
-    li.innerHTML = [
-      '<span class="ff-liveFeed__dot" aria-hidden="true"></span>',
-      '<div class="ff-liveFeed__content">',
-      '  <strong class="ff-liveFeed__name"></strong>',
-      '  <span class="ff-liveFeed__text"></span>',
-      '</div>',
-      '<time class="ff-liveFeed__time"></time>'
-    ].join("");
-
-    var nameEl = li.querySelector(".ff-liveFeed__name");
-    var textEl = li.querySelector(".ff-liveFeed__text");
-    var timeEl = li.querySelector(".ff-liveFeed__time");
-
-    if (nameEl) nameEl.textContent = item.name || "Supporter";
-    if (textEl) textEl.textContent = ffActivityText(item);
-    if (timeEl) timeEl.textContent = item.time_ago || "Just now";
-
-    return li;
-  }
-
-  function ffFindProgressNode() {
-    var selectors = [
-      "[data-ff-progress-fill]",
-      "[data-ff-progress-meter]",
-      ".ff-progress__fill",
-      ".ff-progressBar__fill",
-      ".ff-meter__fill",
-      ".ff-progressBar",
-      ".ff-progress"
-    ];
-    for (var i = 0; i < selectors.length; i += 1) {
-      var node = document.querySelector(selectors[i]);
-      if (node) return node;
-    }
-    return null;
-  }
-
-  function ffAnimateProgressBar() {
-    var meter = ffFindProgressNode();
-    if (!meter) return;
-    meter.classList.remove("is-bump");
-    void meter.offsetWidth;
-    meter.classList.add("is-bump");
-    window.setTimeout(function () {
-      meter.classList.remove("is-bump");
-    }, 900);
-  }
-
-  function ffPushActivityItem(item) {
-    var list = document.querySelector("[data-ff-live-feed-list]");
-    if (!list) return;
-
-    var empty = list.querySelector(".ff-liveFeed__item--empty");
-    if (empty) empty.remove();
-
-    var node = ffRenderActivityItem(item);
-    list.prepend(node);
-
-    while (list.children.length > 5) {
-      list.removeChild(list.lastElementChild);
-    }
-
-    window.setTimeout(function () {
-      node.classList.remove("is-new");
-    }, 1600);
-
-    document.dispatchEvent(new CustomEvent("ff:donation-activity", { detail: item }));
-  }
-
-  function ffHydrateLiveFeed() {
-    var root = document.querySelector("[data-ff-live-feed]");
-    var list = document.querySelector("[data-ff-live-feed-list]");
-    if (!root || !list) return;
-
-    var urls = [
-      "/api/activity-feed",
-      "/payments/activity-feed",
-      "/activity-feed"
-    ];
-
-    function attempt(i) {
-      if (i >= urls.length) {
-        return Promise.reject(new Error("no feed endpoint"));
-      }
-
-      return fetch(urls[i], {
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-      })
-        .then(function (res) {
-          if (!res.ok) throw new Error("feed request failed");
-          return res.json();
-        })
-        .catch(function () {
-          return attempt(i + 1);
-        });
-    }
-
-    attempt(0)
-      .then(function (data) {
-        if (!data || !Array.isArray(data.items) || !data.items.length) return;
-        list.innerHTML = "";
-        data.items.slice(0, 5).forEach(function (item) {
-          var node = ffRenderActivityItem(item);
-          node.classList.remove("is-new");
-          list.appendChild(node);
-        });
-      })
-      .catch(function () {
-        /* quiet fallback */
-      });
-  }
-
-  function ffInitActivitySocket() {
-    if (!window.io) return;
-    if (!document.querySelector("[data-ff-live-feed-list]")) return;
-
-    
-var socket = {
-  on: function(){},
-  emit: function(){},
-  off: function(){},
-  close: function(){}
-};
-
-if (window.io && window.location.protocol.startsWith("http")) {
-  try {
-    
-if (window.FF_ENABLE_SOCKET === true && window.io) {
-  socket = window.io({ transports: ["polling"], upgrade: false });
-}
-;
-  } catch (e) {
-    console.warn("Socket.IO disabled:", e);
-  }
-}
-    socket.on("activity:new", function (payload) {
-      ffPushActivityItem(payload || {});
-    });
-  }
-
-  document.addEventListener("ff:donation-activity", function (event) {
-    var detail = (event && event.detail) || {};
-    if (
-      detail.kind === "donation" ||
-      detail.kind === "player_sponsor" ||
-      detail.kind === "sponsor"
-    ) {
-      ffAnimateProgressBar();
-    }
-  });
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      ffHydrateLiveFeed();
-      ffInitActivitySocket();
-    }, { once: true });
-  } else {
-    ffHydrateLiveFeed();
-    ffInitActivitySocket();
-  }
-})();
- /* FF_LIVE_FEED_V1_JS_END */
