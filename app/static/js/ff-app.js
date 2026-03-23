@@ -1059,6 +1059,51 @@ Hook-safe, deterministic, CSP-safe runtime for:
     node.textContent = message;
   }
 
+  function getSponsorContactEmail() {
+    var fromModal = dom.sponsorModal && dom.sponsorModal.getAttribute("data-ff-sponsor-contact");
+    var meta =
+      (document.querySelector('meta[name="ff-sponsor-contact"]') || {}).content ||
+      (document.querySelector('meta[name="ff:ff-sponsor-contact"]') || {}).content ||
+      "";
+    return String(fromModal || meta || "").trim();
+  }
+
+  function showSponsorSuccessCard() {
+    if (!dom.sponsorSuccess) return;
+
+    var email = getSponsorContactEmail();
+    var safeEmail = typeof escHtml === "function"
+      ? escHtml(email)
+      : String(email).replace(/[&<>"]/g, function (ch) {
+          return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch];
+        });
+
+    var mailto = email ? ('mailto:' + safeEmail) : '';
+    var contactLine = email
+      ? 'Our sponsorship team will follow up at <a class="ff-link ff-sponsorSuccessCard__email" href="' + mailto + '">' + safeEmail + '</a>.'
+      : 'Our sponsorship team will follow up soon.';
+
+    dom.sponsorSuccess.hidden = false;
+    dom.sponsorSuccess.innerHTML = [
+      '<section class="ff-sponsorSuccessCard" aria-label="Sponsor inquiry received">',
+        '<div class="ff-sponsorSuccessCard__head">',
+          '<div class="ff-sponsorSuccessCard__pillRow" role="list" aria-label="Sponsor inquiry status">',
+            '<span class="ff-pill ff-pill--soft" role="listitem">Inquiry received</span>',
+            '<span class="ff-pill ff-pill--ghost" role="listitem">Follow-up next</span>',
+          '</div>',
+          '<p class="ff-kicker ff-m-0">Thanks</p>',
+          '<h3 class="ff-h3 ff-sponsorSuccessCard__title">Thanks — we received your inquiry.</h3>',
+          '<p class="ff-help ff-sponsorSuccessCard__copy">We'll review your sponsorship interest and follow up with next steps, placement options, and timing.</p>',
+          '<p class="ff-help ff-sponsorSuccessCard__meta">' + contactLine + '</p>',
+        '</div>',
+        '<div class="ff-sponsorSuccessCard__actions" role="group" aria-label="Sponsor inquiry actions">',
+          '<button type="button" class="ff-btn ff-btn--secondary ff-btn--pill" data-ff-close-sponsor="">Return to page</button>',
+          '<a class="ff-btn ff-btn--primary ff-btn--pill" href="#sponsors">View sponsor section</a>',
+        '</div>',
+      '</section>'
+    ].join("");
+  }
+
   function validateDonationForm() {
     var data = getDonationData();
     if (!data) return { ok: false, message: "Donation form is not available." };
@@ -1748,18 +1793,26 @@ Hook-safe, deterministic, CSP-safe runtime for:
       return;
     }
 
-    showStatus(dom.sponsorStatus, "Sending your message…");
+    showStatus(dom.sponsorStatus, "Sending your inquiry…");
 
     var endpoint = (FF_APP.cfg && FF_APP.cfg.sponsorEndpoint) || "/api/sponsors/inquiry";
 
     fetchJson(endpoint, getFetchOptions("POST", validation.data))
       .then(function () {
         hideStatus(dom.sponsorStatus);
-        showStatus(dom.sponsorSuccess, "Message sent — a follow-up will be sent soon.");
-        toast("Sponsor inquiry sent.", "success");
-        announce("Sponsor inquiry sent.");
+        showSponsorSuccessCard();
+        toast("Sponsor inquiry received.", "success");
+        announce("Sponsor inquiry received.");
+
         try { dom.sponsorForm.reset(); } catch (err) {}
         syncSponsorTierState("");
+
+        if (dom.sponsorSuccess && typeof dom.sponsorSuccess.focus === "function") {
+          try {
+            dom.sponsorSuccess.setAttribute("tabindex", "-1");
+            dom.sponsorSuccess.focus({ preventScroll: false });
+          } catch (_) {}
+        }
       })
       .catch(function (err) {
         hideStatus(dom.sponsorStatus);
@@ -2200,7 +2253,15 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function previewish() {
     var mode = (((body && body.getAttribute("data-ff-data-mode")) || config.mode || "") + "").toLowerCase();
     var env = (config.env || "").toLowerCase();
-    return mode !== "live" || env !== "production";
+    var stripePk = (config.stripePk || "").toLowerCase();
+    var paypalClient = (config.paypalClientId || "").toLowerCase();
+    var demoPayments =
+      stripePk.indexOf("pk_test_") === 0 ||
+      paypalClient.indexOf("sandbox") !== -1 ||
+      mode === "demo" ||
+      mode === "preview";
+
+    return demoPayments || env !== "production" || mode !== "live";
   }
 
   function teamTitleFromCard(card) {
@@ -3098,6 +3159,434 @@ Hook-safe, deterministic, CSP-safe runtime for:
     renderWizard();
   }
 
+/* FF_MOTION_POLISH_RUNTIME_V1_START */
+function initMotionPolish() {
+  if (!root || !d || !d.body) return;
+
+  try {
+    root.setAttribute("data-ff-motion-ready", "true");
+  } catch (_) {}
+
+  var groups = qsa('[data-ff-animate="stagger"]');
+  groups.forEach(function (group) {
+    var kids = Array.prototype.slice.call(group.children || []);
+    kids.forEach(function (kid, idx) {
+      if (!kid || kid.nodeType !== 1) return;
+      kid.style.setProperty("--ff-reveal-delay", (idx * 70) + "ms");
+    });
+  });
+
+  var nodes = qsa('[data-ff-animate="rise"], [data-ff-animate="fade"], [data-ff-animate="scale"], [data-ff-animate="stagger"]');
+  if (!nodes.length) return;
+
+  function reveal(node, delay) {
+    if (!node || node.__ffRevealDone) return;
+    node.__ffRevealDone = true;
+    if (typeof delay === "number") {
+      node.style.setProperty("--ff-reveal-delay", delay + "ms");
+    }
+    w.requestAnimationFrame(function () {
+      node.classList.add("ff-reveal-in");
+    });
+  }
+
+  if (!("IntersectionObserver" in w) || attr(root, "data-ff-webdriver") === "true") {
+    nodes.forEach(function (node, idx) { reveal(node, idx * 35); });
+    return;
+  }
+
+  var io = new w.IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      reveal(entry.target);
+      io.unobserve(entry.target);
+    });
+  }, {
+    rootMargin: "0px 0px -10% 0px",
+    threshold: 0.14
+  });
+
+  nodes.forEach(function (node, idx) {
+    var rect;
+    try { rect = node.getBoundingClientRect(); } catch (_) {}
+    if (rect && rect.top < (w.innerHeight || 900) * 0.9) {
+      reveal(node, idx * 40);
+    } else {
+      io.observe(node);
+    }
+  });
+}
+/* FF_MOTION_POLISH_RUNTIME_V1_END */
+
+/* FF_LUXURY_MICRO_INTERACTIONS_RUNTIME_V1_START */
+function initLuxuryMicroInteractions() {
+  if (!root || !d || !d.body) return;
+
+  try {
+    root.setAttribute("data-ff-luxury-ready", "true");
+  } catch (_) {}
+
+  // ----------------------------------------------------
+  // Motion fail-open watchdog so hidden blocks do not
+  // stay invisible if an observer misses them
+  // ----------------------------------------------------
+  w.setTimeout(function () {
+    try {
+      var pending = qsa(
+        '[data-ff-animate="rise"]:not(.ff-reveal-in), ' +
+        '[data-ff-animate="fade"]:not(.ff-reveal-in), ' +
+        '[data-ff-animate="scale"]:not(.ff-reveal-in), ' +
+        '[data-ff-animate="stagger"]:not(.ff-reveal-in)'
+      );
+      if (pending.length) {
+        root.setAttribute("data-ff-motion-fail-open", "true");
+        pending.forEach(function (node) {
+          node.classList.add("ff-reveal-in");
+        });
+      }
+    } catch (_) {}
+  }, 1400);
+
+  // ----------------------------------------------------
+  // Progress / meter sheen activation
+  // ----------------------------------------------------
+  var meterNodes = qsa(
+    '[data-ff-goalbar], .ff-topbarGoal__progress, .ff-teamCard__meterBar, .ff-meterBar, .ff-progressBar, .ff-progressMini__bar'
+  );
+
+  function lightMeter(node) {
+    if (!node || node.__ffMeterLive) return;
+    node.__ffMeterLive = true;
+    node.classList.add("ff-meter-live");
+  }
+
+  if ("IntersectionObserver" in w && !navigator.webdriver) {
+    var meterIO = new w.IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        lightMeter(entry.target);
+        meterIO.unobserve(entry.target);
+      });
+    }, { rootMargin: "0px 0px -12% 0px", threshold: 0.2 });
+
+    meterNodes.forEach(function (node, idx) {
+      try {
+        var rect = node.getBoundingClientRect();
+        if (rect && rect.top < (w.innerHeight || 900) * 0.88) {
+          w.setTimeout(function () { lightMeter(node); }, idx * 45);
+        } else {
+          meterIO.observe(node);
+        }
+      } catch (_) {
+        lightMeter(node);
+      }
+    });
+  } else {
+    meterNodes.forEach(lightMeter);
+  }
+
+  // ----------------------------------------------------
+  // Live feed shimmer activation
+  // ----------------------------------------------------
+  qsa('.ff-liveFeed__item, .ff-activityFeed__item, .ff-activityfeedItem').forEach(function (node, idx) {
+    w.setTimeout(function () {
+      node.classList.add("ff-shimmer-live");
+    }, 180 + (idx * 120));
+  });
+
+  // ----------------------------------------------------
+  // Tier glow normalization
+  // ----------------------------------------------------
+  qsa('[data-ff-tier]').forEach(function (node) {
+    var raw = (node.getAttribute("data-ff-tier") || "").toLowerCase().trim();
+    if (!raw) return;
+
+    var slug = raw
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    if (slug) {
+      node.classList.add("ff-tier--" + slug);
+    }
+  });
+
+  // ----------------------------------------------------
+  // Toast style upgrades
+  // ----------------------------------------------------
+  var toastHost = qs("[data-ff-toasts]");
+
+  function upgradeToast(node) {
+    if (!node || node.nodeType !== 1 || node.__ffToastLuxury) return;
+    node.__ffToastLuxury = true;
+
+    var txt = (node.textContent || "").toLowerCase();
+    if (txt.indexOf("copied") !== -1 || txt.indexOf("share") !== -1 || txt.indexOf("link") !== -1) {
+      node.classList.add("ff-toast--share");
+    }
+    if (
+      txt.indexOf("success") !== -1 ||
+      txt.indexOf("confirmed") !== -1 ||
+      txt.indexOf("sent") !== -1 ||
+      txt.indexOf("saved") !== -1
+    ) {
+      node.classList.add("ff-toast--success");
+    }
+  }
+
+  if (toastHost) {
+    Array.prototype.slice.call(toastHost.children || []).forEach(upgradeToast);
+
+    if ("MutationObserver" in w) {
+      var toastMO = new w.MutationObserver(function (records) {
+        records.forEach(function (record) {
+          Array.prototype.slice.call(record.addedNodes || []).forEach(function (node) {
+            if (node && node.nodeType === 1) {
+              upgradeToast(node);
+            }
+          });
+        });
+      });
+      toastMO.observe(toastHost, { childList: true });
+    }
+  }
+}
+/* FF_LUXURY_MICRO_INTERACTIONS_RUNTIME_V1_END */
+
+/* FF_COUNTERS_MARQUEE_CHECKOUT_PRESTIGE_RUNTIME_V1_START */
+function initPrestigeWave() {
+  if (!root || !d || !d.body) return;
+  try { root.setAttribute("data-ff-prestige-ready", "true"); } catch (_) {}
+
+  // ---------------------------------------------
+  // Count-up values
+  // ---------------------------------------------
+  function parseCountValue(text) {
+    var raw = String(text || "").trim();
+    if (!raw) return null;
+
+    if (/^\$[\d,]+(?:\.\d{2})?$/.test(raw)) {
+      return { kind: "currency", value: parseFloat(raw.replace(/[$,]/g, "")) };
+    }
+    if (/^\d+(?:\.\d+)?%$/.test(raw)) {
+      return { kind: "percent", value: parseFloat(raw.replace("%", "")) };
+    }
+    if (/^\d{1,3}(?:,\d{3})+$/.test(raw) || /^\d+$/.test(raw)) {
+      return { kind: "number", value: parseFloat(raw.replace(/,/g, "")) };
+    }
+    return null;
+  }
+
+  function formatCountValue(kind, value) {
+    if (kind === "currency") {
+      return "$" + Math.round(value).toLocaleString("en-US");
+    }
+    if (kind === "percent") {
+      return Math.round(value) + "%";
+    }
+    return Math.round(value).toLocaleString("en-US");
+  }
+
+  function isLeafCountNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    if (node.children && node.children.length) return false;
+    var tag = (node.tagName || "").toLowerCase();
+    if (/^(button|a|label|input|textarea|select|script|style)$/i.test(tag)) return false;
+    var txt = (node.textContent || "").trim();
+    if (!txt || txt.length > 16) return false;
+    return !!parseCountValue(txt);
+  }
+
+  var scopes = qsa([
+    ".ff-topbarGoal",
+    ".ff-topbar",
+    ".ff-hero",
+    ".ff-successUpsell",
+    ".ff-teamCard",
+    ".ff-progressMini",
+    "#impact",
+    "#teams"
+  ].join(","));
+
+  var countNodes = [];
+  scopes.forEach(function (scope) {
+    qsa("*", scope).forEach(function (node) {
+      if (!isLeafCountNode(node)) return;
+      if (node.__ffCountReady) return;
+      node.__ffCountReady = true;
+      node.setAttribute("data-ff-countup-live", "true");
+      countNodes.push(node);
+    });
+  });
+
+  function animateCount(node) {
+    if (!node || node.__ffCountDone) return;
+    var parsed = parseCountValue(node.textContent || "");
+    if (!parsed) return;
+
+    node.__ffCountDone = true;
+    var target = parsed.value;
+    var start = 0;
+    var dur = parsed.kind === "currency" ? 900 : 700;
+    var t0 = null;
+
+    function step(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min((ts - t0) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      var cur = start + (target - start) * eased;
+      node.textContent = formatCountValue(parsed.kind, cur);
+      if (p < 1) {
+        w.requestAnimationFrame(step);
+      } else {
+        node.textContent = formatCountValue(parsed.kind, target);
+        node.classList.add("ff-countup-done");
+      }
+    }
+
+    w.requestAnimationFrame(step);
+  }
+
+  if ("IntersectionObserver" in w && !navigator.webdriver) {
+    var countIO = new w.IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        animateCount(entry.target);
+        countIO.unobserve(entry.target);
+      });
+    }, { rootMargin: "0px 0px -10% 0px", threshold: 0.2 });
+
+    countNodes.forEach(function (node) {
+      try {
+        var rect = node.getBoundingClientRect();
+        if (rect && rect.top < (w.innerHeight || 900) * 0.9) {
+          animateCount(node);
+        } else {
+          countIO.observe(node);
+        }
+      } catch (_) {
+        animateCount(node);
+      }
+    });
+  } else {
+    countNodes.forEach(animateCount);
+  }
+
+  // ---------------------------------------------
+  // Checkout trust microstates
+  // ---------------------------------------------
+  function checkoutIsOpen() {
+    var shell = qs("[data-ff-checkout-shell]") || qs("[data-ff-checkout-sheet]") || qs("#checkout");
+    if (!shell) return false;
+
+    var hidden = shell.hasAttribute("hidden");
+    var ariaHidden = shell.getAttribute("aria-hidden") === "true";
+    var classes = shell.className || "";
+    var openish = /is-open|open|active|visible/.test(classes) || shell.getAttribute("data-open") === "true";
+
+    if (hidden || ariaHidden) return false;
+    return openish || !!qs("#checkout");
+  }
+
+  function syncCheckoutState() {
+    try {
+      root.setAttribute("data-ff-checkout-open", checkoutIsOpen() ? "true" : "false");
+    } catch (_) {}
+  }
+
+  syncCheckoutState();
+
+  var checkoutNode = qs("#checkout") || qs("[data-ff-checkout-shell]") || qs("[data-ff-checkout-sheet]");
+  if (checkoutNode && "MutationObserver" in w) {
+    var mo = new w.MutationObserver(syncCheckoutState);
+    mo.observe(checkoutNode, {
+      attributes: true,
+      attributeFilter: ["class", "hidden", "aria-hidden", "data-open"]
+    });
+  }
+
+  qsa('#checkout [data-ff-amount]').forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      qsa('#checkout [data-ff-amount].ff-amount-picked').forEach(function (n) {
+        n.classList.remove("ff-amount-picked");
+      });
+      btn.classList.add("ff-amount-picked");
+    }, { passive: true });
+  });
+
+  qsa([
+    "[data-ff-checkout-status]",
+    "[data-ff-checkout-stage]",
+    "[data-ff-checkout-success]",
+    "[data-ff-checkout-error]"
+  ].join(",")).forEach(function (node) {
+    if (!node || !("MutationObserver" in w)) return;
+    var last = (node.textContent || "").trim();
+    var mo = new w.MutationObserver(function () {
+      var next = (node.textContent || "").trim();
+      if (next && next !== last) {
+        last = next;
+        node.classList.remove("ff-checkout-status-live");
+        void node.offsetWidth;
+        node.classList.add("ff-checkout-status-live");
+      }
+    });
+    mo.observe(node, { childList: true, subtree: true, characterData: true });
+  });
+
+  // ---------------------------------------------
+  // Optional sponsor marquee
+  // ---------------------------------------------
+  qsa([
+    "[data-ff-sponsor-marquee]",
+    ".ff-sponsorMarquee",
+    ".ff-sponsorWall__rail",
+    ".ff-sponsorLogoRail"
+  ].join(",")).forEach(function (rail) {
+    if (!rail || rail.__ffMarqueeReady) return;
+    var kids = Array.prototype.slice.call(rail.children || []).filter(function (n) {
+      return n && n.nodeType === 1;
+    });
+    if (kids.length < 3) return;
+
+    rail.__ffMarqueeReady = true;
+    kids.forEach(function (kid) {
+      rail.appendChild(kid.cloneNode(true));
+    });
+    rail.classList.add("ff-marquee-live");
+  });
+}
+/* FF_COUNTERS_MARQUEE_CHECKOUT_PRESTIGE_RUNTIME_V1_END */
+
+/* FF_DEMO_MODE_BANNER_RUNTIME_V1_START */
+function initDemoModeBanner() {
+  if (!d || !w) return;
+
+  var banner = qs("[data-ff-demo-banner]");
+  if (!banner) return;
+
+  var storeKey = "ff_demo_banner_dismissed_v1";
+
+  try {
+    if (w.sessionStorage && w.sessionStorage.getItem(storeKey) === "1") {
+      banner.hidden = true;
+      return;
+    }
+  } catch (_) {}
+
+  var dismissBtn = qs("[data-ff-demo-banner-dismiss]", banner);
+  if (!dismissBtn) return;
+
+  dismissBtn.addEventListener("click", function () {
+    banner.hidden = true;
+    try {
+      if (w.sessionStorage) {
+        w.sessionStorage.setItem(storeKey, "1");
+      }
+    } catch (_) {}
+  });
+}
+/* FF_DEMO_MODE_BANNER_RUNTIME_V1_END */
+
   function boot() {
     body = d.body || body;
     dom.focusProbe = getFocusProbe() || dom.focusProbe;
@@ -3115,6 +3604,10 @@ Hook-safe, deterministic, CSP-safe runtime for:
     initForms();
     initOnboardingWizard();
     syncScrollSpy();
+    initMotionPolish();
+    initLuxuryMicroInteractions();
+    initPrestigeWave();
+    initDemoModeBanner();
     hydrateQrImages();
     bindMediaFallbacks();
     repairMissingPreviewMedia();
@@ -3260,3 +3753,1222 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
   window.addEventListener("load", sync, { once: true });
 })();
+
+/* FF_INTEGRATION_HEALTH_V1 */
+(function initFFIntegrationHealth() {
+  "use strict";
+
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function statusPill(item) {
+    if (item && item.ok) {
+      return '<span class="ff-pill ff-pill--success">Connected</span>';
+    }
+    return '<span class="ff-pill ff-pill--muted">Not connected</span>';
+  }
+
+  function prettyLabel(slug) {
+    var map = {
+      ga4: "Google Analytics 4",
+      google_sheets: "Google Sheets",
+      mailchimp: "Mailchimp",
+      meta: "Meta Pixel",
+      paypal: "PayPal",
+      quickbooks: "QuickBooks",
+      stripe: "Stripe",
+      zapier: "Zapier"
+    };
+    return map[slug] || String(slug || "").replace(/_/g, " ");
+  }
+
+  function renderItem(item) {
+    return (
+      '<article class="ff-integrationTile">' +
+        '<div class="ff-integrationTile__head">' +
+          '<h3 class="ff-integrationTile__title">' + esc(prettyLabel(item.slug)) + '</h3>' +
+          statusPill(item) +
+        '</div>' +
+        '<p class="ff-integrationTile__message">' + esc(item.message || "") + '</p>' +
+      '</article>'
+    );
+  }
+
+  async function bootGrid(grid) {
+    var endpoint = grid.getAttribute("data-endpoint");
+    if (!endpoint) return;
+
+    grid.innerHTML = '<div class="ff-integrationHealth__loading">Loading integrations…</div>';
+
+    try {
+      var res = await fetch(endpoint, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        credentials: "same-origin"
+      });
+
+      var data = await res.json();
+
+      if (!res.ok || !data || !Array.isArray(data.integrations)) {
+        throw new Error((data && data.message) || "Failed to load integrations.");
+      }
+
+      grid.innerHTML = data.integrations.map(renderItem).join("");
+    } catch (err) {
+      grid.innerHTML =
+        '<div class="ff-integrationHealth__error" role="status">' +
+        esc(err && err.message ? err.message : "Could not load integration status.") +
+        '</div>';
+    }
+  }
+
+  function init() {
+    var grids = document.querySelectorAll("[data-ff-integration-grid]");
+    if (!grids.length) return;
+    grids.forEach(bootGrid);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+})();
+
+
+/* FF_INTEGRATION_SCORE_V1 */
+(function () {
+  function updateScore(data) {
+    if (!data || !Array.isArray(data.integrations)) return;
+
+    var total = data.integrations.length;
+    var ok = data.integrations.filter(i => i.ok).length;
+
+    var percent = total ? Math.round((ok / total) * 100) : 0;
+
+    var scoreEl = document.querySelector("[data-ff-integration-score]");
+    var barEl = document.querySelector("[data-ff-integration-progress]");
+
+    if (scoreEl) scoreEl.textContent = percent + "%";
+    if (barEl) barEl.style.width = percent + "%";
+  }
+
+  var originalFetch = window.fetch;
+
+  window.fetch = async function (...args) {
+    const res = await originalFetch(...args);
+
+    try {
+      if (args[0] && args[0].includes("/api/integrations/health")) {
+        const clone = res.clone();
+        const data = await clone.json();
+        updateScore(data);
+      }
+    } catch (e) {}
+
+    return res;
+  };
+})();
+
+/* FF_WAVE_E_SUCCESS_ANALYTICS_V1_START */
+(function initFFWaveESuccessAnalytics(global) {
+  "use strict";
+
+  if (!global || global.__ffWaveESuccessAnalyticsInit) return;
+  global.__ffWaveESuccessAnalyticsInit = true;
+
+  var d = global.document;
+  if (!d) return;
+
+  var checkoutStartedTracked = false;
+  var donationSucceededTracked = false;
+
+  function safeString(value) {
+    return value == null ? "" : String(value);
+  }
+
+  function cleanText(value) {
+    return safeString(value).replace(/\s+/g, " ").trim();
+  }
+
+  function bodyPage() {
+    return d.body && d.body.getAttribute("data-ff-page") ? d.body.getAttribute("data-ff-page") : "";
+  }
+
+  function currentPath() {
+    return global.location ? (global.location.pathname + global.location.search + global.location.hash) : "";
+  }
+
+  function baseShareUrl() {
+    if (!global.location) return "";
+    return global.location.origin + global.location.pathname + global.location.hash;
+  }
+
+  function payloadFor(eventName, meta) {
+    var payload = {
+      event: eventName,
+      ff_event: eventName,
+      ff_page: bodyPage(),
+      ff_path: currentPath(),
+      ff_ts: new Date().toISOString()
+    };
+
+    meta = meta || {};
+    for (var key in meta) {
+      if (Object.prototype.hasOwnProperty.call(meta, key)) {
+        payload[key] = meta[key];
+      }
+    }
+    return payload;
+  }
+
+  function emit(eventName, meta) {
+    var payload = payloadFor(eventName, meta);
+
+    try {
+      global.dataLayer = global.dataLayer || [];
+      if (Array.isArray(global.dataLayer)) {
+        global.dataLayer.push(payload);
+      }
+    } catch (_) {}
+
+    try {
+      if (typeof global.gtag === "function") {
+        global.gtag("event", eventName, meta || {});
+      }
+    } catch (_) {}
+
+    try {
+      if (typeof global.plausible === "function") {
+        global.plausible(eventName, { props: meta || {} });
+      }
+    } catch (_) {}
+
+    try {
+      if (global.posthog && typeof global.posthog.capture === "function") {
+        global.posthog.capture(eventName, meta || {});
+      }
+    } catch (_) {}
+
+    try {
+      global.dispatchEvent(new CustomEvent("ff:analytics", { detail: payload }));
+    } catch (_) {}
+
+    return payload;
+  }
+
+  function closestMatch(target, selector) {
+    return target && target.closest ? target.closest(selector) : null;
+  }
+
+  function delegatedClick(selector, eventName, metaBuilder) {
+    d.addEventListener("click", function (evt) {
+      var trigger = closestMatch(evt.target, selector);
+      if (!trigger) return;
+
+      var meta = metaBuilder ? (metaBuilder(trigger) || {}) : {};
+      if (!meta.label) {
+        meta.label = cleanText(
+          trigger.getAttribute("aria-label") ||
+          trigger.getAttribute("data-ff-track-label") ||
+          trigger.textContent
+        );
+      }
+      emit(eventName, meta);
+    }, true);
+  }
+
+  function isVisible(el) {
+    if (!el) return false;
+    if (el.hidden) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    var style = global.getComputedStyle ? global.getComputedStyle(el) : null;
+    if (style && (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0)) {
+      return false;
+    }
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  }
+
+  function isCheckoutOpen() {
+    var checkout = d.querySelector(
+      '#checkout, [data-ff-checkout-shell], [data-ff-checkout-stage], [data-ff-checkout-viewport]'
+    );
+    if (!checkout) return false;
+
+    if (global.location && global.location.hash === "#checkout") return true;
+    if (checkout.classList && checkout.classList.contains("is-open")) return true;
+    if (checkout.hasAttribute("data-open")) return true;
+    if (checkout.getAttribute("aria-hidden") === "false") return true;
+    return isVisible(checkout);
+  }
+
+  function scanCheckoutStarted() {
+    if (checkoutStartedTracked) return;
+    if (!isCheckoutOpen()) return;
+    checkoutStartedTracked = true;
+    emit("checkout_started", { source: "checkout_surface" });
+  }
+
+  function getSuccessMount() {
+    var mount = d.getElementById("ffDonationSuccessMount");
+    if (mount) return mount;
+
+    mount = d.createElement("div");
+    mount.id = "ffDonationSuccessMount";
+    mount.className = "ff-donationSuccessMount";
+    mount.hidden = true;
+    mount.setAttribute("aria-live", "polite");
+    mount.setAttribute("aria-atomic", "true");
+
+    var trustBlock = d.querySelector(".ff-microtrust");
+    if (trustBlock && trustBlock.parentNode) {
+      trustBlock.parentNode.insertBefore(mount, trustBlock.nextSibling);
+      return mount;
+    }
+
+    var main = d.querySelector("main");
+    if (main) {
+      main.insertBefore(mount, main.firstChild);
+      return mount;
+    }
+
+    d.body.appendChild(mount);
+    return mount;
+  }
+
+function normalizeSuccessTemplateNode(node) {
+  if (!node || node.nodeType !== 1) return node;
+
+  node.removeAttribute("data-ff-success-upsell-template");
+  if (!node.hasAttribute("data-ff-success-upsell")) {
+    node.setAttribute("data-ff-success-upsell", "");
+  }
+
+  var title = node.querySelector("#ffSuccessUpsellTitleTemplate");
+  if (title) {
+    title.id = "ffSuccessUpsellTitle";
+  }
+
+  var labelledby = node.getAttribute("aria-labelledby");
+  if (!labelledby || labelledby === "ffSuccessUpsellTitleTemplate") {
+    node.setAttribute("aria-labelledby", "ffSuccessUpsellTitle");
+  }
+
+  return node;
+}
+
+function cloneSuccessTemplate() {
+  var tmpl = d.getElementById("ffDonationSuccessUpsellTemplate");
+  if (!tmpl) return null;
+
+  var node = null;
+
+  if (tmpl.content && tmpl.content.firstElementChild) {
+    node = tmpl.content.firstElementChild.cloneNode(true);
+  } else {
+    var wrapper = d.createElement("div");
+    wrapper.innerHTML = tmpl.innerHTML;
+    node = wrapper.firstElementChild;
+  }
+
+  return normalizeSuccessTemplateNode(node);
+}
+
+  function copyText(text) {
+    if (global.navigator && global.navigator.clipboard && typeof global.navigator.clipboard.writeText === "function") {
+      return global.navigator.clipboard.writeText(text);
+    }
+
+    return new Promise(function (resolve, reject) {
+      try {
+        var area = d.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.top = "-9999px";
+        d.body.appendChild(area);
+        area.select();
+        d.execCommand("copy");
+        d.body.removeChild(area);
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  function bindSuccessCardActions(root) {
+    if (!root || root.__ffSuccessCardBound) return;
+    root.__ffSuccessCardBound = true;
+
+    var shareBtn = root.querySelector("[data-ff-success-share]");
+    var copyBtn = root.querySelector("[data-ff-success-copy]");
+
+    if (shareBtn) {
+      shareBtn.addEventListener("click", function () {
+        var shareUrl = baseShareUrl();
+        var shareTitle = cleanText(d.title || "FutureFunded");
+        var shareText = "Support this program and help keep the season moving.";
+
+        if (global.navigator && typeof global.navigator.share === "function") {
+          global.navigator.share({
+            title: shareTitle,
+            text: shareText,
+            url: shareUrl
+          }).catch(function () {});
+        } else {
+          copyText(shareUrl).then(function () {
+            shareBtn.textContent = "Link copied";
+            global.setTimeout(function () {
+              shareBtn.textContent = "Share this page";
+            }, 1600);
+          }).catch(function () {});
+        }
+      });
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        copyText(baseShareUrl()).then(function () {
+          copyBtn.textContent = "Copied";
+          global.setTimeout(function () {
+            copyBtn.textContent = "Copy link";
+          }, 1600);
+        }).catch(function () {});
+      });
+    }
+  }
+
+  function renderSuccessCard(source) {
+    var mount = getSuccessMount();
+    if (!mount) return;
+
+    var existing = mount.querySelector("[data-ff-success-upsell]");
+    if (!existing) {
+      var node = cloneSuccessTemplate();
+      if (!node) return;
+      mount.innerHTML = "";
+      mount.appendChild(node);
+      bindSuccessCardActions(node);
+    } else {
+      bindSuccessCardActions(existing);
+    }
+
+    mount.hidden = false;
+
+    if (!donationSucceededTracked) {
+      donationSucceededTracked = true;
+      emit("donation_succeeded", { source: source || "success_state" });
+    }
+  }
+
+  function successFromQuery() {
+    if (!global.location || !global.location.search) return false;
+    var params = new URLSearchParams(global.location.search);
+    var keys = ["checkout", "payment", "donation", "status", "success"];
+    var successValues = {
+      "1": true,
+      "true": true,
+      "success": true,
+      "paid": true,
+      "complete": true,
+      "completed": true
+    };
+
+    for (var i = 0; i < keys.length; i += 1) {
+      var value = params.get(keys[i]);
+      if (value && successValues[String(value).toLowerCase()]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+/* FF_NATIVE_SUCCESS_BOOT_V1_START */
+function bootSuccessStateFromQuery() {
+  try {
+    if (!successFromQuery()) return false;
+    renderSuccessCard("success_query_boot");
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+/* FF_NATIVE_SUCCESS_BOOT_V1_END */
+
+  function cleanupSuccessQuery() {
+    if (!global.history || !global.history.replaceState || !global.location || !global.location.search) return;
+
+    var params = new URLSearchParams(global.location.search);
+    var before = params.toString();
+    var keys = ["checkout", "payment", "donation", "status", "success"];
+
+    for (var i = 0; i < keys.length; i += 1) {
+      var value = params.get(keys[i]);
+      if (!value) continue;
+      value = String(value).toLowerCase();
+      if (value === "1" || value === "true" || value === "success" || value === "paid" || value === "complete" || value === "completed") {
+        params.delete(keys[i]);
+      }
+    }
+
+    if (params.toString() === before) return;
+
+    var nextUrl = global.location.pathname + (params.toString() ? ("?" + params.toString()) : "") + global.location.hash;
+    global.history.replaceState({}, d.title, nextUrl);
+  }
+
+  function visibleSuccessNode() {
+    var selectors = [
+      "[data-ff-checkout-success]",
+      "[data-ff-success-state]",
+      '[data-ff-checkout-status="success"]',
+      "#ffCheckoutSuccess",
+      ".ff-checkout-success"
+    ];
+
+    for (var i = 0; i < selectors.length; i += 1) {
+      var node = d.querySelector(selectors[i]);
+      if (node && isVisible(node)) {
+        return node;
+      }
+    }
+    return null;
+  }
+
+  function scanSuccess() {
+    if (donationSucceededTracked) return;
+
+    if (successFromQuery()) {
+      renderSuccessCard("success_query");
+      cleanupSuccessQuery();
+      return;
+    }
+
+    if (visibleSuccessNode()) {
+      renderSuccessCard("checkout_dom");
+    }
+  }
+
+  delegatedClick(
+    '[data-ff-donate], [data-ff-open-checkout], a[href="#checkout"]',
+    "donate_cta_clicked",
+    function (el) {
+      global.setTimeout(scanCheckoutStarted, 80);
+      global.setTimeout(scanCheckoutStarted, 320);
+      return {
+        label: cleanText(el.getAttribute("aria-label") || el.textContent),
+        href: cleanText(el.getAttribute("href"))
+      };
+    }
+  );
+
+  delegatedClick(
+    '[data-ff-amount], [data-amount], [data-ff-set-amount], [data-ff-amount-option], [data-ff-tier-amount]',
+    "amount_selected",
+    function (el) {
+      return {
+        label: cleanText(el.getAttribute("aria-label") || el.textContent),
+        amount: cleanText(
+          el.getAttribute("data-ff-amount") ||
+          el.getAttribute("data-amount") ||
+          el.getAttribute("data-ff-set-amount") ||
+          el.getAttribute("data-ff-tier-amount") ||
+          el.textContent
+        )
+      };
+    }
+  );
+
+  delegatedClick(
+    '[data-ff-share], [data-ff-success-share]',
+    "share_clicked",
+    function (el) {
+      return {
+        label: cleanText(el.getAttribute("aria-label") || el.textContent)
+      };
+    }
+  );
+
+  delegatedClick(
+    'a[href="#sponsors"], [data-ff-sponsor], [data-ff-open-sponsor], [data-ff-sponsor-cta], [data-ff-success-sponsor]',
+    "sponsor_cta_clicked",
+    function (el) {
+      return {
+        label: cleanText(el.getAttribute("aria-label") || el.textContent),
+        href: cleanText(el.getAttribute("href"))
+      };
+    }
+  );
+
+  delegatedClick(
+    '[data-ff-open-video]',
+    "video_played",
+    function (el) {
+      return {
+        label: cleanText(el.getAttribute("data-ff-video-title") || el.getAttribute("aria-label") || el.textContent)
+      };
+    }
+  );
+
+  d.addEventListener("submit", function (evt) {
+    var form = closestMatch(
+      evt.target,
+      'form[data-ff-sponsor-form], #sponsorForm, form[action*="sponsor"], form[action*="partner"]'
+    );
+    if (!form) return;
+
+    emit("sponsor_form_submitted", {
+      form_id: cleanText(form.id),
+      form_action: cleanText(form.getAttribute("action"))
+    });
+  }, true);
+
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", function () {
+      scanCheckoutStarted();
+      scanSuccess();
+    }, { once: true });
+  } else {
+    scanCheckoutStarted();
+    scanSuccess();
+  }
+
+  global.setTimeout(scanCheckoutStarted, 250);
+  global.setTimeout(scanSuccess, 250);
+
+  if (global.MutationObserver && d.body) {
+    var observer = new MutationObserver(function () {
+      scanCheckoutStarted();
+      scanSuccess();
+    });
+
+    observer.observe(d.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-hidden", "data-open", "data-state"]
+    });
+  }
+})(window);
+/* FF_WAVE_E_SUCCESS_ANALYTICS_V1_END */
+
+/* FF_SUCCESS_STATE_RESCUE_V1_START */
+(function ffSuccessStateRescue(global, doc) {
+  "use strict";
+  if (!global || !doc) return;
+
+  function hasSuccessQuery() {
+    try {
+      var params = new URL(global.location.href).searchParams;
+      var keys = ["checkout", "payment", "donation", "status", "success"];
+      var ok = { "1": true, "true": true, "success": true, "paid": true, "complete": true, "completed": true };
+
+      for (var i = 0; i < keys.length; i += 1) {
+        var v = (params.get(keys[i]) || "").toLowerCase();
+        if (ok[v]) return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function emitFallbackSuccess() {
+    try {
+      if (global.__ffSuccessStateRescueEmitted) return;
+      global.__ffSuccessStateRescueEmitted = true;
+      var payload = { ff_event: "donation_succeeded", source: "success_query_fallback" };
+      global.dispatchEvent(new CustomEvent("ff:analytics", { detail: payload }));
+    } catch (_) {}
+  }
+
+  function ensureSuccessNode() {
+    var mount = doc.getElementById("ffDonationSuccessMount");
+    var tpl = doc.getElementById("ffDonationSuccessUpsellTemplate");
+    if (!mount || !tpl) return null;
+
+    var existing = mount.querySelector("[data-ff-success-upsell]");
+    if (existing) return existing;
+
+    try {
+      var node = null;
+
+      if (tpl.content && tpl.content.firstElementChild) {
+        node = tpl.content.firstElementChild.cloneNode(true);
+      } else {
+        var wrap = doc.createElement("div");
+        wrap.innerHTML = tpl.innerHTML;
+        node = wrap.firstElementChild;
+      }
+
+      if (!node) return null;
+
+      node = normalizeSuccessTemplateNode(node);
+
+      mount.innerHTML = "";
+      mount.appendChild(node);
+      return node;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function revealSuccessUpsell() {
+    if (!hasSuccessQuery()) return;
+
+    var mount = doc.getElementById("ffDonationSuccessMount");
+    if (!mount) return;
+
+    var root = ensureSuccessNode();
+    if (!root) return;
+
+    mount.hidden = false;
+    mount.removeAttribute("hidden");
+    mount.setAttribute("aria-hidden", "false");
+
+    root.hidden = false;
+    root.removeAttribute("hidden");
+    root.setAttribute("aria-hidden", "false");
+    root.setAttribute("data-open", "true");
+    root.classList.add("is-open", "is-visible", "ff-success-active");
+
+    try { mount.style.setProperty("display", "block", "important"); } catch (_) {}
+    try { mount.style.setProperty("visibility", "visible", "important"); } catch (_) {}
+    try { mount.style.setProperty("opacity", "1", "important"); } catch (_) {}
+
+    try { root.style.setProperty("display", "block", "important"); } catch (_) {}
+    try { root.style.setProperty("visibility", "visible", "important"); } catch (_) {}
+    try { root.style.setProperty("opacity", "1", "important"); } catch (_) {}
+    try { root.style.setProperty("pointer-events", "auto", "important"); } catch (_) {}
+
+    var title = root.querySelector("#ffSuccessUpsellTitle");
+    if (title && typeof title.focus === "function") {
+      try {
+        title.setAttribute("tabindex", "-1");
+        title.focus({ preventScroll: false });
+      } catch (_) {}
+    }
+
+    emitFallbackSuccess();
+  }
+
+  if (doc.readyState === "loading") {
+    doc.addEventListener("DOMContentLoaded", revealSuccessUpsell, { once: true });
+  } else {
+    revealSuccessUpsell();
+  }
+
+  global.addEventListener("load", revealSuccessUpsell, { once: true });
+})(window, document);
+/* FF_SUCCESS_STATE_RESCUE_V1_END */
+
+/* FF_NATIVE_SUCCESS_BOOT_HOOK_V1_START */
+try {
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", function () {
+      bootSuccessStateFromQuery();
+    }, { once: true });
+  } else {
+    bootSuccessStateFromQuery();
+  }
+
+  global.addEventListener("load", function () {
+    bootSuccessStateFromQuery();
+  }, { once: true });
+} catch (_) {}
+/* FF_NATIVE_SUCCESS_BOOT_HOOK_V1_END */
+
+/* FF_SERVER_SUCCESS_HYDRATE_V1_START */
+(function ffServerSuccessHydrate() {
+  "use strict";
+
+  function hasSuccessQuery() {
+    try {
+      var params = new URL(window.location.href).searchParams;
+      var keys = ["checkout", "payment", "donation", "status", "success"];
+      var ok = { "1": true, "true": true, "success": true, "paid": true, "complete": true, "completed": true };
+
+      for (var i = 0; i < keys.length; i += 1) {
+        var v = (params.get(keys[i]) || "").toLowerCase();
+        if (ok[v]) return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function cleanText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function copyText(text) {
+    if (!text) return Promise.resolve();
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        return navigator.clipboard.writeText(text);
+      }
+    } catch (_) {}
+
+    return new Promise(function (resolve, reject) {
+      try {
+        var area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.top = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        document.body.removeChild(area);
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  function shareUrl() {
+    return window.location.origin + window.location.pathname;
+  }
+
+  function emitDonationSucceededOnce() {
+    try {
+      if (window.__ffServerSuccessHydrateEmitted) return;
+      window.__ffServerSuccessHydrateEmitted = true;
+      window.dispatchEvent(new CustomEvent("ff:analytics", {
+        detail: { ff_event: "donation_succeeded", source: "server_success_hydrate" }
+      }));
+    } catch (_) {}
+  }
+
+  function bind() {
+    if (!hasSuccessQuery()) return;
+
+    var mount = document.getElementById("ffDonationSuccessMount");
+    var root = mount && mount.querySelector("[data-ff-success-upsell]");
+    if (!mount || !root) return;
+
+    mount.hidden = false;
+    mount.removeAttribute("hidden");
+    root.hidden = false;
+    root.removeAttribute("hidden");
+
+    var shareBtn = root.querySelector("[data-ff-success-share]");
+    var copyBtn = root.querySelector("[data-ff-success-copy]");
+
+    if (shareBtn && !shareBtn.__ffBound) {
+      shareBtn.__ffBound = true;
+      shareBtn.addEventListener("click", function () {
+        var url = shareUrl();
+        var title = cleanText(document.title || "FutureFunded");
+        var text = "Support this program and help keep the season moving.";
+
+        if (navigator && typeof navigator.share === "function") {
+          navigator.share({ title: title, text: text, url: url }).catch(function () {});
+        } else {
+          copyText(url).then(function () {
+            shareBtn.textContent = "Link copied";
+            setTimeout(function () { shareBtn.textContent = "Share this page"; }, 1600);
+          }).catch(function () {});
+        }
+      });
+    }
+
+    if (copyBtn && !copyBtn.__ffBound) {
+      copyBtn.__ffBound = true;
+      copyBtn.addEventListener("click", function () {
+        copyText(shareUrl()).then(function () {
+          copyBtn.textContent = "Copied";
+          setTimeout(function () { copyBtn.textContent = "Copy link"; }, 1600);
+        }).catch(function () {});
+      });
+    }
+
+    emitDonationSucceededOnce();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bind, { once: true });
+  } else {
+    bind();
+  }
+
+  window.addEventListener("load", bind, { once: true });
+})();
+/* FF_SERVER_SUCCESS_HYDRATE_V1_END */
+
+/* FF_WAVE_B_MOMENTUM_TRAY_V1_START */
+(function initFFMomentumTray(window, document) {
+  "use strict";
+
+  function ready(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn, { once: true });
+    } else {
+      fn();
+    }
+  }
+
+  function textOf(node) {
+    return ((node && node.textContent) || "").replace(/\s+/g, " ").trim();
+  }
+
+  function byPath(obj, path) {
+    var cur = obj;
+    for (var i = 0; i < path.length; i += 1) {
+      if (!cur || typeof cur !== "object" || !(path[i] in cur)) return undefined;
+      cur = cur[path[i]];
+    }
+    return cur;
+  }
+
+  function firstValue(obj, paths) {
+    for (var i = 0; i < paths.length; i += 1) {
+      var v = byPath(obj, paths[i]);
+      if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+    }
+    return "";
+  }
+
+  function parseMoney(value) {
+    var s = String(value || "").replace(/[^0-9.]/g, "");
+    var n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function money(value) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) return "";
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: n % 1 === 0 ? 0 : 2
+      }).format(n);
+    } catch (_err) {
+      return "$" + n.toFixed(n % 1 === 0 ? 0 : 2);
+    }
+  }
+
+  function truncate(value, max) {
+    var s = String(value || "").trim();
+    return s.length > max ? s.slice(0, max - 1).trim() + "…" : s;
+  }
+
+  function formatDeadline(value) {
+    var raw = String(value || "").trim();
+    if (!raw) return "";
+    var d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) {
+      try {
+        return "Before " + d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      } catch (_err) {}
+    }
+    return raw;
+  }
+
+  function previewishCampaign() {
+    var body = document.body;
+    var mode = ((body && body.getAttribute("data-ff-data-mode")) || "").toLowerCase();
+    var stripeMeta = document.querySelector('meta[name="ff-stripe-pk"]');
+    var paypalMeta = document.querySelector('meta[name="ff-paypal-client-id"]');
+    var stripePk = ((stripeMeta && stripeMeta.getAttribute("content")) || "").toLowerCase();
+    var paypalClient = ((paypalMeta && paypalMeta.getAttribute("content")) || "").toLowerCase();
+    return mode === "demo" || mode === "preview" || stripePk.indexOf("pk_test_") === 0 || paypalClient.indexOf("sandbox") !== -1;
+  }
+
+  function findCurrencyCandidates(scope) {
+    var txt = textOf(scope);
+    return txt.match(/\$\s?\d[\d,]*(?:\.\d{2})?/g) || [];
+  }
+
+  function firstUsefulUpdate() {
+    var selectors = [
+      ".ff-activityFeed__item",
+      "[data-ff-activity-item]",
+      "[data-ff-live-feed] li",
+      ".ff-announce__text",
+      "[data-ff-announcement-text]"
+    ];
+
+    for (var i = 0; i < selectors.length; i += 1) {
+      var nodes = document.querySelectorAll(selectors[i]);
+      for (var j = 0; j < nodes.length; j += 1) {
+        var el = nodes[j];
+        if (el.closest && el.closest("[data-ff-momentum]")) continue;
+        var txt = textOf(el);
+        if (!txt) continue;
+        if (/^for supporters\b/i.test(txt)) continue;
+        if (/^support the season\b/i.test(txt)) continue;
+        if (/^choose an amount\b/i.test(txt)) continue;
+        return txt;
+      }
+    }
+    return "";
+  }
+
+  ready(function () {
+    var tray = document.querySelector("[data-ff-momentum]");
+    if (!tray || tray.dataset.ffMomentumReady === "1") return;
+    tray.dataset.ffMomentumReady = "1";
+
+    var cfg = window.ffConfig || window.FF_CFG || window.ff_cfg || {};
+    var body = document.body;
+    var hero = document.querySelector("#home") ||
+               document.querySelector('[data-ff-section="home"]') ||
+               body;
+
+    var raisedRaw = firstValue(cfg, [
+      ["campaign", "raised"],
+      ["campaign", "amountRaised"],
+      ["metrics", "raised"],
+      ["metrics", "amountRaised"],
+      ["totals", "raised"],
+      ["raised"],
+      ["amountRaised"]
+    ]);
+
+    var goalRaw = firstValue(cfg, [
+      ["campaign", "goal"],
+      ["campaign", "goalAmount"],
+      ["metrics", "goal"],
+      ["totals", "goal"],
+      ["goal"],
+      ["campaignGoal"],
+      ["goalAmount"]
+    ]);
+
+    var heroRaisedNode = hero && hero.querySelector ? hero.querySelector("[data-ff-raised]") : null;
+    var heroGoalNode = hero && hero.querySelector ? hero.querySelector("[data-ff-goal]") : null;
+
+    if ((raisedRaw == null || String(raisedRaw).trim() === "" || parseMoney(raisedRaw) <= 0) && heroRaisedNode) {
+      raisedRaw = textOf(heroRaisedNode);
+    }
+
+    if ((goalRaw == null || String(goalRaw).trim() === "" || parseMoney(goalRaw) <= 0) && heroGoalNode) {
+      goalRaw = textOf(heroGoalNode);
+    }
+
+    var deadlineRaw = firstValue(cfg, [
+      ["campaign", "deadline"],
+      ["campaign", "deadlineAt"],
+      ["campaign", "endsAt"],
+      ["deadline"],
+      ["campaignDeadline"],
+      ["deadlineAt"],
+      ["endsAt"]
+    ]);
+
+    if (!deadlineRaw) {
+      var deadlineMeta =
+        document.querySelector('meta[name="ff-deadline"]') ||
+        document.querySelector('meta[name="ff:deadline"]');
+      deadlineRaw = (deadlineMeta && deadlineMeta.getAttribute("content")) || "";
+    }
+
+    if (!raisedRaw || !goalRaw) {
+      var heroMoney = findCurrencyCandidates(hero);
+      if (!raisedRaw && heroMoney[0]) raisedRaw = heroMoney[0];
+      if (!goalRaw && heroMoney[1]) goalRaw = heroMoney[1];
+    }
+
+    var raisedNum = parseMoney(raisedRaw);
+    var goalNum = parseMoney(goalRaw);
+    var gapNum = Number.isFinite(raisedNum) && Number.isFinite(goalNum) && goalNum > raisedNum
+      ? (goalNum - raisedNum)
+      : NaN;
+
+    var teamsCountNode =
+      document.querySelector("[data-ff-teams-count]") ||
+      document.querySelector("[data-ff-teams]");
+    var teamsCount = parseInt(textOf(teamsCountNode), 10);
+    if (!Number.isFinite(teamsCount)) {
+      teamsCount = document.querySelectorAll("[data-ff-team-card], .ff-teamCard").length || 0;
+    }
+
+    var raisedEl = document.querySelector("[data-ff-momentum-raised]");
+    var raisedMetaEl = document.querySelector("[data-ff-momentum-raised-meta]");
+    var gapEl = document.querySelector("[data-ff-momentum-gap]");
+    var gapMetaEl = document.querySelector("[data-ff-momentum-gap-meta]");
+    var deadlineEl = document.querySelector("[data-ff-momentum-deadline]");
+    var deadlineMetaEl = document.querySelector("[data-ff-momentum-deadline-meta]");
+    var updateEl = document.querySelector("[data-ff-momentum-update]");
+    var updateMetaEl = document.querySelector("[data-ff-momentum-update-meta]");
+    var shareBtn = document.querySelector("[data-ff-share-campaign]");
+
+    if (raisedEl) {
+      raisedEl.textContent = Number.isFinite(raisedNum) ? money(raisedNum) : String(raisedRaw || "$0");
+    }
+
+    if (raisedMetaEl) {
+      if (Number.isFinite(raisedNum) && Number.isFinite(goalNum) && goalNum > 0) {
+        var pct = Math.max(0, Math.min(100, Math.round((raisedNum / goalNum) * 100)));
+        var fundedText = pct + "% of " + money(goalNum) + " funded.";
+        if (teamsCount > 0) fundedText += " " + teamsCount + " teams active.";
+        raisedMetaEl.textContent = fundedText;
+      } else {
+        raisedMetaEl.textContent = previewishCampaign() ? "Preview total" : "Live total";
+      }
+
+      if (previewishCampaign()) {
+        raisedMetaEl.setAttribute("data-ff-preview-state", "1");
+      } else {
+        raisedMetaEl.removeAttribute("data-ff-preview-state");
+      }
+    }
+
+    if (gapEl) {
+      gapEl.textContent = Number.isFinite(gapNum) ? money(gapNum) + " left" : "Closing now";
+    }
+
+    if (gapMetaEl) {
+      gapMetaEl.textContent = Number.isFinite(gapNum)
+        ? "The remaining push to reach the current goal."
+        : "The next push that support can help close.";
+    }
+
+    var deadlineText = formatDeadline(deadlineRaw);
+    if (deadlineEl) {
+      deadlineEl.textContent = deadlineText || "Coming up";
+    }
+
+    if (deadlineMetaEl) {
+      deadlineMetaEl.textContent = deadlineText
+        ? "Earlier gifts help lock in travel, gym time, and tournament planning."
+        : "Timing matters for season planning.";
+    }
+
+    var latestUpdate = firstUsefulUpdate();
+    if (!latestUpdate) {
+      if (teamsCount > 0) {
+        latestUpdate = previewishCampaign()
+          ? teamsCount + " teams are shown on one shared preview page."
+          : teamsCount + " teams are live on one shared page.";
+      } else {
+        latestUpdate = previewishCampaign()
+          ? "Preview mode is active while live payments are being finalized."
+          : "New support is helping move the season forward.";
+      }
+    }
+
+    if (updateEl) {
+      updateEl.textContent = truncate(latestUpdate, 96);
+    }
+
+    if (updateMetaEl) {
+      updateMetaEl.textContent = "Fresh preview or live program signal.";
+    }
+
+    if (shareBtn && !shareBtn.dataset.ffShareBound) {
+      shareBtn.dataset.ffShareBound = "1";
+      shareBtn.addEventListener("click", async function () {
+        var url = window.location.href;
+        var title = document.title || "FutureFunded campaign";
+        var original = shareBtn.textContent;
+
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: title, url: url });
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+          } else {
+            window.prompt("Copy this campaign link:", url);
+            return;
+          }
+
+          shareBtn.textContent = "Link ready";
+          window.setTimeout(function () {
+            shareBtn.textContent = original;
+          }, 1600);
+        } catch (_err) {}
+      });
+    }
+  });
+})(window, document);
+/* FF_WAVE_B_MOMENTUM_TRAY_V1_END */
+
+/* FF_WAVE_C_PREVIEW_SPONSOR_PROOF_V1_START */
+(function initFFPreviewSponsorProof(window, document) {
+  "use strict";
+
+  function ready(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn, { once: true });
+    } else {
+      fn();
+    }
+  }
+
+  function previewish() {
+    var body = document.body;
+    var mode = ((body && body.getAttribute("data-ff-data-mode")) || "").toLowerCase();
+    var stripeMeta = document.querySelector('meta[name="ff-stripe-pk"]');
+    var paypalMeta = document.querySelector('meta[name="ff-paypal-client-id"]');
+    var stripePk = ((stripeMeta && stripeMeta.getAttribute("content")) || "").toLowerCase();
+    var paypalClient = ((paypalMeta && paypalMeta.getAttribute("content")) || "").toLowerCase();
+    return mode === "demo" || mode === "preview" || stripePk.indexOf("pk_test_") === 0 || paypalClient.indexOf("sandbox") !== -1;
+  }
+
+  ready(function () {
+    if (!previewish()) return;
+
+    var wall =
+      document.querySelector("[data-ff-sponsor-wall]") ||
+      document.querySelector("#sponsors .ff-sponsorWall") ||
+      document.querySelector("#sponsors [data-ff-sponsor-grid]");
+
+    if (!wall) return;
+
+    var existing = wall.querySelectorAll("article, .ff-sponsorCell, .ff-card");
+    if (existing && existing.length >= 2) return;
+
+    var empty =
+      document.querySelector("[data-ff-sponsor-wall-empty]") ||
+      document.querySelector("#sponsors .ff-empty");
+
+    var previews = [
+      {
+        tier: "Founding preview",
+        name: "Austin Sports Rehab",
+        note: "Demo partner preview for local-business recognition layout."
+      },
+      {
+        tier: "Founding preview",
+        name: "Hill Country Hoops",
+        note: "Demo partner preview showing sponsor-safe visibility."
+      },
+      {
+        tier: "Founding preview",
+        name: "Central Texas Family Dental",
+        note: "Demo partner preview for homepage and wall placement."
+      }
+    ];
+
+    var frag = document.createDocumentFragment();
+
+    previews.forEach(function (item) {
+      var card = document.createElement("article");
+      card.className = "ff-card ff-glass ff-surface";
+      card.setAttribute("data-ff-preview-sponsor", "1");
+      card.innerHTML =
+        '<div class="ff-stack ff-gap-2">' +
+          '<span class="ff-pill ff-pill--soft">' + item.tier + '</span>' +
+          '<h3 class="ff-h6 ff-m-0">' + item.name + '</h3>' +
+          '<p class="ff-help ff-m-0">' + item.note + '</p>' +
+        '</div>';
+      frag.appendChild(card);
+    });
+
+    wall.appendChild(frag);
+
+    if (empty) {
+      empty.hidden = true;
+      empty.setAttribute("aria-hidden", "true");
+    }
+  });
+})(window, document);
+/* FF_WAVE_C_PREVIEW_SPONSOR_PROOF_V1_END */

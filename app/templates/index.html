@@ -111,7 +111,15 @@ Intent:
 {% if not _location %}{% set _location = 'Austin, TX' %}{% endif %}
 
 {% set _organizer_label = (organizer_label|default(_org_name ~ ' coaching staff', true))|string|trim %}
-{% set _organizer_email = (organizer_email|default(contact_email, true)|default(support_email, true)|default('support@getfuturefunded.com', true))|string|trim %}
+{% set _organizer_email = (organizer_email|default(contact_email, true)|default(support_email, true)|default(config.SUPPORT_EMAIL, true))|string|trim %}
+{% set _sponsor_contact_email = (
+  config.SPONSOR_EMAIL
+  |default(config.INTERNAL_NOTIFICATION_EMAIL, true)
+  |default(config.SPONSOR_LEADS_NOTIFY_TO, true)
+  |default(config.CONTACT_EMAIL, true)
+  |default(config.SUPPORT_EMAIL, true)
+  |default(_organizer_email, true)
+)|string|trim %}
 
 {% set _campaign_headline = (campaign_headline|default('Fuel the season. Fund the future.', true))|string|trim %}
 {% if not _campaign_headline %}{% set _campaign_headline = 'Fuel the season. Fund the future.' %}{% endif %}
@@ -128,12 +136,12 @@ Intent:
   {% set _supporting_label = _org_name ~ ' — ' ~ _campaign_name %}
 {% endif %}
 
-{% set _campaign_tagline = (campaign_tagline|default('Support the season with a clear, secure gift that helps fund travel, training, gym time, and shared team costs.', true))|string|trim %}
+{% set _campaign_tagline = (campaign_tagline|default('Support travel, training, tournament fees, and shared team costs with one secure gift.', true))|string|trim %}
 {% if not _campaign_tagline %}
-  {% set _campaign_tagline = 'Support travel, training, gym time, and team costs with one secure gift.' %}
+  {% set _campaign_tagline = 'Support travel, training, tournament fees, and team costs with one secure gift.' %}
 {% endif %}
 
-{% set _proof_blurb = (proof_blurb|default('Your support helps fund the work behind every practice, trip, and tournament weekend — so athletes can stay focused on growth, not cost barriers.', true))|string|trim %}
+{% set _proof_blurb = (proof_blurb|default('This program helps athletes train, compete, travel, and grow together. Support helps cover the practical season costs that keep those opportunities open.', true))|string|trim %}
 {% set _policy_blurb = (policy_blurb|default('Questions, corrections, or receipts: email the organizer address listed on this page. Refunds and disputes follow the payment processor policy and organizer response.', true))|string|trim %}
 
 {# ============================ Logos / platform ============================ #}
@@ -211,13 +219,17 @@ Intent:
 {% set _year = (year|default(current_year|default(2026, true), true))|int %}
 
 {# ============================ Data truth policy ============================ #}
+{% set _demo_payments = (
+  (_stripe_pk.startswith('pk_test_'))
+  or ('sandbox' in (_pp_sanitized|string|lower))
+) %}
 {% set _mode_raw = (ff_data_mode|default('', true))|string|lower|trim %}
 {% if _mode_raw not in ['live', 'demo', 'preview'] %}
-  {% set _mode_raw = ('live' if _is_prod else 'demo') %}
+  {% set _mode_raw = ('preview' if (_is_prod and _demo_payments) else ('live' if _is_prod else 'demo')) %}
 {% endif %}
-{% if not _is_prod and request is defined and request.args.get('mode') %}
+{% if request is defined and request.args.get('mode') %}
   {% set _qmode = (request.args.get('mode')|string|lower|trim) %}
-  {% if _qmode in ['live', 'demo', 'preview'] %}
+  {% if _qmode in ['live', 'demo', 'preview'] and (not _is_prod or _demo_payments) %}
     {% set _mode_raw = _qmode %}
   {% endif %}
 {% endif %}
@@ -883,6 +895,39 @@ Intent:
       </div>
     </header>
 
+<!-- FF_DEMO_MODE_BANNER_V1_START -->
+{% if ff_allow_test_payments_demo %}
+<section
+  class="ff-demoBanner"
+  data-ff-demo-banner=""
+  aria-label="Demo payment mode notice"
+  role="status"
+>
+  <div class="ff-container">
+    <div class="ff-demoBanner__inner ff-glass ff-surface">
+      <div class="ff-demoBanner__copy ff-minw-0">
+        <span class="ff-pill ff-pill--accent ff-demoBanner__pill">Demo mode</span>
+        <p class="ff-demoBanner__text ff-m-0">
+          {{ ff_demo_banner_text }}
+        </p>
+      </div>
+
+      <div class="ff-demoBanner__actions ff-row ff-ais ff-gap-2">
+        <button
+          type="button"
+          class="ff-btn ff-btn--sm ff-btn--ghost ff-btn--pill"
+          data-ff-demo-banner-dismiss=""
+          aria-label="Dismiss demo notice for this session"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+<!-- FF_DEMO_MODE_BANNER_V1_END -->
+
     <aside
       id="drawer"
       class="ff-drawer"
@@ -1060,7 +1105,7 @@ Intent:
     </aside>
 
     <main id="content" class="ff-main" data-ff-main="" data-ff-page-root="" tabindex="-1">
-  <section
+    <section
     id="home"
     class="ff-section ff-section--hero ff-hero"
     data-ff-section="hero"
@@ -1257,7 +1302,7 @@ Intent:
               </div>
 
               <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                Choose an amount and support real season costs.
+                Choose an amount and help cover travel, training, and tournament costs.
               </p>
             </header>
 
@@ -1280,44 +1325,125 @@ Intent:
             </div>
 
             <div class="ff-proofMini ff-mt-3" role="note" aria-label="Donation note">
-              <p class="ff-kicker ff-m-0">Clear support path</p>
+              <p class="ff-kicker ff-m-0">Clear next step</p>
               <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                Practical giving amounts, visible sponsor options, and one simpler way to support the program.
+                Start with a practical amount, donate securely, and receive a receipt by email.
               </p>
             </div>
 
-            <section
-              class="ff-liveFeed ff-heroLiveFeed ff-mt-3"
-              data-ff-live-feed=""
-              aria-labelledby="ffLiveFeedTitle"
-            >
-              <div class="ff-liveFeed__head">
-                <p class="ff-kicker ff-m-0" id="ffLiveFeedTitle">Support activity</p>
-                <p class="ff-help ff-muted ff-m-0">
-                  New support activity appears here as momentum builds.
-                </p>
-              </div>
+            <!-- FF_WAVE_C_RECENT_ACTIVITY_V1_START -->
+{% set _activity_items_raw = activity_items|default([], true) %}
+{% set _activity_items = (_activity_items_raw if _activity_items_raw is iterable and _activity_items_raw is not string else []) %}
+{% set _activity_remaining = ((_goal_total|float - _raised_total|float) if (_goal_total|float > _raised_total|float) else 0.0) %}
+{% if _activity_remaining >= 1500 %}
+  {% set _activity_push = 250.0 %}
+{% elif _activity_remaining >= 600 %}
+  {% set _activity_push = 150.0 %}
+{% elif _activity_remaining > 0 %}
+  {% set _activity_push = _activity_remaining %}
+{% else %}
+  {% set _activity_push = 100.0 %}
+{% endif %}
 
-              <div
-                class="ff-liveFeed__list"
-                data-ff-live-feed-list=""
-                aria-live="polite"
-                aria-atomic="false"
-                role="list"
-              >
-                <div class="ff-liveFeed__item ff-liveFeed__item--empty" role="listitem">
-                  <span class="ff-liveFeed__dot" aria-hidden="true"></span>
-                  <div class="ff-liveFeed__content">
-                    <span class="ff-liveFeed__name">
-                      Be the first supporter shown here.
-                    </span>
-                    <span class="ff-liveFeed__text">
-                      Early support helps close real season costs.
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </section>
+<section
+  class="ff-liveFeed ff-heroLiveFeed ff-mt-3"
+  data-ff-live-feed=""
+  aria-labelledby="ffLiveFeedTitle"
+>
+  <div class="ff-liveFeed__head">
+    <p class="ff-kicker ff-m-0" id="ffLiveFeedTitle">Recent momentum</p>
+    <p class="ff-help ff-muted ff-m-0">
+      Privacy-safe updates can appear here now and upgrade to live campaign activity later.
+    </p>
+  </div>
+
+  <div
+    class="ff-liveFeed__list"
+    data-ff-live-feed-list=""
+    aria-live="polite"
+    aria-atomic="false"
+    role="list"
+  >
+    {% if _activity_items|length > 0 %}
+      {% for item in _activity_items[:5] %}
+        <div class="ff-liveFeed__item" role="listitem">
+          <span class="ff-liveFeed__dot" aria-hidden="true"></span>
+          <div class="ff-liveFeed__content">
+            <span class="ff-liveFeed__name">
+              {{ item.name|default(item.title, true)|default('Recent support', true)|e }}
+            </span>
+            <span class="ff-liveFeed__text">
+              {{ item.text|default(item.message, true)|default('New campaign activity was recorded.', true)|e }}
+            </span>
+          </div>
+          <span class="ff-liveFeed__time">
+            {{ item.time|default(item.when, true)|default('Now', true)|e }}
+          </span>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div
+        class="ff-liveFeed__item"
+        role="listitem"
+        data-ff-preview-state="{{ '1' if (ff_data_mode != 'live' or _demo_payments) else '0' }}"
+      >
+        <span class="ff-liveFeed__dot" aria-hidden="true"></span>
+        <div class="ff-liveFeed__content">
+          {% if ff_data_mode != 'live' or _demo_payments %}
+          <span class="ff-liveFeed__name">Campaign preview</span>
+          <span class="ff-liveFeed__text">
+            Test payments and sponsor interest can be reviewed on this page before live launch.
+          </span>
+          {% else %}
+          <span class="ff-liveFeed__name">Campaign live</span>
+          <span class="ff-liveFeed__text">
+            Secure gifts and sponsor outreach are open on this page.
+          </span>
+          {% endif %}
+        </div>
+        <span class="ff-liveFeed__time">Now</span>
+      </div>
+
+      <div class="ff-liveFeed__item" role="listitem">
+        <span class="ff-liveFeed__dot" aria-hidden="true"></span>
+        <div class="ff-liveFeed__content">
+          <span class="ff-liveFeed__name">Goal progress</span>
+          <span class="ff-liveFeed__text">
+            {{ _pct_bar }}% of the season goal is currently funded.
+          </span>
+        </div>
+        <span class="ff-liveFeed__time">Live</span>
+      </div>
+
+      <div class="ff-liveFeed__item" role="listitem">
+        <span class="ff-liveFeed__dot" aria-hidden="true"></span>
+        <div class="ff-liveFeed__content">
+          <span class="ff-liveFeed__name">Shared program fund</span>
+          <span class="ff-liveFeed__text">
+            {% if _teams_count > 0 %}
+              {{ _teams_count }} teams can share one page and one season goal.
+            {% else %}
+              One program page is live and ready to share.
+            {% endif %}
+          </span>
+        </div>
+        <span class="ff-liveFeed__time">Today</span>
+      </div>
+
+      <div class="ff-liveFeed__item" role="listitem">
+        <span class="ff-liveFeed__dot" aria-hidden="true"></span>
+        <div class="ff-liveFeed__content">
+          <span class="ff-liveFeed__name">Next push</span>
+          <span class="ff-liveFeed__text">
+            Give now or share the page to help close the next {{ money(_activity_push) }}.
+          </span>
+        </div>
+        <span class="ff-liveFeed__time">Next</span>
+      </div>
+    {% endif %}
+  </div>
+</section>
+<!-- FF_WAVE_C_RECENT_ACTIVITY_V1_END -->
 
             {% if _qr_src %}
               <section
@@ -1411,14 +1537,14 @@ Intent:
               <div class="ff-minw-0">
                 <p class="ff-kicker ff-m-0">Why give here</p>
                 <h3 class="ff-h3 ff-mt-1 ff-mb-0" id="heroRailProofTitle">
-                  Built for families, donors, and sponsors
+                  Clear for families. Credible for sponsors.
                 </h3>
               </div>
               <span class="ff-pill ff-pill--accent">Sponsor-ready</span>
             </div>
 
             <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="heroRailProofDesc">
-              A simpler way to donate, sponsor, and share with confidence.
+              A calmer way to donate, sponsor, or share the page with confidence.
             </p>
 
             <div
@@ -1427,23 +1553,23 @@ Intent:
               aria-label="Proof points"
             >
               <div class="ff-proofMini" role="listitem">
-                <p class="ff-kicker ff-m-0">Fast support</p>
+                <p class="ff-kicker ff-m-0">Fast mobile giving</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Donors can choose an amount and complete support in a few taps.
+                  Supporters can choose an amount and complete checkout in a few taps.
                 </p>
               </div>
 
               <div class="ff-proofMini" role="listitem">
-                <p class="ff-kicker ff-m-0">Credible presentation</p>
+                <p class="ff-kicker ff-m-0">Sponsor-safe presentation</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Sponsors and community partners get a clearer, more professional view of the program.
+                  Businesses and community partners get a clearer, more professional view of the program.
                 </p>
               </div>
 
               <div class="ff-proofMini" role="listitem">
                 <p class="ff-kicker ff-m-0">Clear next step</p>
                 <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-                  Donate, sponsor, or share without extra friction.
+                  Donate now, become a sponsor, or share the page without extra friction.
                 </p>
               </div>
 
@@ -1483,7 +1609,306 @@ Intent:
     </div>
   </section>
 
-      <section
+      
+
+<!-- FF_WAVE_B_MOMENTUM_BLOCK_V1_START -->
+<section
+  id="momentum"
+  class="ff-section ff-momentum"
+  data-ff-section="momentum"
+  aria-labelledby="momentumTitle"
+  aria-describedby="momentumLead"
+>
+  {% set _momentum_remaining = ((_goal_total|float - _raised_total|float) if (_goal_total|float > _raised_total|float) else 0.0) %}
+  {% if _momentum_remaining >= 1500 %}
+    {% set _momentum_push = 250.0 %}
+  {% elif _momentum_remaining >= 600 %}
+    {% set _momentum_push = 150.0 %}
+  {% elif _momentum_remaining > 0 %}
+    {% set _momentum_push = _momentum_remaining %}
+  {% else %}
+    {% set _momentum_push = 100.0 %}
+  {% endif %}
+  {% set _momentum_update = (campaign_update|default(latest_update|default(_org_name ~ ' is live with one shared team page, secure checkout, and sponsor-ready visibility.', true), true))|string|trim %}
+
+  <div class="ff-container">
+    <div class="ff-card ff-card--premium ff-glass ff-pad ff-momentumShell" data-ff-animate="rise">
+      <div class="ff-momentumIntro ff-minw-0">
+        <header class="ff-sectionhead ff-sectionhead--flagship ff-sectionhead--compact ff-m-0">
+          <div class="ff-sectionhead__text ff-minw-0">
+            <p class="ff-kicker ff-m-0">Momentum</p>
+            <h2 class="ff-h2 ff-m-0" id="momentumTitle">One program. Multiple teams. Shared momentum.</h2>
+            <p class="ff-lead ff-m-0" id="momentumLead">
+              Every gift helps close real season costs like travel, gym time, tournament fees, and shared team support.
+            </p>
+            <p class="ff-help ff-muted ff-m-0">
+              Give now, share the page, and help move the next milestone faster.
+            </p>
+          </div>
+        </header>
+
+        <div class="ff-momentumActions" role="group" aria-label="Momentum actions">
+          <a
+            class="ff-btn ff-btn--primary ff-btn--pill"
+            href="#checkout"
+            aria-controls="checkout"
+            aria-haspopup="dialog"
+            data-ff-donate=""
+            data-ff-open-checkout=""
+          >
+            Donate now
+          </a>
+
+          <button
+            type="button"
+            class="ff-btn ff-btn--secondary ff-btn--pill"
+            data-ff-share=""
+            aria-label="Share this fundraiser"
+          >
+            Share page
+          </button>
+        </div>
+      </div>
+
+      <div class="ff-momentumGrid" role="list" aria-label="Campaign momentum highlights">
+        <article class="ff-proofMini ff-momentumCard ff-momentumCard--raised" role="listitem">
+          <p class="ff-kicker ff-m-0">Raised so far</p>
+          <p class="ff-h3 ff-num ff-mt-1 ff-mb-0">{{ money(_raised_total) }}</p>
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
+            {{ _pct_bar }}% of {{ money(_goal_total) }} funded.
+          </p>
+
+          <div class="ff-momentumProgress" aria-label="Campaign progress">
+            <div class="ff-momentumProgress__track" aria-hidden="true">
+              <span class="ff-momentumProgress__fill" style="width: {{ _pct_bar }}%;"></span>
+            </div>
+
+            <div class="ff-row ff-row--between ff-gap-2 ff-mt-1">
+              <span class="ff-help ff-muted">Goal: {{ money(_goal_total) }}</span>
+              <span class="ff-help ff-muted">
+                {% if _teams_count > 0 %}{{ _teams_count }} teams active{% else %}Program live{% endif %}
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <article class="ff-proofMini ff-momentumCard" role="listitem">
+          <p class="ff-kicker ff-m-0">This week’s focus</p>
+          <p class="ff-h4 ff-mt-1 ff-mb-0">Close the next {{ money(_momentum_push) }}</p>
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
+            {% if _momentum_remaining > 0 %}
+              {{ money(_momentum_remaining) }} still left in the full season goal.
+            {% else %}
+              The main goal is funded — every new gift stretches program support further.
+            {% endif %}
+          </p>
+        </article>
+
+        <article class="ff-proofMini ff-momentumCard" role="listitem">
+          <p class="ff-kicker ff-m-0">Next deadline</p>
+          <p class="ff-h4 ff-mt-1 ff-mb-0">
+            {% if _deadline_fallback %}
+              Before {{ _deadline_fallback|e }}
+            {% else %}
+              Support is open now
+            {% endif %}
+          </p>
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
+            Earlier gifts help lock in travel, gym time, and tournament planning with less last-minute pressure.
+          </p>
+        </article>
+
+        <article class="ff-proofMini ff-momentumCard" role="listitem">
+          <p class="ff-kicker ff-m-0">Latest update</p>
+          <p class="ff-h4 ff-mt-1 ff-mb-0">
+            {% if _teams_count > 0 %}
+              {{ _teams_count }} teams can share one page
+            {% else %}
+              The program page is live
+            {% endif %}
+          </p>
+          <p class="ff-help ff-muted ff-mt-1 ff-mb-0">{{ _momentum_update|e }}</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- FF_WAVE_B_MOMENTUM_BLOCK_V1_END -->
+
+<!-- FF_WAVE_C_TRUST_STRIP_V1_START -->
+<section class="ff-section ff-section--microtrust ff-microtrust" aria-label="Platform trust signals">
+  <div class="ff-container">
+    <div class="ff-card ff-glass ff-pad ff-microtrust__card ff-microtrust__card--refined">
+      <div class="ff-microtrust__intro ff-minw-0">
+        <p class="ff-kicker ff-m-0">Secure support, clear impact.</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Checkout is protected, receipts are sent by email, and support helps cover real season costs.
+        </p>
+      </div>
+
+      <div class="ff-row ff-wrap ff-gap-2 ff-microtrust__list" role="list" aria-label="Trust signals">
+        <span class="ff-pill ff-pill--soft" role="listitem">Secure checkout</span>
+        <span class="ff-pill ff-pill--soft" role="listitem">Emailed receipt</span>
+        <span class="ff-pill ff-pill--soft" role="listitem">{{ 'Stripe + PayPal' if _pp_sanitized else 'Stripe connected' }}</span>
+        <span class="ff-pill ff-pill--ghost" role="listitem">Mobile-friendly</span>
+        <span class="ff-pill ff-pill--ghost" role="listitem">Real season costs</span>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- FF_WAVE_C_TRUST_STRIP_V1_END -->
+<!-- FF_WAVE_E_SUCCESS_UPSELL_V2_START -->
+{% set _success_program_name = _org_name|default(campaign_name|default("this program", true), true) %}
+{% set _success_query_value = (
+  request.args.get('checkout', '') or
+  request.args.get('payment', '') or
+  request.args.get('donation', '') or
+  request.args.get('status', '') or
+  request.args.get('success', '')
+)|lower %}
+{% set _show_success_upsell = _success_query_value in ['1', 'true', 'success', 'paid', 'complete', 'completed'] %}
+
+<div
+  id="ffDonationSuccessMount"
+  class="ff-donationSuccessMount"
+  {% if not _show_success_upsell %}hidden{% endif %}
+  aria-live="polite"
+  aria-atomic="true"
+>
+  {% if _show_success_upsell %}
+  <section
+    class="ff-successUpsell ff-card ff-glass ff-pad"
+    data-ff-success-upsell=""
+    aria-labelledby="ffSuccessUpsellTitle"
+  >
+    <div class="ff-successUpsell__intro ff-minw-0">
+      <p class="ff-kicker ff-m-0">Support confirmed</p>
+      <h2 class="ff-h2 ff-m-0" id="ffSuccessUpsellTitle">You just backed {{ _success_program_name|e }} 🎉</h2>
+      <p class="ff-lead ff-m-0">
+        Thanks for helping cover real season costs. A receipt should arrive by email, and sharing the page can help extend the impact right away.
+      </p>
+    </div>
+
+    <div class="ff-successUpsell__actions" role="group" aria-label="Post-donation actions">
+      <button
+        type="button"
+        class="ff-btn ff-btn--primary ff-btn--pill"
+        data-ff-success-share=""
+      >
+        Share this page
+      </button>
+
+      <button
+        type="button"
+        class="ff-btn ff-btn--secondary ff-btn--pill"
+        data-ff-success-copy=""
+      >
+        Copy link
+      </button>
+
+      <a
+        class="ff-btn ff-btn--secondary ff-btn--pill"
+        href="#sponsors"
+        data-ff-success-sponsor=""
+      >
+        Invite a sponsor
+      </a>
+    </div>
+
+    <div class="ff-successUpsell__grid" role="list" aria-label="Next steps after support">
+      <article class="ff-proofMini ff-successUpsell__card" role="listitem">
+        <p class="ff-kicker ff-m-0">Receipt</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Donation confirmation should be sent by email so supporters have a clean record of their gift.
+        </p>
+      </article>
+
+      <article class="ff-proofMini ff-successUpsell__card" role="listitem">
+        <p class="ff-kicker ff-m-0">Keep momentum moving</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Sharing this page with one family member, friend, or community contact can help move the next milestone faster.
+        </p>
+      </article>
+
+      <article class="ff-proofMini ff-successUpsell__card" role="listitem">
+        <p class="ff-kicker ff-m-0">Business support</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Know a local business? Invite them to become a sponsor and gain community-facing recognition.
+        </p>
+      </article>
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<template id="ffDonationSuccessUpsellTemplate">
+  <section
+    class="ff-successUpsell ff-card ff-glass ff-pad"
+    data-ff-success-upsell-template=""
+    aria-labelledby="ffSuccessUpsellTitleTemplate"
+  >
+    <div class="ff-successUpsell__intro ff-minw-0">
+      <p class="ff-kicker ff-m-0">Support confirmed</p>
+      <h2 class="ff-h2 ff-m-0" id="ffSuccessUpsellTitleTemplate">You just backed {{ _success_program_name|e }} 🎉</h2>
+      <p class="ff-lead ff-m-0">
+        Thanks for helping cover real season costs. A receipt should arrive by email, and sharing the page can help extend the impact right away.
+      </p>
+    </div>
+
+    <div class="ff-successUpsell__actions" role="group" aria-label="Post-donation actions">
+      <button
+        type="button"
+        class="ff-btn ff-btn--primary ff-btn--pill"
+        data-ff-success-share=""
+      >
+        Share this page
+      </button>
+
+      <button
+        type="button"
+        class="ff-btn ff-btn--secondary ff-btn--pill"
+        data-ff-success-copy=""
+      >
+        Copy link
+      </button>
+
+      <a
+        class="ff-btn ff-btn--secondary ff-btn--pill"
+        href="#sponsors"
+        data-ff-success-sponsor=""
+      >
+        Invite a sponsor
+      </a>
+    </div>
+
+    <div class="ff-successUpsell__grid" role="list" aria-label="Next steps after support">
+      <article class="ff-proofMini ff-successUpsell__card" role="listitem">
+        <p class="ff-kicker ff-m-0">Receipt</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Donation confirmation should be sent by email so supporters have a clean record of their gift.
+        </p>
+      </article>
+
+      <article class="ff-proofMini ff-successUpsell__card" role="listitem">
+        <p class="ff-kicker ff-m-0">Keep momentum moving</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Sharing this page with one family member, friend, or community contact can help move the next milestone faster.
+        </p>
+      </article>
+
+      <article class="ff-proofMini ff-successUpsell__card" role="listitem">
+        <p class="ff-kicker ff-m-0">Business support</p>
+        <p class="ff-help ff-muted ff-m-0">
+          Know a local business? Invite them to become a sponsor and gain community-facing recognition.
+        </p>
+      </article>
+    </div>
+  </section>
+</template>
+<!-- FF_WAVE_E_SUCCESS_UPSELL_V2_END -->
+
+
+<section
   id="impact"
   class="ff-section ff-impact"
   data-ff-section="impact"
@@ -1496,10 +1921,10 @@ Intent:
         <p class="ff-kicker ff-m-0">Impact</p>
         <h2 class="ff-h2" id="impactTitle">What support covers</h2>
         <p class="ff-lead ff-m-0" id="impactLead">
-          Every contribution helps cover practical season costs so athletes can train, travel, and compete with confidence.
+          Every contribution helps cover practical season costs like gym time, travel, tournament fees, and shared team needs.
         </p>
         <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="impactHint">
-          Pick a level now and adjust it in checkout.
+          Choose a level now — you can adjust it in checkout.
         </p>
       </div>
     </header>
@@ -1526,16 +1951,16 @@ Intent:
         aria-label="How support works"
       >
         <div class="ff-proofMini ff-proofMini--impact" role="listitem">
-          <p class="ff-kicker ff-m-0">How people give</p>
+          <p class="ff-kicker ff-m-0">How giving works</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Choose an amount, pay securely, and receive a receipt by email.
+            Choose an amount, check out securely, and receive an emailed receipt.
           </p>
         </div>
 
         <div class="ff-proofMini ff-proofMini--impact" role="listitem">
           <p class="ff-kicker ff-m-0">Why it matters</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Support lowers pressure on families and helps cover real season costs.
+            Support helps reduce cost pressure for families and keeps athletes on the floor.
           </p>
         </div>
       </div>
@@ -1548,9 +1973,9 @@ Intent:
         >
           <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2 ff-impactPick__head">
             <div class="ff-minw-0">
-              <p class="ff-kicker ff-m-0" id="impactPickTitle">Choose support amount</p>
+              <p class="ff-kicker ff-m-0" id="impactPickTitle">Choose an amount</p>
               <p class="ff-help ff-muted ff-mt-1 ff-mb-0" id="impactPickDesc">
-                Start with a practical amount, then personalize it in checkout if needed.
+                Start with a practical amount, then adjust it in checkout if needed.
               </p>
             </div>
 
@@ -1594,7 +2019,7 @@ Intent:
           >
             <p class="ff-help ff-m-0">
               <strong>Most supporters start here.</strong>
-              Pick a practical amount now, then fine-tune it in checkout before payment.
+              Choose a level now, then fine-tune it in checkout before payment.
             </p>
           </div>
         </section>
@@ -1805,7 +2230,87 @@ Intent:
   </div>
 </section>
 
-      <section
+      
+
+<!-- FF_WAVE_B_MOMENTUM_TRAY_V1_START -->
+<section
+  id="momentum"
+  class="ff-section ff-momentum ff-momentum--compact"
+  data-ff-section="momentum"
+  aria-labelledby="momentumTitle"
+>
+  <div class="ff-container">
+    <div class="ff-momentumTray" data-ff-momentum>
+      <div class="ff-momentumIntro">
+        <p class="ff-kicker ff-m-0">Program status</p>
+        <h2 class="ff-h3 ff-m-0" id="momentumTitle">What’s moving right now</h2>
+        <p class="ff-help ff-m-0" id="momentumLead">
+          Real progress, real deadlines, and a clearer reason to support today.
+        </p>
+
+        <div class="ff-momentumActions">
+          <a class="ff-btn ff-btn--primary ff-btn--sm" href="#checkout">Support now</a>
+          <button
+            class="ff-btn ff-btn--ghost ff-btn--sm"
+            type="button"
+            data-ff-share-campaign
+          >
+            Share campaign
+          </button>
+        </div>
+      </div>
+
+      <div class="ff-momentumGrid" role="list" aria-describedby="momentumLead">
+        <article class="ff-momentumMetric" role="listitem">
+          <p class="ff-momentumMetric__eyebrow">Raised so far</p>
+          <div class="ff-momentumMetric__value" data-ff-momentum-raised>{{ money(_raised_total) }}</div>
+          <p
+            class="ff-momentumMetric__meta ff-help ff-m-0"
+            data-ff-momentum-raised-meta
+            data-ff-preview-state="{{ '1' if (ff_data_mode != 'live' or _demo_payments) else '0' }}"
+          >
+            {% if ff_data_mode != 'live' or _demo_payments %}
+              Preview total
+            {% elif _goal_total|float > 0 %}
+              {{ _percent }}% of {{ money(_goal_total) }} funded.
+            {% else %}
+              Live total
+            {% endif %}
+          </p>
+        </article>
+
+        <article class="ff-momentumMetric" role="listitem">
+          <p class="ff-momentumMetric__eyebrow">Goal gap</p>
+          <div class="ff-momentumMetric__value" data-ff-momentum-gap>{{ money(_activity_remaining) ~ ' left' if _activity_remaining > 0 else 'Goal reached' }}</div>
+          <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-gap-meta">
+            {{ 'Preview gap based on current page totals.' if (ff_data_mode != 'live' or _demo_payments) else 'The remaining push to reach the current goal.' }}
+          </p>
+        </article>
+
+        <article class="ff-momentumMetric" role="listitem">
+          <p class="ff-momentumMetric__eyebrow">Next deadline</p>
+          <div class="ff-momentumMetric__value" data-ff-momentum-deadline>{{ 'Before ' ~ _deadline_fallback if _deadline_fallback else 'Coming up' }}</div>
+          <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-deadline-meta">
+            {{ 'Preview timing for launch planning.' if (ff_data_mode != 'live' or _demo_payments) else 'Earlier gifts help lock in travel, gym time, and tournament planning.' }}
+          </p>
+        </article>
+
+        <article class="ff-momentumMetric" role="listitem">
+          <p class="ff-momentumMetric__eyebrow">Program update</p>
+          <div class="ff-momentumMetric__value ff-momentumMetric__value--copy" data-ff-momentum-update>
+            New support is helping move the season forward.
+          </div>
+          <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-update-meta">
+            Fresh signal from the campaign
+          </p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- FF_WAVE_B_MOMENTUM_TRAY_V1_END -->
+
+<section
   id="teams"
   class="ff-section ff-teams"
   data-ff-section="teams"
@@ -1820,10 +2325,10 @@ Intent:
           One program. Multiple teams. Shared momentum.
         </h2>
         <p class="ff-lead ff-m-0" id="teamsLead">
-          Support can start with one team and still strengthen the full program across the season.
+          Support can start with one team, but every gift helps move the full program through the season.
         </p>
         <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="teamsUnity">
-          {{ _teams_count }} teams • one shared fund • one season goal
+          {{ _teams_count }} teams • shared fund • one season goal
         </p>
       </div>
 
@@ -1844,7 +2349,7 @@ Intent:
         </a>
 
         <a class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill" href="#story">
-          Program
+          Why it matters
         </a>
       </div>
     </header>
@@ -1858,21 +2363,21 @@ Intent:
         <div class="ff-proofMini ff-proofMini--teams" role="listitem">
           <p class="ff-kicker ff-m-0">One shared fund</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Every donation rolls into one pooled season fund and is split fairly across the program.
+            Every donation rolls into one shared season fund that supports the full program.
           </p>
         </div>
 
         <div class="ff-proofMini ff-proofMini--teams" role="listitem">
           <p class="ff-kicker ff-m-0">One secure checkout</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Supporters can back the team they know best while using one clean giving flow.
+            Supporters can back the team they know best while using one clear giving flow.
           </p>
         </div>
 
         <div class="ff-proofMini ff-proofMini--teams" role="listitem">
           <p class="ff-kicker ff-m-0">Shared impact</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Team-level visibility builds connection, but every gift still helps fund the full season.
+            Team-level stories build connection, but every gift still supports the full season.
           </p>
         </div>
       </div>
@@ -2189,7 +2694,7 @@ Intent:
     >
       <div class="ff-sectionhead__text ff-minw-0">
         <p class="ff-kicker ff-m-0">Program</p>
-        <h2 class="ff-h2" id="storyTitle">A season built on reps and support.</h2>
+        <h2 class="ff-h2" id="storyTitle">A season built on reps, travel, and support.</h2>
         <p class="ff-lead ff-m-0" id="storyLead">{{ _proof_blurb|e }}</p>
       </div>
 
@@ -2209,7 +2714,7 @@ Intent:
           data-ff-video-src="{{ _press_embed_url|e }}"
           data-ff-video-title="{{ _press_video_title|e }}"
         >
-          Watch
+          Watch story
         </a>
 
         <a
@@ -2224,6 +2729,31 @@ Intent:
         </a>
       </div>
     </header>
+<!-- FF_WAVE_D_STORY_QUOTES_V1_START -->
+{% set _coach_quote = coach_quote|default("We want every athlete to have the chance to compete, grow, and stay focused on the work — not the cost.", true) %}
+{% set _parent_quote = parent_quote|default("This program gives kids structure, confidence, and a real team environment they can be proud of.", true) %}
+{% set _athlete_quote = athlete_quote|default("Support like this helps us keep showing up, improving, and competing together.", true) %}
+
+<div class="ff-storyQuotes" aria-label="Program voices" role="list">
+  <article class="ff-storyQuoteCard ff-storyQuoteCard--coach" role="listitem">
+    <p class="ff-kicker ff-m-0">Coach voice</p>
+    <blockquote class="ff-storyQuoteCard__quote ff-m-0">“{{ _coach_quote|e }}”</blockquote>
+    <p class="ff-help ff-muted ff-m-0">Focused on growth, discipline, and access.</p>
+  </article>
+
+  <article class="ff-storyQuoteCard ff-storyQuoteCard--parent" role="listitem">
+    <p class="ff-kicker ff-m-0">Parent voice</p>
+    <blockquote class="ff-storyQuoteCard__quote ff-m-0">“{{ _parent_quote|e }}”</blockquote>
+    <p class="ff-help ff-muted ff-m-0">Grounded in trust, consistency, and real support.</p>
+  </article>
+
+  <article class="ff-storyQuoteCard ff-storyQuoteCard--athlete" role="listitem">
+    <p class="ff-kicker ff-m-0">Athlete voice</p>
+    <blockquote class="ff-storyQuoteCard__quote ff-m-0">“{{ _athlete_quote|e }}”</blockquote>
+    <p class="ff-help ff-muted ff-m-0">Built around reps, travel, competition, and team pride.</p>
+  </article>
+</div>
+<!-- FF_WAVE_D_STORY_QUOTES_V1_END -->
 
     <article
       class="ff-card ff-glass ff-pad ff-mt-3 ff-storyCard"
@@ -2242,7 +2772,7 @@ Intent:
         >
           <p class="ff-kicker ff-m-0">What supporters see</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            A clear program story, a real team image, and one fast path to donate, share, or support a player.
+            A clear program story, real team visuals, and one fast path to donate or share.
           </p>
         </div>
 
@@ -2371,7 +2901,7 @@ Intent:
             <div class="ff-proofMini" role="listitem" aria-label="Program trust point">
               <p class="ff-kicker ff-m-0">Why families and sponsors respond</p>
               <p class="ff-help ff-mt-1 ff-mb-0">
-                Real athletes, real costs, and one clear place to support the season.
+                Real athletes, practical season costs, and one clear place to support the program.
               </p>
             </div>
           </div>
@@ -2427,9 +2957,9 @@ Intent:
       <div class="ff-sectionhead__text ff-minw-0">
         <p class="ff-kicker ff-m-0">Sponsors</p>
         <h2 class="ff-h2" id="sponsorsTitle">Sponsors and recognition.</h2>
-        <p class="ff-lead ff-m-0" id="sponsorsLead">Support the season and be recognized with care.</p>
+        <p class="ff-lead ff-m-0" id="sponsorsLead">Support the season with recognition built for local businesses and community partners.</p>
         <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="sponsorsHint">
-          Name or logo visibility • family and community friendly • structured for local businesses
+          Name or logo placement • clean sponsor visibility • designed for local businesses
         </p>
       </div>
       <div class="ff-sectionhead__actions ff-row ff-wrap ff-gap-2" role="group" aria-label="Sponsors actions">
@@ -2445,12 +2975,61 @@ Intent:
           type="button"
           class="ff-btn ff-btn--sm ff-btn--secondary ff-btn--pill"
           data-ff-share=""
-          aria-label="Share this fundraiser with sponsors"
+          aria-label="Share this page with sponsors"
         >
-          Share
+          Share page
         </button>
       </div>
     </header>
+<!-- FF_WAVE_D_FOUNDING_PROOF_V1_START -->
+{% set _founding_sponsors_raw = founding_sponsors|default([], true) %}
+{% set _founding_sponsors = (_founding_sponsors_raw if _founding_sponsors_raw is iterable and _founding_sponsors_raw is not string else []) %}
+
+<div class="ff-foundingProof ff-card ff-glass ff-pad" aria-labelledby="foundingProofTitle">
+  <div class="ff-foundingProof__intro ff-minw-0">
+    <p class="ff-kicker ff-m-0">Founding recognition</p>
+    <h3 class="ff-h3 ff-m-0" id="foundingProofTitle">Founding community partners</h3>
+    <p class="ff-help ff-muted ff-m-0">
+      Early business supporters can earn first-wave recognition on the sponsor wall and across the season page.
+    </p>
+  </div>
+
+  <div class="ff-foundingProof__benefits" role="list" aria-label="Founding sponsor benefits">
+    <span class="ff-pill ff-pill--soft" role="listitem">Sponsor wall placement</span>
+    <span class="ff-pill ff-pill--soft" role="listitem">Homepage visibility</span>
+    <span class="ff-pill ff-pill--ghost" role="listitem">Family-friendly presentation</span>
+    <span class="ff-pill ff-pill--ghost" role="listitem">Community-first alignment</span>
+  </div>
+
+  <div class="ff-foundingProof__grid" role="list" aria-label="Founding partner spots">
+    {% if _founding_sponsors|length > 0 %}
+      {% for sponsor in _founding_sponsors[:3] %}
+        <article class="ff-foundingPartner" role="listitem">
+          <p class="ff-foundingPartner__eyebrow ff-m-0">
+            {{ sponsor.tier|default("Founding partner", true)|e }}
+          </p>
+          <h4 class="ff-h5 ff-m-0">
+            {{ sponsor.name|default(sponsor.business_name, true)|default(sponsor.title, true)|default("Community partner", true)|e }}
+          </h4>
+          <p class="ff-help ff-muted ff-m-0">
+            {{ sponsor.note|default(sponsor.description, true)|default("Supporting the season with visible community alignment and sponsor-safe recognition.", true)|e }}
+          </p>
+        </article>
+      {% endfor %}
+    {% else %}
+      {% for n in range(1, 4) %}
+        <article class="ff-foundingPartner ff-foundingPartner--open" role="listitem">
+          <p class="ff-foundingPartner__eyebrow ff-m-0">Open founding slot</p>
+          <h4 class="ff-h5 ff-m-0">Founding partner 0{{ n }}</h4>
+          <p class="ff-help ff-muted ff-m-0">
+            Reserved for an early business or community partner who wants clean first-wave visibility.
+          </p>
+        </article>
+      {% endfor %}
+    {% endif %}
+  </div>
+</div>
+<!-- FF_WAVE_D_FOUNDING_PROOF_V1_END -->
 
     <article
       class="ff-card ff-glass ff-pad ff-mt-3 ff-sponsorsBoard"
@@ -2461,13 +3040,13 @@ Intent:
         <div class="ff-proofMini ff-proofMini--feature" role="listitem">
           <p class="ff-kicker ff-m-0">Sponsor wall</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Sponsor names appear after confirmation, with a clean presentation built for families, donors, and local businesses.
+            Approved sponsors appear with clean, family-friendly visibility for donors, families, and local businesses.
           </p>
         </div>
         <div class="ff-proofMini ff-proofMini--feature" role="listitem">
           <p class="ff-kicker ff-m-0">Built to share</p>
           <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
-            Easy to forward to business owners, community supporters, and family contacts who want a simple way to help.
+            Easy to send to business owners, alumni, and community supporters looking for a clear next step.
           </p>
         </div>
       </div>
@@ -2476,9 +3055,9 @@ Intent:
         <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2">
           <div class="ff-minw-0">
             <p class="ff-kicker ff-m-0">Sponsor wall</p>
-            <h3 class="ff-h3 ff-mt-1 ff-mb-0" id="sponsorWallTitle">Sponsor names appear after confirmation.</h3>
+            <h3 class="ff-h3 ff-mt-1 ff-mb-0" id="sponsorWallTitle">Recognition appears after approval.</h3>
             <p class="ff-help ff-muted ff-mt-1 ff-mb-0" id="sponsorWallDesc">
-              Approved supporters can appear here with structured visibility and a clean first impression.
+              Approved partners can appear here with structured placement and a clean first impression.
             </p>
           </div>
           <span class="ff-pill ff-pill--ghost">Add yours</span>
@@ -2499,7 +3078,7 @@ Intent:
           hidden
         ></div>
         <p class="ff-help ff-muted ff-m-0" data-ff-sponsor-wall-empty="" aria-live="polite">
-          Sponsor space opens here after approval. Want to be the first sponsor shown?
+          Sponsor recognition opens here after approval. Be the first business or community partner shown.
         </p>
       </section>
 
@@ -2507,7 +3086,7 @@ Intent:
         <div class="ff-row ff-row--between ff-ais ff-wrap ff-gap-2 ff-mb-2">
           <div class="ff-minw-0">
             <p class="ff-kicker ff-m-0">Recognition levels</p>
-            <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Simple sponsor options with clearer fit, visibility, and next steps.</p>
+            <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Simple sponsor options with clearer fit, placement, and next steps.</p>
           </div>
         </div>
 
@@ -2519,7 +3098,7 @@ Intent:
                 <span class="ff-pill ff-pill--ghost">Entry</span>
               </div>
               <h3 class="ff-h2 ff-mt-1 ff-mb-0">$100</h3>
-              <p class="ff-help ff-muted ff-mb-0">Thank you tier</p>
+              <p class="ff-help ff-muted ff-mb-0">Supporter tier</p>
             </header>
 
             <div class="ff-impactTier__body ff-mt-3">
@@ -2570,7 +3149,7 @@ Intent:
               </div>
               <div class="ff-proofMini ff-mt-3" role="note" aria-label="Partner sponsor recognition">
                 <p class="ff-kicker ff-m-0">Recognition</p>
-                <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Logo or name on sponsor wall plus stronger placement in sponsor areas.</p>
+                <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Logo or business name on sponsor wall with stronger placement.</p>
               </div>
             </div>
 
@@ -2593,7 +3172,7 @@ Intent:
                 <span class="ff-pill ff-pill--soft">Big lift</span>
               </div>
               <h3 class="ff-h2 ff-mt-1 ff-mb-0">$500</h3>
-              <p class="ff-help ff-muted ff-mb-0">Lead support tier</p>
+              <p class="ff-help ff-muted ff-mb-0">Featured support tier</p>
             </header>
 
             <div class="ff-impactTier__body ff-mt-3">
@@ -2605,7 +3184,7 @@ Intent:
               </div>
               <div class="ff-proofMini ff-mt-3" role="note" aria-label="Champion sponsor recognition">
                 <p class="ff-kicker ff-m-0">Recognition</p>
-                <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Featured placement on the sponsor wall and stronger recognition moments.</p>
+                <p class="ff-help ff-muted ff-mt-1 ff-mb-0">Featured placement on the sponsor wall and stronger recognition across sponsor areas.</p>
               </div>
             </div>
 
@@ -2687,7 +3266,7 @@ Intent:
           data-ff-share=""
           aria-label="Share this fundraiser with sponsors"
         >
-          Share with a sponsor
+          Send to a business
         </button>
       </div>
     </article>
@@ -2944,11 +3523,9 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
             </div>
           </details>
         </div>
-</main>
-
-</section>
-</div>
-</div>
+      </section>
+    </div>
+  </div>
 </section>
 </main>
 
@@ -4251,6 +4828,8 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
         </p>
       </div>
 
+      {% include "partials/integration_health_panel.html" %}
+
       <form class="ff-stack ff-onboardForm" data-ff-onboard-form="" novalidate>
         <button
           type="submit"
@@ -4598,6 +5177,7 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
   id="sponsor-interest"
   class="ff-modal ff-modal--compact ff-modal--flagship"
   data-ff-sponsor-modal=""
+  data-ff-sponsor-contact="{{ _sponsor_contact_email|e }}"
   data-open="false"
   hidden
   aria-hidden="true"

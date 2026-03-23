@@ -187,6 +187,20 @@ def _wants_json_response() -> bool:
 def _parse_cors_origins(env: str) -> Union[str, List[str]]:
     default_prod = os.getenv("PRIMARY_ORIGIN", "https://getfuturefunded.com").strip()
     raw = (os.getenv("CORS_ORIGINS") or ("*" if env != "production" else default_prod)).strip()
+
+    # FF_LOCAL_CORS_PARSE_V1
+    if raw != "*":
+        local_origins = [
+            "http://localhost:5000",
+            "http://127.0.0.1:5000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ]
+        primary_origin = (os.getenv("PRIMARY_ORIGIN") or default_prod or "").strip().lower()
+        running_local = any(x in primary_origin for x in ("localhost", "127.0.0.1"))
+        if env != "production" or running_local:
+            existing = [x.strip() for x in raw.split(",") if x.strip()]
+            raw = ",".join(list(dict.fromkeys(existing + local_origins)))
     if raw in {"", "*"}:
         return raw
     if "," in raw:
@@ -881,6 +895,62 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     _maybe_create_sqlite_tables(app)
 
     migrate.init_app(app, db, compare_type=True, render_as_batch=True)
+    # FF_MAIL_ENV_BRIDGE_V1
+    _mail_env_keys = (
+        "MAIL_SERVER",
+        "MAIL_PORT",
+        "MAIL_USE_TLS",
+        "MAIL_USE_SSL",
+        "MAIL_USERNAME",
+        "MAIL_PASSWORD",
+        "MAIL_DEFAULT_SENDER",
+        "DEFAULT_MAIL_SENDER",
+        "SUPPORT_EMAIL",
+        "TEAM_CONTACT_EMAIL",
+        "ORGANIZER_EMAIL",
+        "SPONSOR_LEADS_NOTIFY_TO",
+    )
+
+    for _k in _mail_env_keys:
+        _cur = app.config.get(_k)
+        _env = os.getenv(_k)
+        if (_cur is None or _cur == "") and _env not in (None, ""):
+            if _k == "MAIL_PORT":
+                try:
+                    app.config[_k] = int(_env)
+                except Exception:
+                    app.config[_k] = _env
+            elif _k in {"MAIL_USE_TLS", "MAIL_USE_SSL"}:
+                app.config[_k] = str(_env).strip().lower() in {"1", "true", "yes", "on"}
+            else:
+                app.config[_k] = _env
+
+    if not app.config.get("ORGANIZER_EMAIL"):
+        app.config["ORGANIZER_EMAIL"] = (
+            app.config.get("CONTACT_EMAIL")
+            or app.config.get("SUPPORT_EMAIL")
+            or app.config.get("TEAM_CONTACT_EMAIL")
+            or os.getenv("CONTACT_EMAIL")
+            or os.getenv("ORGANIZER_EMAIL")
+            or os.getenv("SUPPORT_EMAIL")
+            or os.getenv("TEAM_CONTACT_EMAIL")
+            or ""
+        )
+
+    if not app.config.get("SPONSOR_LEADS_NOTIFY_TO"):
+        app.config["SPONSOR_LEADS_NOTIFY_TO"] = (
+            app.config.get("INTERNAL_NOTIFICATION_EMAIL")
+            or app.config.get("SPONSOR_EMAIL")
+            or app.config.get("SUPPORT_EMAIL")
+            or app.config.get("ORGANIZER_EMAIL")
+            or os.getenv("INTERNAL_NOTIFICATION_EMAIL")
+            or os.getenv("SPONSOR_LEADS_NOTIFY_TO")
+            or os.getenv("SPONSOR_EMAIL")
+            or os.getenv("SUPPORT_EMAIL")
+            or os.getenv("ORGANIZER_EMAIL")
+            or ""
+        )
+
     mail.init_app(app)
 
     if Compress:
@@ -965,6 +1035,7 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
     try:
         if _module_exists("app.routes.activity_feed"):
             _safe_register(app, "app.routes.activity_feed", "bp", "/")
+            _safe_register(app, "app.routes.integration_status", "bp", None)
     except Exception:
         pass
     # FF_ACTIVITY_FEED_REGISTER_V1_END
@@ -989,7 +1060,10 @@ def create_app(config_class: Optional[ConfigLike] = None) -> Flask:
 
     
     from app.blueprints.sponsor_interest import bp as sponsor_interest_bp
-    app.register_blueprint(sponsor_interest_bp)
+    try:
+        app.register_blueprint(sponsor_interest_bp)
+    except NameError:
+        app.register_blueprint(sponsor_interest_bp)
 
     return app
 __all__ = ["create_app"]
