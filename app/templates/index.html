@@ -1395,9 +1395,9 @@ Intent:
             Test payments and sponsor interest can be reviewed on this page before live launch.
           </span>
           {% else %}
-          <span class="ff-liveFeed__name">Campaign live</span>
+          <span class="ff-liveFeed__name">Campaign preview</span>
           <span class="ff-liveFeed__text">
-            Secure gifts and sponsor outreach are open on this page.
+            Test payments and sponsor interest can be reviewed on this page before live launch.
           </span>
           {% endif %}
         </div>
@@ -2298,7 +2298,7 @@ Intent:
         <article class="ff-momentumMetric" role="listitem">
           <p class="ff-momentumMetric__eyebrow">Program update</p>
           <div class="ff-momentumMetric__value ff-momentumMetric__value--copy" data-ff-momentum-update>
-            New support is helping move the season forward.
+            {% if ff_data_mode != 'live' or _demo_payments %}Preview mode is active while live payments are being finalized.{% else %}New support is helping move the season forward.{% endif %}
           </div>
           <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-update-meta">
             Fresh signal from the campaign
