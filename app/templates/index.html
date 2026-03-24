@@ -160,6 +160,11 @@ Intent:
 {% set _terms_url = (terms_url|default('https://getfuturefunded.com/terms', true))|string|trim %}
 {% set _privacy_url = (privacy_url|default('https://getfuturefunded.com/privacy', true))|string|trim %}
 
+{# ============================ Robust UI flags ============================ #}
+{% set _demo_banner_flag_raw = (ff_allow_test_payments_demo|default(false, true)) %}
+{% set _show_demo_banner = (_demo_banner_flag_raw is boolean and _demo_banner_flag_raw) or (_demo_banner_flag_raw|string|lower|trim in ['1', 'true', 'yes', 'on']) %}
+{% set _demo_banner_text = (ff_demo_banner_text|default('Preview mode is active. Test payments may be enabled for internal launch checks only.', true))|string|trim %}
+
 {# ============================ Payments ============================ #}
 {% set _stripe_pk = (
   stripe_pk|default('', true)
@@ -206,7 +211,7 @@ Intent:
 {% set theme_color_light_final = (theme_color_light|default(theme_color_final, true))|string|trim %}
 {% set theme_color_dark_final = (theme_color_dark|default('#0b0f17', true))|string|trim %}
 
-{% set page_title_final = (page_title|default(_campaign_name ~ ' • Fundraiser • ' ~ _org_name, true))|string|trim %}
+{% set page_title_final = (page_title|default(_supporting_label ~ ' • Fundraiser', true))|string|trim %}
 {% set page_desc_final = (page_description|default('Support ' ~ _campaign_name ~ ' with a fast, secure donation. Instant receipt. No account required.', true))|string|trim %}
 {% set og_title_final = (og_title|default(page_title_final, true))|string|trim %}
 {% set og_desc_final = (og_description|default(_campaign_tagline, true))|string|trim %}
@@ -321,6 +326,7 @@ Intent:
   {
     "id": "6g",
     "name": "6th Grade Gold",
+    "tier": "Gold",
     "meta": "First AAU reps — fundamentals + communication.",
     "goal": _shared_team_goal,
     "raised": _shared_team_raised,
@@ -333,6 +339,7 @@ Intent:
   {
     "id": "7g",
     "name": "7th Grade Gold",
+    "tier": "Gold",
     "meta": "Speed + spacing — film + pressure reps.",
     "goal": _shared_team_goal,
     "raised": _shared_team_raised,
@@ -345,6 +352,7 @@ Intent:
   {
     "id": "7b",
     "name": "7th Grade Black",
+    "tier": "Black",
     "meta": "Defense travels — stops into transition.",
     "goal": _shared_team_goal,
     "raised": _shared_team_raised,
@@ -357,6 +365,7 @@ Intent:
   {
     "id": "8g",
     "name": "8th Grade Gold",
+    "tier": "Gold",
     "meta": "Finish strong — intensity + leadership.",
     "goal": _shared_team_goal,
     "raised": _shared_team_raised,
@@ -478,7 +487,8 @@ Intent:
     'cover-fees-exact': ('true' if _cover_fees_exact else 'false'),
     'require-email': ('true' if _require_email else 'false'),
     'terms-url': _terms_url,
-    'privacy-url': _privacy_url
+    'privacy-url': _privacy_url,
+    'sponsor-contact': _sponsor_contact_email
   } %}
   {% for k, v in _ff_meta.items() %}
     <meta name="ff-{{ k }}" content="{{ v|e }}" />
@@ -574,6 +584,19 @@ Intent:
   {% set _teams = teams|default(FF_TEAMS|default([], true), true) %}
   {% set _teams_count = (_teams|length if _teams else 0) %}
 
+
+  {% set _momentum_remaining = ((_goal_total|float - _raised_total|float) if (_goal_total|float > _raised_total|float) else 0.0) %}
+  {% if _momentum_remaining >= 1500 %}
+    {% set _momentum_push = 250.0 %}
+  {% elif _momentum_remaining >= 600 %}
+    {% set _momentum_push = 150.0 %}
+  {% elif _momentum_remaining > 0 %}
+    {% set _momentum_push = _momentum_remaining %}
+  {% else %}
+    {% set _momentum_push = 100.0 %}
+  {% endif %}
+  {% set _momentum_update = (campaign_update|default(latest_update|default(_org_name ~ ' is live with one shared team page, secure checkout, and sponsor-ready visibility.', true), true))|string|trim %}
+
   {% set _quick_amounts = [
     (25, "Snacks and basics"),
     (50, "Team essentials"),
@@ -588,7 +611,8 @@ Intent:
     (500, "Big lift", "Tournament fees and meaningful family-cost relief", true)
   ] %}
 
-  {% set _qr_href = _share_url|default(share_url|default(_campaign_url|default(campaign_url|default(_checkout_url|default(request.url|default('', true), true), true), true), true), true) %}
+  {% set _request_url_safe = ((request.url if request is defined else '')|string|trim) %}
+  {% set _qr_href = _share_url|default(share_url|default(_campaign_url|default(campaign_url|default(_checkout_url|default(_request_url_safe, true), true), true), true), true) %}
   {% set _qr_static = donation_qr_url|default(_donation_qr_url|default(_qr_code_url|default(qr_code_url|default(_qr_code|default('', true), true), true), true), true) %}
   {% if _qr_static %}
     {% set _qr_src = _qr_static %}
@@ -604,6 +628,24 @@ Intent:
   {% set _press_video_title = "Connect ATX Elite — Video" %}
   {% set _press_poster_webp = url_for("static", filename="images/news-poster.webp") ~ "?v=" ~ _v %}
   {% set _press_poster_fallback = url_for("static", filename="images/connect-atx-team.jpg") ~ "?v=" ~ _v %}
+
+  {% set _display_org_name = (_org_name|default('', true)|string|trim) %}
+  {% set _display_campaign_name = (_campaign_name|default('', true)|string|trim) %}
+  {% set _display_location = (_location|default('', true)|string|trim) %}
+  {% set _display_brand_subline = '' %}
+  {% if _display_campaign_name and (_display_campaign_name|lower != _display_org_name|lower) %}
+    {% set _display_brand_subline = _display_campaign_name %}
+  {% elif _display_location %}
+    {% set _display_brand_subline = _display_location %}
+  {% endif %}
+  {% set _display_brand_meta = '' %}
+  {% if _display_brand_subline and _display_location and (_display_brand_subline|lower != _display_location|lower) %}
+    {% set _display_brand_meta = _display_brand_subline ~ ' • ' ~ _display_location %}
+  {% elif _display_brand_subline %}
+    {% set _display_brand_meta = _display_brand_subline %}
+  {% elif _display_location %}
+    {% set _display_brand_meta = _display_location %}
+  {% endif %}
 
   <nav class="ff-skiplinks" aria-label="Skip links">
     <a href="#content" class="ff-skip">Skip to content</a>
@@ -701,6 +743,17 @@ Intent:
                       <span class="ff-sep ff-sep--dot" aria-hidden="true">•</span>
                     {% endif %}
 
+                    {% set _topbar_org_name = (_org_name|default('', true)|string|trim) %}
+                    {% set _topbar_campaign_name = (_campaign_name|default('', true)|string|trim) %}
+                    {% set _topbar_location = (_location|default('', true)|string|trim) %}
+                    {% set _topbar_subline = '' %}
+
+                    {% if _topbar_campaign_name and (_topbar_campaign_name|lower != _topbar_org_name|lower) %}
+                      {% set _topbar_subline = _topbar_campaign_name %}
+                    {% elif _topbar_location %}
+                      {% set _topbar_subline = _topbar_location %}
+                    {% endif %}
+
                     <a
                       class="ff-topbarBrand ff-topbarBrand--flagship ff-nounderline"
                       href="#home"
@@ -720,8 +773,8 @@ Intent:
 
                       <span class="ff-topbarBrand__stack ff-minw-0">
                         <span class="ff-topbarBrand__text">{{ _org_name|e }}</span>
-                        {% if _campaign_name %}
-                          <span class="ff-topbarBrand__sub ff-help ff-muted">{{ _campaign_name|e }}</span>
+                        {% if _topbar_subline %}
+                          <span class="ff-topbarBrand__sub ff-help ff-muted">{{ _topbar_subline|e }}</span>
                         {% endif %}
                       </span>
 
@@ -896,7 +949,7 @@ Intent:
     </header>
 
 <!-- FF_DEMO_MODE_BANNER_V1_START -->
-{% if ff_allow_test_payments_demo %}
+{% if _show_demo_banner %}
 <section
   class="ff-demoBanner"
   data-ff-demo-banner=""
@@ -908,7 +961,7 @@ Intent:
       <div class="ff-demoBanner__copy ff-minw-0">
         <span class="ff-pill ff-pill--accent ff-demoBanner__pill">Demo mode</span>
         <p class="ff-demoBanner__text ff-m-0">
-          {{ ff_demo_banner_text }}
+          {{ _demo_banner_text|e }}
         </p>
       </div>
 
@@ -958,8 +1011,12 @@ Intent:
             />
 
             <div class="ff-minw-0">
-              <div class="ff-brand__title" id="ffDrawerTitle">{{ _campaign_name|e }}</div>
-              <div class="ff-brand__sub">{{ _location|e }}</div>
+              <div class="ff-brand__title" id="ffDrawerTitle">{{ _org_name|e }}</div>
+              {% if _display_brand_subline %}
+                <div class="ff-brand__sub">{{ _display_brand_subline|e }}</div>
+              {% elif _location %}
+                <div class="ff-brand__sub">{{ _location|e }}</div>
+              {% endif %}
               <p class="ff-sr" id="ffDrawerDesc">
                 Menu. Use these links to move through the page. Closing the menu
                 returns focus to the page.
@@ -1136,8 +1193,10 @@ Intent:
                 <h1 class="ff-display ff-heroTitle" id="heroTitle">
                   <span class="ff-heroLine">{{ _campaign_headline|e }}</span>
                   <span class="ff-heroAccent ff-heroLine" id="heroAccentLine">
-                    {{ _campaign_subhead|e }}
-                    <span class="ff-heroName">{{ _campaign_name|e }}</span>.
+                    <span class="ff-heroSubhead">{{ _campaign_subhead|e }}</span>
+                    <span class="ff-heroNameLockup">
+                      <span class="ff-heroName">{{ _campaign_name|e }}</span>.
+                    </span>
                   </span>
                 </h1>
 
@@ -1486,7 +1545,7 @@ Intent:
 
                   <div class="ff-heroPanelQr__copy">
                     <p class="ff-kicker ff-m-0">Scan to give</p>
-                    <p class="ff-heroPanelQr__title ff-mt-1 ff-mb-0">Mobile option</p>
+                    <p class="ff-heroPanelQr__title ff-mt-1 ff-mb-0">Mobile giving</p>
                     <p class="ff-help ff-muted ff-mt-1 ff-mb-0">
                       Open the secure donation page on your phone and give in a few taps.
                     </p>
@@ -1619,18 +1678,6 @@ Intent:
   aria-labelledby="momentumTitle"
   aria-describedby="momentumLead"
 >
-  {% set _momentum_remaining = ((_goal_total|float - _raised_total|float) if (_goal_total|float > _raised_total|float) else 0.0) %}
-  {% if _momentum_remaining >= 1500 %}
-    {% set _momentum_push = 250.0 %}
-  {% elif _momentum_remaining >= 600 %}
-    {% set _momentum_push = 150.0 %}
-  {% elif _momentum_remaining > 0 %}
-    {% set _momentum_push = _momentum_remaining %}
-  {% else %}
-    {% set _momentum_push = 100.0 %}
-  {% endif %}
-  {% set _momentum_update = (campaign_update|default(latest_update|default(_org_name ~ ' is live with one shared team page, secure checkout, and sponsor-ready visibility.', true), true))|string|trim %}
-
   <div class="ff-container">
     <div class="ff-card ff-card--premium ff-glass ff-pad ff-momentumShell" data-ff-animate="rise">
       <div class="ff-momentumIntro ff-minw-0">
@@ -1665,7 +1712,7 @@ Intent:
             data-ff-share=""
             aria-label="Share this fundraiser"
           >
-            Share page
+            Share this page
           </button>
         </div>
       </div>
@@ -1760,12 +1807,12 @@ Intent:
 <!-- FF_WAVE_E_SUCCESS_UPSELL_V2_START -->
 {% set _success_program_name = _org_name|default(campaign_name|default("this program", true), true) %}
 {% set _success_query_value = (
-  request.args.get('checkout', '') or
-  request.args.get('payment', '') or
-  request.args.get('donation', '') or
-  request.args.get('status', '') or
-  request.args.get('success', '')
-)|lower %}
+  ((request.args.get('checkout', '') if request is defined else '') or
+   (request.args.get('payment', '') if request is defined else '') or
+   (request.args.get('donation', '') if request is defined else '') or
+   (request.args.get('status', '') if request is defined else '') or
+   (request.args.get('success', '') if request is defined else ''))
+)|string|lower|trim %}
 {% set _show_success_upsell = _success_query_value in ['1', 'true', 'success', 'paid', 'complete', 'completed'] %}
 
 <div
@@ -2232,83 +2279,6 @@ Intent:
 
       
 
-<!-- FF_WAVE_B_MOMENTUM_TRAY_V1_START -->
-<section
-  id="momentum"
-  class="ff-section ff-momentum ff-momentum--compact"
-  data-ff-section="momentum"
-  aria-labelledby="momentumTitle"
->
-  <div class="ff-container">
-    <div class="ff-momentumTray" data-ff-momentum>
-      <div class="ff-momentumIntro">
-        <p class="ff-kicker ff-m-0">Program status</p>
-        <h2 class="ff-h3 ff-m-0" id="momentumTitle">What’s moving right now</h2>
-        <p class="ff-help ff-m-0" id="momentumLead">
-          Real progress, real deadlines, and a clearer reason to support today.
-        </p>
-
-        <div class="ff-momentumActions">
-          <a class="ff-btn ff-btn--primary ff-btn--sm" href="#checkout">Support now</a>
-          <button
-            class="ff-btn ff-btn--ghost ff-btn--sm"
-            type="button"
-            data-ff-share-campaign
-          >
-            Share campaign
-          </button>
-        </div>
-      </div>
-
-      <div class="ff-momentumGrid" role="list" aria-describedby="momentumLead">
-        <article class="ff-momentumMetric" role="listitem">
-          <p class="ff-momentumMetric__eyebrow">Raised so far</p>
-          <div class="ff-momentumMetric__value" data-ff-momentum-raised>{{ money(_raised_total) }}</div>
-          <p
-            class="ff-momentumMetric__meta ff-help ff-m-0"
-            data-ff-momentum-raised-meta
-            data-ff-preview-state="{{ '1' if (ff_data_mode != 'live' or _demo_payments) else '0' }}"
-          >
-            {% if ff_data_mode != 'live' or _demo_payments %}
-              Preview total
-            {% elif _goal_total|float > 0 %}
-              {{ _percent }}% of {{ money(_goal_total) }} funded.
-            {% else %}
-              Live total
-            {% endif %}
-          </p>
-        </article>
-
-        <article class="ff-momentumMetric" role="listitem">
-          <p class="ff-momentumMetric__eyebrow">Goal gap</p>
-          <div class="ff-momentumMetric__value" data-ff-momentum-gap>{{ money(_activity_remaining) ~ ' left' if _activity_remaining > 0 else 'Goal reached' }}</div>
-          <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-gap-meta">
-            {{ 'Preview gap based on current page totals.' if (ff_data_mode != 'live' or _demo_payments) else 'The remaining push to reach the current goal.' }}
-          </p>
-        </article>
-
-        <article class="ff-momentumMetric" role="listitem">
-          <p class="ff-momentumMetric__eyebrow">Next deadline</p>
-          <div class="ff-momentumMetric__value" data-ff-momentum-deadline>{{ 'Before ' ~ _deadline_fallback if _deadline_fallback else 'Coming up' }}</div>
-          <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-deadline-meta">
-            {{ 'Preview timing for launch planning.' if (ff_data_mode != 'live' or _demo_payments) else 'Earlier gifts help lock in travel, gym time, and tournament planning.' }}
-          </p>
-        </article>
-
-        <article class="ff-momentumMetric" role="listitem">
-          <p class="ff-momentumMetric__eyebrow">Program update</p>
-          <div class="ff-momentumMetric__value ff-momentumMetric__value--copy" data-ff-momentum-update>
-            {% if ff_data_mode != 'live' or _demo_payments %}Preview mode is active while live payments are being finalized.{% else %}New support is helping move the season forward.{% endif %}
-          </div>
-          <p class="ff-momentumMetric__meta ff-help ff-m-0" data-ff-momentum-update-meta">
-            Fresh signal from the campaign
-          </p>
-        </article>
-      </div>
-    </div>
-  </div>
-</section>
-<!-- FF_WAVE_B_MOMENTUM_TRAY_V1_END -->
 
 <section
   id="teams"
@@ -2484,6 +2454,25 @@ Intent:
                         Shared fund
                       </span>
                     </div>
+
+                    {% set _ttier = (t.tier|default('', true))|string|trim %}
+                    {% if not _ttier %}
+                      {% if 'black' in _tname_l %}
+                        {% set _ttier = 'Black' %}
+                      {% elif 'gold' in _tname_l %}
+                        {% set _ttier = 'Gold' %}
+                      {% endif %}
+                    {% endif %}
+                    {% if _ttier %}
+                      <div class="ff-teamCard__tierRow" aria-label="{{ tname|e }} tier">
+                        <span
+                          class="ff-teamTierBadge ff-teamTierBadge--{{ _ttier|lower|replace(' ', '-')|e }}"
+                          title="{{ _ttier|e }} tier"
+                        >
+                          {{ _ttier|e }}
+                        </span>
+                      </div>
+                    {% endif %}
 
                     <h3
                       class="ff-h3 ff-mt-2 ff-mb-0 ff-teamCard__title"
@@ -3582,7 +3571,9 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
             />
             <div class="ff-minw-0">
               <div class="ff-brand__title">{{ _org_name|e }}</div>
-              <p class="ff-brand__sub ff-m-0">{{ _campaign_name|e }} • {{ _location|e }}</p>
+              {% if _display_brand_meta %}
+                <p class="ff-brand__sub ff-m-0">{{ _display_brand_meta|e }}</p>
+              {% endif %}
             </div>
           </div>
 
@@ -3765,8 +3756,7 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
                 Secure payment, fast confirmation, and a clean support flow for families, donors, and sponsors.
               </p>
               <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
-                Supporting <strong>{{ _org_name|e }}</strong>{% if _campaign_name %} —
-                {{ _campaign_name|e }}{% endif %}.
+                Supporting <strong>{{ _supporting_label|e }}</strong>{% if _display_location %} • {{ _display_location|e }}{% endif %}.
               </p>
 
               <div
@@ -3824,6 +3814,8 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
                   aria-describedby="checkoutDesc checkoutErrorText"
                 >
                   <input name="team_id" type="hidden" value="default" data-ff-team-id="" />
+                  <input name="player_id" type="hidden" value="" data-ff-player-id="" />
+                  <input name="sponsor_amount" type="hidden" value="" data-ff-sponsor-amount="" />
                   <input name="currency" type="hidden" value="{{ _currency|e }}" />
 
                   <fieldset
@@ -3961,9 +3953,67 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
                       aria-live="polite"
                     >
                       <div
+                        class="ff-alert ff-alert--info"
+                        data-ff-stripe-msg=""
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        hidden
+                      >
+                        Preparing secure card entry…
+                      </div>
+
+                      <div
+                        class="ff-alert ff-alert--error"
+                        data-ff-stripe-error=""
+                        role="alert"
+                        aria-live="assertive"
+                        aria-atomic="true"
+                        hidden
+                      >
+                        Stripe checkout is unavailable right now.
+                      </div>
+
+                      <div
+                        class="ff-skeleton ff-skeleton--payment"
+                        data-ff-stripe-skeleton=""
+                        aria-hidden="true"
+                        hidden
+                      ></div>
+
+                      <div
                         class="ff-card ff-pad ff-checkoutPaymentMount ff-checkoutPaymentMount--stripe"
                         data-ff-stripe-mount=""
                         aria-label="Stripe payment area"
+                      ></div>
+
+                      <div
+                        class="ff-alert ff-alert--info"
+                        data-ff-paypal-msg=""
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        hidden
+                      >
+                        Loading PayPal…
+                      </div>
+
+                      <div
+                        class="ff-alert ff-alert--error"
+                        data-ff-paypal-error=""
+                        role="alert"
+                        aria-live="assertive"
+                        aria-atomic="true"
+                        hidden
+                      >
+                        PayPal checkout is unavailable right now.
+                      </div>
+
+                      <div
+                        class="ff-skeleton ff-skeleton--payment"
+                        data-ff-paypal-skeleton=""
+                        aria-hidden="true"
+                        hidden
                       ></div>
 
                       <div
@@ -4065,8 +4115,7 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
                       <div class="ff-proofMini">
                         <p class="ff-kicker ff-m-0">Supporting</p>
                         <p class="ff-help ff-mt-1 ff-mb-0">
-                          <strong>{{ _org_name|e }}</strong>{% if _campaign_name %} —
-                          {{ _campaign_name|e }}{% endif %}
+                          <strong>{{ _supporting_label|e }}</strong>{% if _display_location %} • {{ _display_location|e }}{% endif %}
                         </p>
                       </div>
 
@@ -4169,7 +4218,8 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
               class="ff-checkoutBody ff-checkoutBody--flagship ff-checkoutStage ff-checkoutSuccess"
               data-ff-checkout-stage="success"
               data-ff-checkout-success=""
-              aria-label="Donation success"
+              aria-labelledby="ffSuccessTitle"
+              aria-describedby="ffSuccessDesc"
               hidden
             >
               <div class="ff-checkoutLayout ff-checkoutLayout--success">
@@ -4182,8 +4232,8 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
                     </div>
 
                     <p class="ff-kicker ff-mt-3 ff-mb-0">Success</p>
-                    <h3 class="ff-h2 ff-mt-1 ff-mb-0">Support completed</h3>
-                    <p class="ff-help ff-muted ff-mt-2 ff-mb-0">
+                    <h3 class="ff-h2 ff-mt-1 ff-mb-0" id="ffSuccessTitle">Support completed</h3>
+                    <p class="ff-help ff-muted ff-mt-2 ff-mb-0" id="ffSuccessDesc">
                       Your confirmation has been recorded. A receipt should arrive by email shortly.
                     </p>
 
@@ -5339,7 +5389,7 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
             <button
               type="button"
               class="ff-chip ff-chip--pill"
-              data-ff-sponsor-tier="bronze"
+              data-ff-sponsor-tier="community"
               aria-pressed="false"
             >
               Community
@@ -5347,7 +5397,7 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
             <button
               type="button"
               class="ff-chip ff-chip--pill"
-              data-ff-sponsor-tier="silver"
+              data-ff-sponsor-tier="partner"
               aria-pressed="false"
             >
               Partner
@@ -5355,7 +5405,7 @@ Suggested CSS hooks to style in ff.css without changing the markup contract:
             <button
               type="button"
               class="ff-chip ff-chip--pill"
-              data-ff-sponsor-tier="gold"
+              data-ff-sponsor-tier="vip"
               aria-pressed="false"
             >
               VIP
