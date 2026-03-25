@@ -1948,3 +1948,342 @@
   }
 }
 /* FF_ABOVE_MAIN_HARDENING_V3_END */
+
+/* FF_STORY_LAYOUT_OVERLAP_RESCUE_V1_START */
+@layer ff.pages {
+  /* ----------------------------------------------------------------------
+     Story layout overlap rescue
+     Fixes right-side story rail bleeding over the media poster.
+     This file owns above-main layout polish, so keep the rescue here.
+     ---------------------------------------------------------------------- */
+
+  #story .ff-storyCard,
+  #story .ff-storyGrid,
+  #story .ff-storyGrid > *,
+  #story .ff-storyMedia,
+  #story .ff-storyCopy,
+  #story .ff-storyMediaCard,
+  #story .ff-storyPanel,
+  #story .ff-storyPoster,
+  #story .ff-storyPoster__picture,
+  #story .ff-storyPoster__img,
+  #story .ff-storySupportGrid,
+  #story .ff-storySupportGrid > *,
+  #story .ff-storyNotes,
+  #story .ff-storyNotes > *,
+  #story .ff-proofMini,
+  #story .ff-proofMini--tile,
+  #story .ff-proofMini--feature,
+  #story .ff-storyQuote {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #story .ff-storyGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(0.95rem, 0.86rem + 0.45vw, 1.15rem);
+    align-items: start;
+  }
+
+  #story .ff-storyMedia,
+  #story .ff-storyCopy {
+    width: 100%;
+    align-self: start;
+  }
+
+  #story .ff-storyMediaCard,
+  #story .ff-storyPoster {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #story .ff-storyCopy {
+    position: relative;
+    z-index: 0;
+  }
+
+  #story .ff-storyMedia {
+    position: relative;
+    z-index: 1;
+  }
+
+  #story .ff-storySupportGrid,
+  #story .ff-storyNotes {
+    display: grid;
+    gap: 0.8rem;
+    width: 100%;
+  }
+
+  @media (min-width: 40rem) {
+    #story .ff-storySupportGrid,
+    #story .ff-storyNotes {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    #story .ff-storyGrid {
+      grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+      gap: clamp(1rem, 0.92rem + 0.5vw, 1.2rem);
+    }
+  }
+
+  @media (min-width: 72rem) {
+    #story .ff-storyGrid {
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    #story .ff-storyGrid,
+    #story .ff-storySupportGrid,
+    #story .ff-storyNotes {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+/* FF_STORY_LAYOUT_OVERLAP_RESCUE_V1_END */
+
+/* FF_ABOVE_MAIN_MASTER_HARDENING_V4_START */
+@layer ff.pages {
+  /* ----------------------------------------------------------------------
+     Late authority hardening for above-main only
+     Goals:
+     - stabilize owned grids
+     - eliminate residual overflow / min-width bugs
+     - keep hero / teams / sponsors / trust responsive behavior consistent
+     - avoid touching checkout/footer ownership
+     ---------------------------------------------------------------------- */
+
+  :is(
+    #home .ff-hero__grid,
+    #home .ff-hero__grid > *,
+    #home .ff-heroPanel--flagship,
+    #home .ff-heroPanel .ff-card--premium,
+    #home .ff-heroPanelQr__card,
+    #home .ff-heroPanelQr__copy,
+    #home .ff-liveFeed__content,
+    #impact .ff-impactLayout,
+    #impact .ff-impactLayout > *,
+    #impact .ff-impactTierGrid,
+    #impact .ff-impactTierGrid > *,
+    #teams .ff-teamsShell,
+    #teams .ff-teamGrid,
+    #teams .ff-teamGrid > *,
+    #teams .ff-teamCard,
+    #teams .ff-teamCard__inner,
+    #teams .ff-teamCard__head,
+    #teams .ff-teamCard__body,
+    #teams .ff-teamCard__stats,
+    #teams .ff-teamStat,
+    #teams .ff-teamCard__summary,
+    #teams .ff-teamCard__meta,
+    #sponsors .ff-sponsorsBoard,
+    #sponsors .ff-sponsorTierWrap,
+    #sponsors .ff-sponsorTierGrid,
+    #sponsors .ff-sponsorTierGrid > *,
+    #sponsors .ff-sponsorCell,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier__head,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier__footer,
+    #trust-faq > .ff-container > .ff-grid,
+    #trust-faq > .ff-container > .ff-grid > *,
+    #trust-faq .ff-trustCard,
+    #trust-faq .ff-faqCard,
+    #trust-faq .ff-trustCard .ff-grid[role="list"],
+    #trust-faq .ff-faqList
+  ) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  :is(
+    #home .ff-heroPanelQr__copy,
+    #home .ff-liveFeed__content,
+    #teams .ff-teamCard__meta,
+    #teams .ff-teamCard__meterText,
+    #sponsors .ff-help,
+    #sponsors .ff-muted,
+    #trust-faq .ff-help,
+    #trust-faq .ff-muted,
+    #trust-faq .ff-disclosure__panel
+  ) {
+    overflow-wrap: anywhere;
+  }
+
+  #home .ff-hero__grid,
+  #impact .ff-impactLayout,
+  #teams .ff-teamGrid,
+  #sponsors .ff-sponsorTierGrid,
+  #trust-faq > .ff-container > .ff-grid[role="presentation"] {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  #teams .ff-teamGrid,
+  #sponsors .ff-sponsorTierGrid,
+  #impact .ff-impactTierGrid,
+  #trust-faq .ff-faqList,
+  #trust-faq .ff-trustCard .ff-grid[role="list"] {
+    gap: clamp(0.82rem, 0.76rem + 0.38vw, 1rem);
+  }
+
+  #teams .ff-teamGrid > li,
+  #sponsors .ff-sponsorTierGrid > li,
+  #impact .ff-impactTierGrid > li {
+    display: grid;
+    min-width: 0;
+  }
+
+  #teams .ff-teamCard,
+  #impact .ff-impactTier,
+  #sponsors .ff-sponsorCell,
+  #sponsors .ff-sponsorTierGrid .ff-impactTier,
+  #trust-faq .ff-trustCard,
+  #trust-faq .ff-faqCard {
+    min-height: 100%;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    align-content: start;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer {
+    margin-top: auto;
+  }
+
+  #teams .ff-teamCard__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:last-child {
+    grid-column: 1 / -1;
+  }
+
+  #trust-faq .ff-trustCard .ff-grid[role="list"] {
+    grid-template-columns: 1fr;
+  }
+
+  /* -------------------------------------------------------
+     Hero authority
+     ------------------------------------------------------- */
+  #home .ff-heroTitle {
+    max-width: 12.3ch;
+  }
+
+  #home .ff-heroPanel--flagship {
+    position: static;
+    top: auto;
+  }
+
+  /* -------------------------------------------------------
+     Responsive authority
+     ------------------------------------------------------- */
+  @media (min-width: 58rem) {
+    #home .ff-hero__grid {
+      grid-template-columns: minmax(0, 1.04fr) minmax(18.5rem, 0.96fr);
+      gap: clamp(1rem, 0.9rem + 0.45vw, 1.22rem);
+    }
+
+    #home .ff-heroTitle {
+      max-width: 13.2ch;
+    }
+
+    #teams .ff-teamGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #sponsors .ff-sponsorTierGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    #impact .ff-impactLayout {
+      grid-template-columns: minmax(0, 1.02fr) minmax(18rem, 0.98fr);
+      gap: clamp(1rem, 0.92rem + 0.45vw, 1.18rem);
+    }
+
+    #trust-faq > .ff-container > .ff-grid[role="presentation"] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(0.9rem, 0.84rem + 0.42vw, 1.08rem);
+    }
+  }
+
+  @media (min-width: 66rem) {
+    #home .ff-heroPanel--flagship {
+      position: sticky;
+      top: calc(var(--ff-header-offset) + 0.5rem);
+    }
+  }
+
+  @media (min-width: 72rem) {
+    #teams .ff-teamGrid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #sponsors .ff-sponsorTierGrid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 88rem) {
+    #teams .ff-teamGrid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    #sponsors .ff-sponsorTierGrid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 57.99rem) {
+    #home .ff-heroTitle {
+      max-width: 11.1ch;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    #home .ff-hero__grid,
+    #impact .ff-impactLayout,
+    #teams .ff-teamGrid,
+    #sponsors .ff-sponsorTierGrid,
+    #impact .ff-impactTierGrid,
+    #trust-faq > .ff-container > .ff-grid[role="presentation"],
+    #trust-faq .ff-trustCard .ff-grid[role="list"] {
+      grid-template-columns: 1fr;
+    }
+
+    #teams .ff-teamCard__head,
+    #teams .ff-teamCard__foot,
+    #teams .ff-teamCard__body .ff-grid--2 {
+      grid-template-columns: 1fr;
+    }
+
+    #teams .ff-teamCard__summary {
+      width: 100%;
+      min-width: 0;
+    }
+
+    #teams .ff-teamCard__foot .ff-btn,
+    #teams .ff-teamCard__foot .ff-btn--pill,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier__footer .ff-btn,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier__footer .ff-btn--pill {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #teams .ff-teamCard__stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #teams .ff-teamCard__stats .ff-teamStat:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+/* FF_ABOVE_MAIN_MASTER_HARDENING_V4_END */
