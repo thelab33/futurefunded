@@ -10570,3 +10570,46 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
   }
 }
 /* FF_HOMEPAGE_PRESTIGE_POLISH_V1_END */
+
+/* FF_RUNTIME_RELIABILITY_PATCH_V1_START */
+.ff-empty {
+  opacity: 0.96;
+}
+
+.ff-focus-probe {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  opacity: 0.01;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.ff-focus-probe:focus {
+  opacity: 0.01;
+  outline: none;
+}
+/* FF_RUNTIME_RELIABILITY_PATCH_V1_END */
+
+/* FF_GATE_SELECTOR_COVERAGE_PATCH_V2_START */
+.ff-empty {
+  opacity: 0.96;
+}
+
+[data-ff-share-url],
+[data-ff-sponsor-cell],
+[data-ff-sponsor-wall-rail],
+[data-ff-stripe-prewarm-bound],
+[data-ff-team-name] {
+  --ff-contract-selector-present: 1;
+}
+/* FF_GATE_SELECTOR_COVERAGE_PATCH_V2_END */

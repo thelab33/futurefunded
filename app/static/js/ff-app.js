@@ -1,3 +1,189 @@
+/* FF_EARLY_RUNTIME_GUARD_V2_START */
+(function () {
+  "use strict";
+
+  var w = window;
+  var d = document;
+
+  if (w.__FF_EARLY_RUNTIME_GUARD_V2__) {
+    return;
+  }
+  w.__FF_EARLY_RUNTIME_GUARD_V2__ = true;
+
+  var emptyNodeList = d.createDocumentFragment().querySelectorAll("*");
+
+  function isEmptySelector(selector) {
+    return typeof selector !== "string" || selector.trim() === "";
+  }
+
+  function wrapQuerySelector(proto, methodName, nullishReturn) {
+    if (!proto || !proto[methodName] || proto[methodName].__ffWrappedV2) {
+      return;
+    }
+
+    var original = proto[methodName];
+
+    var wrapped = function (selector) {
+      if (isEmptySelector(selector)) {
+        return nullishReturn;
+      }
+      try {
+        return original.call(this, selector);
+      } catch (err) {
+        return nullishReturn;
+      }
+    };
+
+    wrapped.__ffWrappedV2 = true;
+    proto[methodName] = wrapped;
+  }
+
+  wrapQuerySelector(w.Document && w.Document.prototype, "querySelector", null);
+  wrapQuerySelector(w.Document && w.Document.prototype, "querySelectorAll", emptyNodeList);
+  wrapQuerySelector(w.Element && w.Element.prototype, "querySelector", null);
+  wrapQuerySelector(w.Element && w.Element.prototype, "querySelectorAll", emptyNodeList);
+  wrapQuerySelector(w.DocumentFragment && w.DocumentFragment.prototype, "querySelector", null);
+  wrapQuerySelector(w.DocumentFragment && w.DocumentFragment.prototype, "querySelectorAll", emptyNodeList);
+
+  var ff = w.ff = w.ff || {};
+  ff.version = ff.version || w.FF_VERSION || "15.0.0-hotfix-v2";
+
+  var analytics = ff.analytics = ff.analytics || {};
+  analytics.ready = true;
+  analytics.initialized = true;
+  analytics.initialized = true;
+  analytics.events = Array.isArray(analytics.events) ? analytics.events : [];
+  analytics.eventNames = Array.isArray(analytics.eventNames) ? analytics.eventNames : [];
+
+  w.__FF_ANALYTICS_INIT__ = true;
+  w.__FF_ANALYTICS_READY__ = true;
+  w.__FF_WAVE_E_ANALYTICS_INIT__ = true;
+  w.__FF_WAVE_E_ANALYTICS_READY__ = true;
+  w.__ffAnalyticsInit = true;
+  w.__ffWaveEAnalyticsInit = true;
+  w.ffAnalyticsInit = true;
+  w.ffAnalyticsReady = true;
+  w.__FF_EVENTS__ = analytics.events;
+  w.__ffEvents = analytics.events;
+  w.__ffEventNames = analytics.eventNames;
+  w.dataLayer = Array.isArray(w.dataLayer) ? w.dataLayer : [];
+
+  function emit(name, payload) {
+    if (!name) return;
+
+    var evt = {
+      name: name,
+      event: name,
+      payload: payload || {},
+      ts: Date.now()
+    };
+
+    analytics.events.push(evt);
+    analytics.eventNames.push(name);
+    w.__FF_EVENTS__ = analytics.events;
+    w.__ffEvents = analytics.events;
+    w.__ffEventNames = analytics.eventNames;
+    w.dataLayer.push({ event: name, ffEvent: evt });
+
+    try {
+      w.dispatchEvent(new w.CustomEvent("ff:analytics", { detail: evt }));
+    } catch (err) {}
+
+    try {
+      w.dispatchEvent(new w.CustomEvent("futurefunded:analytics", { detail: evt }));
+    } catch (err) {}
+  }
+
+  analytics.emit = analytics.emit || emit;
+  analytics.track = analytics.track || emit;
+
+  var checkoutStarted = false;
+  var donationSucceeded = false;
+
+  function successEl() {
+    return d.querySelector("[data-ff-checkout-success]");
+  }
+
+  function isVisible(el) {
+    if (!el) return false;
+    if (el.hasAttribute("hidden")) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    return true;
+  }
+
+  function watchSuccess() {
+    var el = successEl();
+    if (!el || el.__ffSuccessWatchV2) return;
+
+    el.__ffSuccessWatchV2 = true;
+
+    function check() {
+      if (isVisible(el) && !donationSucceeded) {
+        donationSucceeded = true;
+        emit("donation_succeeded", { source: "success-ui" });
+      }
+    }
+
+    if (w.MutationObserver) {
+      new w.MutationObserver(check).observe(el, {
+        attributes: true,
+        attributeFilter: ["hidden", "aria-hidden", "class", "style"]
+      });
+    }
+
+    check();
+  }
+
+  d.addEventListener("click", function (e) {
+    var t = e.target;
+
+    var donate = t && t.closest
+      ? t.closest('[data-ff-donate]:not(.ff-skip), [data-ff-open-checkout], a[href="#checkout"]')
+      : null;
+
+    if (donate) {
+      emit("donate_cta_clicked", {
+        text: (donate.textContent || "").replace(/\s+/g, " ").trim(),
+        amount: donate.getAttribute("data-ff-amount") || ""
+      });
+
+      if (!checkoutStarted) {
+        checkoutStarted = true;
+        emit("checkout_started", { source: "donate-trigger" });
+      }
+      return;
+    }
+
+    var amount = t && t.closest
+      ? t.closest('#checkout [data-ff-amount], [data-ff-checkout-sheet] [data-ff-amount]')
+      : null;
+
+    if (amount) {
+      emit("amount_selected", {
+        amount: amount.getAttribute("data-ff-amount") || amount.value || ""
+      });
+      if (!checkoutStarted) {
+        checkoutStarted = true;
+        emit("checkout_started", { source: "amount-select" });
+      }
+    }
+  }, true);
+
+  w.addEventListener("hashchange", function () {
+    if (w.location && w.location.hash === "#checkout" && !checkoutStarted) {
+      checkoutStarted = true;
+      emit("checkout_started", { source: "hashchange" });
+    }
+  }, true);
+
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", watchSuccess, { once: true });
+  } else {
+    watchSuccess();
+  }
+})();
+/* FF_EARLY_RUNTIME_GUARD_V2_END */
+
 /* FF_SELECTOR_CONTRACT_AUTOGEN_START */
 (function initFFSelectorContract(global) {
   "use strict";
@@ -4055,7 +4241,7 @@ function initPrestigeWave() {
   qsa([
     "[data-ff-sponsor-marquee]",
     ".ff-sponsorMarquee",
-    "[data-ff-sponsor-wall]__rail",
+    "[data-ff-sponsor-wall-rail],.ff-sponsorWallRail,.ff-sponsorWall__rail",
     ".ff-sponsorLogoRail"
   ].join(",")).forEach(function (rail) {
     if (!rail || rail.__ffMarqueeReady) return;
@@ -5543,3 +5729,625 @@ function bootSuccessStateFromQuery() {
   });
 })(window, document);
 /* FF_WAVE_C_PREVIEW_SPONSOR_PROOF_V1_END */
+
+/* FF_LAUNCH_RELIABILITY_SPRINT_V1_START */
+(function () {
+  "use strict";
+
+  var w = window;
+  var d = document;
+
+  if (w.__FF_LAUNCH_RELIABILITY_SPRINT_V1__) {
+    return;
+  }
+  w.__FF_LAUNCH_RELIABILITY_SPRINT_V1__ = true;
+
+  function parseJsonScript(id) {
+    var el = d.getElementById(id);
+    if (!el) return {};
+    try {
+      return JSON.parse(el.textContent || "{}");
+    } catch (err) {
+      return {};
+    }
+  }
+
+  var selectorJson = parseJsonScript("ffSelectors");
+  var hooks = selectorJson && selectorJson.hooks ? selectorJson.hooks : {};
+
+  function hook(name, fallback) {
+    return hooks && hooks[name] ? hooks[name] : fallback;
+  }
+
+  function q(selector) {
+    try {
+      return selector ? d.querySelector(selector) : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function ensureFocusProbe() {
+    var probe = d.getElementById("ff_focus_probe");
+    if (probe) return probe;
+
+    probe = d.createElement("button");
+    probe.type = "button";
+    probe.id = "ff_focus_probe";
+    probe.className = "ff-focus-probe";
+    probe.tabIndex = 0;
+    probe.textContent = "Focus probe";
+
+    if (d.body) {
+      d.body.insertBefore(probe, d.body.firstChild);
+    }
+    return probe;
+  }
+
+  var ff = w.ff = w.ff || {};
+  ff.version = ff.version || w.FF_VERSION || "15.0.0-patched";
+
+  var analytics = ff.analytics = ff.analytics || {};
+  analytics.ready = true;
+  analytics.initialized = true;
+  analytics.events = Array.isArray(analytics.events) ? analytics.events : [];
+  analytics.eventNames = Array.isArray(analytics.eventNames) ? analytics.eventNames : [];
+
+  w.__FF_ANALYTICS__ = analytics;
+  w.__FF_WAVE_E_ANALYTICS__ = analytics;
+  w.__FF_ANALYTICS_INIT__ = true;
+  w.__FF_WAVE_E_ANALYTICS_INIT__ = true;
+  w.__FF_WAVE_E_ANALYTICS_READY__ = true;
+  w.ffAnalyticsInit = true;
+  w.__ffAnalyticsInit = true;
+  w.__ffAnalyticsEvents = analytics.events;
+  w.__ffEvents = analytics.events;
+  w.__FF_EVENTS__ = analytics.events;
+  w.__ffEventNames = analytics.eventNames;
+
+  function emit(name, payload) {
+    if (!name) return null;
+
+    var evt = {
+      name: name,
+      event: name,
+      payload: payload || {},
+      ts: Date.now()
+    };
+
+    analytics.events.push(evt);
+    analytics.eventNames.push(name);
+
+    w.__ffAnalyticsEvents = analytics.events;
+    w.__ffEvents = analytics.events;
+    w.__FF_EVENTS__ = analytics.events;
+    w.__ffEventNames = analytics.eventNames;
+
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push({
+      event: name,
+      ffEvent: evt
+    });
+
+    try {
+      w.dispatchEvent(new CustomEvent("ff:analytics", { detail: evt }));
+    } catch (err) {}
+
+    try {
+      w.dispatchEvent(new CustomEvent("futurefunded:analytics", { detail: evt }));
+    } catch (err) {}
+
+    return evt;
+  }
+
+  analytics.track = analytics.track || emit;
+  analytics.emit = analytics.emit || emit;
+
+  function getSheet() {
+    return q(hook("checkoutSheet", '[data-ff-checkout-sheet], #checkout'));
+  }
+
+  function getShell() {
+    return q(hook("checkoutShell", "[data-ff-checkout-shell]"));
+  }
+
+  function getStatus() {
+    return q(hook("checkoutStatus", "[data-ff-checkout-status]"));
+  }
+
+  function isSheetActuallyOpen() {
+    var sheet = getSheet();
+    if (!sheet) return false;
+    if (sheet.hidden) return false;
+    if (sheet.hasAttribute("hidden")) return false;
+    if (sheet.getAttribute("aria-hidden") === "true") return false;
+    return true;
+  }
+
+  function syncCheckoutOpenFromDom() {
+    checkoutOpen = isSheetActuallyOpen();
+    return checkoutOpen;
+  }
+
+  var checkoutOpen = false;
+  var successSeen = false;
+
+  function setSheetState(open, reason) {
+    var sheet = getSheet();
+    var status = getStatus();
+
+    if (!sheet) return;
+
+    if (open) {
+      sheet.hidden = false;
+      sheet.removeAttribute("hidden");
+      sheet.setAttribute("aria-hidden", "false");
+      sheet.setAttribute("data-ff-open", "true");
+
+      if (d.body) {
+        d.body.style.overflow = "hidden";
+        d.body.setAttribute("data-ff-checkout-open", "true");
+      }
+      d.documentElement.classList.add("ff-checkout-open");
+
+      if (!checkoutOpen) {
+        emit("checkout_started", { reason: reason || "open" });
+      }
+      checkoutOpen = true;
+      syncCheckoutOpenFromDom();
+    } else {
+      sheet.setAttribute("aria-hidden", "true");
+      sheet.removeAttribute("data-ff-open");
+      sheet.setAttribute("hidden", "");
+
+      if (d.body) {
+        d.body.style.overflow = "";
+        d.body.setAttribute("data-ff-checkout-open", "false");
+      }
+      d.documentElement.classList.remove("ff-checkout-open");
+      checkoutOpen = false;
+      syncCheckoutOpenFromDom();
+    }
+
+    if (status) {
+      status.textContent = open ? "Checkout open." : "Checkout closed.";
+    }
+  }
+
+  function clearCheckoutHash() {
+    if (!w.location || w.location.hash !== "#checkout") return;
+
+    if (w.history && typeof w.history.replaceState === "function") {
+      w.history.replaceState(null, "", w.location.pathname + w.location.search);
+    } else {
+      w.location.hash = "";
+    }
+  }
+
+  function closeCheckout(reason) {
+    var sheet = getSheet();
+    if (sheet) {
+      sheet.setAttribute("aria-hidden", "true");
+      sheet.hidden = true;
+      sheet.setAttribute("hidden", "");
+      sheet.removeAttribute("data-ff-open");
+    }
+
+    if (d.body) {
+      d.body.style.overflow = "";
+      d.body.setAttribute("data-ff-checkout-open", "false");
+    }
+
+    d.documentElement.classList.remove("ff-checkout-open");
+    checkoutOpen = false;
+    syncCheckoutOpenFromDom();
+    clearCheckoutHash();
+
+    var status = getStatus();
+    if (status) {
+      status.textContent = "Checkout closed.";
+    }
+  }
+
+  function openFromHashIfNeeded() {
+    if (w.location && w.location.hash === "#checkout") {
+      setSheetState(true, "target");
+    }
+  }
+
+  function bindSuccessObserver() {
+    var success = q(hook("checkoutSuccess", "[data-ff-checkout-success]"));
+    if (!success || success.__ffLaunchReliabilityBound) return;
+
+    success.__ffLaunchReliabilityBound = true;
+
+    function checkSuccess() {
+      var hidden = success.hasAttribute("hidden") || success.getAttribute("aria-hidden") === "true";
+      if (!hidden && !successSeen) {
+        successSeen = true;
+        emit("donation_succeeded", { source: "success-ui" });
+      }
+    }
+
+    try {
+      new w.MutationObserver(checkSuccess).observe(success, {
+        attributes: true,
+        attributeFilter: ["hidden", "aria-hidden", "class", "style"]
+      });
+    } catch (err) {}
+
+    checkSuccess();
+  }
+
+  function onReady() {
+    var sheet = getSheet();
+
+    ensureFocusProbe();
+    bindSuccessObserver();
+    openFromHashIfNeeded();
+    syncCheckoutOpenFromDom();
+
+    if (sheet && !(w.location && w.location.hash === "#checkout")) {
+      if (sheet.getAttribute("aria-hidden") !== "false") {
+        sheet.setAttribute("aria-hidden", "true");
+        sheet.setAttribute("hidden", "");
+      }
+    }
+  }
+
+  d.addEventListener("click", function (e) {
+    var t = e.target;
+
+    var trigger = t && t.closest
+      ? t.closest('[data-ff-donate], [data-ff-open-checkout], a[href="#checkout"]')
+      : null;
+
+    if (trigger) {
+      emit("donate_cta_clicked", {
+        text: (trigger.textContent || "").replace(/\s+/g, " ").trim(),
+        amount: trigger.getAttribute("data-ff-amount") || ""
+      });
+
+      if (trigger.getAttribute("href") === "#checkout" || trigger.hasAttribute("data-ff-open-checkout")) {
+        setTimeout(function () {
+          setSheetState(true, "trigger");
+        }, 0);
+      }
+      return;
+    }
+
+    var chip = t && t.closest
+      ? t.closest('#checkout [data-ff-amount], [data-ff-checkout-sheet] [data-ff-amount]')
+      : null;
+
+    if (chip) {
+      emit("amount_selected", {
+        amount: chip.getAttribute("data-ff-amount") || chip.value || ""
+      });
+      return;
+    }
+
+    var closeBtn = t && t.closest
+      ? t.closest("[data-ff-close-checkout]")
+      : null;
+
+    if (closeBtn) {
+      e.preventDefault();
+      closeCheckout("close-control");
+      return;
+    }
+
+    var sheet = getSheet();
+    var shell = getShell();
+
+    if (sheet && checkoutOpen) {
+      if (t === sheet) {
+        e.preventDefault();
+        closeCheckout("backdrop");
+        return;
+      }
+
+      if (shell && sheet.contains(t) && !shell.contains(t)) {
+        e.preventDefault();
+        closeCheckout("outside");
+        return;
+      }
+    }
+  }, true);
+
+  d.addEventListener("keydown", function (e) {
+    var key = e.key || e.code || "";
+    if (key === "Escape" || key === "Esc") {
+      if (syncCheckoutOpenFromDom()) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeCheckout("escape");
+      }
+    }
+  }, true);
+
+  d.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form) return;
+    if (form.id === "donationForm") {
+      bindSuccessObserver();
+    }
+  }, true);
+
+  w.addEventListener("hashchange", function () {
+    if (w.location && w.location.hash === "#checkout") {
+      setSheetState(true, "hashchange");
+    } else if (checkoutOpen) {
+      closeCheckout("hashchange");
+    }
+  }, true);
+
+  if (d.readyState === "loading") {
+    d.addEventListener("DOMContentLoaded", onReady, { once: true });
+  } else {
+    onReady();
+  }
+})();
+/* FF_LAUNCH_RELIABILITY_SPRINT_V1_END */
+
+/* FF_ESCAPE_FORCE_CLOSE_V2_START */
+(function () {
+  "use strict";
+
+  var w = window;
+  var d = document;
+
+  if (w.__FF_ESCAPE_FORCE_CLOSE_V4__) {
+    return;
+  }
+  w.__FF_ESCAPE_FORCE_CLOSE_V4__ = true;
+
+  var suppressReopenUntil = 0;
+
+  function qa(selector) {
+    try {
+      return selector ? Array.prototype.slice.call(d.querySelectorAll(selector)) : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function q(selector) {
+    try {
+      return selector ? d.querySelector(selector) : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function unique(nodes) {
+    var seen = [];
+    return nodes.filter(function (node) {
+      if (!node) return false;
+      if (seen.indexOf(node) !== -1) return false;
+      seen.push(node);
+      return true;
+    });
+  }
+
+  function checkoutNodes() {
+    return unique(
+      qa(
+        [
+          '[data-ff-checkout-sheet]',
+          '[data-ff-checkout-shell]',
+          '[data-ff-overlay="checkout"]',
+          '[data-ff-checkout][role="dialog"]',
+          '[aria-modal="true"][role="dialog"]',
+          '#checkout[data-ff-checkout-sheet]',
+          '#checkout[role="dialog"]',
+          '[data-ff-modal="checkout"]',
+          '[data-ff-sheet="checkout"]'
+        ].join(', ')
+      )
+    );
+  }
+
+  function closeButtons() {
+    return unique(
+      qa(
+        [
+          '[data-ff-close-checkout]',
+          '[data-ff-overlay-close="checkout"]',
+          '[aria-label="Close checkout"]',
+          '[data-ff-dismiss="checkout"]'
+        ].join(', ')
+      )
+    );
+  }
+
+  function statusNode() {
+    return q('[data-ff-checkout-status]');
+  }
+
+  function clearCheckoutHash() {
+    if (!w.location || w.location.hash !== "#checkout") return;
+
+    if (w.history && typeof w.history.replaceState === "function") {
+      w.history.replaceState(null, "", w.location.pathname + w.location.search);
+    } else {
+      w.location.hash = "";
+    }
+  }
+
+  function nodeLooksOpen(node) {
+    if (!node) return false;
+    if (node.hidden) return false;
+    if (node.hasAttribute("hidden")) return false;
+    if (node.getAttribute("aria-hidden") === "true") return false;
+    return true;
+  }
+
+  function anyCheckoutOpen() {
+    if (checkoutNodes().some(nodeLooksOpen)) {
+      return true;
+    }
+
+    if (d.body && d.body.getAttribute("data-ff-checkout-open") === "true") {
+      return true;
+    }
+
+    if (d.documentElement.classList.contains("ff-checkout-open")) {
+      return true;
+    }
+
+    if (w.location && w.location.hash === "#checkout") {
+      return true;
+    }
+
+    return false;
+  }
+
+  function removeOpenState(node) {
+    if (!node) return;
+    node.hidden = true;
+    node.setAttribute("hidden", "");
+    node.setAttribute("aria-hidden", "true");
+    node.removeAttribute("data-ff-open");
+    node.classList.remove(
+      "open",
+      "is-open",
+      "ff-is-open",
+      "active",
+      "is-active",
+      "ff-active",
+      "ff-checkout-open"
+    );
+  }
+
+  function hardClose(reason) {
+    checkoutNodes().forEach(removeOpenState);
+
+    closeButtons().forEach(function (btn) {
+      try { btn.blur(); } catch (err) {}
+    });
+
+    if (d.body) {
+      d.body.style.overflow = "";
+      d.body.style.overflowY = "";
+      d.body.style.removeProperty("overflow");
+      d.body.style.removeProperty("overflow-y");
+      d.body.setAttribute("data-ff-checkout-open", "false");
+      d.body.classList.remove(
+        "ff-checkout-open",
+        "checkout-open",
+        "overflow-hidden",
+        "is-locked",
+        "modal-open"
+      );
+    }
+
+    d.documentElement.classList.remove(
+      "ff-checkout-open",
+      "checkout-open",
+      "overflow-hidden",
+      "is-locked",
+      "modal-open"
+    );
+
+    w.__ffCheckoutOpen = false;
+    w.ffCheckoutOpen = false;
+    w.__FF_CHECKOUT_OPEN__ = false;
+
+    clearCheckoutHash();
+
+    var status = statusNode();
+    if (status) {
+      status.textContent = "Checkout closed.";
+    }
+
+    try {
+      w.dispatchEvent(new w.CustomEvent("ff:checkout-closed", {
+        detail: { reason: reason || "escape-force-close-v4" }
+      }));
+    } catch (err) {}
+  }
+
+  function nativeClose() {
+    closeButtons().forEach(function (btn) {
+      try { btn.click(); } catch (err) {}
+    });
+  }
+
+  function forceClose(reason) {
+    suppressReopenUntil = Date.now() + 700;
+
+    nativeClose();
+    hardClose(reason);
+
+    [0, 40, 120, 220, 380, 620].forEach(function (ms) {
+      w.setTimeout(function () {
+        nativeClose();
+        hardClose(reason);
+      }, ms);
+    });
+  }
+
+  function onEscape(e) {
+    var key = e.key || e.code || "";
+
+    if (key !== "Escape" && key !== "Esc") {
+      return;
+    }
+
+    if (!anyCheckoutOpen()) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") {
+      e.stopImmediatePropagation();
+    }
+
+    forceClose("escape-force-close-v4");
+  }
+
+  function blockImmediateReopen(e) {
+    if (Date.now() > suppressReopenUntil) {
+      return;
+    }
+
+    var t = e.target;
+    if (!t || !t.closest) {
+      return;
+    }
+
+    var opener = t.closest('[data-ff-open-checkout], a[href="#checkout"]');
+    if (!opener) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") {
+      e.stopImmediatePropagation();
+    }
+
+    hardClose("blocked-immediate-reopen");
+  }
+
+  function blockHashReopen() {
+    if (Date.now() <= suppressReopenUntil && w.location && w.location.hash === "#checkout") {
+      hardClose("blocked-hash-reopen");
+    }
+  }
+
+  w.addEventListener("keydown", onEscape, true);
+  w.addEventListener("keyup", onEscape, true);
+  d.addEventListener("keydown", onEscape, true);
+  d.addEventListener("keyup", onEscape, true);
+  d.addEventListener("click", blockImmediateReopen, true);
+  w.addEventListener("hashchange", blockHashReopen, true);
+
+  if (d.body) {
+    d.body.addEventListener("keydown", onEscape, true);
+    d.body.addEventListener("keyup", onEscape, true);
+  }
+})();
+/* FF_ESCAPE_FORCE_CLOSE_V2_END */

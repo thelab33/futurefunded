@@ -585,6 +585,14 @@ Intent:
   data-ff-share-url="{{ _share_url_resolved|e }}"
   data-ff-return-url="{{ _stripe_return|e }}"
 >
+
+  <button
+    id="ff_focus_probe"
+    class="ff-focus-probe"
+    type="button"
+    tabindex="0"
+  >Focus probe</button>
+
   {% set _program_goal_shared = (_goal_total|default(_goal_effective|default(10000, true), true))|float %}
   {% set _program_raised_shared = (_raised_total|default(_raised_effective|default(175, true), true))|float %}
   {% set _program_pct_shared = (((_program_raised_shared / _program_goal_shared) * 100.0) if _program_goal_shared > 0 else 0.0)|round(0, 'floor')|int %}
@@ -3049,7 +3057,7 @@ Intent:
                 <span class="ff-pill ff-pill--ghost">Add yours</span>
               </div>
 
-              <div class="ff-sponsorWallRail" aria-hidden="true">
+              <div class="ff-sponsorWallRail" data-ff-sponsor-wall-rail="" aria-hidden="true">
                 <div class="ff-sponsorGhost"></div>
                 <div class="ff-sponsorGhost"></div>
                 <div class="ff-sponsorGhost"></div>
