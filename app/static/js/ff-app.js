@@ -3,8 +3,8 @@
   "use strict";
 
   const CONTRACT = Object.freeze({
-    "activityfeed": ".ff-activityFeed",
-    "activityfeedItem": ".ff-activityFeed__item",
+    "activityfeed": "[data-ff-live-feed-list], [data-ff-live-feed], .ff-activityFeed",
+    "activityfeedItem": ".ff-liveFeed__item, .ff-activityFeed__item",
     "checkout": "#checkout",
     "checkoutActions": "[data-ff-checkout-actions]",
     "checkoutContent": "[data-ff-checkout-content]",
@@ -69,7 +69,7 @@
     "donationamounthelp": "#donationAmountHelp",
     "donationamountlegend": "#donationAmountLegend",
     "donationform": "#donationForm",
-    "donationformsecondary2": "#donationFormSecondary2",
+    "donationformsecondary2": "[data-ff-id=\"donationFormSecondary2\"]",
     "drawer": "#drawer",
     "drawerBackdrop": ".ff-drawer__backdrop",
     "drawerBlock": ".ff-drawer__block",
@@ -218,13 +218,13 @@
     "sponsorshint": "#sponsorsHint",
     "sponsorslead": "#sponsorsLead",
     "sponsorstitle": "#sponsorsTitle",
-    "sponsorwall": ".ff-sponsorWall",
-    "sponsorwallCompact": ".ff-sponsorWall--compact",
-    "sponsorwallItem": ".ff-sponsorWall__item",
-    "sponsorwallItemCompact": ".ff-sponsorWall__item--compact",
-    "sponsorwallblock": ".ff-sponsorWallBlock",
-    "sponsorwallblockCompact": ".ff-sponsorWallBlock--compact",
-    "sponsorwallempty": ".ff-sponsorWallEmpty",
+    "sponsorwall": "[data-ff-sponsor-wall]",
+    "sponsorwallCompact": "[data-ff-sponsor-wall]--compact",
+    "sponsorwallItem": "[data-ff-sponsor-wall]__item",
+    "sponsorwallItemCompact": "[data-ff-sponsor-wall]__item--compact",
+    "sponsorwallblock": "[data-ff-sponsor-wall]Block",
+    "sponsorwallblockCompact": "[data-ff-sponsor-wall]Block--compact",
+    "sponsorwallempty": "[data-ff-sponsor-wall]Empty",
     "stripeError": "[data-ff-stripe-error]",
     "stripeMount": "[data-ff-stripe-mount]",
     "stripeMsg": "[data-ff-stripe-msg]",
@@ -250,12 +250,12 @@
     "teamcardHead": ".ff-teamCard__head",
     "teamcardImg": ".ff-teamCard__img",
     "teamcardInner": ".ff-teamCard__inner",
-    "teamcardMedia": ".ff-teamCard__media",
-    "teamcardMediaBackdrop": ".ff-teamCard__mediaBackdrop",
-    "teamcardMediaPill": ".ff-teamCard__mediaPill",
-    "teamcardMediaPillGhost": ".ff-teamCard__mediaPill--ghost",
-    "teamcardMediaShade": ".ff-teamCard__mediaShade",
-    "teamcardMediaTop": ".ff-teamCard__mediaTop",
+    "teamcardMedia": ".ff-teamCard__media, .ff-teamCard__mediaBackdrop",
+    "teamcardMediaBackdrop": ".ff-teamCard__media, .ff-teamCard__mediaBackdropBackdrop",
+    "teamcardMediaPill": ".ff-teamCard__media, .ff-teamCard__mediaBackdropPill",
+    "teamcardMediaPillGhost": ".ff-teamCard__media, .ff-teamCard__mediaBackdropPill--ghost",
+    "teamcardMediaShade": ".ff-teamCard__media, .ff-teamCard__mediaBackdropShade",
+    "teamcardMediaTop": ".ff-teamCard__media, .ff-teamCard__mediaBackdropTop",
     "teamcardMeta": ".ff-teamCard__meta",
     "teamcardMeter": ".ff-teamCard__meter",
     "teamcardMeterBar": ".ff-teamCard__meterBar",
@@ -301,7 +301,7 @@
     "videoStatus": "[data-ff-video-status]",
     "videoTitle": "[data-ff-video-title]",
     "videoframe": ".ff-videoFrame",
-    "videomount": ".ff-videoMount",
+    "videomount": ".ff-videoMount"
   });
 
   function getHTMLSelectors() {
@@ -358,95 +358,104 @@ Preloads Stripe before checkout opens
 Removes blank payment element delay
 -------------------------------------------------- */
 
-(function(){
-"use strict";
+(function () {
+  "use strict";
 
-let stripePreloaded = false;
+  let stripePreloaded = false;
 
-function markLoaded(node){
-  if (!node) return;
-  node.setAttribute("data-loaded", "true");
-  node.setAttribute("data-ff-loaded", "true");
-}
-
-function preloadStripe(){
-  const src = "https://js.stripe.com/v3/";
-  const existing =
-    document.getElementById("ffStripeJs") ||
-    document.querySelector('script[src="' + src + '"]');
-
-  if (existing) {
-    stripePreloaded = true;
-    if (window.Stripe) {
-      markLoaded(existing);
-    } else {
-      existing.addEventListener("load", function(){ markLoaded(existing); }, { once:true });
-    }
-    return;
+  function markLoaded(node) {
+    if (!node) return;
+    node.setAttribute("data-loaded", "true");
+    node.setAttribute("data-ff-loaded", "true");
   }
 
-  if (stripePreloaded) return;
-  stripePreloaded = true;
+  function preloadStripe() {
+    const src = "https://js.stripe.com/v3/";
+    const existing =
+      document.getElementById("ffStripeJs") ||
+      document.querySelector('script[src]');
 
-  const s = document.createElement("script");
-  s.id = "ffStripeJs";
-  s.src = src;
-  s.async = true;
-  s.defer = true;
-  s.crossOrigin = "anonymous";
-  s.dataset.ffStripePreload = "true";
-  s.setAttribute("data-ff-loaded", "false");
-  s.addEventListener("load", function(){ markLoaded(s); }, { once:true });
+    if (existing) {
+      stripePreloaded = true;
+      if (window.Stripe) {
+        markLoaded(existing);
+      } else if (!existing.__ffStripeLoadBound) {
+        existing.__ffStripeLoadBound = true;
+        existing.addEventListener("load", function () { markLoaded(existing); }, { once: true });
+      }
+      return;
+    }
 
-  document.head.appendChild(s);
-}
+    if (stripePreloaded) return;
+    stripePreloaded = true;
 
-function attachPrewarm(){
-  const triggers = document.querySelectorAll(
-    '[data-ff-open-checkout], .ff-donate-btn, a[href="#checkout"]'
-  );
+    const s = document.createElement("script");
+    s.id = "ffStripeJs";
+    s.src = src;
+    s.async = true;
+    s.defer = true;
+    s.crossOrigin = "anonymous";
+    s.dataset.ffStripePreload = "true";
+    s.setAttribute("data-ff-loaded", "false");
+    s.addEventListener("load", function () { markLoaded(s); }, { once: true });
 
-  triggers.forEach(btn=>{
-    btn.addEventListener("mouseenter", preloadStripe, {once:true});
-    btn.addEventListener("touchstart", preloadStripe, {once:true});
-    btn.addEventListener("focus", preloadStripe, {once:true});
-  });
-}
+    if (document.head) {
+      document.head.appendChild(s);
+    }
+  }
 
-if(document.readyState === "loading"){
-  document.addEventListener("DOMContentLoaded", attachPrewarm, { once:true });
-}else{
-  attachPrewarm();
-}
+  function bindTrigger(btn) {
+    if (!btn || btn.dataset.ffStripePrewarmBound === "true") return;
+    btn.dataset.ffStripePrewarmBound = "true";
+    btn.addEventListener("mouseenter", preloadStripe, { once: true });
+    btn.addEventListener("touchstart", preloadStripe, { once: true });
+    btn.addEventListener("focus", preloadStripe, { once: true });
+  }
 
+  function attachPrewarm() {
+    const triggers = document.querySelectorAll(
+      '[data-ff-open-checkout], .ff-donate-btn, a[href="#checkout"]'
+    );
+
+    triggers.forEach(bindTrigger);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attachPrewarm, { once: true });
+  } else {
+    attachPrewarm();
+  }
 })();
 
 
 /* Stripe mount safety */
-(function(){
+(function () {
   const mount =
     document.querySelector('[data-ff-stripe-mount]') ||
     document.querySelector('[data-ff-payment-element]') ||
     document.querySelector('#paymentElement');
 
-  if(!mount){
-    console.warn("Stripe mount point missing");
+  if (!mount) {
+    window.__FF_STRIPE_MOUNT__ = null;
+    window.__FF_STRIPE_MOUNT_MISSING__ = true;
     return;
   }
 
   window.__FF_STRIPE_MOUNT__ = mount;
+  window.__FF_STRIPE_MOUNT_MISSING__ = false;
 })();
+
 /* FF_RUNTIME_BOOT */
-(function(){
+(function () {
   window.ff = window.ff || {};
-  if(!window.ff.version) window.ff.version = "dev";
+  if (!window.ff.version) window.ff.version = "dev";
 
   window.FF_APP = window.FF_APP || {};
   window.FF_APP.api = window.FF_APP.api || {};
 
-  window.FF_APP.api.contractSnapshot = function(){
+  window.FF_APP.api.contractSnapshot = function () {
     const overlays = {};
-    ["checkout","sponsor-interest","press-video","terms","privacy"].forEach(id=>{
+    ["checkout", "sponsor-interest", "press-video", "terms", "privacy", "drawer"].forEach(id => {
       const el = document.getElementById(id);
       overlays[id] = { exists: !!el };
     });
@@ -516,6 +525,70 @@ Hook-safe, deterministic, CSP-safe runtime for:
     } catch (err) {
       return fallback;
     }
+  }
+
+  function extractErrorMessage(input, fallback) {
+    var base = (typeof fallback === "string" && fallback.trim())
+      ? fallback.trim()
+      : "Something went wrong. Please try again.";
+
+    if (input == null) return base;
+
+    if (typeof input === "string") {
+      var str = input.trim();
+      if (!str || str === "[object Object]") return base;
+      return str;
+    }
+
+    if (input instanceof Error) {
+      if (input.data) {
+        var fromData = extractErrorMessage(input.data, "");
+        if (fromData) return fromData;
+      }
+      if (typeof input.message === "string") {
+        var fromMessage = input.message.trim();
+        if (fromMessage && fromMessage !== "[object Object]") return fromMessage;
+      }
+      return base;
+    }
+
+    if (Array.isArray(input)) {
+      for (var i = 0; i < input.length; i += 1) {
+        var fromArray = extractErrorMessage(input[i], "");
+        if (fromArray) return fromArray;
+      }
+      return base;
+    }
+
+    if (typeof input === "object") {
+      var candidates = [
+        input.message,
+        input.detail,
+        input.description,
+        input.reason,
+        input.statusText,
+        input.title,
+        input.error && input.error.message ? input.error.message : input.error
+      ];
+
+      if (Array.isArray(input.errors)) {
+        candidates = candidates.concat(input.errors);
+      }
+
+      for (var j = 0; j < candidates.length; j += 1) {
+        var candidate = extractErrorMessage(candidates[j], "");
+        if (candidate) return candidate;
+      }
+
+      try {
+        var json = JSON.stringify(input);
+        if (json && json !== "{}" && json !== "[]" && json !== '"[object Object]"') {
+          return json;
+        }
+      } catch (err) {}
+    }
+
+    return base;
   }
 
   function byId(id) {
@@ -600,6 +673,17 @@ Hook-safe, deterministic, CSP-safe runtime for:
     return probe || null;
   }
 
+  function canFocus(node) {
+    return !!(
+      node &&
+      typeof node.focus === "function" &&
+      node.isConnected !== false &&
+      !node.hidden &&
+      node.getAttribute &&
+      node.getAttribute("aria-hidden") !== "true"
+    );
+  }
+
   function prettyLabel(raw) {
     var v = String(raw || "").trim();
     if (!v) return "Program preview";
@@ -613,9 +697,14 @@ Hook-safe, deterministic, CSP-safe runtime for:
     var cfgNode = byId("ffConfig");
     var selectorNode = byId("ffSelectors");
     var cfg = cfgNode ? safeJsonParse(cfgNode.textContent || "{}", {}) : {};
-    var selectors = selectorNode ? safeJsonParse(selectorNode.textContent || "{}", {}) : {};
+    var selectorPayload = selectorNode ? safeJsonParse(selectorNode.textContent || "{}", {}) : {};
+    var selectorHooks = selectorPayload && selectorPayload.hooks && typeof selectorPayload.hooks === "object"
+      ? selectorPayload.hooks
+      : (selectorPayload && typeof selectorPayload === "object" ? selectorPayload : {});
+
     FF_APP.cfg = cfg || {};
-    FF_APP.selectors = selectors && selectors.hooks ? selectors.hooks : {};
+    FF_APP.selectors = Object.keys(selectorHooks || {}).length ? selectorHooks : (w.FF_SELECTORS || {});
+
     return {
       cfg: FF_APP.cfg,
       selectors: FF_APP.selectors
@@ -658,6 +747,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     donationForm: byId("donationForm"),
     sponsorForm: byId("sponsorForm"),
     donationAmount: qs("[data-ff-amount-input]"),
+    summaryAmount: qs("[data-ff-summary-amount]"),
     donationError: qs("[data-ff-checkout-error]"),
     donationStatus: qs("[data-ff-checkout-status]"),
     sponsorError: qs("[data-ff-sponsor-error]"),
@@ -681,7 +771,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     tickerTrack: qs("[data-ff-ticker-track]"),
     qrImages: qsa("[data-ff-qr-src]"),
     focusProbe: byId("ff_focus_probe") || byId("__ff_focus_probe__"),
-    activityFeed: qs("[data-ff-live-feed]"),
+    activityFeed: qs("[data-ff-live-feed-list]") || qs("[data-ff-live-feed]"),
     ffLive: byId("ffLive"),
     onboardingModal: qs("[data-ff-onboard-modal]"),
     checkoutSheet: qs("[data-ff-checkout-sheet]"),
@@ -834,12 +924,14 @@ Hook-safe, deterministic, CSP-safe runtime for:
       el.classList.add("is-open");
       attr(el, "data-open", "true");
       attr(el, "aria-hidden", "false");
+      syncOverlayTriggerState(overlay.id, true);
       return;
     }
     el.classList.remove("is-open");
     attr(el, "data-open", "false");
     attr(el, "aria-hidden", "true");
     el.hidden = true;
+    syncOverlayTriggerState(overlay.id, false);
   }
 
   function getOverlayById(id) {
@@ -852,11 +944,30 @@ Hook-safe, deterministic, CSP-safe runtime for:
     return null;
   }
 
+  function syncOverlayTriggerState(id, open) {
+    var selectorMap = {
+      "checkout": "[data-ff-open-checkout]",
+      "sponsor-interest": "[data-ff-open-sponsor]",
+      "press-video": "[data-ff-open-video]",
+      "terms": "[data-ff-open-terms], a[href=\"#terms\"]",
+      "privacy": "[data-ff-open-privacy], a[href=\"#privacy\"]",
+      "drawer": "[data-ff-open-drawer]"
+    };
+
+    var selector = selectorMap[id];
+    if (!selector) return;
+
+    qsa(selector).forEach(function (node) {
+      if (!node || !node.getAttribute) return;
+      attr(node, "aria-expanded", open ? "true" : "false");
+    });
+  }
+
   function getAnyOpenOverlay() {
     var keys = Object.keys(overlays);
     for (var i = 0; i < keys.length; i += 1) {
       var ov = overlays[keys[i]];
-      if (!ov || !ov.el) continue;
+      if (!ov || !ov.el || ov.el.hidden) continue;
       if (ov.el.classList.contains("is-open")) return ov;
       if (ov.el.getAttribute("data-open") === "true") return ov;
       if (ov.el.getAttribute("aria-hidden") === "false") return ov;
@@ -866,7 +977,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function focusPanel(overlay) {
-    if (!overlay || !overlay.panel) return;
+    if (!overlay || !overlay.panel || !canFocus(overlay.panel)) return;
     w.requestAnimationFrame(function () {
       try {
         overlay.panel.focus({ preventScroll: false });
@@ -879,8 +990,8 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function clearHashIfMatches(id) {
-    if (id && w.location.hash === "#" + id) {
-      history.pushState("", d.title, w.location.pathname + w.location.search);
+    if (id && w.location.hash === "#" + id && w.history && typeof w.history.pushState === "function") {
+      w.history.pushState("", d.title, w.location.pathname + w.location.search);
     }
   }
 
@@ -893,6 +1004,16 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
     if (overlay.id === "press-video") {
       unmountVideo();
+    }
+
+    if (overlay.id === "checkout") {
+      hideStatus(dom.donationError);
+      hideStatus(dom.donationStatus);
+      hideStatus(dom.stripeError);
+      hideStatus(dom.paypalError);
+      w.setTimeout(function () {
+        resetCheckoutSuccess();
+      }, 0);
     }
 
     if (state.openOverlayId === overlay.id) {
@@ -908,8 +1029,12 @@ Hook-safe, deterministic, CSP-safe runtime for:
     }
 
     if (opts.returnFocus !== false) {
-      var target = state.overlayReturnFocus || state.lastFocused || getFocusProbe();
-      if (target && typeof target.focus === "function") {
+      var target =
+        (canFocus(state.overlayReturnFocus) && state.overlayReturnFocus) ||
+        (canFocus(state.lastFocused) && state.lastFocused) ||
+        getFocusProbe();
+
+      if (canFocus(target)) {
         w.requestAnimationFrame(function () {
           try {
             target.focus({ preventScroll: true });
@@ -934,7 +1059,10 @@ Hook-safe, deterministic, CSP-safe runtime for:
     }
     lockScroll(false);
 
-    if (opts.updateHash !== false && /^#(checkout|sponsor-interest|press-video|terms|privacy|drawer)$/.test(w.location.hash)) {
+    if (
+      opts.updateHash !== false &&
+      /^#(checkout|sponsor-interest|press-video|terms|privacy|drawer)$/.test(w.location.hash)
+    ) {
       clearHashIfMatches(w.location.hash.slice(1));
     }
   }
@@ -953,15 +1081,25 @@ Hook-safe, deterministic, CSP-safe runtime for:
     var keys = Object.keys(overlays);
     for (var i = 0; i < keys.length; i += 1) {
       var ov = overlays[keys[i]];
-      if (ov && ov.id !== overlay.id) applyOverlayState(ov, false);
+      if (ov && ov.id !== overlay.id) {
+        closeOverlay(ov.id, {
+          updateHash: false,
+          returnFocus: false
+        });
+      }
     }
 
     applyOverlayState(overlay, true);
     state.openOverlayId = overlay.id;
     lockScroll(true);
 
-    if (opts.updateHash !== false && w.location.hash !== "#" + overlay.id) {
-      history.pushState("", d.title, "#" + overlay.id);
+    if (
+      opts.updateHash !== false &&
+      w.location.hash !== "#" + overlay.id &&
+      w.history &&
+      typeof w.history.pushState === "function"
+    ) {
+      w.history.pushState("", d.title, "#" + overlay.id);
     }
 
     if (overlay.id === "checkout") {
@@ -1056,7 +1194,80 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function showStatus(node, message) {
     if (!node) return;
     node.hidden = false;
-    node.textContent = message;
+    node.textContent = extractErrorMessage(message, "");
+  }
+
+  function setSurfaceHidden(node, hidden) {
+    if (!node) return;
+    node.hidden = !!hidden;
+    attr(node, "aria-hidden", hidden ? "true" : "false");
+  }
+
+  function setStripeUiState(stateName, message) {
+    var loading = stateName === "loading";
+    if (dom.paymentMount) {
+      attr(dom.paymentMount, "aria-busy", loading ? "true" : "false");
+      attr(dom.paymentMount, "data-ff-state", stateName || "idle");
+    }
+    setSurfaceHidden(dom.stripeSkeleton, !loading);
+    if (stateName !== "error") hideStatus(dom.stripeError);
+
+    if (message) {
+      showStatus(dom.stripeMsg, message);
+    } else if (stateName === "idle") {
+      hideStatus(dom.stripeMsg);
+    }
+  }
+
+  function setPayPalUiState(stateName, message) {
+    var loading = stateName === "loading";
+    if (dom.paypalMount) {
+      attr(dom.paypalMount, "aria-busy", loading ? "true" : "false");
+      attr(dom.paypalMount, "data-ff-state", stateName || "idle");
+    }
+    setSurfaceHidden(dom.paypalSkeleton, !loading);
+    if (stateName !== "error") hideStatus(dom.paypalError);
+
+    if (message) {
+      showStatus(dom.paypalMsg, message);
+    } else if (stateName === "idle") {
+      hideStatus(dom.paypalMsg);
+    }
+  }
+
+  function focusSuccessState() {
+    var target =
+      byId("ffSuccessTitle") ||
+      qs('[data-ff-checkout-success] .ff-h2, [data-ff-checkout-success] .ff-h3');
+
+    if (!canFocus(target)) return;
+
+    w.requestAnimationFrame(function () {
+      try {
+        target.setAttribute("tabindex", "-1");
+        target.focus({ preventScroll: false });
+      } catch (err) {
+        try { target.focus(); } catch (_) {}
+      }
+    });
+  }
+
+  function primePaymentSurfaces() {
+    updateSummaryAmount(parseAmount(dom.donationAmount && dom.donationAmount.value));
+
+    if (!dom.paymentMount) {
+      setStripeUiState("unavailable", "Card checkout is unavailable right now.");
+    } else {
+      setStripeUiState("idle", "Enter an amount to prepare card checkout.");
+    }
+
+    if (!dom.paypalMount) {
+      setPayPalUiState("unavailable", "PayPal is unavailable right now.");
+    } else if (!config.paypalClientId) {
+      setPayPalUiState("unavailable", "PayPal is not enabled on this page.");
+    } else {
+      setPayPalUiState("idle", "Enter an amount to load PayPal.");
+    }
   }
 
   function getSponsorContactEmail() {
@@ -1078,10 +1289,10 @@ Hook-safe, deterministic, CSP-safe runtime for:
           return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch];
         });
 
-    var mailto = email ? ('mailto:' + safeEmail) : '';
+    var mailto = email ? ("mailto:" + safeEmail) : "";
     var contactLine = email
       ? 'Our sponsorship team will follow up at <a class="ff-link ff-sponsorSuccessCard__email" href="' + mailto + '">' + safeEmail + '</a>.'
-      : 'Our sponsorship team will follow up soon.';
+      : "Our sponsorship team will follow up soon.";
 
     dom.sponsorSuccess.hidden = false;
     dom.sponsorSuccess.innerHTML = [
@@ -1090,17 +1301,17 @@ Hook-safe, deterministic, CSP-safe runtime for:
           '<div class="ff-sponsorSuccessCard__pillRow" role="list" aria-label="Sponsor inquiry status">',
             '<span class="ff-pill ff-pill--soft" role="listitem">Inquiry received</span>',
             '<span class="ff-pill ff-pill--ghost" role="listitem">Follow-up next</span>',
-          '</div>',
+          "</div>",
           '<p class="ff-kicker ff-m-0">Thanks</p>',
           '<h3 class="ff-h3 ff-sponsorSuccessCard__title">Thanks — we received your inquiry.</h3>',
-          '<p class="ff-help ff-sponsorSuccessCard__copy">We'll review your sponsorship interest and follow up with next steps, placement options, and timing.</p>',
-          '<p class="ff-help ff-sponsorSuccessCard__meta">' + contactLine + '</p>',
-        '</div>',
+          '<p class="ff-help ff-sponsorSuccessCard__copy">We&rsquo;ll review your sponsorship interest and follow up with next steps, placement options, and timing.</p>',
+          '<p class="ff-help ff-sponsorSuccessCard__meta">' + contactLine + "</p>",
+        "</div>",
         '<div class="ff-sponsorSuccessCard__actions" role="group" aria-label="Sponsor inquiry actions">',
           '<button type="button" class="ff-btn ff-btn--secondary ff-btn--pill" data-ff-close-sponsor="">Return to page</button>',
           '<a class="ff-btn ff-btn--primary ff-btn--pill" href="#sponsors">View sponsor section</a>',
-        '</div>',
-      '</section>'
+        "</div>",
+      "</section>"
     ].join("");
   }
 
@@ -1110,6 +1321,10 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
     if (!data.amount || data.amount <= 0) {
       return { ok: false, field: "amount", message: "Enter a valid donation amount." };
+    }
+
+    if (!data.name) {
+      return { ok: false, field: "name", message: "Enter your name before completing support." };
     }
 
     if (config.requireEmail && !isValidEmail(data.email)) {
@@ -1156,6 +1371,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
     syncAmountChipState(numeric);
     updatePayMessages(numeric);
+    updateSummaryAmount(numeric);
 
     if ((opts || {}).announce !== false && numeric > 0) {
       announce("Donation amount set to " + formatMoney(numeric) + ".");
@@ -1183,6 +1399,11 @@ Hook-safe, deterministic, CSP-safe runtime for:
     }
   }
 
+  function updateSummaryAmount(amount) {
+    if (!dom.summaryAmount) return;
+    text(dom.summaryAmount, formatMoney(amount || 0));
+  }
+
   function applyCheckoutPrefill(prefill) {
     if (!dom.donationForm) return;
     prefill = prefill || {};
@@ -1191,20 +1412,26 @@ Hook-safe, deterministic, CSP-safe runtime for:
       setAmount(prefill.amount, { announce: false });
     }
 
-    if (prefill.teamId) ensureHiddenInput(dom.donationForm, "team_id", prefill.teamId);
-    if (prefill.playerId) ensureHiddenInput(dom.donationForm, "player_id", prefill.playerId);
-    if (prefill.sponsorTier) ensureHiddenInput(dom.donationForm, "sponsor_tier", prefill.sponsorTier);
-    if (prefill.sponsorAmount) ensureHiddenInput(dom.donationForm, "sponsor_amount", prefill.sponsorAmount);
+    ensureHiddenInput(dom.donationForm, "team_id", prefill.teamId || "default");
+    ensureHiddenInput(dom.donationForm, "player_id", prefill.playerId || "");
+    ensureHiddenInput(dom.donationForm, "sponsor_tier", prefill.sponsorTier || "");
+    ensureHiddenInput(dom.donationForm, "sponsor_amount", prefill.sponsorAmount || "");
 
-    state.lastPrefill = prefill;
+    state.lastPrefill = {
+      amount: prefill.amount != null ? prefill.amount : "",
+      teamId: prefill.teamId || "default",
+      playerId: prefill.playerId || "",
+      sponsorTier: prefill.sponsorTier || "",
+      sponsorAmount: prefill.sponsorAmount || ""
+    };
   }
 
   function applySponsorPrefill(prefill) {
     if (!dom.sponsorForm) return;
     prefill = prefill || {};
     var hidden = qs('[name="sponsor_tier"]', dom.sponsorForm);
-    if (hidden && prefill.sponsorTier) {
-      hidden.value = prefill.sponsorTier;
+    if (hidden) {
+      hidden.value = prefill.sponsorTier || "";
     }
     syncSponsorTierState(prefill.sponsorTier || "");
   }
@@ -1304,14 +1531,21 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function fetchJson(url, options) {
     return fetch(url, options).then(function (res) {
       return res.text().then(function (raw) {
-        var data = safeJsonParse(raw || "{}", {});
+        var data = safeJsonParse(raw || "{}", null);
+
+        if (data == null) {
+          data = raw ? { raw: raw } : {};
+        }
+
         if (!res.ok) {
-          var message = data && (data.error || data.message) ? (data.error || data.message) : ("Request failed (" + res.status + ")");
+          var message = extractErrorMessage(data, "Request failed (" + res.status + ")");
           var err = new Error(message);
           err.status = res.status;
           err.data = data;
+          err.raw = raw;
           throw err;
         }
+
         return data;
       });
     });
@@ -1380,7 +1614,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
         }
       }
 
-      var existing = qsa('script[src="' + src + '"]')[0];
+      var existing = qsa('script[src]')[0];
       if (existing) {
         if (resolveIfReady(existing)) return;
         existing.addEventListener("load", function () {
@@ -1445,14 +1679,22 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function createStripeIntent(data) {
+    var amountCents = Math.max(0, Math.round(toNumber(data.amount, 0) * 100));
+    var sponsorAmountCents = Math.max(0, Math.round(toNumber(data.sponsor_amount, 0) * 100));
+
     var payload = {
+      amount_cents: amountCents,
       amount: data.amount,
       currency: data.currency,
       team_id: data.team_id,
       player_id: data.player_id,
       sponsor_tier: data.sponsor_tier,
       sponsor_amount: data.sponsor_amount,
+      sponsor_amount_cents: sponsorAmountCents,
       return_url: data.return_url,
+      name: data.name,
+      email: data.email,
+      message: data.message,
       donor_email: data.email,
       donor_name: data.name,
       donor_message: data.message
@@ -1505,6 +1747,11 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function ensureStripeIntent(force) {
+    if (!dom.paymentMount) {
+      setStripeUiState("unavailable", "Card checkout is unavailable right now.");
+      return Promise.reject(new Error("Stripe mount is unavailable."));
+    }
+
     var validation = validateDonationForm();
 
     if (!validation.ok) {
@@ -1524,8 +1771,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     }
 
     state.stripeLoading = true;
-    if (dom.stripeMsg) showStatus(dom.stripeMsg, "Preparing secure card entry…");
-    if (dom.stripeError) hideStatus(dom.stripeError);
+    setStripeUiState("loading", "Preparing secure card entry…");
 
     return createStripeIntent(data)
       .then(function (response) {
@@ -1539,13 +1785,15 @@ Hook-safe, deterministic, CSP-safe runtime for:
         return ensureStripeReady(publishableKey).then(function () {
           return mountStripeElement(clientSecret).then(function () {
             state.stripeIntentKey = intentKey;
-            if (dom.stripeMsg) showStatus(dom.stripeMsg, "Secure card entry is ready.");
+            setStripeUiState("ready", "Secure card entry is ready.");
             return response;
           });
         });
       })
       .catch(function (err) {
-        if (dom.stripeError) showStatus(dom.stripeError, err.message || "Unable to prepare Stripe checkout.");
+        var message = extractErrorMessage(err, "Unable to prepare Stripe checkout.");
+        setStripeUiState("error", "Card checkout needs attention.");
+        if (dom.stripeError) showStatus(dom.stripeError, message);
         throw err;
       })
       .finally(function () {
@@ -1578,14 +1826,41 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function showCheckoutSuccess(message) {
-    if (dom.checkoutStage) dom.checkoutStage.hidden = true;
-    if (dom.checkoutSuccess) dom.checkoutSuccess.hidden = false;
+    hideStatus(dom.donationError);
+    hideStatus(dom.donationStatus);
+    hideStatus(dom.stripeError);
+    hideStatus(dom.paypalError);
+
+    if (dom.checkoutStage) {
+      dom.checkoutStage.hidden = true;
+      attr(dom.checkoutStage, "aria-hidden", "true");
+    }
+
+    if (dom.checkoutSuccess) {
+      dom.checkoutSuccess.hidden = false;
+      attr(dom.checkoutSuccess, "aria-hidden", "false");
+    }
+
+    focusSuccessState();
     if (message) announce(message);
   }
 
   function resetCheckoutSuccess() {
-    if (dom.checkoutStage) dom.checkoutStage.hidden = false;
-    if (dom.checkoutSuccess) dom.checkoutSuccess.hidden = true;
+    if (dom.checkoutStage) {
+      dom.checkoutStage.hidden = false;
+      attr(dom.checkoutStage, "aria-hidden", "false");
+    }
+
+    if (dom.checkoutSuccess) {
+      dom.checkoutSuccess.hidden = true;
+      attr(dom.checkoutSuccess, "aria-hidden", "true");
+    }
+
+    hideStatus(dom.donationError);
+    hideStatus(dom.donationStatus);
+    hideStatus(dom.stripeError);
+    hideStatus(dom.paypalError);
+    primePaymentSurfaces();
   }
 
   function loadPayPalSdk() {
@@ -1611,13 +1886,21 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function createPayPalOrder(data) {
+    var amountCents = Math.max(0, Math.round(toNumber(data.amount, 0) * 100));
+    var sponsorAmountCents = Math.max(0, Math.round(toNumber(data.sponsor_amount, 0) * 100));
+
     var payload = {
+      amount_cents: amountCents,
       amount: data.amount,
       currency: data.currency,
       team_id: data.team_id,
       player_id: data.player_id,
       sponsor_tier: data.sponsor_tier,
       sponsor_amount: data.sponsor_amount,
+      sponsor_amount_cents: sponsorAmountCents,
+      name: data.name,
+      email: data.email,
+      message: data.message,
       donor_email: data.email,
       donor_name: data.name,
       donor_message: data.message
@@ -1631,9 +1914,12 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function capturePayPalOrder(data, orderID) {
     var payload = {
       order_id: orderID,
+      amount_cents: Math.max(0, Math.round(toNumber(data.amount, 0) * 100)),
       amount: data.amount,
       currency: data.currency,
       team_id: data.team_id,
+      email: data.email,
+      name: data.name,
       donor_email: data.email,
       donor_name: data.name
     };
@@ -1650,10 +1936,16 @@ Hook-safe, deterministic, CSP-safe runtime for:
     while (dom.paypalMount.firstChild) {
       dom.paypalMount.removeChild(dom.paypalMount.firstChild);
     }
-    dom.paypalMount.removeAttribute("data-rendered");
+    dom.paypalMount.setAttribute("data-rendered", "false");
+    attr(dom.paypalMount, "data-ff-state", "idle");
   }
 
   function renderPayPalButtons() {
+    if (!dom.paypalMount) {
+      setPayPalUiState("unavailable", "PayPal is unavailable right now.");
+      return Promise.reject(new Error("PayPal mount is unavailable."));
+    }
+
     var validation = validateDonationForm();
     if (!validation.ok) {
       if (dom.paypalMsg) showStatus(dom.paypalMsg, validation.message || "Enter an amount to load PayPal.");
@@ -1667,13 +1959,17 @@ Hook-safe, deterministic, CSP-safe runtime for:
       return Promise.resolve();
     }
 
+    if (!config.paypalClientId) {
+      setPayPalUiState("unavailable", "PayPal is not enabled on this page.");
+      return Promise.reject(new Error("PayPal is not configured."));
+    }
+
     if (state.paypalLoading) {
       return Promise.reject(new Error("PayPal is already loading."));
     }
 
     state.paypalLoading = true;
-    if (dom.paypalError) hideStatus(dom.paypalError);
-    if (dom.paypalMsg) showStatus(dom.paypalMsg, "Loading PayPal…");
+    setPayPalUiState("loading", "Loading PayPal…");
 
     return loadPayPalSdk()
       .then(function (paypal) {
@@ -1699,19 +1995,22 @@ Hook-safe, deterministic, CSP-safe runtime for:
             });
           },
           onError: function (err) {
-            if (dom.paypalError) showStatus(dom.paypalError, err && err.message ? err.message : "PayPal checkout failed.");
+            var message = extractErrorMessage(err, "PayPal checkout failed.");
+            if (dom.paypalError) showStatus(dom.paypalError, message);
           },
           onCancel: function () {
-            if (dom.paypalMsg) showStatus(dom.paypalMsg, "PayPal checkout cancelled.");
+            setPayPalUiState("idle", "PayPal checkout cancelled.");
           }
         }).render(dom.paypalMount).then(function () {
           dom.paypalMount.setAttribute("data-rendered", "true");
           state.paypalRenderedKey = renderKey;
-          if (dom.paypalMsg) showStatus(dom.paypalMsg, "PayPal is ready.");
+          setPayPalUiState("ready", "PayPal is ready.");
         });
       })
       .catch(function (err) {
-        if (dom.paypalError) showStatus(dom.paypalError, err.message || "Unable to load PayPal.");
+        var message = extractErrorMessage(err, "Unable to load PayPal.");
+        setPayPalUiState("error", "PayPal needs attention.");
+        if (dom.paypalError) showStatus(dom.paypalError, message);
         throw err;
       })
       .finally(function () {
@@ -1721,7 +2020,9 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
   function lazyInitPayments() {
     var amount = parseAmount(dom.donationAmount && dom.donationAmount.value);
+    primePaymentSurfaces();
     updatePayMessages(amount);
+    updateSummaryAmount(amount);
     if (amount > 0) {
       scheduleStripeRefresh();
       schedulePaypalRefresh();
@@ -1760,6 +2061,18 @@ Hook-safe, deterministic, CSP-safe runtime for:
       return;
     }
 
+    if (!dom.paymentMount && config.paypalClientId) {
+      showStatus(dom.donationError, "Card checkout is unavailable right now. Use the PayPal button below to complete support.");
+      toast("Use PayPal below to complete support.", "info");
+      return;
+    }
+
+    if (!dom.paymentMount) {
+      showStatus(dom.donationError, "Card checkout is unavailable right now.");
+      toast("Card checkout is unavailable right now.", "error");
+      return;
+    }
+
     showStatus(dom.donationStatus, "Preparing secure payment…");
 
     ensureStripeIntent(false)
@@ -1773,9 +2086,10 @@ Hook-safe, deterministic, CSP-safe runtime for:
         toast("Donation received.", "success");
       })
       .catch(function (err) {
+        var message = extractErrorMessage(err, "Unable to complete the donation.");
         hideStatus(dom.donationStatus);
-        showStatus(dom.donationError, err.message || "Unable to complete the donation.");
-        toast(err.message || "Unable to complete the donation.", "error");
+        showStatus(dom.donationError, message);
+        toast(message, "error");
       });
   }
 
@@ -1815,9 +2129,10 @@ Hook-safe, deterministic, CSP-safe runtime for:
         }
       })
       .catch(function (err) {
+        var message = extractErrorMessage(err, "Unable to send your sponsor inquiry.");
         hideStatus(dom.sponsorStatus);
-        showStatus(dom.sponsorError, err.message || "Unable to send your sponsor inquiry.");
-        toast(err.message || "Unable to send your sponsor inquiry.", "error");
+        showStatus(dom.sponsorError, message);
+        toast(message, "error");
       });
   }
 
@@ -2047,7 +2362,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function pushActivityItem(message) {
     if (!dom.activityFeed || !message) return;
 
-    var item = createEl("div", "ff-activityFeed__item", message);
+    var item = createEl("div", "ff-liveFeed__item ff-activityFeed__item", message);
     dom.activityFeed.insertBefore(item, dom.activityFeed.firstChild || null);
 
     while (dom.activityFeed.children.length > 5) {
@@ -2133,12 +2448,32 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
   function inspectPaymentReturn() {
     var params = new URLSearchParams(w.location.search);
-    if (
+    var successish = !!(
       params.get("payment_intent") ||
       params.get("payment_intent_client_secret") ||
       params.get("ff_success") === "1" ||
       params.get("paypal_success") === "1"
-    ) {
+    );
+
+    if (!successish) {
+      var keys = ["checkout", "payment", "donation", "status", "success"];
+      for (var i = 0; i < keys.length; i += 1) {
+        var value = String(params.get(keys[i]) || "").toLowerCase();
+        if (
+          value === "1" ||
+          value === "true" ||
+          value === "success" ||
+          value === "paid" ||
+          value === "complete" ||
+          value === "completed"
+        ) {
+          successish = true;
+          break;
+        }
+      }
+    }
+
+    if (successish) {
       showCheckoutSuccess("Donation received. Your confirmation will arrive by email shortly.");
     }
   }
@@ -2205,9 +2540,9 @@ Hook-safe, deterministic, CSP-safe runtime for:
     img.dataset.ffFallbackBound = "true";
 
     function applyFallback() {
-      var wrap = img.closest(".ff-teamCard__media") ||
+      var wrap = img.closest(".ff-teamCard__media, .ff-teamCard__mediaBackdrop") ||
         img.closest(".ff-storyPoster") ||
-        img.closest(".ff-railcard") ||
+        img.closest("") ||
         img.parentElement;
 
       if (!wrap) return;
@@ -2227,23 +2562,158 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function bindMediaFallbacks() {
-    qsa(".ff-teamCard__img, .ff-storyPoster__img, .ff-railcard__img").forEach(markMissingMedia);
-    qsa(".is-media-missing, .ff-teamCard__media.is-media-missing, .ff-storyPoster.is-media-missing, .ff-railcard.is-media-missing").forEach(function (node) {
+    qsa(".ff-teamCard__img, .ff-storyPoster__img, __img").forEach(markMissingMedia);
+    qsa(".is-media-missing, .ff-teamCard__media, .ff-teamCard__mediaBackdrop.is-media-missing, .ff-storyPoster.is-media-missing, .is-media-missing").forEach(function (node) {
       var current = node.getAttribute("data-ff-fallback-label") || "";
       node.setAttribute("data-ff-fallback-label", prettyLabel(current));
     });
   }
 
-  function validPreviewSrc(src) {
+
+  /* FF_BRAND_WORDMARK_DEDUPE_V1_START */
+  function brandComparableText(value) {
+    return String(value == null ? "" : value)
+      .replace(/\b(logo|wordmark|logotype|mark)\b/gi, " ")
+      .replace(/[_-]+/g, " ")
+      .replace(/[^a-z0-9 ]+/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function sameBrandText(a, b) {
+    var aa = brandComparableText(a);
+    var bb = brandComparableText(b);
+    if (!aa || !bb) return false;
+    return aa === bb || aa.indexOf(bb) !== -1 || bb.indexOf(aa) !== -1;
+  }
+
+  function isLikelyWordmarkImage(img, referenceText) {
+    if (!img) return false;
+
+    var alt = img.getAttribute("alt") || "";
+    var src = img.getAttribute("src") || "";
+    var aria = img.getAttribute("aria-label") || "";
+    var title = img.getAttribute("title") || "";
+    var width = img.naturalWidth || img.width || 0;
+    var height = img.naturalHeight || img.height || 0;
+    var ratio = width > 0 && height > 0 ? (width / height) : 0;
+
+    var hinted = /wordmark|logotype|logo-wide|connect-atx|futurefunded/i.test(
+      [src, alt, aria, title].join(" ")
+    );
+
+    var matchesText = sameBrandText([alt, aria, title].join(" "), referenceText || "");
+
+    return !!(hinted || matchesText || ratio >= 1.85);
+  }
+
+  function resetManagedBrandNodes(scope) {
+    if (!scope) return;
+    qsa('[data-ff-brand-managed="true"]', scope).forEach(function (node) {
+      node.classList.remove("ff-sr");
+      node.removeAttribute("data-ff-brand-managed");
+    });
+    attr(scope, "data-ff-brand-wordmark", null);
+  }
+
+  function visuallyDedupBrandNode(node) {
+    if (!node) return;
+    node.classList.add("ff-sr");
+    attr(node, "data-ff-brand-managed", "true");
+  }
+
+  function dedupeBrandBlock(scope, selectors) {
+    if (!scope || !selectors) return;
+
+    resetManagedBrandNodes(scope);
+
+    var logo = qs(selectors.logo, scope);
+    var title = qs(selectors.title, scope);
+    var sub = selectors.sub ? qs(selectors.sub, scope) : null;
+
+    if (!logo || !title) return;
+
+    var titleText = (title.textContent || "").trim();
+    var subText = sub ? (sub.textContent || "").trim() : "";
+    var logoText = [
+      logo.getAttribute("alt") || "",
+      logo.getAttribute("aria-label") || "",
+      logo.getAttribute("title") || ""
+    ].join(" ").trim();
+
+    var reference = titleText || subText || logoText;
+    if (!isLikelyWordmarkImage(logo, reference)) return;
+
+    var duplicatedTitle = sameBrandText(logoText, titleText);
+    var duplicatedSub = sameBrandText(logoText, subText) || (subText && sameBrandText(titleText, subText));
+
+    attr(scope, "data-ff-brand-wordmark", "true");
+
+    if (duplicatedTitle) visuallyDedupBrandNode(title);
+    if (sub && duplicatedSub) visuallyDedupBrandNode(sub);
+  }
+
+  function initBrandWordmarkDedupe() {
+    var topbar = byId("ffTopbar");
+    var drawer = byId("drawer");
+
+    function run() {
+      dedupeBrandBlock(topbar || byId("ffTopbar"), {
+        logo: ".ff-topbarBrand__logo, .ff-topbarBrand img, .ff-platformBrand__disc img",
+        title: ".ff-topbarBrand__text, .ff-brand__title",
+        sub: ".ff-topbarBrand__sub, .ff-brand__sub"
+      });
+
+      dedupeBrandBlock(drawer || byId("drawer"), {
+        logo: ".ff-drawer__orgLogo, .ff-drawer__head img",
+        title: "#ffDrawerTitle, .ff-brand__title",
+        sub: "#ffDrawerDesc, .ff-brand__sub"
+      });
+    }
+
+    run();
+
+    if (initBrandWordmarkDedupe._bound) return;
+    initBrandWordmarkDedupe._bound = true;
+
+    var Observer = w.MutationObserver;
+    if (!Observer) return;
+
+    var scheduled = false;
+    function rerun() {
+      if (scheduled) return;
+      scheduled = true;
+      w.requestAnimationFrame(function () {
+        scheduled = false;
+        run();
+      });
+    }
+
+    [topbar, drawer].forEach(function (node) {
+      if (!node) return;
+      var observer = new Observer(rerun);
+      observer.observe(node, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["class", "src", "alt", "aria-label", "title"]
+      });
+    });
+  }
+  /* FF_BRAND_WORDMARK_DEDUPE_V1_END */
+  
+    function validPreviewSrc(src) {
     src = String(src || "").trim();
     if (!src) return false;
     if (/^data:image\/gif;base64,R0lGODlhAQABAIA/i.test(src)) return false;
+    if (/^(about:blank|javascript:)/i.test(src)) return false;
     return true;
   }
 
   function previewGalleryPool() {
     var out = [];
-    qsa(".ff-railcard__img, .ff-teamCard__img").forEach(function (img) {
+    qsa("__img, .ff-teamCard__img").forEach(function (img) {
       var src = (img.getAttribute("src") || "").trim();
       if (validPreviewSrc(src) && out.indexOf(src) === -1) out.push(src);
     });
@@ -2366,7 +2836,11 @@ Hook-safe, deterministic, CSP-safe runtime for:
     };
 
     Object.keys(FF_APP.selectors || {}).forEach(function (key) {
-      snapshot.hooks[key] = !!qs(FF_APP.selectors[key]);
+      try {
+        snapshot.hooks[key] = !!qs(FF_APP.selectors[key]);
+      } catch (_err) {
+        snapshot.hooks[key] = false;
+      }
     });
 
     Object.keys(overlays).forEach(function (key) {
@@ -2375,7 +2849,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
       snapshot.overlays[key] = {
         exists: !!el,
         open: !!(
-          el && (
+          el && !el.hidden && (
             el.classList.contains("is-open") ||
             el.getAttribute("data-open") === "true" ||
             el.getAttribute("aria-hidden") === "false" ||
@@ -2408,6 +2882,8 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function handleDocumentClick(event) {
     var target = event.target;
     if (!target) return;
+    if (target.nodeType !== 1) target = target.parentElement;
+    if (!target || !target.closest) return;
 
     var shareBtn = target.closest("[data-ff-share]");
     if (shareBtn) {
@@ -2427,15 +2903,17 @@ Hook-safe, deterministic, CSP-safe runtime for:
     if (amountBtn) {
       event.preventDefault();
       var amount = amountBtn.getAttribute("data-ff-amount") || "";
+      var amountPrefill = triggerPrefillFromNode(amountBtn);
       setAmount(amount);
 
       var insideCheckout = !!amountBtn.closest("#checkout");
       if (!insideCheckout) {
+        applyCheckoutPrefill(amountPrefill);
+        resetCheckoutSuccess();
         openOverlay("checkout", {
           source: amountBtn,
           updateHash: true
         });
-        applyCheckoutPrefill(triggerPrefillFromNode(amountBtn));
       }
       return;
     }
@@ -2444,7 +2922,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
     if (sponsorTierBtn) {
       event.preventDefault();
       var tier = sponsorTierBtn.getAttribute("data-ff-sponsor-tier") || "";
-      var hidden = qs('[name="sponsor_tier"]', dom.sponsorForm);
+      var hidden = dom.sponsorForm ? qs('[name="sponsor_tier"]', dom.sponsorForm) : null;
       if (hidden) hidden.value = tier;
       syncSponsorTierState(tier);
       announce("Preferred sponsor tier set to " + tier + ".");
@@ -2500,7 +2978,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
       return;
     }
 
-    var openTerms = target.closest('a[href="#terms"]');
+    var openTerms = target.closest('[data-ff-open-terms], a[href="#terms"]');
     if (openTerms) {
       event.preventDefault();
       openOverlay("terms", {
@@ -2510,7 +2988,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
       return;
     }
 
-    var openPrivacy = target.closest('a[href="#privacy"]');
+    var openPrivacy = target.closest('[data-ff-open-privacy], a[href="#privacy"]');
     if (openPrivacy) {
       event.preventDefault();
       openOverlay("privacy", {
@@ -2584,8 +3062,18 @@ Hook-safe, deterministic, CSP-safe runtime for:
   function handleAmountInput() {
     hideStatus(dom.donationError);
     var amount = parseAmount(dom.donationAmount && dom.donationAmount.value);
+
     syncAmountChipState(amount);
     updatePayMessages(amount);
+    updateSummaryAmount(amount);
+
+    try {
+      w.localStorage.setItem(
+        STORAGE_LAST_AMOUNT_KEY,
+        dom.donationAmount && dom.donationAmount.value ? String(dom.donationAmount.value) : ""
+      );
+    } catch (err) {}
+
     if (state.openOverlayId === "checkout" && amount > 0) {
       scheduleStripeRefresh();
       schedulePaypalRefresh();
@@ -2593,21 +3081,27 @@ Hook-safe, deterministic, CSP-safe runtime for:
   }
 
   function initForms() {
-    if (dom.donationForm) {
+    if (dom.donationForm && !dom.donationForm.__ffBoundSubmit) {
+      dom.donationForm.__ffBoundSubmit = true;
       on(dom.donationForm, "submit", submitDonationForm);
     }
 
-    if (dom.sponsorForm) {
+    if (dom.sponsorForm && !dom.sponsorForm.__ffBoundSubmit) {
+      dom.sponsorForm.__ffBoundSubmit = true;
       on(dom.sponsorForm, "submit", submitSponsorForm);
     }
 
-    if (dom.donationAmount) {
+    if (dom.donationAmount && !dom.donationAmount.__ffBoundAmountInput) {
+      dom.donationAmount.__ffBoundAmountInput = true;
       on(dom.donationAmount, "input", handleAmountInput);
       on(dom.donationAmount, "change", handleAmountInput);
     }
   }
 
   function initEvents() {
+    if (initEvents._bound) return;
+    initEvents._bound = true;
+
     on(d, "click", handleDocumentClick);
     on(d, "keydown", handleKeyDown);
     on(d, "mousedown", handlePointerInput, true);
@@ -2739,6 +3233,16 @@ Hook-safe, deterministic, CSP-safe runtime for:
       });
     }
 
+    function setWizardError(message) {
+      var resultMount = ensureResultMount();
+      if (status) status.textContent = message || "";
+      if (resultMount) {
+        resultMount.hidden = false;
+        resultMount.className = "ff-alert ff-alert--error ff-mt-2";
+        resultMount.textContent = message || "Something went wrong.";
+      }
+    }
+
     function validateCurrentStep() {
       var currentPanel = steps.filter(function (el) {
         return Number(el.getAttribute("data-ff-step")) === state.onboardingCurrentStep;
@@ -2785,18 +3289,18 @@ Hook-safe, deterministic, CSP-safe runtime for:
 
       summary.innerHTML = [
         '<div class="ff-row ff-wrap ff-gap-2" role="list" aria-label="Wizard summary chips">',
-        '  <span class="ff-pill ff-pill--soft" role="listitem">' + escHtml(data.org_type || "Group") + '</span>',
-        '  <span class="ff-pill ff-pill--soft" role="listitem">' + escHtml(data.checkout || "Stripe + PayPal") + '</span>',
-        '  <span class="ff-pill ff-pill--soft" role="listitem">' + escHtml(moneyString(data.goal)) + ' goal</span>',
-        '</div>',
+        '  <span class="ff-pill ff-pill--soft" role="listitem">' + escHtml(data.org_type || "Group") + "</span>",
+        '  <span class="ff-pill ff-pill--soft" role="listitem">' + escHtml(data.checkout || "Stripe + PayPal") + "</span>",
+        '  <span class="ff-pill ff-pill--soft" role="listitem">' + escHtml(moneyString(data.goal)) + " goal</span>",
+        "</div>",
         '<div class="ff-onboardSummary__grid">',
-        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Organization</span><span class="ff-onboardSummary__value">' + escHtml(data.org_name || "—") + '</span></div>',
-        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Contact</span><span class="ff-onboardSummary__value">' + escHtml(data.contact_name || "—") + '<br>' + escHtml(data.contact_email || "—") + '</span></div>',
-        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Brand</span><span class="ff-onboardSummary__value">Primary: ' + escHtml(data.brand_primary || "—") + '<br>Accent: ' + escHtml(data.brand_accent || "—") + '</span></div>',
-        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Campaign</span><span class="ff-onboardSummary__value">' + escHtml(moneyString(data.goal)) + '<br>' + escHtml(data.deadline || "No deadline yet") + '</span></div>',
-        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Presets</span><span class="ff-onboardSummary__value">' + escHtml(data.presets || "25, 50, 100, 250") + '</span></div>',
-        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Sponsor tiers</span><span class="ff-onboardSummary__value">' + escHtml(data.sponsor_tiers || "Community / Partner / Champion / VIP") + '</span></div>',
-        '</div>',
+        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Organization</span><span class="ff-onboardSummary__value">' + escHtml(data.org_name || "—") + "</span></div>",
+        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Contact</span><span class="ff-onboardSummary__value">' + escHtml(data.contact_name || "—") + "<br>" + escHtml(data.contact_email || "—") + "</span></div>",
+        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Brand</span><span class="ff-onboardSummary__value">Primary: ' + escHtml(data.brand_primary || "—") + "<br>Accent: " + escHtml(data.brand_accent || "—") + "</span></div>",
+        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Campaign</span><span class="ff-onboardSummary__value">' + escHtml(moneyString(data.goal)) + "<br>" + escHtml(data.deadline || "No deadline yet") + "</span></div>",
+        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Presets</span><span class="ff-onboardSummary__value">' + escHtml(data.presets || "25, 50, 100, 250") + "</span></div>",
+        '  <div class="ff-onboardSummary__item"><span class="ff-onboardSummary__label">Sponsor tiers</span><span class="ff-onboardSummary__value">' + escHtml(data.sponsor_tiers || "Community / Partner / Champion / VIP") + "</span></div>",
+        "</div>",
         '<div class="ff-alert ff-alert--info" role="note"><strong>Launch-ready brief:</strong> this intake can be copied or turned into a draft preview.</div>'
       ].join("");
     }
@@ -2859,13 +3363,14 @@ Hook-safe, deterministic, CSP-safe runtime for:
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
-          "X-CSRFToken": getCsrfToken()
+          "X-CSRFToken": getCsrfToken(),
+          "X-CSRF-Token": getCsrfToken()
         },
         body: JSON.stringify(payload || {})
       }).then(function (response) {
         return response.json().catch(function () { return {}; }).then(function (data) {
           if (!response.ok || !data.ok) {
-            throw new Error(data.error || ("Draft request failed (" + response.status + ")"));
+            throw new Error(extractErrorMessage(data, "Draft request failed (" + response.status + ")"));
           }
           return data;
         });
@@ -2878,7 +3383,8 @@ Hook-safe, deterministic, CSP-safe runtime for:
         credentials: "same-origin",
         headers: {
           "Accept": "application/json",
-          "X-CSRFToken": getCsrfToken()
+          "X-CSRFToken": getCsrfToken(),
+          "X-CSRF-Token": getCsrfToken()
         }
       }).then(function (response) {
         return response.json().catch(function () { return {}; }).then(function (data) {
@@ -2887,7 +3393,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
             return { ok: false };
           }
           if (!response.ok || !data.ok) {
-            throw new Error(data.error || "Could not publish draft.");
+            throw new Error(extractErrorMessage(data, "Could not publish draft."));
           }
           return data;
         });
@@ -2900,7 +3406,8 @@ Hook-safe, deterministic, CSP-safe runtime for:
         credentials: "same-origin",
         headers: {
           "Accept": "application/json",
-          "X-CSRFToken": getCsrfToken()
+          "X-CSRFToken": getCsrfToken(),
+          "X-CSRF-Token": getCsrfToken()
         }
       }).then(function (response) {
         return response.json().catch(function () { return {}; }).then(function (data) {
@@ -2909,7 +3416,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
             return { ok: false };
           }
           if (!response.ok || !data.ok) {
-            throw new Error(data.error || "Request failed.");
+            throw new Error(extractErrorMessage(data, "Request failed."));
           }
           return data;
         });
@@ -2919,6 +3426,8 @@ Hook-safe, deterministic, CSP-safe runtime for:
     on(d, "click", function (event) {
       var target = event.target;
       if (!target) return;
+      if (target.nodeType !== 1) target = target.parentElement;
+      if (!target || !target.closest) return;
 
       var openBtn = target.closest("[data-ff-open-onboard]");
       if (openBtn) {
@@ -3015,7 +3524,9 @@ Hook-safe, deterministic, CSP-safe runtime for:
             }
 
             FF_APP.api.lastOnboardingDraft = data;
-            w.open(data.draft_url, "_blank", "noopener,noreferrer");
+            try {
+              w.open(data.draft_url, "_blank", "noopener,noreferrer");
+            } catch (_err) {}
             setWizardBusy(false, "Draft created successfully.");
           })
           .catch(function (err) {
@@ -3066,7 +3577,9 @@ Hook-safe, deterministic, CSP-safe runtime for:
             }
 
             FF_APP.api.lastPublishedOnboardingDraft = data;
-            w.open(data.public_url, "_blank", "noopener,noreferrer");
+            try {
+              w.open(data.public_url, "_blank", "noopener,noreferrer");
+            } catch (_err) {}
           })
           .catch(function (err) {
             var message = err && err.message ? err.message : "Could not publish draft.";
@@ -3097,7 +3610,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
             w.setTimeout(function () { w.location.reload(); }, 350);
           })
           .catch(function (err) {
-            console.error(err);
+            setWizardError(err && err.message ? err.message : "Could not unpublish draft.");
             unpublishBtn.disabled = false;
             attr(unpublishBtn, "aria-busy", "false");
           });
@@ -3117,7 +3630,7 @@ Hook-safe, deterministic, CSP-safe runtime for:
             w.setTimeout(function () { w.location.reload(); }, 350);
           })
           .catch(function (err) {
-            console.error(err);
+            setWizardError(err && err.message ? err.message : "Could not archive draft.");
             archiveBtn.disabled = false;
             attr(archiveBtn, "aria-busy", "false");
           });
@@ -3190,7 +3703,7 @@ function initMotionPolish() {
     });
   }
 
-  if (!("IntersectionObserver" in w) || attr(root, "data-ff-webdriver") === "true") {
+  if (!("IntersectionObserver" in w) || root.getAttribute("data-ff-webdriver") === "true") {
     nodes.forEach(function (node, idx) { reveal(node, idx * 35); });
     return;
   }
@@ -3260,7 +3773,7 @@ function initLuxuryMicroInteractions() {
     node.classList.add("ff-meter-live");
   }
 
-  if ("IntersectionObserver" in w && !navigator.webdriver) {
+  if (w.IntersectionObserver && !(w.navigator && w.navigator.webdriver)) {
     var meterIO = new w.IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
@@ -3288,7 +3801,7 @@ function initLuxuryMicroInteractions() {
   // ----------------------------------------------------
   // Live feed shimmer activation
   // ----------------------------------------------------
-  qsa('.ff-liveFeed__item, .ff-activityFeed__item, .ff-activityfeedItem').forEach(function (node, idx) {
+  qsa(".ff-liveFeed__item, .ff-activityFeed__item, .ff-activityfeedItem").forEach(function (node, idx) {
     w.setTimeout(function () {
       node.classList.add("ff-shimmer-live");
     }, 180 + (idx * 120));
@@ -3297,7 +3810,7 @@ function initLuxuryMicroInteractions() {
   // ----------------------------------------------------
   // Tier glow normalization
   // ----------------------------------------------------
-  qsa('[data-ff-tier]').forEach(function (node) {
+  qsa("[data-ff-tier]").forEach(function (node) {
     var raw = (node.getAttribute("data-ff-tier") || "").toLowerCase().trim();
     if (!raw) return;
 
@@ -3446,7 +3959,7 @@ function initPrestigeWave() {
     w.requestAnimationFrame(step);
   }
 
-  if ("IntersectionObserver" in w && !navigator.webdriver) {
+  if (w.IntersectionObserver && !(w.navigator && w.navigator.webdriver)) {
     var countIO = new w.IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
@@ -3505,6 +4018,8 @@ function initPrestigeWave() {
   }
 
   qsa('#checkout [data-ff-amount]').forEach(function (btn) {
+    if (btn.__ffPrestigeAmountBound) return;
+    btn.__ffPrestigeAmountBound = true;
     btn.addEventListener("click", function () {
       qsa('#checkout [data-ff-amount].ff-amount-picked').forEach(function (n) {
         n.classList.remove("ff-amount-picked");
@@ -3519,7 +4034,8 @@ function initPrestigeWave() {
     "[data-ff-checkout-success]",
     "[data-ff-checkout-error]"
   ].join(",")).forEach(function (node) {
-    if (!node || !("MutationObserver" in w)) return;
+    if (!node || !("MutationObserver" in w) || node.__ffCheckoutStatusObserved) return;
+    node.__ffCheckoutStatusObserved = true;
     var last = (node.textContent || "").trim();
     var mo = new w.MutationObserver(function () {
       var next = (node.textContent || "").trim();
@@ -3539,7 +4055,7 @@ function initPrestigeWave() {
   qsa([
     "[data-ff-sponsor-marquee]",
     ".ff-sponsorMarquee",
-    ".ff-sponsorWall__rail",
+    "[data-ff-sponsor-wall]__rail",
     ".ff-sponsorLogoRail"
   ].join(",")).forEach(function (rail) {
     if (!rail || rail.__ffMarqueeReady) return;
@@ -3574,7 +4090,8 @@ function initDemoModeBanner() {
   } catch (_) {}
 
   var dismissBtn = qs("[data-ff-demo-banner-dismiss]", banner);
-  if (!dismissBtn) return;
+  if (!dismissBtn || dismissBtn.__ffDemoBannerBound) return;
+  dismissBtn.__ffDemoBannerBound = true;
 
   dismissBtn.addEventListener("click", function () {
     banner.hidden = true;
@@ -3600,6 +4117,7 @@ function initDemoModeBanner() {
     applySavedTheme();
     restoreLastAmount();
     resetCheckoutSuccess();
+    primePaymentSurfaces();
     initEvents();
     initForms();
     initOnboardingWizard();
@@ -3610,6 +4128,7 @@ function initDemoModeBanner() {
     initDemoModeBanner();
     hydrateQrImages();
     bindMediaFallbacks();
+    initBrandWordmarkDedupe();
     repairMissingPreviewMedia();
     renderVipSpotlight(null);
     inspectPaymentReturn();
@@ -3632,6 +4151,7 @@ function initDemoModeBanner() {
 
     on(w, "load", function () {
       bindMediaFallbacks();
+      initBrandWordmarkDedupe();
       repairMissingPreviewMedia();
       seedPreviewRealism();
     }, { once: true });
@@ -3700,7 +4220,7 @@ function initDemoModeBanner() {
     var t = e.target;
     if (!t || !t.closest) return;
 
-    var focusable = t.closest('a,button,input,select,textarea,[tabindex]');
+    var focusable = t.closest("a,button,input,select,textarea,[tabindex]");
     if (!focusable && document.body && typeof document.body.focus === "function") {
       try { document.body.focus(); } catch (_err) {}
     }
@@ -3769,7 +4289,7 @@ function initDemoModeBanner() {
 
   function statusPill(item) {
     if (item && item.ok) {
-      return '<span class="ff-pill ff-pill--success">Connected</span>';
+      return '<span class="ff-pill ">Connected</span>';
     }
     return '<span class="ff-pill ff-pill--muted">Not connected</span>';
   }
@@ -3790,13 +4310,13 @@ function initDemoModeBanner() {
 
   function renderItem(item) {
     return (
-      '<article class="ff-integrationTile">' +
-        '<div class="ff-integrationTile__head">' +
-          '<h3 class="ff-integrationTile__title">' + esc(prettyLabel(item.slug)) + '</h3>' +
+      '<article class="">' +
+        '<div class="__head">' +
+          '<h3 class="__title">' + esc(prettyLabel(item.slug)) + "</h3>" +
           statusPill(item) +
-        '</div>' +
-        '<p class="ff-integrationTile__message">' + esc(item.message || "") + '</p>' +
-      '</article>'
+        "</div>" +
+        '<p class="__message">' + esc(item.message || "") + "</p>" +
+      "</article>"
     );
   }
 
@@ -3824,7 +4344,7 @@ function initDemoModeBanner() {
       grid.innerHTML =
         '<div class="ff-integrationHealth__error" role="status">' +
         esc(err && err.message ? err.message : "Could not load integration status.") +
-        '</div>';
+        "</div>";
     }
   }
 
@@ -3842,14 +4362,21 @@ function initDemoModeBanner() {
 })();
 
 
-/* FF_INTEGRATION_SCORE_V1 */
+/* FF_INTEGRATION_SCORE_V2 */
 (function () {
-  function updateScore(data) {
-    if (!data || !Array.isArray(data.integrations)) return;
+  if (window.__FF_INTEGRATION_SCORE_PATCHED__) return;
+  window.__FF_INTEGRATION_SCORE_PATCHED__ = true;
 
-    var total = data.integrations.length;
-    var ok = data.integrations.filter(i => i.ok).length;
+  function updateScoreFromGrid(grid) {
+    if (!grid) return;
 
+    var tiles = Array.prototype.slice.call(grid.querySelectorAll(""));
+    if (!tiles.length) return;
+
+    var total = tiles.length;
+    var ok = tiles.filter(function (tile) {
+      return !!tile.querySelector("");
+    }).length;
     var percent = total ? Math.round((ok / total) * 100) : 0;
 
     var scoreEl = document.querySelector("[data-ff-integration-score]");
@@ -3859,21 +4386,36 @@ function initDemoModeBanner() {
     if (barEl) barEl.style.width = percent + "%";
   }
 
-  var originalFetch = window.fetch;
+  function bindGrid(grid) {
+    if (!grid || grid.__ffIntegrationScoreBound) return;
+    grid.__ffIntegrationScoreBound = true;
 
-  window.fetch = async function (...args) {
-    const res = await originalFetch(...args);
+    updateScoreFromGrid(grid);
 
-    try {
-      if (args[0] && args[0].includes("/api/integrations/health")) {
-        const clone = res.clone();
-        const data = await clone.json();
-        updateScore(data);
-      }
-    } catch (e) {}
+    if (window.MutationObserver) {
+      var observer = new window.MutationObserver(function () {
+        updateScoreFromGrid(grid);
+      });
+      observer.observe(grid, { childList: true, subtree: true });
+    }
+  }
 
-    return res;
-  };
+  function init() {
+    Array.prototype.slice.call(document.querySelectorAll("[data-ff-integration-grid]")).forEach(bindGrid);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+
+  if (window.MutationObserver && document.body) {
+    var rootObserver = new window.MutationObserver(function () {
+      init();
+    });
+    rootObserver.observe(document.body, { childList: true, subtree: true });
+  }
 })();
 
 /* FF_WAVE_E_SUCCESS_ANALYTICS_V1_START */
@@ -4042,43 +4584,43 @@ function initDemoModeBanner() {
     return mount;
   }
 
-function normalizeSuccessTemplateNode(node) {
-  if (!node || node.nodeType !== 1) return node;
+  function normalizeSuccessTemplateNode(node) {
+    if (!node || node.nodeType !== 1) return node;
 
-  node.removeAttribute("data-ff-success-upsell-template");
-  if (!node.hasAttribute("data-ff-success-upsell")) {
-    node.setAttribute("data-ff-success-upsell", "");
+    node.removeAttribute("data-ff-success-upsell-template");
+    if (!node.hasAttribute("data-ff-success-upsell")) {
+      node.setAttribute("data-ff-success-upsell", "");
+    }
+
+    var title = node.querySelector("#ffSuccessUpsellTitleTemplate");
+    if (title) {
+      title.id = "ffSuccessUpsellTitle";
+    }
+
+    var labelledby = node.getAttribute("aria-labelledby");
+    if (!labelledby || labelledby === "ffSuccessUpsellTitleTemplate") {
+      node.setAttribute("aria-labelledby", "ffSuccessUpsellTitle");
+    }
+
+    return node;
   }
 
-  var title = node.querySelector("#ffSuccessUpsellTitleTemplate");
-  if (title) {
-    title.id = "ffSuccessUpsellTitle";
+  function cloneSuccessTemplate() {
+    var tmpl = d.getElementById("ffDonationSuccessUpsellTemplate");
+    if (!tmpl) return null;
+
+    var node = null;
+
+    if (tmpl.content && tmpl.content.firstElementChild) {
+      node = tmpl.content.firstElementChild.cloneNode(true);
+    } else {
+      var wrapper = d.createElement("div");
+      wrapper.innerHTML = tmpl.innerHTML;
+      node = wrapper.firstElementChild;
+    }
+
+    return normalizeSuccessTemplateNode(node);
   }
-
-  var labelledby = node.getAttribute("aria-labelledby");
-  if (!labelledby || labelledby === "ffSuccessUpsellTitleTemplate") {
-    node.setAttribute("aria-labelledby", "ffSuccessUpsellTitle");
-  }
-
-  return node;
-}
-
-function cloneSuccessTemplate() {
-  var tmpl = d.getElementById("ffDonationSuccessUpsellTemplate");
-  if (!tmpl) return null;
-
-  var node = null;
-
-  if (tmpl.content && tmpl.content.firstElementChild) {
-    node = tmpl.content.firstElementChild.cloneNode(true);
-  } else {
-    var wrapper = d.createElement("div");
-    wrapper.innerHTML = tmpl.innerHTML;
-    node = wrapper.firstElementChild;
-  }
-
-  return normalizeSuccessTemplateNode(node);
-}
 
   function copyText(text) {
     if (global.navigator && global.navigator.clipboard && typeof global.navigator.clipboard.writeText === "function") {
@@ -4161,6 +4703,7 @@ function cloneSuccessTemplate() {
     }
 
     mount.hidden = false;
+    mount.setAttribute("aria-hidden", "false");
 
     if (!donationSucceededTracked) {
       donationSucceededTracked = true;
@@ -4200,6 +4743,9 @@ function bootSuccessStateFromQuery() {
     return false;
   }
 }
+
+  try { global.__FF_NORMALIZE_SUCCESS_TEMPLATE__ = normalizeSuccessTemplateNode; } catch (_) {}
+  try { global.__FF_BOOT_SUCCESS_FROM_QUERY__ = bootSuccessStateFromQuery; } catch (_) {}
 /* FF_NATIVE_SUCCESS_BOOT_V1_END */
 
   function cleanupSuccessQuery() {
@@ -4344,7 +4890,7 @@ function bootSuccessStateFromQuery() {
   global.setTimeout(scanSuccess, 250);
 
   if (global.MutationObserver && d.body) {
-    var observer = new MutationObserver(function () {
+    var observer = new global.MutationObserver(function () {
       scanCheckoutStarted();
       scanSuccess();
     });
@@ -4408,7 +4954,25 @@ function bootSuccessStateFromQuery() {
 
       if (!node) return null;
 
-      node = normalizeSuccessTemplateNode(node);
+      var normalizer =
+        typeof global.__FF_NORMALIZE_SUCCESS_TEMPLATE__ === "function"
+          ? global.__FF_NORMALIZE_SUCCESS_TEMPLATE__
+          : function (candidate) {
+              if (!candidate || candidate.nodeType !== 1) return candidate;
+              candidate.removeAttribute("data-ff-success-upsell-template");
+              if (!candidate.hasAttribute("data-ff-success-upsell")) {
+                candidate.setAttribute("data-ff-success-upsell", "");
+              }
+              var title = candidate.querySelector("#ffSuccessUpsellTitleTemplate");
+              if (title) title.id = "ffSuccessUpsellTitle";
+              var labelledby = candidate.getAttribute("aria-labelledby");
+              if (!labelledby || labelledby === "ffSuccessUpsellTitleTemplate") {
+                candidate.setAttribute("aria-labelledby", "ffSuccessUpsellTitle");
+              }
+              return candidate;
+            };
+
+      node = normalizer(node);
 
       mount.innerHTML = "";
       mount.appendChild(node);
@@ -4468,19 +5032,26 @@ function bootSuccessStateFromQuery() {
 /* FF_SUCCESS_STATE_RESCUE_V1_END */
 
 /* FF_NATIVE_SUCCESS_BOOT_HOOK_V1_START */
-try {
-  if (d.readyState === "loading") {
-    d.addEventListener("DOMContentLoaded", function () {
-      bootSuccessStateFromQuery();
-    }, { once: true });
-  } else {
-    bootSuccessStateFromQuery();
+(function ffNativeSuccessBootHook(global, doc) {
+  "use strict";
+  if (!global || !doc) return;
+
+  function run() {
+    try {
+      if (typeof global.__FF_BOOT_SUCCESS_FROM_QUERY__ === "function") {
+        global.__FF_BOOT_SUCCESS_FROM_QUERY__();
+      }
+    } catch (_) {}
   }
 
-  global.addEventListener("load", function () {
-    bootSuccessStateFromQuery();
-  }, { once: true });
-} catch (_) {}
+  if (doc.readyState === "loading") {
+    doc.addEventListener("DOMContentLoaded", run, { once: true });
+  } else {
+    run();
+  }
+
+  global.addEventListener("load", run, { once: true });
+})(window, document);
 /* FF_NATIVE_SUCCESS_BOOT_HOOK_V1_END */
 
 /* FF_SERVER_SUCCESS_HYDRATE_V1_START */
@@ -4784,7 +5355,7 @@ try {
 
     var teamsCountNode =
       document.querySelector("[data-ff-teams-count]") ||
-      document.querySelector("[data-ff-teams]");
+      document.querySelector("[data-ff-teams], #teams");
     var teamsCount = parseInt(textOf(teamsCountNode), 10);
     if (!Number.isFinite(teamsCount)) {
       teamsCount = document.querySelectorAll("[data-ff-team-card], .ff-teamCard").length || 0;
@@ -4798,7 +5369,7 @@ try {
     var deadlineMetaEl = document.querySelector("[data-ff-momentum-deadline-meta]");
     var updateEl = document.querySelector("[data-ff-momentum-update]");
     var updateMetaEl = document.querySelector("[data-ff-momentum-update-meta]");
-    var shareBtn = document.querySelector("[data-ff-share-campaign]");
+    var shareBtn = document.querySelector("[data-ff-share-campaign], [data-ff-share]");
 
     if (raisedEl) {
       raisedEl.textContent = Number.isFinite(raisedNum) ? money(raisedNum) : String(raisedRaw || "$0");
@@ -4918,17 +5489,17 @@ try {
 
     var wall =
       document.querySelector("[data-ff-sponsor-wall]") ||
-      document.querySelector("#sponsors .ff-sponsorWall") ||
+      document.querySelector("#sponsors [data-ff-sponsor-wall]") ||
       document.querySelector("#sponsors [data-ff-sponsor-grid]");
 
     if (!wall) return;
 
-    var existing = wall.querySelectorAll("article, .ff-sponsorCell, .ff-card");
+    var existing = wall.querySelectorAll("article, [data-ff-sponsor-cell], .ff-sponsorCell, .ff-card");
     if (existing && existing.length >= 2) return;
 
     var empty =
       document.querySelector("[data-ff-sponsor-wall-empty]") ||
-      document.querySelector("#sponsors .ff-empty");
+      document.querySelector("#sponsors [data-ff-sponsor-wall-empty], #sponsors .ff-empty");
 
     var previews = [
       {
@@ -4956,10 +5527,10 @@ try {
       card.setAttribute("data-ff-preview-sponsor", "1");
       card.innerHTML =
         '<div class="ff-stack ff-gap-2">' +
-          '<span class="ff-pill ff-pill--soft">' + item.tier + '</span>' +
-          '<h3 class="ff-h6 ff-m-0">' + item.name + '</h3>' +
-          '<p class="ff-help ff-m-0">' + item.note + '</p>' +
-        '</div>';
+          '<span class="ff-pill ff-pill--soft">' + item.tier + "</span>" +
+          '<h3 class="ff-h6 ff-m-0">' + item.name + "</h3>" +
+          '<p class="ff-help ff-m-0">' + item.note + "</p>" +
+        "</div>";
       frag.appendChild(card);
     });
 
