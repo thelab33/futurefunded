@@ -4286,407 +4286,6 @@
 }
 /* FF_DATA_SELECTOR_CONTRACT_RESCUE_V1_END */
 
-/* FF_VISUAL_PREMIUM_PASS_V1_START */
-@layer ff.pages {
-  /* ----------------------------------------------------------------------
-     Global section density refinement
-     ---------------------------------------------------------------------- */
-  .ff-section {
-    padding-block: clamp(1.65rem, 1.2rem + 1.45vw, 2.7rem);
-  }
-
-  .ff-sectionhead {
-    margin-bottom: clamp(0.72rem, 0.6rem + 0.4vw, 0.98rem);
-  }
-
-  .ff-sectionhead__text {
-    display: grid;
-    gap: 0.28rem;
-  }
-
-  .ff-sectionhead__actions {
-    align-self: start;
-  }
-
-  /* ----------------------------------------------------------------------
-     Shared flagship card rhythm
-     ---------------------------------------------------------------------- */
-  :is(
-    #impact .ff-impactTier,
-    #teams .ff-teamCard,
-    #sponsors .ff-impactTier
-  ) {
-    border-radius: var(--ff-r-3);
-  }
-
-  :is(
-    #impact .ff-impactTier__head,
-    #teams .ff-teamCard__head,
-    #sponsors .ff-impactTier__head
-  ) {
-    gap: 0.32rem;
-  }
-
-  :is(
-    #impact .ff-impactTier__footer,
-    #teams .ff-teamCard__foot,
-    #sponsors .ff-impactTier__footer
-  ) {
-    padding-top: 0.15rem;
-    border-top: 1px solid rgb(15 23 42 / 0.06);
-  }
-
-  html.ff-root[data-theme="dark"] :is(
-    #impact .ff-impactTier__footer,
-    #teams .ff-teamCard__foot,
-    #sponsors .ff-impactTier__footer
-  ) {
-    border-top-color: rgb(226 232 240 / 0.08);
-  }
-
-  /* ----------------------------------------------------------------------
-     Impact — slightly tighter and more premium
-     ---------------------------------------------------------------------- */
-  #impact .ff-impactCard {
-    gap: 0.95rem;
-  }
-
-  #impact .ff-impactPick,
-  #impact .ff-impactProof {
-    gap: 0.85rem;
-  }
-
-  #impact .ff-impactChoiceGrid {
-    gap: 0.72rem;
-  }
-
-  #impact .ff-impactChoice {
-    box-shadow: none;
-  }
-
-  #impact .ff-impactProofRail {
-    gap: 0.65rem;
-  }
-
-  #impact .ff-progressMini {
-    padding: 0.8rem 0.9rem;
-  }
-
-  /* ----------------------------------------------------------------------
-     Teams — closer to impact tile rhythm
-     ---------------------------------------------------------------------- */
-  #teams .ff-teamGrid {
-    gap: 0.85rem;
-  }
-
-  #teams .ff-teamCard {
-    grid-template-rows: auto 1fr;
-  }
-
-  #teams .ff-teamCard__inner {
-    gap: 0.82rem;
-  }
-
-  #teams .ff-teamCard__body {
-    gap: 0.78rem;
-  }
-
-  #teams .ff-teamCard__summary {
-    padding: 0.68rem 0.74rem;
-  }
-
-  #teams .ff-teamCard__stats {
-    gap: 0.48rem;
-    padding: 0.64rem;
-  }
-
-  #teams .ff-teamStat {
-    padding: 0.48rem 0.52rem;
-  }
-
-  #teams .ff-teamCard__meterText {
-    font-size: 0.84rem;
-  }
-
-  #teams .ff-teamCard__ask,
-  #teams .ff-teamCard__body .ff-proofMini {
-    min-height: 100%;
-  }
-
-  #teams .ff-teamCard__foot {
-    gap: 0.55rem;
-  }
-
-  /* ----------------------------------------------------------------------
-     Story — slightly denser copy rhythm
-     ---------------------------------------------------------------------- */
-  #story .ff-storyCard {
-    gap: 0.95rem;
-  }
-
-  #story .ff-storyGrid {
-    gap: 0.95rem;
-  }
-
-  #story .ff-storySupportGrid,
-  #story .ff-storyNotes {
-    gap: 0.72rem;
-  }
-
-  #story .ff-storyPanel,
-  #story .ff-proofMini--tile,
-  #story .ff-proofMini--feature {
-    padding: 0.88rem 0.94rem;
-  }
-
-  #story .ff-storyQuote {
-    padding: 0.95rem 1rem 0.95rem 1.02rem;
-  }
-
-  /* ----------------------------------------------------------------------
-     Sponsors — make it feel closer to impact tiles
-     ---------------------------------------------------------------------- */
-  #sponsors .ff-sponsorsBoard {
-    gap: 0.95rem;
-  }
-
-  #sponsors .ff-sponsorWallBlock {
-    gap: 0.78rem;
-    padding: 0.92rem 0.96rem;
-  }
-
-  #sponsors .ff-sponsorWallRail {
-    gap: 0.7rem;
-  }
-
-  #sponsors .ff-sponsorGhost {
-    min-height: 4.3rem;
-    border-style: solid;
-    opacity: 0.92;
-  }
-
-  #sponsors .ff-sponsorTierWrap {
-    gap: 0.72rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid {
-    gap: 0.8rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid > li {
-    min-height: 100%;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-impactTier {
-    gap: 0.82rem;
-    padding: 0.92rem 0.95rem;
-    border-radius: var(--ff-r-3);
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-impactTier__head {
-    gap: 0.28rem;
-    padding-bottom: 0;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-proofMini {
-    padding: 0.76rem 0.84rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer {
-    gap: 0.52rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-btn {
-    min-height: 2.18rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-h2 {
-    letter-spacing: -0.025em;
-  }
-
-  /* ----------------------------------------------------------------------
-     Footer — calmer + less crowded
-     ---------------------------------------------------------------------- */
-  #footer {
-    padding-block: 0 0.55rem;
-  }
-
-  #footer .ff-footerTray {
-    gap: 0.78rem;
-    padding: 0.88rem 0.94rem;
-  }
-
-  #footer .ff-footerTop {
-    gap: 0.62rem;
-  }
-
-  #footer .ff-footerTop__copy {
-    gap: 0.12rem;
-  }
-
-  #footer .ff-footerTrust {
-    font-size: 0.88rem;
-  }
-
-  #footer .ff-footerGridV2 {
-    gap: 0.82rem;
-  }
-
-  #footer .ff-footerBrandV2,
-  #footer .ff-footerNavV2,
-  #footer .ff-footerMetaV2 {
-    gap: 0.52rem;
-  }
-
-  #footer .ff-footerBrandV2__copy {
-    max-width: 42ch;
-    font-size: 0.92rem;
-    line-height: 1.5;
-  }
-
-  #footer .ff-footerBrandV2__trust {
-    gap: 0.38rem;
-  }
-
-  #footer .ff-footerBrandV2__trust .ff-pill {
-    min-height: 1.5rem;
-    padding-inline: 0.54rem;
-    font-size: 0.65rem;
-  }
-
-  #footer .ff-footerNavV2 {
-    gap: 0.72rem 0.9rem;
-  }
-
-  #footer .ff-footerNavV2__group {
-    gap: 0.28rem;
-  }
-
-  #footer .ff-footerLinkList {
-    gap: 0.2rem;
-  }
-
-  #footer .ff-footerMetaV2__card {
-    padding: 0.8rem 0.86rem;
-  }
-
-  #footer .ff-footerMetaV2__legal {
-    font-size: 0.9rem;
-  }
-
-  /* ----------------------------------------------------------------------
-     Bottom dock — smaller, calmer, less dominant
-     ---------------------------------------------------------------------- */
-  .ff-tabs {
-    bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
-    max-width: min(90vw, 31rem);
-  }
-
-  .ff-tabs__scroller {
-    padding: 0.22rem;
-    box-shadow: 0 10px 22px rgb(15 23 42 / 0.08);
-  }
-
-  .ff-tab {
-    min-height: 2.05rem;
-    padding: 0.46rem 0.72rem;
-    font-size: 0.88rem;
-  }
-
-  .ff-backtotop {
-    min-height: 2.14rem;
-    padding: 0.44rem 0.64rem;
-  }
-
-  /* ----------------------------------------------------------------------
-     Dark theme refinement — more readable, less muddy
-     ---------------------------------------------------------------------- */
-  html.ff-root[data-theme="dark"] {
-    --ff-copy-body: #ecf2ff;
-    --ff-copy-muted: #c9d4e6;
-    --ff-copy-soft: #aebad0;
-    --ff-border: rgb(226 232 240 / 0.12);
-    --ff-border-strong: rgb(226 232 240 / 0.18);
-    --ff-line: rgb(226 232 240 / 0.10);
-  }
-
-  html.ff-root[data-theme="dark"] :is(
-    #story .ff-storyCard,
-    #impact .ff-impactCard,
-    #teams .ff-teamsShell,
-    #sponsors .ff-sponsorsBoard,
-    #trust-faq .ff-trustCard,
-    #trust-faq .ff-faqCard,
-    #footer .ff-footerTray
-  ) {
-    box-shadow:
-      0 16px 38px rgb(0 0 0 / 0.24),
-      inset 0 1px 0 rgb(255 255 255 / 0.04);
-  }
-
-  html.ff-root[data-theme="dark"] :is(
-    #impact .ff-impactPick,
-    #impact .ff-impactProof,
-    #teams .ff-teamCard,
-    #sponsors .ff-sponsorWallBlock,
-    #sponsors .ff-sponsorTierGrid .ff-impactTier,
-    #story .ff-storyPanel,
-    #story .ff-proofMini--tile,
-    #trust-faq .ff-disclosure,
-    #footer .ff-footerMetaV2__card
-  ) {
-    border-color: rgb(148 163 184 / 0.17);
-  }
-
-  html.ff-root[data-theme="dark"] #sponsors .ff-sponsorGhost {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.025), rgb(255 255 255 / 0)),
-      linear-gradient(180deg, rgba(19, 28, 49, 0.9) 0%, rgba(10, 17, 32, 0.96) 100%);
-  }
-
-  /* ----------------------------------------------------------------------
-     Responsive
-     ---------------------------------------------------------------------- */
-  @media (min-width: 48rem) {
-    #footer .ff-footerGridV2 {
-      grid-template-columns: minmax(0, 1.12fr) minmax(11rem, 0.7fr) minmax(15rem, 0.86fr);
-      gap: 0.92rem;
-    }
-  }
-
-  @media (max-width: 47.99rem) {
-    .ff-section {
-      padding-block: 1.45rem;
-    }
-
-    #footer .ff-footerTray {
-      gap: 0.72rem;
-      padding: 0.82rem 0.86rem;
-    }
-
-    #footer .ff-footerBrandV2__copy {
-      max-width: none;
-    }
-
-    #footer .ff-footerTop__actions {
-      gap: 0.5rem;
-    }
-
-    .ff-tabs {
-      left: 0.56rem;
-      right: 0.56rem;
-      max-width: none;
-    }
-
-    .ff-tab {
-      min-height: 2rem;
-      padding: 0.44rem 0.66rem;
-      font-size: 0.86rem;
-    }
-  }
-}
-/* FF_VISUAL_PREMIUM_PASS_V1_END */
-
 /* FF_INTEGRATION_HEALTH_CSS_V3 */
 @layer ff.pages {
 .ff-readiness {
@@ -6997,7 +6596,6 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 }
 /* FF_TEAM_TIER_BADGES_V1_END */
 
-
 /* FF_TEAM_FEATURED_HIERARCHY_V1_START */
 @layer ff.pages {
   #teams .ff-teamCard {
@@ -7092,718 +6690,6 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 }
 /* FF_TEAM_FEATURED_HIERARCHY_V1_END */
 
-/* FF_CSS_PREMIUM_LIGHT_DEPTH_WAVE_V2_START */
-@layer ff.overrides, ff.pages {
-  html.ff-root:not([data-theme="dark"]) {
-    --ff-bg: #eef3f8;
-    --ff-bg-soft: #f7f9fc;
-    --ff-panel: rgb(255 255 255 / 0.90);
-    --ff-panel-strong: rgb(255 255 255 / 0.97);
-    --ff-panel-solid: #fff;
-
-    --ff-copy-body: #223247;
-    --ff-copy-muted: #5d6d82;
-    --ff-copy-soft: #7a8799;
-    --ff-card-title: #0b1728;
-    --ff-card-kicker: #69788b;
-
-    --ff-border: rgb(15 23 42 / 0.09);
-    --ff-border-strong: rgb(15 23 42 / 0.14);
-    --ff-line: rgb(15 23 42 / 0.08);
-
-    --ff-prod-border: rgb(15 23 42 / 0.10);
-    --ff-prod-border-strong: rgb(15 23 42 / 0.15);
-
-    --ff-shadow-1:
-      0 1px 2px rgb(15 23 42 / 0.04),
-      0 12px 28px rgb(15 23 42 / 0.06);
-
-    --ff-shadow-2:
-      0 1px 2px rgb(15 23 42 / 0.05),
-      0 18px 40px rgb(15 23 42 / 0.08);
-
-    --ff-prod-shadow-soft:
-      0 1px 2px rgb(15 23 42 / 0.04),
-      0 16px 34px rgb(15 23 42 / 0.07);
-
-    --ff-prod-shadow-strong:
-      0 1px 2px rgb(15 23 42 / 0.05),
-      0 24px 52px rgb(15 23 42 / 0.10);
-  }
-
-  html.ff-root:not([data-theme="dark"]) body.ff-body,
-  html.ff-root:not([data-theme="dark"]) body[data-ff-page="fundraiser"] {
-    background:
-      radial-gradient(circle at 12% 0%, rgb(14 165 233 / 0.05), transparent 24rem),
-      radial-gradient(circle at 88% 0%, rgb(249 115 22 / 0.07), transparent 20rem),
-      linear-gradient(180deg, #f8fafc 0%, #eef3f8 42%, #e9eff6 100%);
-    color: var(--ff-copy-body);
-  }
-
-  /* ----------------------------------------------------------------------
-     Global surfaces only — no above-main section ownership
-     ---------------------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-card,
-    .ff-proofMini,
-    .ff-progressMini,
-    .ff-callout,
-    .ff-liveFeed,
-    .ff-checkoutCard,
-    .ff-checkoutAside,
-    .ff-checkoutBody,
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel,
-    .ff-footerTray,
-    .ff-tabs__scroller,
-    .ff-backtotop
-  ) {
-    border-color: var(--ff-prod-border);
-    box-shadow: var(--ff-prod-shadow-soft);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-proofMini,
-    .ff-progressMini,
-    .ff-callout,
-    .ff-liveFeed__item,
-    .ff-checkoutCard,
-    .ff-checkoutAside,
-    .ff-checkoutBody,
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel
-  ) {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
-      var(--ff-panel-strong);
-  }
-
-  /* ----------------------------------------------------------------------
-     Checkout / overlays authority
-     ---------------------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-shell],
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-sheet],
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-viewport],
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutShell,
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutBody,
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutAside,
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutCard {
-    border-color: rgb(15 23 42 / 0.09);
-  }
-
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-shell],
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutShell {
-    box-shadow:
-      0 24px 60px rgb(15 23 42 / 0.14),
-      0 8px 20px rgb(15 23 42 / 0.08);
-  }
-
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutBody,
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutAside,
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutCard {
-    border-radius: 1rem;
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.26),
-      0 14px 30px rgb(15 23 42 / 0.07);
-  }
-
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-status],
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-success],
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-error] {
-    border-color: rgb(15 23 42 / 0.08);
-    border-radius: 0.95rem;
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
-      var(--ff-panel-strong);
-  }
-
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-actions] .ff-btn,
-  html.ff-root:not([data-theme="dark"]) .ff-checkoutActions .ff-btn {
-    min-height: 2.8rem;
-  }
-
-  html.ff-root:not([data-theme="dark"]) [data-ff-stripe-mount],
-  html.ff-root:not([data-theme="dark"]) [data-ff-paypal-mount] {
-    border-radius: 0.95rem;
-  }
-
-  html.ff-root:not([data-theme="dark"]) [data-ff-checkout-scroll] {
-    scrollbar-color: rgb(15 23 42 / 0.25) transparent;
-  }
-
-  /* ----------------------------------------------------------------------
-     Footer / lower chrome authority
-     ---------------------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) #footer .ff-footerTray,
-  html.ff-root:not([data-theme="dark"]) .ff-footerTray {
-    border-color: rgb(15 23 42 / 0.09);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.90));
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.36),
-      0 18px 38px rgb(15 23 42 / 0.07);
-  }
-
-  html.ff-root:not([data-theme="dark"]) #footer :is(
-    .ff-card,
-    .ff-proofMini,
-    .ff-progressMini,
-    .ff-callout
-  ) {
-    border-color: rgb(15 23 42 / 0.08);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.12),
-      0 8px 18px rgb(15 23 42 / 0.05);
-  }
-
-  html.ff-root:not([data-theme="dark"]) #footer .ff-kicker,
-  html.ff-root:not([data-theme="dark"]) #footer .ff-help,
-  html.ff-root:not([data-theme="dark"]) #footer .ff-muted {
-    color: var(--ff-copy-muted);
-  }
-
-  /* ----------------------------------------------------------------------
-     Sticky tabs / back-to-top / shared floating chrome
-     ---------------------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) .ff-tabs__scroller,
-  html.ff-root:not([data-theme="dark"]) .ff-backtotop {
-    border-color: rgb(15 23 42 / 0.10);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.86));
-    box-shadow: 0 10px 24px rgb(15 23 42 / 0.08);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
-
-  html.ff-root:not([data-theme="dark"]) .ff-tab {
-    border-color: rgb(15 23 42 / 0.08);
-  }
-
-  html.ff-root:not([data-theme="dark"]) .ff-tab[aria-current="true"],
-  html.ff-root:not([data-theme="dark"]) .ff-tab.is-active {
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.18),
-      0 6px 14px rgb(15 23 42 / 0.06);
-  }
-
-  /* ----------------------------------------------------------------------
-     Generic modals / sheets / drawers
-     ---------------------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel
-  ) {
-    border-radius: 1.1rem;
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.92));
-    box-shadow:
-      0 24px 60px rgb(15 23 42 / 0.16),
-      0 10px 24px rgb(15 23 42 / 0.08);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    [data-ff-video-panel],
-    [data-ff-sponsor-modal] .ff-modal__panel,
-    [data-ff-onboarding] .ff-modal__panel
-  ) {
-    border-color: rgb(15 23 42 / 0.09);
-  }
-
-  /* ----------------------------------------------------------------------
-     Small global polish
-     ---------------------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) .ff-chip,
-  html.ff-root:not([data-theme="dark"]) .ff-pill,
-  html.ff-root:not([data-theme="dark"]) .ff-badge {
-    border-color: rgb(15 23 42 / 0.08);
-  }
-
-  html.ff-root:not([data-theme="dark"]) .ff-liveFeed__item + .ff-liveFeed__item,
-  html.ff-root:not([data-theme="dark"]) .ff-card hr,
-  html.ff-root:not([data-theme="dark"]) .ff-divider {
-    border-color: var(--ff-line);
-  }
-
-  html.ff-root:not([data-theme="dark"]) .ff-btn--secondary,
-  html.ff-root:not([data-theme="dark"]) .ff-btn--ghost,
-  html.ff-root:not([data-theme="dark"]) .ff-btn--pill {
-    border-color: rgb(15 23 42 / 0.10);
-  }
-
-  /* ----------------------------------------------------------------------
-     Dark mode restraint
-     ---------------------------------------------------------------------- */
-  html.ff-root[data-theme="dark"] :is(
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel,
-    .ff-checkoutShell,
-    .ff-footerTray,
-    .ff-tabs__scroller
-  ) {
-    box-shadow:
-      0 18px 42px rgb(0 0 0 / 0.28),
-      inset 0 1px 0 rgb(255 255 255 / 0.04);
-  }
-
-  /* ----------------------------------------------------------------------
-     Mobile composure
-     ---------------------------------------------------------------------- */
-  @media (max-width: 47.99rem) {
-    html.ff-root:not([data-theme="dark"]) .ff-tabs {
-      left: 0.55rem;
-      right: 0.55rem;
-    }
-
-    html.ff-root:not([data-theme="dark"]) .ff-tab {
-      min-height: 2rem;
-      padding: 0.44rem 0.66rem;
-      font-size: 0.86rem;
-    }
-
-    html.ff-root:not([data-theme="dark"]) :is(
-      .ff-checkoutBody,
-      .ff-checkoutAside,
-      .ff-checkoutCard,
-      .ff-footerTray,
-      .ff-sheet__panel,
-      .ff-modal__panel,
-      .ff-drawer__panel
-    ) {
-      border-radius: 0.95rem;
-    }
-
-    html.ff-root:not([data-theme="dark"]) #footer .ff-footerTray {
-      padding: 0.92rem;
-    }
-  }
-}
-/* FF_CSS_PREMIUM_LIGHT_DEPTH_WAVE_V2_END */
-
-
-/* FF_FINAL_LAUNCH_AUDIT_POLISH_V1_START */
-@layer ff.overrides, ff.pages {
-  /* -------------------------------------------------------
-     Token alias rescue
-     ------------------------------------------------------- */
-  html.ff-root {
-    --ff-copy-title: var(--ff-card-title);
-  }
-
-  /* -------------------------------------------------------
-     Final light-theme global chrome polish
-     - keep this global-only
-     - do not fight above-main ownership
-     ------------------------------------------------------- */
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-footerTray,
-    .ff-tabs__scroller,
-    .ff-backtotop,
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel,
-    .ff-checkoutShell,
-    .ff-integrationTile
-  ) {
-    border-color: rgb(15 23 42 / 0.10);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.34),
-      0 16px 36px rgb(15 23 42 / 0.08);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-footerTray,
-    .ff-tabs__scroller,
-    .ff-backtotop,
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel
-  ) {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.90));
-  }
-
-  /* -------------------------------------------------------
-     Final dark-theme global chrome polish
-     ------------------------------------------------------- */
-  html.ff-root[data-theme="dark"] :is(
-    .ff-footerTray,
-    .ff-tabs__scroller,
-    .ff-backtotop,
-    .ff-sheet__panel,
-    .ff-modal__panel,
-    .ff-drawer__panel,
-    .ff-checkoutShell,
-    .ff-integrationTile
-  ) {
-    border-color: rgb(148 163 184 / 0.18);
-    background:
-      linear-gradient(180deg, rgb(18 27 47 / 0.94), rgb(9 15 28 / 0.98));
-    box-shadow:
-      0 18px 44px rgb(0 0 0 / 0.30),
-      inset 0 1px 0 rgb(255 255 255 / 0.04);
-  }
-
-  html.ff-root[data-theme="dark"] :is(
-    .ff-help,
-    .ff-muted,
-    .ff-liveFeed__text,
-    .ff-liveFeed__time,
-    .ff-disclosure__panel,
-    .ff-footerBrandV2__copy,
-    .ff-footerTrust,
-    .ff-demoBanner__text
-  ) {
-    color: var(--ff-copy-muted);
-  }
-
-  /* -------------------------------------------------------
-     Teams rhythm
-     - 3 columns on normal desktop
-     - 4 columns only on truly wide screens
-     ------------------------------------------------------- */
-  @media (min-width: 72rem) {
-    #teams .ff-teamGrid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 88rem) {
-    #teams .ff-teamGrid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-
-  /* -------------------------------------------------------
-     Mobile composure
-     - final authority for global section rhythm
-     ------------------------------------------------------- */
-  @media (max-width: 47.99rem) {
-    .ff-section {
-      padding-block: clamp(1.4rem, 5.4vw, 1.7rem);
-    }
-
-    .ff-tabs {
-      left: 0.56rem;
-      right: 0.56rem;
-      max-width: none;
-    }
-
-    .ff-tab {
-      min-height: 2rem;
-      padding: 0.44rem 0.66rem;
-      font-size: 0.86rem;
-    }
-
-    #footer .ff-footerTray {
-      gap: 0.72rem;
-      padding: 0.84rem 0.9rem;
-    }
-  }
-
-  /* -------------------------------------------------------
-     Hover restraint for footer / dock
-     ------------------------------------------------------- */
-  @media (hover: hover) and (pointer: fine) {
-    html.ff-root:not([data-theme="dark"]) :is(
-      .ff-tabs__scroller,
-      .ff-backtotop,
-      #footer .ff-footerTray
-    ):hover {
-      box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 0.34),
-        0 18px 40px rgb(15 23 42 / 0.10);
-    }
-
-    html.ff-root[data-theme="dark"] :is(
-      .ff-tabs__scroller,
-      .ff-backtotop,
-      #footer .ff-footerTray
-    ):hover {
-      border-color: rgb(249 115 22 / 0.18);
-      box-shadow:
-        0 20px 48px rgb(0 0 0 / 0.36),
-        inset 0 1px 0 rgb(255 255 255 / 0.05);
-    }
-  }
-}
-/* FF_FINAL_LAUNCH_AUDIT_POLISH_V1_END */
-
-
-/* FF_FINAL_THEME_STABILIZER_V1_START */
-@layer ff.overrides, ff.pages {
-  /* ------------------------------------------------------------------
-     Light theme: lower-page section separation
-     ------------------------------------------------------------------ */
-  html.ff-root:not([data-theme="dark"]) :is(
-    #impact,
-    #sponsors,
-    #trust-faq,
-    #footer
-  ) {
-    position: relative;
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    #impact,
-    #sponsors,
-    #trust-faq
-  )::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: min(100% - 2rem, 76rem);
-    height: 1px;
-    transform: translateX(-50%);
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgb(15 23 42 / 0.09),
-      transparent
-    );
-    pointer-events: none;
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    #impact .ff-impactPick,
-    #impact .ff-impactProof,
-    #sponsors .ff-sponsorWallBlock,
-    #sponsors .ff-sponsorTierGrid .ff-impactTier,
-    #trust-faq .ff-disclosure,
-    #trust-faq .ff-impactProofCallout,
-    #footer .ff-footerMetaV2__card,
-    .ff-integrationTile
-  ) {
-    border-color: rgb(15 23 42 / 0.09);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(248 250 252 / 0.94));
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.44),
-      0 12px 28px rgb(15 23 42 / 0.06);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    #teams .ff-teamCard__summary,
-    #teams .ff-teamStat,
-    #teams .ff-teamCard__ask,
-    #teams .ff-teamCard .ff-proofMini,
-    #impact .ff-progressMini,
-    #sponsors .ff-proofMini,
-    #story .ff-proofMini--tile
-  ) {
-    border-color: rgb(15 23 42 / 0.08);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.86));
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.38);
-  }
-
-  /* ------------------------------------------------------------------
-     Dark theme: nested-surface rescue
-     ------------------------------------------------------------------ */
-  html.ff-root[data-theme="dark"] :is(
-    #impact .ff-impactPick,
-    #impact .ff-impactProof,
-    #impact .ff-progressMini,
-    #teams .ff-teamCard,
-    #teams .ff-teamCard__summary,
-    #teams .ff-teamCard__stats,
-    #teams .ff-teamStat,
-    #teams .ff-teamCard__ask,
-    #teams .ff-teamCard .ff-proofMini,
-    #story .ff-storyPanel,
-    #story .ff-proofMini--tile,
-    #story .ff-proofMini--feature,
-    #sponsors .ff-sponsorWallBlock,
-    #sponsors .ff-proofMini,
-    #sponsors .ff-sponsorTierGrid .ff-impactTier,
-    #trust-faq .ff-disclosure,
-    #trust-faq .ff-impactProofCallout,
-    #trust-faq .ff-proofMini,
-    #footer .ff-footerMetaV2__card,
-    .ff-integrationTile
-  ) {
-    border-color: rgb(148 163 184 / 0.17);
-    background:
-      linear-gradient(180deg, rgba(21, 31, 55, 0.96) 0%, rgba(10, 17, 32, 0.99) 100%);
-    box-shadow:
-      0 14px 34px rgb(0 0 0 / 0.24),
-      inset 0 1px 0 rgb(255 255 255 / 0.04);
-  }
-
-  html.ff-root[data-theme="dark"] :is(
-    #impact .ff-progressMini__label,
-    #impact .ff-progressMini__note,
-    #teams .ff-teamCard__meta,
-    #teams .ff-teamStat__label,
-    #teams .ff-teamCard__meterText,
-    #story .ff-storyMeta,
-    #story .ff-storyQuote__meta,
-    #sponsors .ff-help,
-    #trust-faq .ff-disclosure__panel,
-    #footer .ff-footerBrandV2__copy,
-    #footer .ff-footerTrust,
-    .ff-integrationTile__message
-  ) {
-    color: var(--ff-copy-muted);
-  }
-
-  html.ff-root[data-theme="dark"] :is(
-    #impact .ff-progressMini__value,
-    #teams .ff-teamStat__value,
-    #teams .ff-teamCard__title,
-    #story .ff-storyQuote__body,
-    #sponsors .ff-h2,
-    #trust-faq .ff-disclosure__sum strong,
-    .ff-integrationTile__title
-  ) {
-    color: var(--ff-card-title);
-  }
-
-  html.ff-root[data-theme="dark"] #sponsors .ff-sponsorTierGrid [data-tier="vip"] {
-    border-color: rgb(249 115 22 / 0.24);
-    box-shadow:
-      0 0 0 1px rgb(249 115 22 / 0.12),
-      0 20px 46px rgb(0 0 0 / 0.34),
-      inset 0 1px 0 rgb(255 255 255 / 0.05);
-  }
-
-  /* ------------------------------------------------------------------
-     Footer + dock composure
-     ------------------------------------------------------------------ */
-  html.ff-root:not([data-theme="dark"]) #footer .ff-footerTray {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.97), rgb(255 255 255 / 0.92));
-  }
-
-  html.ff-root[data-theme="dark"] #footer .ff-footerTray,
-  html.ff-root[data-theme="dark"] .ff-tabs__scroller,
-  html.ff-root[data-theme="dark"] .ff-backtotop {
-    background:
-      linear-gradient(180deg, rgb(18 27 47 / 0.95), rgb(9 15 28 / 0.98));
-    border-color: rgb(148 163 184 / 0.18);
-  }
-
-  /* ------------------------------------------------------------------
-     Mobile calm-down
-     ------------------------------------------------------------------ */
-  @media (max-width: 47.99rem) {
-    .ff-section {
-      padding-block: clamp(1.36rem, 5.2vw, 1.68rem);
-    }
-
-    #impact .ff-impactChoiceGrid,
-    #teams .ff-teamGrid,
-    #sponsors .ff-sponsorTierGrid,
-    #trust-faq .ff-faqList {
-      gap: 0.78rem;
-    }
-
-    #footer .ff-footerTray {
-      padding: 0.84rem 0.88rem;
-    }
-  }
-}
-/* FF_FINAL_THEME_STABILIZER_V1_END */
-
-
-/* FF_LIGHT_NESTED_SURFACE_RESCUE_V1_START */
-@layer ff.overrides, ff.pages {
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-momentumMetric,
-    .ff-momentumCard,
-    .ff-momentumTray,
-    #teams .ff-teamsShell > .ff-grid[role="list"] .ff-proofMini,
-    #teams .ff-teamCard__ask,
-    #teams .ff-teamCard .ff-proofMini,
-    #teams .ff-teamCard__summary,
-    #teams .ff-teamStat,
-    #impact .ff-progressMini,
-    #impact .ff-impactPick,
-    #impact .ff-impactProof,
-    #story .ff-proofMini--feature,
-    #story .ff-proofMini--tile,
-    #story .ff-storyPanel,
-    #sponsors .ff-proofMini,
-    #sponsors .ff-proofMini--feature,
-    #sponsors .ff-sponsorWallBlock,
-    #sponsors .ff-foundingProof,
-    #sponsors .ff-foundingPartner,
-    #sponsors .ff-sponsorTierGrid .ff-impactTier,
-    #trust-faq .ff-proofMini,
-    #trust-faq .ff-impactProofCallout,
-    #trust-faq .ff-disclosure,
-    #footer .ff-footerMetaV2__card,
-    .ff-integrationTile
-  ) {
-    color: var(--ff-copy-body);
-    border-color: rgb(15 23 42 / 0.09);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(248 250 252 / 0.94));
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.44),
-      0 12px 28px rgb(15 23 42 / 0.06);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-momentumMetric__eyebrow,
-    #teams .ff-teamCard__meta,
-    #teams .ff-teamStat__label,
-    #teams .ff-teamCard__meterText,
-    #impact .ff-progressMini__label,
-    #impact .ff-progressMini__note,
-    #story .ff-storyMeta,
-    #story .ff-storyQuote__meta,
-    #sponsors .ff-help,
-    #trust-faq .ff-disclosure__panel,
-    #footer .ff-footerBrandV2__copy,
-    #footer .ff-footerTrust,
-    .ff-integrationTile__message
-  ) {
-    color: var(--ff-copy-muted);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-momentumMetric__value,
-    #teams .ff-teamCard__title,
-    #teams .ff-teamStat__value,
-    #impact .ff-progressMini__value,
-    #story .ff-storyQuote__body,
-    #sponsors .ff-h2,
-    #trust-faq .ff-disclosure__sum strong,
-    .ff-integrationTile__title
-  ) {
-    color: var(--ff-card-title);
-  }
-
-  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="vip"] {
-    background:
-      radial-gradient(circle at top right, rgb(249 115 22 / 0.10), transparent 34%),
-      linear-gradient(180deg, #fffaf5, #fff);
-    border-color: rgb(249 115 22 / 0.18);
-    box-shadow:
-      0 0 0 1px rgb(249 115 22 / 0.07),
-      0 14px 30px rgb(249 115 22 / 0.08);
-  }
-
-  @media (max-width: 47.99rem) {
-    html.ff-root:not([data-theme="dark"]) :is(
-      .ff-momentumMetric,
-      #teams .ff-teamsShell > .ff-grid[role="list"] .ff-proofMini,
-      #sponsors .ff-proofMini,
-      #sponsors .ff-sponsorTierGrid .ff-impactTier,
-      #trust-faq .ff-disclosure
-    ) {
-      border-radius: 0.95rem;
-    }
-  }
-}
-/* FF_LIGHT_NESTED_SURFACE_RESCUE_V1_END */
-
-
 /* FF_SMOKE_CONTRACT_SHIM_V1_START */
 @layer ff.utilities {
   .ff-h4,
@@ -7840,7 +6726,6 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 }
 /* FF_SMOKE_CONTRACT_SHIM_V1_END */
 
-
 /* FF_SMOKE_ID_SHIM_V1_START */
 @layer ff.pages {
   :is(
@@ -7865,254 +6750,6 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
   }
 }
 /* FF_SMOKE_ID_SHIM_V1_END */
-
-
-/* FF_FINAL_AUTHORITY_AND_BREATHING_V1_START */
-@layer ff.overrides {
-  html.ff-root:not([data-theme="dark"]) {
-    --ff-bg: #eef2f7;
-    --ff-bg-soft: #f7f9fc;
-    --ff-panel: rgb(255 255 255 / 0.88);
-    --ff-panel-strong: rgb(255 255 255 / 0.97);
-
-    --ff-prod-border: rgb(15 23 42 / 0.075);
-    --ff-prod-border-strong: rgb(15 23 42 / 0.11);
-
-    --ff-prod-shadow-soft:
-      0 1px 2px rgb(15 23 42 / 0.04),
-      0 18px 38px rgb(15 23 42 / 0.065);
-
-    --ff-prod-shadow-strong:
-      0 1px 2px rgb(15 23 42 / 0.045),
-      0 24px 54px rgb(15 23 42 / 0.095);
-  }
-
-  html.ff-root:not([data-theme="dark"]) body.ff-body {
-    background:
-      radial-gradient(circle at top center, rgb(14 165 233 / 0.04), transparent 30rem),
-      radial-gradient(circle at 84% 0%, rgb(249 115 22 / 0.05), transparent 22rem),
-      linear-gradient(180deg, var(--ff-bg-soft), var(--ff-bg));
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    .ff-card,
-    .ff-proofMini,
-    .ff-progressMini,
-    .ff-callout,
-    .ff-liveFeed,
-    .ff-impactTier,
-    .ff-sponsorCell,
-    .ff-teamCard,
-    .ff-checkoutCard,
-    .ff-disclosure,
-    .ff-storyPoster,
-    .ff-footerTray,
-    .ff-checkoutShell,
-    .ff-hero__capsule
-  ) {
-    border-color: var(--ff-prod-border);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    #home .ff-hero__capsule,
-    #home .ff-heroPanel .ff-card--premium,
-    #impact .ff-impactCard,
-    #teams .ff-teamsShell,
-    #story .ff-storyCard,
-    #sponsors .ff-sponsorsBoard,
-    #trust-faq .ff-trustCard,
-    #trust-faq .ff-faqCard,
-    #footer .ff-footerTray
-  ) {
-    box-shadow: var(--ff-prod-shadow-strong);
-  }
-
-  html.ff-root:not([data-theme="dark"]) :is(
-    #impact .ff-impactTier__footer,
-    #teams .ff-teamCard__foot,
-    #sponsors .ff-sponsorTierGrid .ff-impactTier__footer,
-    #trust-faq .ff-disclosure__sum
-  ) {
-    border-color: rgb(15 23 42 / 0.07);
-  }
-}
-
-@layer ff.pages {
-  .ff-section {
-    padding-block: clamp(1.62rem, 1.18rem + 1.55vw, 2.72rem);
-  }
-
-  #home .ff-hero__grid {
-    gap: clamp(1rem, 0.92rem + 0.6vw, 1.28rem);
-  }
-
-  #home .ff-heroPanel {
-    gap: 1rem;
-  }
-
-  #home .ff-heroPanel > .ff-card,
-  #home .ff-heroPanel > article {
-    gap: 1rem;
-  }
-
-  #home .ff-heroPanel .ff-card--premium,
-  #home .ff-heroLiveFeed,
-  #home .ff-heroPanelQr__card,
-  #home .ff-heroPanel > .ff-callout--flagship {
-    border-radius: 1.05rem;
-  }
-
-  #home .ff-heroPanel .ff-chip {
-    min-height: 4.22rem;
-  }
-
-  #home .ff-heroPanel .ff-row[role="group"],
-  #home .ff-heroPanel .ff-checkoutAmountRow {
-    gap: 0.72rem;
-  }
-
-  #impact .ff-impactTierGrid,
-  #teams .ff-teamGrid,
-  #sponsors .ff-sponsorTierGrid {
-    gap: 0.95rem;
-  }
-
-  #teams .ff-teamCard {
-    padding: clamp(0.96rem, 1vw, 1.08rem);
-  }
-
-  #teams .ff-teamCard__inner {
-    gap: 0.95rem;
-  }
-
-  #teams .ff-teamCard__body {
-    gap: 0.84rem;
-  }
-
-  #teams .ff-teamCard__stats {
-    gap: 0.56rem;
-  }
-
-  #teams .ff-teamStat {
-    min-height: 4.55rem;
-  }
-
-  #teams .ff-teamCard__ask,
-  #teams .ff-teamCard .ff-proofMini[aria-label$="support note"] {
-    padding: 0.8rem 0.84rem;
-  }
-
-  #teams .ff-teamCard__foot {
-    padding-top: 0.9rem;
-    gap: 0.62rem;
-  }
-
-  #story .ff-storyGrid,
-  #sponsors .ff-sponsorsBoard,
-  #trust-faq > .ff-container > .ff-grid[role="presentation"] {
-    gap: 1rem;
-  }
-
-  #story .ff-storyPoster,
-  #story .ff-storyQuote,
-  #sponsors .ff-sponsorCell,
-  #sponsors .ff-sponsorTierGrid .ff-impactTier,
-  #trust-faq .ff-disclosure {
-    border-radius: 1.05rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-impactTier {
-    gap: 0.88rem;
-    padding: clamp(0.96rem, 0.92rem + 0.32vw, 1.08rem);
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-impactTier__head {
-    gap: 0.32rem;
-  }
-
-  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer {
-    padding-top: 0.8rem;
-    border-top: 1px solid var(--ff-line);
-  }
-
-  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="community"] {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
-      linear-gradient(180deg, var(--ff-panel-strong), rgb(248 250 252 / 0.96));
-  }
-
-  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="partner"] {
-    border-color: rgb(14 165 233 / 0.14);
-    background:
-      radial-gradient(circle at top right, rgb(14 165 233 / 0.07), transparent 30%),
-      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
-      var(--ff-panel-strong);
-    box-shadow:
-      0 0 0 1px rgb(14 165 233 / 0.05),
-      var(--ff-prod-shadow-soft);
-  }
-
-  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="vip"] {
-    border-color: rgb(249 115 22 / 0.24);
-    background:
-      radial-gradient(circle at top right, rgb(249 115 22 / 0.11), transparent 34%),
-      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
-      var(--ff-panel-strong);
-    box-shadow:
-      0 0 0 1px rgb(249 115 22 / 0.08),
-      var(--ff-prod-shadow-strong);
-  }
-
-  #trust-faq .ff-trustCard .ff-proofMini,
-  #trust-faq .ff-disclosure {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
-      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
-  }
-
-  @media (max-width: 47.99rem) {
-    .ff-section {
-      padding-block: clamp(1.42rem, 5.2vw, 1.9rem);
-    }
-
-    #home .ff-hero__grid {
-      gap: 0.9rem;
-    }
-
-    #home .ff-heroPanel .ff-chip {
-      min-height: 4rem;
-    }
-
-    #teams .ff-teamCard {
-      padding: 0.9rem;
-    }
-
-    #teams .ff-teamGrid,
-    #sponsors .ff-sponsorTierGrid,
-    #trust-faq .ff-faqList {
-      gap: 0.82rem;
-    }
-
-    #teams .ff-teamCard__stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    #teams .ff-teamCard__stats .ff-teamStat:last-child {
-      grid-column: 1 / -1;
-    }
-
-    #sponsors .ff-sponsorTierGrid .ff-impactTier {
-      gap: 0.82rem;
-    }
-
-    #trust-faq .ff-trustCard,
-    #trust-faq .ff-faqCard {
-      gap: 0.88rem;
-    }
-  }
-}
-/* FF_FINAL_AUTHORITY_AND_BREATHING_V1_END */
-
 
 /* FF_SMOKE_DATA_ATTR_SHIM_V1_START */
 @layer ff.pages {
@@ -8160,3 +6797,3126 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
   }
 }
 /* FF_SMOKE_DATA_ATTR_SHIM_V1_END */
+
+/* FF_BRAND_WORDMARK_STATE_V1_START */
+@layer ff.overrides {
+  #ffTopbar[data-ff-brand-wordmark="true"] .ff-topbarBrand {
+    align-items: center;
+    gap: 0.44rem;
+  }
+
+  #ffTopbar[data-ff-brand-wordmark="true"] .ff-topbarBrand__logo {
+    flex: 0 0 auto;
+    max-inline-size: min(10.5rem, 34vw);
+  }
+
+  #drawer[data-ff-brand-wordmark="true"] .ff-drawer__head {
+    align-items: center;
+    gap: 0.68rem;
+  }
+
+  #drawer[data-ff-brand-wordmark="true"] .ff-drawer__orgLogo {
+    flex: 0 0 auto;
+    max-inline-size: min(12rem, 72vw);
+  }
+
+  @media (max-width: 47.99rem) {
+    #ffTopbar[data-ff-brand-wordmark="true"] .ff-topbarBrand__logo {
+      max-inline-size: min(9.5rem, 44vw);
+    }
+
+    #drawer[data-ff-brand-wordmark="true"] .ff-drawer__orgLogo {
+      max-inline-size: min(11rem, 78vw);
+    }
+  }
+}
+/* FF_BRAND_WORDMARK_STATE_V1_END */
+
+@layer ff.overrides {
+  /* FF_BRAND_WORDMARK_SELECTOR_COVERAGE_V2_START */
+  html.ff-root body[data-ff-page="fundraiser"] [data-ff-brand-wordmark] {
+    --ff-brand-wordmark-hook: 1;
+  }
+  /* FF_BRAND_WORDMARK_SELECTOR_COVERAGE_V2_END */
+}
+
+/* FF_HERO_CLASS_COVERAGE_V1_START */
+@layer ff.overrides {
+  html.ff-root body[data-ff-page="fundraiser"] .ff-heroSubhead {
+    display: inline;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+
+  html.ff-root body[data-ff-page="fundraiser"] .ff-heroNameLockup {
+    display: inline;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+
+  html.ff-root body[data-ff-page="fundraiser"] .ff-heroSubhead .ff-heroNameLockup {
+    display: inline;
+  }
+}
+/* FF_HERO_CLASS_COVERAGE_V1_END */
+
+/* FF_SCREENSHOT_REVIEW_POLISH_V1_START */
+@layer ff.overrides, ff.pages {
+  /* ------------------------------------------------------------------
+     Screenshot-driven polish
+     - fix 4-card team orphan state on normal desktop
+     - rebalance momentum intro vs card rail
+     - tighten lower-page CTA/footer rhythm slightly
+     ------------------------------------------------------------------ */
+
+  @media (min-width: 64rem) and (max-width: 87.99rem) {
+    #momentum .ff-momentumShell,
+    .ff-momentumShell {
+      grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+      align-items: stretch;
+    }
+
+    #momentum .ff-momentumIntro,
+    .ff-momentumIntro {
+      padding-right: 0.1rem;
+    }
+  }
+
+  /* Prefer a clean 2x2 layout when there are exactly 4 team cards
+     on normal desktop widths. */
+  @supports selector(.ff-teamGrid:has(> li:nth-child(4):last-child)) {
+    @media (min-width: 64rem) and (max-width: 87.99rem) {
+      #teams .ff-teamGrid:has(> li:nth-child(4):last-child) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: min(100%, 58rem);
+        margin-inline: auto;
+      }
+    }
+  }
+
+  /* Fallback for browsers without :has() support */
+  @supports not selector(.ff-teamGrid:has(> li:nth-child(4):last-child)) {
+    @media (min-width: 64rem) and (max-width: 87.99rem) {
+      #teams .ff-teamGrid > li:nth-child(4):last-child {
+        grid-column: 2 / 3;
+      }
+    }
+  }
+
+  /* Lower-page card/footer rhythm */
+  #teams .ff-teamCard__foot,
+  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer,
+  #impact .ff-impactTier__footer {
+    padding-top: 0.82rem;
+    align-items: center;
+  }
+
+  #teams .ff-teamCard__foot .ff-btn,
+  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer .ff-btn,
+  #impact .ff-impactTier__footer .ff-btn {
+    min-height: 2.54rem;
+  }
+
+  #story .ff-storyCard,
+  #sponsors .ff-sponsorsBoard,
+  #trust-faq .ff-trustCard,
+  #trust-faq .ff-faqCard {
+    gap: 0.96rem;
+  }
+
+  /* Keep the dock visually quieter in screenshots + desktop use */
+  .ff-tabs {
+    max-width: min(88vw, 30rem);
+  }
+
+  .ff-tabs__scroller {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 10px 24px rgb(15 23 42 / 0.08);
+  }
+
+  @media (max-width: 47.99rem) {
+    #teams .ff-teamGrid,
+    #sponsors .ff-sponsorTierGrid,
+    #trust-faq .ff-faqList {
+      gap: 0.8rem;
+    }
+
+    #teams .ff-teamCard__foot,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier__footer,
+    #impact .ff-impactTier__footer {
+      padding-top: 0.74rem;
+    }
+  }
+}
+/* FF_SCREENSHOT_REVIEW_POLISH_V1_END */
+
+/* FF_GLOBAL_CASCADE_CONSOLIDATED_V2_START */
+@layer ff.overrides, ff.pages {
+  html.ff-root {
+    --ff-copy-title: var(--ff-card-title);
+  }
+
+  html.ff-root:not([data-theme="dark"]) {
+    --ff-bg: #eef2f7;
+    --ff-bg-soft: #f7f9fc;
+    --ff-panel: rgb(255 255 255 / 0.88);
+    --ff-panel-strong: rgb(255 255 255 / 0.97);
+    --ff-prod-border: rgb(15 23 42 / 0.082);
+    --ff-prod-border-strong: rgb(15 23 42 / 0.115);
+    --ff-prod-shadow-soft:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 16px 34px rgb(15 23 42 / 0.065);
+    --ff-prod-shadow-strong:
+      0 1px 2px rgb(15 23 42 / 0.045),
+      0 24px 52px rgb(15 23 42 / 0.095);
+  }
+
+  html.ff-root:not([data-theme="dark"]) body.ff-body,
+  html.ff-root:not([data-theme="dark"]) body[data-ff-page="fundraiser"] {
+    background:
+      radial-gradient(circle at top center, rgb(14 165 233 / 0.04), transparent 30rem),
+      radial-gradient(circle at 84% 0%, rgb(249 115 22 / 0.05), transparent 22rem),
+      linear-gradient(180deg, var(--ff-bg-soft), var(--ff-bg));
+  }
+
+  #content > .ff-section {
+    position: relative;
+  }
+
+  html.ff-root:not([data-theme="dark"]) #content > .ff-section + .ff-section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(100% - 2rem, 76rem);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(15 23 42 / 0.065),
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  html.ff-root[data-theme="dark"] #content > .ff-section + .ff-section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(100% - 2rem, 76rem);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.06),
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #checkout .ff-sheet__panel,
+    .ff-checkoutShell,
+    .ff-sheet__panel,
+    .ff-modal__panel,
+    .ff-drawer__panel,
+    #footer .ff-footerTray,
+    .ff-tabs__scroller,
+    .ff-backtotop,
+    .ff-integrationTile,
+    .ff-demoBanner__inner,
+    .ff-momentumTray,
+    .ff-momentumMetric
+  ) {
+    border-color: var(--ff-prod-border);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.975), rgb(248 250 252 / 0.955));
+    box-shadow: var(--ff-prod-shadow-soft);
+  }
+
+  html.ff-root[data-theme="dark"] :is(
+    #checkout .ff-sheet__panel,
+    .ff-checkoutShell,
+    .ff-sheet__panel,
+    .ff-modal__panel,
+    .ff-drawer__panel,
+    #footer .ff-footerTray,
+    .ff-tabs__scroller,
+    .ff-backtotop,
+    .ff-integrationTile,
+    .ff-demoBanner__inner,
+    .ff-momentumTray,
+    .ff-momentumMetric
+  ) {
+    border-color: rgb(148 163 184 / 0.18);
+    background:
+      linear-gradient(180deg, rgb(18 27 47 / 0.95), rgb(9 15 28 / 0.98));
+    box-shadow:
+      0 18px 44px rgb(0 0 0 / 0.30),
+      inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  #footer .ff-footerTray {
+    gap: 0.78rem;
+    padding: 0.86rem 0.92rem;
+  }
+
+  #footer .ff-footerMetaV2__card {
+    padding: 0.82rem 0.88rem;
+  }
+
+  .ff-tabs {
+    max-width: min(88vw, 30rem);
+  }
+
+  .ff-tabs__scroller {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 10px 24px rgb(15 23 42 / 0.08);
+  }
+
+  .ff-backtotop {
+    min-height: 2.14rem;
+    padding: 0.44rem 0.64rem;
+  }
+
+  #checkout .ff-sheet__panel {
+    border-radius: 1rem;
+  }
+
+  #checkout .ff-sheet__scroll {
+    padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  #checkout .ff-checkoutActions {
+    gap: 0.65rem;
+  }
+
+  .ff-demoBanner__inner {
+    border-radius: 1rem;
+  }
+
+  .ff-momentumTray {
+    gap: clamp(0.88rem, 0.78rem + 0.55vw, 1.12rem);
+  }
+
+  .ff-momentumMetric {
+    padding: 0.92rem;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    html.ff-root:not([data-theme="dark"]) :is(
+      .ff-tabs__scroller,
+      .ff-backtotop,
+      #footer .ff-footerTray
+    ):hover {
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.34),
+        0 18px 40px rgb(15 23 42 / 0.10);
+    }
+
+    html.ff-root[data-theme="dark"] :is(
+      .ff-tabs__scroller,
+      .ff-backtotop,
+      #footer .ff-footerTray
+    ):hover {
+      border-color: rgb(249 115 22 / 0.18);
+      box-shadow:
+        0 20px 48px rgb(0 0 0 / 0.36),
+        inset 0 1px 0 rgb(255 255 255 / 0.05);
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-tabs {
+      left: 0.56rem;
+      right: 0.56rem;
+      max-width: none;
+    }
+
+    .ff-tab {
+      min-height: 2rem;
+      padding: 0.44rem 0.66rem;
+      font-size: 0.86rem;
+    }
+
+    #footer .ff-footerTray {
+      gap: 0.72rem;
+      padding: 0.82rem 0.86rem;
+    }
+
+    #checkout .ff-sheet__panel,
+    .ff-sheet__panel,
+    .ff-modal__panel,
+    .ff-drawer__panel {
+      border-radius: 0.95rem;
+    }
+  }
+}
+/* FF_GLOBAL_CASCADE_CONSOLIDATED_V2_END */
+
+/* FF_MAIN_STYLESHEET_HARDENING_V4_START */
+@layer ff.overrides {
+  /* ----------------------------------------------------------------------
+     Token alias stabilization
+     Keep late rescue selectors from depending on missing aliases.
+     ---------------------------------------------------------------------- */
+  html.ff-root,
+  body[data-ff-page="fundraiser"] {
+    --ff-heading: var(--ff-card-title);
+    --ff-muted: var(--ff-copy-muted);
+    --ff-copy-title: var(--ff-card-title);
+  }
+
+  /* ----------------------------------------------------------------------
+     Long-content / min-width hardening
+     ---------------------------------------------------------------------- */
+  :is(
+    .ff-demoBanner__text,
+    .ff-footerBrandV2__copy,
+    .ff-footerMetaV2__legal,
+    .ff-footerTrust,
+    .ff-sponsorSuccessCard__copy,
+    .ff-sponsorSuccessCard__meta,
+    .ff-sponsorSuccessCard__email,
+    .ff-integrationTile__message,
+    .ff-integrationHealth__loading,
+    .ff-integrationHealth__error,
+    .ff-liveFeed__text,
+    .ff-checkoutHero__meta,
+    .ff-drawer__trustText,
+    .ff-onboardSummary__value,
+    .ff-modal__title,
+    .ff-drawer__trustTitle
+  ) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  :is(
+    .ff-sheet__header,
+    .ff-modal__head,
+    .ff-drawer__head,
+    .ff-modal__body,
+    .ff-drawer__body,
+    .ff-footerGridV2,
+    .ff-footerGridV2 > *,
+    .ff-footerNavV2,
+    .ff-footerNavV2__group,
+    .ff-footerLinkList,
+    .ff-momentumTray,
+    .ff-momentumTray > *,
+    .ff-momentumGrid,
+    .ff-momentumGrid > *,
+    .ff-integrationHealth__grid,
+    .ff-integrationHealth__grid > *,
+    .ff-successUpsell__grid,
+    .ff-successUpsell__grid > *,
+    .ff-demoBanner__copy,
+    .ff-demoBanner__actions
+  ) {
+    min-width: 0;
+  }
+
+  /* ----------------------------------------------------------------------
+     Lower-page equal-height rhythm
+     ---------------------------------------------------------------------- */
+  .ff-momentumGrid,
+  .ff-integrationHealth__grid,
+  .ff-successUpsell__grid {
+    align-items: stretch;
+  }
+
+  .ff-momentumGrid > *,
+  .ff-integrationHealth__grid > *,
+  .ff-successUpsell__grid > * {
+    display: grid;
+  }
+
+  .ff-momentumMetric,
+  .ff-integrationTile,
+  .ff-successUpsell__card {
+    height: 100%;
+  }
+
+  /* ----------------------------------------------------------------------
+     Checkout hardening
+     Keep scroll, sticky footer, and payment mounts calm.
+     ---------------------------------------------------------------------- */
+  #checkout .ff-sheet__panel,
+  #checkout .ff-sheet__viewport,
+  #checkout .ff-sheet__content,
+  #checkout .ff-sheet__scroll,
+  #checkout .ff-checkoutShell,
+  #checkout .ff-checkoutBody,
+  #checkout .ff-checkoutLayout,
+  #checkout .ff-checkoutMain,
+  #checkout .ff-checkoutLayout > aside,
+  #checkout .ff-checkoutAside,
+  #checkout .ff-checkoutCard {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  #checkout .ff-sheet__scroll {
+    scrollbar-gutter: stable both-edges;
+  }
+
+  #checkout .ff-checkoutMain,
+  #checkout .ff-checkoutAside,
+  #checkout .ff-checkoutCard {
+    align-content: start;
+  }
+
+  #checkout .ff-checkoutActions {
+    align-items: stretch;
+  }
+
+  #checkout .ff-checkoutActions .ff-btn,
+  #checkout .ff-checkoutFooter .ff-btn,
+  #checkout [data-ff-amount] {
+    min-width: 0;
+  }
+
+  #checkout .ff-modal__foot--sticky,
+  #checkout .ff-checkoutFooter {
+    border-top: 1px solid var(--ff-line);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0), var(--ff-panel-solid) 30%);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  html.ff-root[data-theme="dark"] #checkout .ff-modal__foot--sticky,
+  html.ff-root[data-theme="dark"] #checkout .ff-checkoutFooter {
+    background:
+      linear-gradient(180deg, rgb(17 24 39 / 0), var(--ff-panel-solid) 30%);
+  }
+
+  #checkout :is(
+    [data-ff-payment-element],
+    [data-ff-stripe-mount],
+    [data-ff-paypal-mount],
+    .ff-checkoutPaymentMount
+  ) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* ----------------------------------------------------------------------
+     Footer tablet reflow
+     Brand full-width first, then nav/meta side-by-side.
+     ---------------------------------------------------------------------- */
+  @media (min-width: 48rem) and (max-width: 63.99rem) {
+    #footer .ff-footerGridV2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #footer .ff-footerBrandV2 {
+      grid-column: 1 / -1;
+    }
+
+    #footer .ff-footerNavV2,
+    #footer .ff-footerMetaV2 {
+      grid-column: auto;
+    }
+  }
+
+  @media (max-width: 35.99rem) {
+    #footer .ff-footerNavV2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ----------------------------------------------------------------------
+     Dock / floating CTA collision tuning
+     ---------------------------------------------------------------------- */
+  .ff-tabs,
+  .ff-backtotop,
+  .ff-floatingDonate {
+    max-width: calc(100vw - 1.2rem);
+  }
+
+  @media (min-width: 48rem) {
+    .ff-backtotop {
+      bottom: calc(var(--ff-tabbar-h) + 0.7rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-tabs {
+      bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .ff-backtotop {
+      bottom: calc(var(--ff-tabbar-h) + 0.55rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .ff-floatingDonate {
+      bottom: calc(var(--ff-tabbar-h) + 3.15rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  /* ----------------------------------------------------------------------
+     Footer / demo / success action rows
+     ---------------------------------------------------------------------- */
+  #footer .ff-footerTop__actions,
+  .ff-demoBanner__actions,
+  .ff-sponsorSuccessCard__actions,
+  .ff-successUpsell__actions {
+    align-items: stretch;
+  }
+
+  @media (max-width: 47.99rem) {
+    #footer .ff-footerTop__actions,
+    .ff-demoBanner__actions,
+    .ff-sponsorSuccessCard__actions,
+    .ff-successUpsell__actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    #footer .ff-footerTop__actions .ff-btn,
+    .ff-demoBanner__actions .ff-btn,
+    .ff-sponsorSuccessCard__actions .ff-btn,
+    .ff-successUpsell__actions .ff-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+/* FF_MAIN_STYLESHEET_HARDENING_V4_END */
+
+/* FF_FOUNDER_VISUAL_REBALANCE_V1_START */
+@layer ff.overrides, ff.pages {
+  /* ----------------------------------------------------------------------
+     Lower-half section depth
+     Light mode still reads a little too flat after the hero.
+     ---------------------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) :is(#story, #sponsors, #trust-faq, #footer) {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0.06));
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(#story, #sponsors, #trust-faq, #footer)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 0%, rgb(14 165 233 / 0.025), transparent 26rem),
+      radial-gradient(circle at 88% 0%, rgb(249 115 22 / 0.035), transparent 22rem);
+    opacity: 0.9;
+  }
+
+  /* ----------------------------------------------------------------------
+     Sponsor section: make the whole block feel more intentional
+     ---------------------------------------------------------------------- */
+  #sponsors .ff-sponsorsBoard,
+  #sponsors .ff-sponsorTierWrap,
+  #sponsors .ff-sponsorWallBlock {
+    gap: 0.78rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier {
+    gap: 0.78rem;
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier__footer {
+    padding-top: 0.32rem;
+    border-top: 1px solid var(--ff-line);
+  }
+
+  #sponsors .ff-sponsorTierGrid .ff-impactTier :is(.ff-proofMini, .ff-progressMini, .ff-callout) {
+    border-radius: var(--ff-r-2);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid .ff-impactTier :is(.ff-proofMini, .ff-progressMini, .ff-callout) {
+    border-color: rgb(15 23 42 / 0.075);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.88), rgb(248 250 252 / 0.92));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.82),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  html.ff-root[data-theme="dark"] #sponsors .ff-sponsorTierGrid .ff-impactTier :is(.ff-proofMini, .ff-progressMini, .ff-callout) {
+    border-color: rgb(148 163 184 / 0.12);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.015)),
+      rgb(12 18 34 / 0.78);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.03);
+  }
+
+  /* Sponsor wall / ghost rail should feel premium, not placeholder-ish */
+  html.ff-root:not([data-theme="dark"]) #sponsors :is(.ff-sponsorGhost, [data-ff-sponsor-wall-empty]) {
+    border-color: rgb(15 23 42 / 0.085);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.88), rgb(248 250 252 / 0.94));
+  }
+
+  html.ff-root[data-theme="dark"] #sponsors :is(.ff-sponsorGhost, [data-ff-sponsor-wall-empty]) {
+    border-color: rgb(148 163 184 / 0.14);
+    background:
+      linear-gradient(180deg, rgb(18 27 47 / 0.88), rgb(9 15 28 / 0.94));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.03);
+  }
+
+  /* ----------------------------------------------------------------------
+     Sponsor tier orphan fix
+     Four tiers should read like an intentional 2x2 at normal desktop widths.
+     ---------------------------------------------------------------------- */
+  @media (min-width: 64rem) and (max-width: 87.99rem) {
+    #sponsors .ff-sponsorTierGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-width: min(100%, 58rem);
+      margin-inline: auto;
+    }
+  }
+
+  /* ----------------------------------------------------------------------
+     Story / support lockup
+     Tighten the media + adjacent proof composition.
+     ---------------------------------------------------------------------- */
+  #story .ff-storyGrid,
+  #story .ff-storyMediaCard,
+  #story .ff-storyPanel {
+    align-content: start;
+    min-width: 0;
+  }
+
+  #story .ff-storyMediaCard,
+  #story .ff-storyPanel {
+    height: 100%;
+  }
+
+  #story .ff-videoFrame,
+  #story .ff-storyPoster {
+    min-height: clamp(18rem, 36vw, 24rem);
+  }
+
+  /* ----------------------------------------------------------------------
+     Footer authority bump
+     Light footer still wants a little more polish.
+     ---------------------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #footer .ff-footerTray {
+    border-color: var(--ff-prod-border-strong);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.96));
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 18px 38px rgb(15 23 42 / 0.07);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #footer .ff-footerMetaV2__card {
+    border-color: rgb(15 23 42 / 0.08);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(248 250 252 / 0.92));
+  }
+
+  /* ----------------------------------------------------------------------
+     Mobile calmness
+     ---------------------------------------------------------------------- */
+  @media (max-width: 47.99rem) {
+    html.ff-root:not([data-theme="dark"]) :is(#story, #sponsors, #trust-faq, #footer) {
+      background:
+        linear-gradient(180deg, rgb(255 255 255 / 0.20), rgb(255 255 255 / 0.04));
+    }
+
+    #sponsors .ff-sponsorTierGrid {
+      max-width: none;
+      margin-inline: 0;
+    }
+
+    #story .ff-videoFrame,
+    #story .ff-storyPoster {
+      min-height: 16.5rem;
+    }
+  }
+}
+/* FF_FOUNDER_VISUAL_REBALANCE_V1_END */
+
+
+/* FF_TEAMS_HIERARCHY_POLISH_V1_START */
+@layer ff.overrides, ff.pages {
+  /* ------------------------------------------------------------------
+     Teams-only hierarchy pass
+     Goals
+     - reduce text density
+     - make title / raised / CTA feel more premium
+     - keep contracts and layout stable
+     ------------------------------------------------------------------ */
+
+  #teams .ff-teamCard {
+    grid-template-rows: auto 1fr;
+    border-radius: max(var(--ff-r-3), 1rem);
+  }
+
+  #teams .ff-teamCard__inner {
+    gap: 0.88rem;
+    min-height: 100%;
+  }
+
+  #teams .ff-teamCard__body {
+    gap: 0.78rem;
+  }
+
+  /* -------------------------------------------------------
+     Title block: stronger hierarchy, calmer supporting copy
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__head {
+    gap: 0.34rem;
+  }
+
+  #teams .ff-teamCard__summary {
+    gap: 0.18rem;
+    padding: 0.72rem 0.78rem;
+  }
+
+  #teams .ff-teamCard__title {
+    margin: 0;
+    color: var(--ff-card-title);
+    font-size: clamp(1.08rem, 0.98rem + 0.34vw, 1.22rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  #teams .ff-teamCard__eyebrow,
+  #teams .ff-teamCard__meta,
+  #teams .ff-teamCard__meterText,
+  #teams .ff-teamCard .ff-muted,
+  #teams .ff-teamCard .ff-help {
+    color: var(--ff-copy-muted);
+  }
+
+  #teams .ff-teamCard__meta,
+  #teams .ff-teamCard__meterText {
+    font-size: 0.84rem;
+    line-height: 1.42;
+  }
+
+  /* -------------------------------------------------------
+     Reduce text density in support/ask copy
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__ask,
+  #teams .ff-teamCard .ff-proofMini[aria-label$="support note"],
+  #teams .ff-teamCard .ff-proofMini {
+    padding: 0.74rem 0.8rem;
+  }
+
+  #teams .ff-teamCard__ask .ff-help,
+  #teams .ff-teamCard__ask .ff-muted,
+  #teams .ff-teamCard .ff-proofMini .ff-help,
+  #teams .ff-teamCard .ff-proofMini .ff-muted {
+    font-size: 0.83rem;
+    line-height: 1.4;
+  }
+
+  @supports (-webkit-line-clamp: 3) {
+    #teams .ff-teamCard__ask .ff-help,
+    #teams .ff-teamCard__ask .ff-muted,
+    #teams .ff-teamCard .ff-proofMini .ff-help,
+    #teams .ff-teamCard .ff-proofMini .ff-muted {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+
+  /* -------------------------------------------------------
+     Stats: make the raised tile read first
+     Assumes first stat is the primary raised/goal signal.
+     Safe even if ordering changes.
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__stats {
+    gap: 0.5rem;
+    padding: 0.68rem;
+    align-items: stretch;
+  }
+
+  #teams .ff-teamStat {
+    min-height: 4.4rem;
+    padding: 0.52rem 0.56rem;
+    align-content: start;
+    gap: 0.18rem;
+  }
+
+  #teams .ff-teamStat__label {
+    font-size: 0.68rem;
+    line-height: 1.18;
+    letter-spacing: 0.075em;
+    color: var(--ff-card-kicker);
+  }
+
+  #teams .ff-teamStat__value {
+    color: var(--ff-card-title);
+    font-size: 0.98rem;
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:first-child {
+    border-color: rgb(249 115 22 / 0.18);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.10), transparent 34%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
+      var(--ff-panel-strong);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.10),
+      0 8px 18px rgb(249 115 22 / 0.08);
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:first-child .ff-teamStat__label {
+    color: var(--ff-brand-strong);
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:first-child .ff-teamStat__value {
+    font-size: 1.08rem;
+    color: var(--ff-card-title);
+  }
+
+  /* -------------------------------------------------------
+     Meter copy: quieter so title + raised + CTA win
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__meter {
+    gap: 0.3rem;
+  }
+
+  #teams .ff-teamCard__meterText {
+    opacity: 0.92;
+  }
+
+  /* -------------------------------------------------------
+     CTA row: stronger close
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__foot {
+    margin-top: auto;
+    gap: 0.56rem;
+    padding-top: 0.84rem;
+    border-top: 1px solid var(--ff-line);
+    align-items: center;
+  }
+
+  #teams .ff-teamCard__foot .ff-btn,
+  #teams .ff-teamCard__foot .ff-btn--pill,
+  #teams .ff-teamCard__foot .ff-donate-btn {
+    min-height: 2.58rem;
+  }
+
+  #teams .ff-teamCard__foot :is(.ff-btn--primary, .ff-donate-btn) {
+    flex: 1 1 auto;
+    font-weight: 800;
+    letter-spacing: -0.012em;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 10px 24px rgb(249 115 22 / 0.16);
+  }
+
+  #teams .ff-teamCard__foot :is(.ff-btn--secondary, .ff-btn--ghost, .ff-btn--pill) {
+    flex: 0 0 auto;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    #teams .ff-teamCard:hover .ff-teamCard__title {
+      color: var(--ff-card-title);
+    }
+
+    #teams .ff-teamCard:hover .ff-teamCard__stats .ff-teamStat:first-child {
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.10),
+        0 12px 24px rgb(249 115 22 / 0.10);
+    }
+
+    #teams .ff-teamCard__foot :is(.ff-btn--primary, .ff-donate-btn):hover {
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.20),
+        0 14px 28px rgb(249 115 22 / 0.22);
+    }
+  }
+
+  /* -------------------------------------------------------
+     Dark theme tuning
+     ------------------------------------------------------- */
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__stats .ff-teamStat:first-child {
+    border-color: rgb(249 115 22 / 0.24);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.12), transparent 34%),
+      linear-gradient(180deg, rgba(26, 18, 12, 0.34), rgba(12, 18, 32, 0.72));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04),
+      0 12px 24px rgb(0 0 0 / 0.18);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__meta,
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__meterText,
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard .ff-muted,
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard .ff-help {
+    color: var(--ff-copy-muted);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__foot {
+    border-top-color: rgb(226 232 240 / 0.08);
+  }
+
+  /* -------------------------------------------------------
+     Mobile
+     ------------------------------------------------------- */
+  @media (max-width: 47.99rem) {
+    #teams .ff-teamCard {
+      padding: 0.9rem;
+    }
+
+    #teams .ff-teamCard__inner {
+      gap: 0.82rem;
+    }
+
+    #teams .ff-teamCard__body {
+      gap: 0.74rem;
+    }
+
+    #teams .ff-teamCard__summary {
+      padding: 0.66rem 0.72rem;
+    }
+
+    #teams .ff-teamCard__title {
+      font-size: 1.04rem;
+      line-height: 1.08;
+    }
+
+    #teams .ff-teamCard__stats {
+      gap: 0.46rem;
+      padding: 0.62rem;
+    }
+
+    #teams .ff-teamStat {
+      min-height: 4.05rem;
+      padding: 0.48rem 0.52rem;
+    }
+
+    #teams .ff-teamCard__foot {
+      gap: 0.5rem;
+      padding-top: 0.74rem;
+    }
+
+    #teams .ff-teamCard__foot .ff-btn,
+    #teams .ff-teamCard__foot .ff-btn--pill,
+    #teams .ff-teamCard__foot .ff-donate-btn {
+      min-height: 2.46rem;
+    }
+  }
+}
+/* FF_TEAMS_HIERARCHY_POLISH_V1_END */
+
+
+/* FF_TEAMS_HIERARCHY_POLISH_V2_START */
+@layer ff.overrides, ff.pages {
+  /* ------------------------------------------------------------------
+     Teams-only hierarchy wave 2
+     Goals
+     - make raised amount visually dominant
+     - reduce equal-weight text noise
+     - make CTA row feel premium + obvious
+     ------------------------------------------------------------------ */
+
+  #teams .ff-teamCard__summary {
+    gap: 0.16rem;
+  }
+
+  #teams .ff-teamCard__title {
+    font-size: clamp(1.12rem, 1rem + 0.34vw, 1.26rem);
+    line-height: 1.06;
+    letter-spacing: -0.026em;
+  }
+
+  #teams .ff-teamCard__meta,
+  #teams .ff-teamCard__meterText,
+  #teams .ff-teamCard .ff-help,
+  #teams .ff-teamCard .ff-muted {
+    font-size: 0.82rem;
+    line-height: 1.38;
+  }
+
+  @supports (-webkit-line-clamp: 2) {
+    #teams .ff-teamCard__meta,
+    #teams .ff-teamCard__ask .ff-help,
+    #teams .ff-teamCard__ask .ff-muted,
+    #teams .ff-teamCard .ff-proofMini .ff-help,
+    #teams .ff-teamCard .ff-proofMini .ff-muted {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+
+  /* -------------------------------------------------------
+     Stats layout
+     - first tile becomes the dominant "raised" hero tile
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.48rem;
+    padding: 0.64rem;
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:first-child {
+    grid-column: 1 / -1;
+    min-height: 4.95rem;
+    padding: 0.62rem 0.68rem;
+    border-color: rgb(249 115 22 / 0.20);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.12), transparent 34%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
+      var(--ff-panel-strong);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.12),
+      0 10px 22px rgb(249 115 22 / 0.08);
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:first-child .ff-teamStat__label {
+    color: var(--ff-brand-strong);
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:first-child .ff-teamStat__value {
+    font-size: clamp(1.18rem, 1.04rem + 0.32vw, 1.34rem);
+    line-height: 1;
+    letter-spacing: -0.028em;
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:not(:first-child) {
+    min-height: 3.9rem;
+    padding: 0.48rem 0.54rem;
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:not(:first-child) .ff-teamStat__label {
+    font-size: 0.66rem;
+    line-height: 1.15;
+  }
+
+  #teams .ff-teamCard__stats .ff-teamStat:not(:first-child) .ff-teamStat__value {
+    font-size: 0.88rem;
+    line-height: 1.02;
+  }
+
+  /* -------------------------------------------------------
+     Support / note tiles calmer
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__ask,
+  #teams .ff-teamCard .ff-proofMini[aria-label$="support note"],
+  #teams .ff-teamCard .ff-proofMini {
+    padding: 0.7rem 0.76rem;
+    border-color: rgb(15 23 42 / 0.07);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__ask,
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard .ff-proofMini[aria-label$="support note"],
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard .ff-proofMini {
+    border-color: rgb(148 163 184 / 0.14);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+  }
+
+  /* -------------------------------------------------------
+     CTA footer
+     ------------------------------------------------------- */
+  #teams .ff-teamCard__foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.52rem;
+    align-items: center;
+    padding-top: 0.78rem;
+  }
+
+  #teams .ff-teamCard__foot :is(.ff-btn--primary, .ff-donate-btn) {
+    inline-size: 100%;
+    min-height: 2.62rem;
+    font-size: 0.92rem;
+    font-weight: 800;
+    letter-spacing: -0.014em;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 12px 26px rgb(249 115 22 / 0.16);
+  }
+
+  #teams .ff-teamCard__foot :is(.ff-btn--secondary, .ff-btn--ghost, .ff-btn--pill) {
+    min-height: 2.18rem;
+    padding-inline: 0.78rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ff-copy-muted);
+    box-shadow: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    #teams .ff-teamCard:hover .ff-teamCard__stats .ff-teamStat:first-child {
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.12),
+        0 14px 28px rgb(249 115 22 / 0.11);
+    }
+
+    #teams .ff-teamCard__foot :is(.ff-btn--primary, .ff-donate-btn):hover {
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.20),
+        0 16px 30px rgb(249 115 22 / 0.22);
+    }
+  }
+
+  /* -------------------------------------------------------
+     Dark theme
+     ------------------------------------------------------- */
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__stats .ff-teamStat:first-child {
+    border-color: rgb(249 115 22 / 0.24);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.14), transparent 34%),
+      linear-gradient(180deg, rgba(28, 18, 10, 0.34), rgba(12, 18, 32, 0.76));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04),
+      0 12px 24px rgb(0 0 0 / 0.20);
+  }
+
+  /* -------------------------------------------------------
+     Mobile
+     ------------------------------------------------------- */
+  @media (max-width: 47.99rem) {
+    #teams .ff-teamCard__title {
+      font-size: 1.06rem;
+    }
+
+    #teams .ff-teamCard__stats {
+      gap: 0.44rem;
+      padding: 0.6rem;
+    }
+
+    #teams .ff-teamCard__stats .ff-teamStat:first-child {
+      min-height: 4.65rem;
+      padding: 0.58rem 0.62rem;
+    }
+
+    #teams .ff-teamCard__stats .ff-teamStat:first-child .ff-teamStat__value {
+      font-size: 1.14rem;
+    }
+
+    #teams .ff-teamCard__stats .ff-teamStat:not(:first-child) {
+      min-height: 3.72rem;
+    }
+
+    #teams .ff-teamCard__foot {
+      grid-template-columns: 1fr auto;
+      gap: 0.46rem;
+      padding-top: 0.72rem;
+    }
+
+    #teams .ff-teamCard__foot :is(.ff-btn--primary, .ff-donate-btn) {
+      min-height: 2.48rem;
+      font-size: 0.88rem;
+    }
+
+    #teams .ff-teamCard__foot :is(.ff-btn--secondary, .ff-btn--ghost, .ff-btn--pill) {
+      min-height: 2.06rem;
+      padding-inline: 0.68rem;
+      font-size: 0.75rem;
+    }
+  }
+}
+/* FF_TEAMS_HIERARCHY_POLISH_V2_END */
+
+
+/* FF_TEAMS_MEDIA_POLISH_V1_START */
+@layer ff.overrides, ff.pages {
+  /* ------------------------------------------------------------------
+     Teams-only media polish
+     Goals
+     - make the image/header band feel more premium
+     - reduce "text stack" feeling
+     - add stronger visual entry point before copy + CTA
+     ------------------------------------------------------------------ */
+
+  #teams .ff-teamCard__media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    border-color: rgb(15 23 42 / 0.12);
+    background:
+      radial-gradient(circle at 14% 18%, rgb(59 130 246 / 0.10), transparent 28%),
+      radial-gradient(circle at 88% 8%, rgb(249 115 22 / 0.12), transparent 26%),
+      linear-gradient(180deg, rgb(241 245 249 / 0.94), rgb(226 232 240 / 0.96));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 16px 34px rgb(15 23 42 / 0.09);
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  #teams .ff-teamCard__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0) 36%),
+      radial-gradient(circle at 82% 80%, rgb(249 115 22 / 0.08), transparent 20%);
+    opacity: 0.95;
+    z-index: 1;
+  }
+
+  #teams .ff-teamCard__img {
+    transform: scale(1.02);
+    transform-origin: center;
+    filter: saturate(1.04) contrast(1.03);
+    transition:
+      transform var(--ff-motion-slow) var(--ff-ease),
+      filter var(--ff-motion-normal) var(--ff-ease);
+  }
+
+  #teams .ff-teamCard__mediaShade {
+    background:
+      linear-gradient(
+        180deg,
+        rgb(15 23 42 / 0.04) 0%,
+        rgb(15 23 42 / 0.12) 48%,
+        rgb(15 23 42 / 0.40) 100%
+      );
+    z-index: 2;
+  }
+
+  #teams .ff-teamCard__mediaBackdrop {
+    background:
+      radial-gradient(circle at 0% 0%, rgb(255 255 255 / 0.18), transparent 28%),
+      radial-gradient(circle at 100% 100%, rgb(249 115 22 / 0.10), transparent 24%);
+    opacity: 0.34;
+    z-index: 2;
+  }
+
+  #teams .ff-teamCard__mediaTop {
+    top: 0.72rem;
+    left: 0.72rem;
+    right: 0.72rem;
+    gap: 0.5rem;
+    z-index: 3;
+  }
+
+  #teams .ff-teamCard__mediaPill {
+    min-height: 1.72rem;
+    padding: 0.28rem 0.64rem;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.82));
+    color: #0f172a;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    box-shadow:
+      0 10px 22px rgb(15 23 42 / 0.14),
+      inset 0 1px 0 rgb(255 255 255 / 0.36);
+    -webkit-backdrop-filter: blur(10px) saturate(1.04);
+    backdrop-filter: blur(10px) saturate(1.04);
+    transition:
+      transform var(--ff-motion-normal) var(--ff-ease),
+      box-shadow var(--ff-motion-normal) var(--ff-ease),
+      background-color var(--ff-motion-normal) var(--ff-ease),
+      border-color var(--ff-motion-normal) var(--ff-ease);
+  }
+
+  #teams .ff-teamCard__mediaPill--ghost {
+    border-color: rgb(255 255 255 / 0.16);
+    background:
+      linear-gradient(180deg, rgb(15 23 42 / 0.70), rgb(15 23 42 / 0.58));
+    color: rgb(255 255 255 / 0.96);
+    box-shadow:
+      0 10px 24px rgb(15 23 42 / 0.20),
+      inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+
+  #teams .ff-teamCard__fallback {
+    left: 0.78rem;
+    right: 0.78rem;
+    bottom: 0.78rem;
+    align-items: end;
+    gap: 0.68rem;
+    z-index: 3;
+  }
+
+  #teams .ff-teamCard__fallbackMark {
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    border-color: rgb(255 255 255 / 0.22);
+    background:
+      linear-gradient(180deg, rgb(15 23 42 / 0.84), rgb(15 23 42 / 0.68));
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 800;
+    box-shadow:
+      0 12px 28px rgb(15 23 42 / 0.22),
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  #teams .ff-teamCard__fallbackCopy {
+    gap: 0.08rem;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.28);
+  }
+
+  #teams .ff-teamCard__fallbackCopy > :first-child {
+    font-weight: 800;
+    letter-spacing: -0.018em;
+  }
+
+  #teams .ff-teamCard__tierRow {
+    margin-top: 0.14rem;
+    margin-bottom: 0.48rem;
+    gap: 0.42rem;
+  }
+
+  #teams .ff-teamTierBadge {
+    min-height: 1.72rem;
+    padding: 0.3rem 0.64rem;
+    font-size: 0.7rem;
+    box-shadow:
+      0 8px 18px rgb(15 23 42 / 0.08),
+      inset 0 1px 0 rgb(255 255 255 / 0.26);
+  }
+
+  #teams .ff-teamTierBadge--gold {
+    background:
+      linear-gradient(180deg, rgb(255 251 235), rgb(255 244 228));
+    border-color: rgb(245 158 11 / 0.28);
+    color: rgb(146 64 14);
+  }
+
+  #teams .ff-teamCard__summary {
+    margin-top: 0.06rem;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    #teams .ff-teamCard:hover .ff-teamCard__media {
+      border-color: rgb(249 115 22 / 0.22);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.18),
+        0 20px 40px rgb(15 23 42 / 0.12);
+    }
+
+    #teams .ff-teamCard:hover .ff-teamCard__img {
+      transform: scale(1.05);
+      filter: saturate(1.06) contrast(1.04);
+    }
+
+    #teams .ff-teamCard:hover .ff-teamCard__mediaPill {
+      transform: translateY(-1px);
+      box-shadow:
+        0 14px 26px rgb(15 23 42 / 0.16),
+        inset 0 1px 0 rgb(255 255 255 / 0.36);
+    }
+
+    #teams .ff-teamCard:hover .ff-teamCard__fallbackMark {
+      transform: translateY(-1px);
+    }
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__media {
+    border-color: rgb(148 163 184 / 0.18);
+    background:
+      radial-gradient(circle at 14% 16%, rgb(56 189 248 / 0.12), transparent 28%),
+      radial-gradient(circle at 88% 8%, rgb(249 115 22 / 0.14), transparent 26%),
+      linear-gradient(180deg, rgba(24, 35, 57, 0.96), rgba(11, 18, 32, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04),
+      0 18px 40px rgb(0 0 0 / 0.28);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__media::after {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 34%),
+      radial-gradient(circle at 82% 80%, rgb(249 115 22 / 0.12), transparent 22%);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__mediaPill {
+    border-color: rgb(255 255 255 / 0.12);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.08));
+    color: rgb(248 250 252);
+    box-shadow:
+      0 10px 22px rgb(0 0 0 / 0.20),
+      inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__mediaPill--ghost {
+    background:
+      linear-gradient(180deg, rgb(2 6 23 / 0.76), rgb(2 6 23 / 0.62));
+    border-color: rgb(255 255 255 / 0.12);
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamCard__fallbackMark {
+    border-color: rgb(255 255 255 / 0.14);
+    background:
+      linear-gradient(180deg, rgb(15 23 42 / 0.88), rgb(2 6 23 / 0.76));
+  }
+
+  html.ff-root[data-theme="dark"] #teams .ff-teamTierBadge {
+    border-color: rgb(255 255 255 / 0.12);
+    box-shadow:
+      0 10px 22px rgb(0 0 0 / 0.22),
+      inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  @media (max-width: 47.99rem) {
+    #teams .ff-teamCard__media {
+      aspect-ratio: 16 / 10.4;
+    }
+
+    #teams .ff-teamCard__mediaTop {
+      top: 0.6rem;
+      left: 0.6rem;
+      right: 0.6rem;
+      gap: 0.42rem;
+    }
+
+    #teams .ff-teamCard__mediaPill {
+      min-height: 1.6rem;
+      padding: 0.24rem 0.56rem;
+      font-size: 0.64rem;
+    }
+
+    #teams .ff-teamCard__fallback {
+      left: 0.64rem;
+      right: 0.64rem;
+      bottom: 0.64rem;
+      gap: 0.56rem;
+    }
+
+    #teams .ff-teamCard__fallbackMark {
+      inline-size: 2.28rem;
+      block-size: 2.28rem;
+      font-size: 0.84rem;
+    }
+
+    #teams .ff-teamTierBadge {
+      min-height: 1.64rem;
+      padding: 0.28rem 0.56rem;
+      font-size: 0.66rem;
+    }
+  }
+}
+/* FF_TEAMS_MEDIA_POLISH_V1_END */
+
+
+/* FF_SPONSOR_PACKAGES_POLISH_V1_START */
+@layer ff.pages {
+  :root,
+  html.ff-root {
+    --ff-sponsor-packages-border: rgb(15 23 42 / 0.09);
+    --ff-sponsor-packages-border-strong: rgb(15 23 42 / 0.13);
+    --ff-sponsor-packages-topline: rgb(249 115 22 / 0.22);
+    --ff-sponsor-packages-soft-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 16px 36px rgb(15 23 42 / 0.07);
+    --ff-sponsor-packages-strong-shadow:
+      0 1px 2px rgb(15 23 42 / 0.05),
+      0 22px 48px rgb(15 23 42 / 0.10);
+    --ff-sponsor-packages-card-bg:
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
+  }
+
+  html.ff-root[data-theme="dark"] {
+    --ff-sponsor-packages-border: rgb(148 163 184 / 0.16);
+    --ff-sponsor-packages-border-strong: rgb(148 163 184 / 0.20);
+    --ff-sponsor-packages-topline: rgb(249 115 22 / 0.28);
+    --ff-sponsor-packages-soft-shadow:
+      0 1px 0 rgb(255 255 255 / 0.04) inset,
+      0 18px 42px rgb(2 6 23 / 0.34);
+    --ff-sponsor-packages-strong-shadow:
+      0 1px 0 rgb(255 255 255 / 0.05) inset,
+      0 26px 56px rgb(2 6 23 / 0.46),
+      0 0 0 1px rgb(249 115 22 / 0.10);
+    --ff-sponsor-packages-card-bg:
+      linear-gradient(180deg, rgba(20, 30, 58, 0.96) 0%, rgba(9, 16, 34, 0.99) 100%);
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) {
+    position: relative;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-sectionhead,
+    .ff-sponsorPackagesHead,
+    .ff-sponsorSpotlightHead
+  ) {
+    margin-bottom: clamp(0.78rem, 0.68rem + 0.45vw, 1rem);
+  }
+
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) {
+    display: grid;
+    gap: 0.92rem;
+    align-items: stretch;
+  }
+
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li {
+    display: grid;
+    min-width: 0;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard,
+    .ff-sponsorPackageCard,
+    .ff-pricingCard,
+    .ff-sponsorSpotlightCard,
+    .ff-card--sponsor-package,
+    .ff-card--sponsor-spotlight
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > :is(
+    .ff-card,
+    .ff-packageCard,
+    .ff-sponsorPackageCard,
+    .ff-pricingCard,
+    .ff-sponsorSpotlightCard,
+    .ff-card--sponsor-package,
+    .ff-card--sponsor-spotlight
+  ) {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 0.88rem;
+    min-height: 100%;
+    min-width: 0;
+    padding: clamp(0.96rem, 0.88rem + 0.4vw, 1.1rem);
+    border: 1px solid var(--ff-sponsor-packages-border);
+    border-radius: 1.05rem;
+    background: var(--ff-sponsor-packages-card-bg);
+    box-shadow: var(--ff-sponsor-packages-soft-shadow);
+    overflow: clip;
+    isolation: isolate;
+    transition:
+      transform 180ms cubic-bezier(.16, 1, .3, 1),
+      box-shadow 180ms cubic-bezier(.16, 1, .3, 1),
+      border-color 180ms cubic-bezier(.16, 1, .3, 1),
+      background-color 180ms cubic-bezier(.16, 1, .3, 1);
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard,
+    .ff-sponsorPackageCard,
+    .ff-pricingCard,
+    .ff-sponsorSpotlightCard,
+    .ff-card--sponsor-package,
+    .ff-card--sponsor-spotlight
+  )::before,
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > :is(
+    .ff-card,
+    .ff-packageCard,
+    .ff-sponsorPackageCard,
+    .ff-pricingCard,
+    .ff-sponsorSpotlightCard,
+    .ff-card--sponsor-package,
+    .ff-card--sponsor-spotlight
+  )::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      rgb(14 165 233 / 0.84),
+      rgb(249 115 22 / 0.96)
+    );
+    opacity: 0.84;
+    pointer-events: none;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__head,
+    .ff-sponsorPackageCard__head,
+    .ff-pricingCard__head,
+    .ff-sponsorSpotlightCard__head,
+    .ff-card__head
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__head,
+    .ff-sponsorPackageCard__head,
+    .ff-pricingCard__head,
+    .ff-sponsorSpotlightCard__head,
+    .ff-card__head
+  ) {
+    display: grid;
+    gap: 0.34rem;
+    min-width: 0;
+    align-content: start;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__eyebrow,
+    .ff-sponsorPackageCard__eyebrow,
+    .ff-pricingCard__eyebrow,
+    .ff-sponsorSpotlightCard__eyebrow,
+    .ff-eyebrow,
+    .ff-kicker
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__eyebrow,
+    .ff-sponsorPackageCard__eyebrow,
+    .ff-pricingCard__eyebrow,
+    .ff-sponsorSpotlightCard__eyebrow
+  ) {
+    color: var(--ff-card-kicker);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__title,
+    .ff-sponsorPackageCard__title,
+    .ff-pricingCard__title,
+    .ff-sponsorSpotlightCard__title,
+    .ff-h3,
+    .ff-h2
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__title,
+    .ff-sponsorPackageCard__title,
+    .ff-pricingCard__title,
+    .ff-sponsorSpotlightCard__title
+  ) {
+    max-width: 16ch;
+    color: var(--ff-card-title);
+    font-size: clamp(1.1rem, 1rem + 0.34vw, 1.36rem);
+    font-weight: 760;
+    line-height: 1.06;
+    letter-spacing: -0.024em;
+    text-wrap: balance;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__price,
+    .ff-sponsorPackageCard__price,
+    .ff-pricingCard__price,
+    .ff-sponsorSpotlightCard__price,
+    .ff-price,
+    [data-ff-package-price],
+    [data-ff-price]
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__price,
+    .ff-sponsorPackageCard__price,
+    .ff-pricingCard__price,
+    .ff-sponsorSpotlightCard__price,
+    .ff-price,
+    [data-ff-package-price],
+    [data-ff-price]
+  ) {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.18rem;
+    min-width: 0;
+    color: var(--ff-card-title);
+    font-size: clamp(1.65rem, 1.4rem + 0.85vw, 2.08rem);
+    font-weight: 820;
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums lining-nums;
+    text-wrap: nowrap;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__meta,
+    .ff-sponsorPackageCard__meta,
+    .ff-pricingCard__meta,
+    .ff-sponsorSpotlightCard__meta,
+    .ff-help,
+    .ff-muted
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__meta,
+    .ff-sponsorPackageCard__meta,
+    .ff-pricingCard__meta,
+    .ff-sponsorSpotlightCard__meta
+  ) {
+    color: var(--ff-copy-muted);
+    font-size: 0.9rem;
+    line-height: 1.46;
+    max-width: 34ch;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__meta,
+    .ff-sponsorPackageCard__meta,
+    .ff-pricingCard__meta,
+    .ff-sponsorSpotlightCard__meta
+  ) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__list,
+    .ff-sponsorPackageCard__list,
+    .ff-pricingCard__list,
+    .ff-sponsorSpotlightCard__list,
+    .ff-featureList,
+    [data-ff-package-features]
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__list,
+    .ff-sponsorPackageCard__list,
+    .ff-pricingCard__list,
+    .ff-sponsorSpotlightCard__list,
+    .ff-featureList,
+    [data-ff-package-features]
+  ) {
+    display: grid;
+    gap: 0.52rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__list li,
+    .ff-sponsorPackageCard__list li,
+    .ff-pricingCard__list li,
+    .ff-sponsorSpotlightCard__list li,
+    .ff-featureList li,
+    [data-ff-package-features] li
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__list li,
+    .ff-sponsorPackageCard__list li,
+    .ff-pricingCard__list li,
+    .ff-sponsorSpotlightCard__list li,
+    .ff-featureList li,
+    [data-ff-package-features] li
+  ) {
+    position: relative;
+    min-width: 0;
+    padding-left: 1rem;
+    color: var(--ff-copy-body);
+    font-size: 0.9rem;
+    line-height: 1.42;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__list li,
+    .ff-sponsorPackageCard__list li,
+    .ff-pricingCard__list li,
+    .ff-sponsorSpotlightCard__list li,
+    .ff-featureList li,
+    [data-ff-package-features] li
+  )::before,
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__list li,
+    .ff-sponsorPackageCard__list li,
+    .ff-pricingCard__list li,
+    .ff-sponsorSpotlightCard__list li,
+    .ff-featureList li,
+    [data-ff-package-features] li
+  )::before {
+    content: "";
+    position: absolute;
+    top: 0.47rem;
+    left: 0;
+    inline-size: 0.42rem;
+    block-size: 0.42rem;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--ff-blue), var(--ff-brand));
+    box-shadow: 0 0 0 4px rgb(14 165 233 / 0.08);
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__pills,
+    .ff-sponsorPackageCard__pills,
+    .ff-pricingCard__pills,
+    .ff-sponsorSpotlightCard__pills,
+    .ff-row[role="group"]
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__pills,
+    .ff-sponsorPackageCard__pills,
+    .ff-pricingCard__pills,
+    .ff-sponsorSpotlightCard__pills
+  ) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.46rem;
+    align-items: center;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions,
+    .ff-card__actions
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions,
+    .ff-card__actions
+  ) {
+    display: grid;
+    gap: 0.56rem;
+    margin-top: auto;
+    padding-top: 0.82rem;
+    border-top: 1px solid var(--ff-line);
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions,
+    .ff-card__actions
+  ) :is(
+    .ff-btn--primary,
+    .ff-donate-btn
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions,
+    .ff-card__actions
+  ) :is(
+    .ff-btn--primary,
+    .ff-donate-btn
+  ) {
+    width: 100%;
+    min-height: 2.68rem;
+    justify-content: center;
+    font-size: 0.92rem;
+    font-weight: 760;
+    box-shadow: 0 12px 28px rgb(249 115 22 / 0.18);
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions,
+    .ff-card__actions
+  ) :is(
+    .ff-btn--secondary,
+    .ff-btn--ghost,
+    .ff-btn--pill
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions,
+    .ff-card__actions
+  ) :is(
+    .ff-btn--secondary,
+    .ff-btn--ghost,
+    .ff-btn--pill
+  ) {
+    min-height: 2.08rem;
+    font-size: 0.76rem;
+    color: var(--ff-copy-muted);
+    box-shadow: none;
+  }
+
+  :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard.is-featured,
+    .ff-sponsorPackageCard.is-featured,
+    .ff-pricingCard.is-featured,
+    .ff-sponsorSpotlightCard.is-featured,
+    .ff-card--featured,
+    [data-featured="true"],
+    [data-package-featured="true"],
+    [data-tier="featured"]
+  ),
+  :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > :is(
+    .ff-card--featured,
+    [data-featured="true"],
+    [data-package-featured="true"],
+    [data-tier="featured"]
+  ) {
+    border-color: rgb(249 115 22 / 0.24);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.12), transparent 34%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
+    box-shadow:
+      0 0 0 1px rgb(249 115 22 / 0.08),
+      var(--ff-sponsor-packages-strong-shadow);
+    transform: translateY(-1px);
+  }
+
+  html.ff-root[data-theme="dark"] :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions
+  ),
+  html.ff-root[data-theme="dark"] :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__actions,
+    .ff-sponsorPackageCard__actions,
+    .ff-pricingCard__actions,
+    .ff-sponsorSpotlightCard__actions
+  ) {
+    border-top-color: rgb(226 232 240 / 0.08);
+  }
+
+  html.ff-root[data-theme="dark"] :is(
+    #sponsor-packages,
+    #sponsor-spotlight,
+    [data-ff-sponsor-packages],
+    [data-ff-sponsor-spotlight],
+    .ff-sponsorPackages,
+    .ff-sponsorSpotlight
+  ) :is(
+    .ff-packageCard__meta,
+    .ff-sponsorPackageCard__meta,
+    .ff-pricingCard__meta,
+    .ff-sponsorSpotlightCard__meta
+  ),
+  html.ff-root[data-theme="dark"] :is(
+    .ff-sponsorPackagesGrid,
+    .ff-packageGrid,
+    .ff-pricingGrid,
+    .ff-sponsorSpotlightGrid
+  ) > li > * :is(
+    .ff-packageCard__meta,
+    .ff-sponsorPackageCard__meta,
+    .ff-pricingCard__meta,
+    .ff-sponsorSpotlightCard__meta
+  ) {
+    color: var(--ff-copy-muted);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard,
+      .ff-sponsorPackageCard,
+      .ff-pricingCard,
+      .ff-sponsorSpotlightCard,
+      .ff-card--sponsor-package,
+      .ff-card--sponsor-spotlight
+    ):hover,
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > :is(
+      .ff-card,
+      .ff-packageCard,
+      .ff-sponsorPackageCard,
+      .ff-pricingCard,
+      .ff-sponsorSpotlightCard,
+      .ff-card--sponsor-package,
+      .ff-card--sponsor-spotlight
+    ):hover {
+      transform: translateY(-3px);
+      border-color: var(--ff-sponsor-packages-border-strong);
+      box-shadow: var(--ff-sponsor-packages-strong-shadow);
+    }
+
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard__actions,
+      .ff-sponsorPackageCard__actions,
+      .ff-pricingCard__actions,
+      .ff-sponsorSpotlightCard__actions
+    ) :is(
+      .ff-btn--primary,
+      .ff-donate-btn
+    ):hover,
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > * :is(
+      .ff-packageCard__actions,
+      .ff-sponsorPackageCard__actions,
+      .ff-pricingCard__actions,
+      .ff-sponsorSpotlightCard__actions
+    ) :is(
+      .ff-btn--primary,
+      .ff-donate-btn
+    ):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 32px rgb(249 115 22 / 0.24);
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) {
+      gap: 0.82rem;
+    }
+
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard,
+      .ff-sponsorPackageCard,
+      .ff-pricingCard,
+      .ff-sponsorSpotlightCard,
+      .ff-card--sponsor-package,
+      .ff-card--sponsor-spotlight
+    ),
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > :is(
+      .ff-card,
+      .ff-packageCard,
+      .ff-sponsorPackageCard,
+      .ff-pricingCard,
+      .ff-sponsorSpotlightCard,
+      .ff-card--sponsor-package,
+      .ff-card--sponsor-spotlight
+    ) {
+      gap: 0.8rem;
+      padding: 0.9rem;
+      border-radius: 0.98rem;
+    }
+
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard__title,
+      .ff-sponsorPackageCard__title,
+      .ff-pricingCard__title,
+      .ff-sponsorSpotlightCard__title
+    ),
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > * :is(
+      .ff-packageCard__title,
+      .ff-sponsorPackageCard__title,
+      .ff-pricingCard__title,
+      .ff-sponsorSpotlightCard__title
+    ) {
+      max-width: none;
+      font-size: 1.14rem;
+    }
+
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard__price,
+      .ff-sponsorPackageCard__price,
+      .ff-pricingCard__price,
+      .ff-sponsorSpotlightCard__price,
+      .ff-price,
+      [data-ff-package-price],
+      [data-ff-price]
+    ),
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > * :is(
+      .ff-packageCard__price,
+      .ff-sponsorPackageCard__price,
+      .ff-pricingCard__price,
+      .ff-sponsorSpotlightCard__price,
+      .ff-price,
+      [data-ff-package-price],
+      [data-ff-price]
+    ) {
+      font-size: 1.56rem;
+    }
+
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard__actions,
+      .ff-sponsorPackageCard__actions,
+      .ff-pricingCard__actions,
+      .ff-sponsorSpotlightCard__actions
+    ),
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > * :is(
+      .ff-packageCard__actions,
+      .ff-sponsorPackageCard__actions,
+      .ff-pricingCard__actions,
+      .ff-sponsorSpotlightCard__actions
+    ) {
+      gap: 0.52rem;
+      padding-top: 0.74rem;
+    }
+
+    :is(
+      #sponsor-packages,
+      #sponsor-spotlight,
+      [data-ff-sponsor-packages],
+      [data-ff-sponsor-spotlight],
+      .ff-sponsorPackages,
+      .ff-sponsorSpotlight
+    ) :is(
+      .ff-packageCard__actions,
+      .ff-sponsorPackageCard__actions,
+      .ff-pricingCard__actions,
+      .ff-sponsorSpotlightCard__actions
+    ) :is(
+      .ff-btn--primary,
+      .ff-donate-btn
+    ),
+    :is(
+      .ff-sponsorPackagesGrid,
+      .ff-packageGrid,
+      .ff-pricingGrid,
+      .ff-sponsorSpotlightGrid
+    ) > li > * :is(
+      .ff-packageCard__actions,
+      .ff-sponsorPackageCard__actions,
+      .ff-pricingCard__actions,
+      .ff-sponsorSpotlightCard__actions
+    ) :is(
+      .ff-btn--primary,
+      .ff-donate-btn
+    ) {
+      min-height: 2.54rem;
+      font-size: 0.88rem;
+    }
+  }
+}
+/* FF_SPONSOR_PACKAGES_POLISH_V1_END */
+
+
+/* FF_BOTTOM_UTILITY_TRUST_TRAY_POLISH_V1_START */
+@layer ff.overrides, ff.pages {
+  :root,
+  html.ff-root {
+    --ff-bottom-tray-border: rgb(15 23 42 / 0.085);
+    --ff-bottom-tray-border-strong: rgb(15 23 42 / 0.125);
+    --ff-bottom-tray-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 16px 34px rgb(15 23 42 / 0.075);
+    --ff-bottom-tray-shadow-strong:
+      0 1px 2px rgb(15 23 42 / 0.05),
+      0 22px 48px rgb(15 23 42 / 0.11);
+    --ff-bottom-tray-soft-bg:
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
+    --ff-bottom-tray-utility-bg:
+      linear-gradient(180deg, rgb(255 255 255 / 0.92), rgb(248 250 252 / 0.96));
+  }
+
+  html.ff-root[data-theme="dark"] {
+    --ff-bottom-tray-border: rgb(148 163 184 / 0.15);
+    --ff-bottom-tray-border-strong: rgb(148 163 184 / 0.20);
+    --ff-bottom-tray-shadow:
+      0 1px 0 rgb(255 255 255 / 0.04) inset,
+      0 18px 40px rgb(2 6 23 / 0.34);
+    --ff-bottom-tray-shadow-strong:
+      0 1px 0 rgb(255 255 255 / 0.05) inset,
+      0 24px 54px rgb(2 6 23 / 0.44),
+      0 0 0 1px rgb(249 115 22 / 0.08);
+    --ff-bottom-tray-soft-bg:
+      linear-gradient(180deg, rgba(20, 30, 58, 0.95) 0%, rgba(9, 16, 34, 0.98) 100%);
+    --ff-bottom-tray-utility-bg:
+      linear-gradient(180deg, rgb(18 27 47 / 0.94), rgb(9 15 28 / 0.98));
+  }
+
+  /* -------------------------------------------------------
+     TRUST / FAQ shell
+     ------------------------------------------------------- */
+  #trust-faq > .ff-container > .ff-grid[role="presentation"] {
+    gap: clamp(0.9rem, 0.84rem + 0.5vw, 1.12rem);
+    align-items: stretch;
+  }
+
+  #trust-faq .ff-trustCard,
+  #trust-faq .ff-faqCard {
+    gap: 0.92rem;
+    min-height: 100%;
+    padding: clamp(0.96rem, 0.88rem + 0.45vw, 1.08rem);
+    border: 1px solid var(--ff-bottom-tray-border);
+    border-radius: 1.1rem;
+    background: var(--ff-bottom-tray-soft-bg);
+    box-shadow: var(--ff-bottom-tray-shadow);
+    overflow: clip;
+    isolation: isolate;
+  }
+
+  #trust-faq .ff-trustCard::before,
+  #trust-faq .ff-faqCard::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, rgb(14 165 233 / 0.74), rgb(249 115 22 / 0.92));
+    opacity: 0.82;
+    pointer-events: none;
+  }
+
+  #trust-faq .ff-trustCard > :is(.ff-sectionhead, .ff-trustCard__head),
+  #trust-faq .ff-faqCard > :is(.ff-sectionhead, .ff-faqHead) {
+    margin-bottom: 0.04rem;
+  }
+
+  #trust-faq .ff-trustCard .ff-grid[role="list"],
+  #trust-faq .ff-trustSignals,
+  #trust-faq .ff-trustSummaryGrid {
+    gap: 0.72rem;
+  }
+
+  #trust-faq .ff-trustCard .ff-proofMini,
+  #trust-faq .ff-impactProofCallout,
+  #trust-faq .ff-trustPolicy,
+  #trust-faq .ff-trustSignal {
+    border-color: var(--ff-bottom-tray-border);
+    border-radius: var(--ff-r-2);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
+      var(--ff-panel);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.10),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  #trust-faq .ff-trustCard .ff-proofMini {
+    padding: 0.88rem 0.94rem;
+  }
+
+  #trust-faq .ff-impactProofCallout {
+    padding: 0.94rem 0.98rem;
+    border-color: rgb(249 115 22 / 0.17);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.10), transparent 34%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
+  }
+
+  #trust-faq .ff-faqList {
+    gap: 0.72rem;
+  }
+
+  #trust-faq .ff-disclosure,
+  #trust-faq .ff-faqItem {
+    border: 1px solid var(--ff-bottom-tray-border);
+    border-radius: 1rem;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
+      0 1px 2px rgb(15 23 42 / 0.03);
+    overflow: clip;
+  }
+
+  #trust-faq .ff-disclosure__sum {
+    min-height: 3.1rem;
+    padding: 0.9rem 0.96rem;
+    gap: 0.9rem;
+  }
+
+  #trust-faq .ff-disclosure__sum strong {
+    color: var(--ff-card-title);
+    font-weight: 760;
+    line-height: 1.24;
+  }
+
+  #trust-faq .ff-disclosure__panel {
+    padding: 0 0.96rem 0.96rem;
+    color: var(--ff-copy-body);
+  }
+
+  #trust-faq .ff-faqItem[open],
+  #trust-faq .ff-trustCard .ff-disclosure[open] {
+    border-color: rgb(14 165 233 / 0.18);
+    box-shadow:
+      0 0 0 1px rgb(14 165 233 / 0.08),
+      var(--ff-bottom-tray-shadow);
+  }
+
+  /* -------------------------------------------------------
+     Footer / utility tray
+     ------------------------------------------------------- */
+  #footer {
+    padding-block: 0 0.9rem;
+  }
+
+  #footer .ff-footerTray {
+    gap: 0.84rem;
+    padding: 0.94rem 0.98rem;
+    border: 1px solid var(--ff-bottom-tray-border);
+    border-radius: 1.12rem;
+    background: var(--ff-bottom-tray-utility-bg);
+    box-shadow: var(--ff-bottom-tray-shadow);
+    overflow: clip;
+    isolation: isolate;
+  }
+
+  #footer .ff-footerTray::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, rgb(249 115 22 / 0.80), rgb(14 165 233 / 0.70));
+    opacity: 0.84;
+    pointer-events: none;
+  }
+
+  #footer .ff-footerTop {
+    gap: 0.72rem;
+    align-items: start;
+  }
+
+  #footer .ff-footerTop__copy {
+    gap: 0.14rem;
+  }
+
+  #footer .ff-footerTrust,
+  #footer .ff-footerBrandV2__copy,
+  #footer .ff-footerMetaV2__legal {
+    color: var(--ff-copy-muted);
+  }
+
+  #footer .ff-footerGridV2 {
+    gap: 0.9rem;
+    align-items: start;
+  }
+
+  #footer .ff-footerBrandV2,
+  #footer .ff-footerNavV2,
+  #footer .ff-footerMetaV2 {
+    gap: 0.58rem;
+    min-width: 0;
+  }
+
+  #footer .ff-footerBrandV2__head {
+    gap: 0.62rem;
+    align-items: center;
+  }
+
+  #footer .ff-footerBrandV2__head img {
+    inline-size: 2.18rem;
+    block-size: 2.18rem;
+    border-radius: 0.82rem;
+    border: 1px solid var(--ff-bottom-tray-border);
+    box-shadow:
+      0 8px 18px rgb(15 23 42 / 0.06),
+      inset 0 1px 0 rgb(255 255 255 / 0.18);
+  }
+
+  #footer .ff-footerBrandV2__trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.46rem;
+    align-items: center;
+  }
+
+  #footer .ff-footerBrandV2__trust .ff-pill {
+    min-height: 1.62rem;
+    padding-inline: 0.58rem;
+    font-size: 0.67rem;
+    border-color: var(--ff-bottom-tray-border);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.02)),
+      var(--ff-panel);
+    box-shadow: none;
+  }
+
+  #footer .ff-footerNavV2 {
+    gap: 0.84rem 0.96rem;
+  }
+
+  #footer .ff-footerNavV2__group {
+    gap: 0.34rem;
+  }
+
+  #footer .ff-footerNavV2__title,
+  #footer .ff-footerMetaV2__eyebrow {
+    color: var(--ff-card-kicker);
+  }
+
+  #footer .ff-footerLinkList {
+    gap: 0.26rem;
+  }
+
+  #footer .ff-footer__link,
+  #footer .ff-footer__link--button {
+    color: var(--ff-copy-muted);
+    transition:
+      color 180ms cubic-bezier(.16, 1, .3, 1),
+      opacity 180ms cubic-bezier(.16, 1, .3, 1);
+  }
+
+  #footer .ff-footerMetaV2__card {
+    padding: 0.82rem 0.88rem;
+    border: 1px solid var(--ff-bottom-tray-border);
+    border-radius: 1rem;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
+      linear-gradient(180deg, var(--ff-panel-strong), var(--ff-panel));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.10),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  #footer .ff-footerMetaV2__card > * {
+    min-width: 0;
+  }
+
+  #footer .ff-footerTop__actions,
+  #footer .ff-row[role="group"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.56rem;
+    align-items: center;
+  }
+
+  #footer .ff-footerTop__actions :is(.ff-btn, .ff-footer__link--button),
+  #footer .ff-row[role="group"] :is(.ff-btn, .ff-footer__link--button) {
+    min-height: 2.32rem;
+  }
+
+  #footer .ff-divider {
+    opacity: 0.64;
+  }
+
+  /* -------------------------------------------------------
+     Shared bottom utility rows
+     ------------------------------------------------------- */
+  :is(
+    #footer .ff-footerTop__actions,
+    #footer .ff-row[role="group"],
+    #story .ff-storyActions,
+    #sponsors .ff-row[role="group"][aria-label="Sponsor actions"]
+  ) :is(.ff-btn--secondary, .ff-btn--ghost, .ff-btn--pill) {
+    border-color: var(--ff-bottom-tray-border);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0.02)),
+      var(--ff-panel);
+    color: var(--ff-copy-body);
+    box-shadow: none;
+  }
+
+  /* -------------------------------------------------------
+     Hover polish
+     ------------------------------------------------------- */
+  @media (hover: hover) and (pointer: fine) {
+    #trust-faq .ff-trustCard:hover,
+    #trust-faq .ff-faqCard:hover,
+    #footer .ff-footerTray:hover {
+      border-color: var(--ff-bottom-tray-border-strong);
+      box-shadow: var(--ff-bottom-tray-shadow-strong);
+      transform: translateY(-2px);
+    }
+
+    #trust-faq .ff-trustCard .ff-proofMini:hover,
+    #trust-faq .ff-impactProofCallout:hover,
+    #footer .ff-footerMetaV2__card:hover {
+      border-color: var(--ff-bottom-tray-border-strong);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.12),
+        0 8px 22px rgb(15 23 42 / 0.07);
+      transform: translateY(-1px);
+    }
+
+    #footer .ff-footer__link:hover,
+    #footer .ff-footer__link--button:hover {
+      color: var(--ff-card-title);
+      opacity: 1;
+    }
+
+    :is(
+      #footer .ff-footerTop__actions,
+      #footer .ff-row[role="group"],
+      #story .ff-storyActions,
+      #sponsors .ff-row[role="group"][aria-label="Sponsor actions"]
+    ) :is(.ff-btn--secondary, .ff-btn--ghost, .ff-btn--pill):hover {
+      border-color: var(--ff-bottom-tray-border-strong);
+      background:
+        linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.04)),
+        var(--ff-panel-strong);
+      box-shadow: 0 10px 22px rgb(15 23 42 / 0.08);
+      transform: translateY(-1px);
+    }
+  }
+
+  /* -------------------------------------------------------
+     Dark tune
+     ------------------------------------------------------- */
+  html.ff-root[data-theme="dark"] #trust-faq .ff-trustCard .ff-proofMini,
+  html.ff-root[data-theme="dark"] #trust-faq .ff-impactProofCallout,
+  html.ff-root[data-theme="dark"] #trust-faq .ff-disclosure,
+  html.ff-root[data-theme="dark"] #trust-faq .ff-faqItem,
+  html.ff-root[data-theme="dark"] #footer .ff-footerMetaV2__card,
+  html.ff-root[data-theme="dark"] #footer .ff-footerBrandV2__trust .ff-pill {
+    border-color: rgb(148 163 184 / 0.14);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.015)),
+      rgb(12 18 34 / 0.82);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.03);
+  }
+
+  html.ff-root[data-theme="dark"] #footer .ff-footerBrandV2__head img {
+    border-color: rgb(148 163 184 / 0.16);
+    box-shadow:
+      0 10px 22px rgb(0 0 0 / 0.20),
+      inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  html.ff-root[data-theme="dark"] #trust-faq .ff-faqItem[open],
+  html.ff-root[data-theme="dark"] #trust-faq .ff-trustCard .ff-disclosure[open] {
+    box-shadow:
+      0 0 0 1px rgb(56 189 248 / 0.10),
+      0 18px 40px rgb(0 0 0 / 0.28),
+      inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  /* -------------------------------------------------------
+     Responsive
+     ------------------------------------------------------- */
+  @media (min-width: 48rem) {
+    #footer .ff-footerTop {
+      align-items: center;
+    }
+
+    #footer .ff-footerTop__actions {
+      justify-content: flex-end;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    #trust-faq .ff-trustCard,
+    #trust-faq .ff-faqCard,
+    #footer .ff-footerTray {
+      padding: 0.9rem;
+      border-radius: 1rem;
+    }
+
+    #trust-faq .ff-trustCard,
+    #trust-faq .ff-faqCard {
+      gap: 0.82rem;
+    }
+
+    #trust-faq .ff-disclosure__sum {
+      min-height: 2.94rem;
+      padding: 0.84rem 0.88rem;
+    }
+
+    #trust-faq .ff-disclosure__panel {
+      padding: 0 0.88rem 0.88rem;
+    }
+
+    #footer .ff-footerGridV2 {
+      gap: 0.82rem;
+    }
+
+    #footer .ff-footerTop__actions,
+    #footer .ff-row[role="group"] {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    #footer .ff-footerTop__actions :is(.ff-btn, .ff-footer__link--button),
+    #footer .ff-row[role="group"] :is(.ff-btn, .ff-footer__link--button) {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #footer .ff-footerBrandV2__trust {
+      gap: 0.42rem;
+    }
+  }
+}
+/* FF_BOTTOM_UTILITY_TRUST_TRAY_POLISH_V1_END */
+
+
+/* FF_LIGHT_THEME_SURFACE_PARITY_RESCUE_V1_START */
+@layer ff.overrides, ff.pages {
+  html.ff-root:not([data-theme="dark"]) {
+    --ff-light-parity-border: rgb(15 23 42 / 0.08);
+    --ff-light-parity-border-strong: rgb(15 23 42 / 0.12);
+    --ff-light-parity-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 14px 30px rgb(15 23 42 / 0.06);
+    --ff-light-parity-shadow-strong:
+      0 1px 2px rgb(15 23 42 / 0.05),
+      0 18px 38px rgb(15 23 42 / 0.09);
+    --ff-light-parity-panel:
+      linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.96));
+    --ff-light-parity-panel-soft:
+      linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(248 250 252 / 0.92));
+  }
+
+  /* -------------------------------------------------------
+     Momentum section
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) :is(
+    #momentum .ff-momentumTray,
+    .ff-momentumTray
+  ) {
+    border-color: var(--ff-light-parity-border);
+    background: var(--ff-light-parity-panel);
+    box-shadow: var(--ff-light-parity-shadow);
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #momentum .ff-momentumCard,
+    .ff-momentumCard,
+    #momentum .ff-momentumMetric,
+    .ff-momentumMetric
+  ) {
+    border-color: var(--ff-light-parity-border);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(248 250 252 / 0.94));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.90),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #momentum .ff-momentumMetric__value,
+    .ff-momentumMetric__value
+  ) {
+    color: var(--ff-card-title);
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #momentum .ff-momentumMetric__eyebrow,
+    .ff-momentumMetric__eyebrow
+  ) {
+    color: var(--ff-card-kicker);
+  }
+
+  /* -------------------------------------------------------
+     Sponsor section inner surfaces
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid .ff-impactTier {
+    border-color: var(--ff-light-parity-border);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.06), transparent 34%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.95));
+    box-shadow: var(--ff-light-parity-shadow);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid .ff-proofMini,
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid .ff-progressMini,
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid .ff-callout,
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorWallBlock,
+  html.ff-root:not([data-theme="dark"]) #sponsors [data-ff-sponsor-wall-empty],
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-foundingProof,
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-foundingPartner {
+    border-color: var(--ff-light-parity-border);
+    background: var(--ff-light-parity-panel-soft);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.88),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="vip"],
+  html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid .ff-impactTier--recommended {
+    border-color: rgb(249 115 22 / 0.22);
+    box-shadow:
+      0 0 0 1px rgb(249 115 22 / 0.07),
+      var(--ff-light-parity-shadow-strong);
+  }
+
+  /* -------------------------------------------------------
+     Teams section inner tiles
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__stats,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamStat,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__ask,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard .ff-proofMini,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__summary {
+    border-color: var(--ff-light-parity-border);
+    background: var(--ff-light-parity-panel-soft);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.88),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__stats .ff-teamStat:first-child {
+    border-color: rgb(249 115 22 / 0.18);
+    background:
+      radial-gradient(circle at top right, rgb(249 115 22 / 0.09), transparent 32%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.94));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.90),
+      0 8px 18px rgb(249 115 22 / 0.08);
+  }
+
+  /* -------------------------------------------------------
+     Story / media support surfaces
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #story .ff-storyPanel,
+  html.ff-root:not([data-theme="dark"]) #story .ff-proofMini--feature,
+  html.ff-root:not([data-theme="dark"]) #story .ff-proofMini--tile,
+  html.ff-root:not([data-theme="dark"]) #story .ff-storyQuote,
+  html.ff-root:not([data-theme="dark"]) #story .ff-videoFrame,
+  html.ff-root:not([data-theme="dark"]) #story .ff-storyPoster {
+    border-color: var(--ff-light-parity-border);
+    background:
+      radial-gradient(circle at top right, rgb(14 165 233 / 0.04), transparent 32%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.95));
+    box-shadow: var(--ff-light-parity-shadow);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #story .ff-storyPoster__overlay {
+    background:
+      linear-gradient(180deg, rgb(15 23 42 / 0.04), rgb(15 23 42 / 0.14) 52%, rgb(15 23 42 / 0.26));
+  }
+
+  /* -------------------------------------------------------
+     Small light-theme text cleanup
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) :is(
+    #momentum .ff-help,
+    #momentum .ff-muted,
+    #sponsors .ff-help,
+    #sponsors .ff-muted,
+    #teams .ff-help,
+    #teams .ff-muted,
+    #story .ff-help,
+    #story .ff-muted
+  ) {
+    color: var(--ff-copy-muted);
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #momentum .ff-h2,
+    #momentum .ff-h3,
+    #sponsors .ff-h2,
+    #sponsors .ff-h3,
+    #teams .ff-h2,
+    #teams .ff-h3,
+    #story .ff-h2,
+    #story .ff-h3
+  ) {
+    color: var(--ff-card-title);
+  }
+
+  /* -------------------------------------------------------
+     Hover polish
+     ------------------------------------------------------- */
+  @media (hover: hover) and (pointer: fine) {
+    html.ff-root:not([data-theme="dark"]) :is(
+      #momentum .ff-momentumCard,
+      .ff-momentumCard,
+      #momentum .ff-momentumMetric,
+      .ff-momentumMetric,
+      #sponsors .ff-sponsorTierGrid .ff-impactTier,
+      #story .ff-storyPanel,
+      #story .ff-videoFrame,
+      #story .ff-storyPoster
+    ):hover {
+      border-color: var(--ff-light-parity-border-strong);
+      box-shadow: var(--ff-light-parity-shadow-strong);
+      transform: translateY(-2px);
+    }
+  }
+
+  /* -------------------------------------------------------
+     Mobile composure
+     ------------------------------------------------------- */
+  @media (max-width: 47.99rem) {
+    html.ff-root:not([data-theme="dark"]) :is(
+      #momentum .ff-momentumTray,
+      .ff-momentumTray,
+      #momentum .ff-momentumCard,
+      .ff-momentumCard,
+      #momentum .ff-momentumMetric,
+      .ff-momentumMetric,
+      #sponsors .ff-sponsorTierGrid .ff-impactTier,
+      #story .ff-storyPanel,
+      #story .ff-videoFrame,
+      #story .ff-storyPoster
+    ) {
+      box-shadow:
+        0 1px 2px rgb(15 23 42 / 0.03),
+        0 10px 24px rgb(15 23 42 / 0.05);
+    }
+  }
+}
+/* FF_LIGHT_THEME_SURFACE_PARITY_RESCUE_V1_END */
