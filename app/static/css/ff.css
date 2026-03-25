@@ -10569,47 +10569,193 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
     }
   }
 }
-/* FF_HOMEPAGE_PRESTIGE_POLISH_V1_END */
+@layer ff.pages {
+  /* FF_HOMEPAGE_PRESTIGE_POLISH_V1_END */
 
-/* FF_RUNTIME_RELIABILITY_PATCH_V1_START */
-.ff-empty {
-  opacity: 0.96;
+  /* FF_RUNTIME_RELIABILITY_PATCH_V1_START */
+  .ff-empty {
+    opacity: 0.96;
+  }
+
+  .ff-focus-probe {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    opacity: 0.01;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .ff-focus-probe:focus {
+    opacity: 0.01;
+    outline: none;
+  }
+  /* FF_RUNTIME_RELIABILITY_PATCH_V1_END */
+
+  /* FF_GATE_SELECTOR_COVERAGE_PATCH_V2_START */
+  .ff-empty {
+    opacity: 0.96;
+  }
+
+  [data-ff-share-url],
+  [data-ff-sponsor-cell],
+  [data-ff-sponsor-wall-rail],
+  [data-ff-stripe-prewarm-bound],
+  [data-ff-team-name] {
+    --ff-contract-selector-present: 1;
+  }
 }
 
-.ff-focus-probe {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  opacity: 0.01;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.ff-focus-probe:focus {
-  opacity: 0.01;
-  outline: none;
-}
-/* FF_RUNTIME_RELIABILITY_PATCH_V1_END */
-
-/* FF_GATE_SELECTOR_COVERAGE_PATCH_V2_START */
-.ff-empty {
-  opacity: 0.96;
-}
-
-[data-ff-share-url],
-[data-ff-sponsor-cell],
-[data-ff-sponsor-wall-rail],
-[data-ff-stripe-prewarm-bound],
-[data-ff-team-name] {
-  --ff-contract-selector-present: 1;
-}
 /* FF_GATE_SELECTOR_COVERAGE_PATCH_V2_END */
+
+/* FF_GLOBAL_FINISH_WAVE_V1_START */
+@layer ff.pages {
+  html.ff-root:not([data-theme="dark"]) body[data-ff-page="fundraiser"] {
+    --ff-global-finish-border: rgb(15 23 42 / 0.11);
+    --ff-global-finish-border-strong: rgb(15 23 42 / 0.15);
+    --ff-global-finish-panel:
+      linear-gradient(180deg, rgb(255 255 255 / 0.994), rgb(248 250 255 / 0.974));
+    --ff-global-finish-panel-soft:
+      linear-gradient(180deg, rgb(255 255 255 / 0.988), rgb(249 251 255 / 0.965));
+    --ff-global-finish-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 16px 36px rgb(15 23 42 / 0.072);
+  }
+
+  /* -------------------------------------------------------------
+     Empty states / sponsor wall / generic calm placeholder
+     ------------------------------------------------------------- */
+  .ff-empty,
+  [data-ff-sponsor-wall-empty],
+  .ff-sponsorGhost {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px dashed var(--ff-prod-border-strong);
+    border-radius: var(--ff-r-3);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
+      var(--ff-panel);
+    box-shadow: var(--ff-shadow-1);
+    color: var(--ff-copy-muted);
+  }
+
+  html.ff-root[data-theme="dark"] :is(.ff-empty, [data-ff-sponsor-wall-empty], .ff-sponsorGhost) {
+    border-color: rgb(148 163 184 / 0.14);
+    background:
+      linear-gradient(180deg, rgb(18 27 47 / 0.88), rgb(9 15 28 / 0.94));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+  }
+
+  /* -------------------------------------------------------------
+     Light-mode trust / footer authority
+     ------------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) :is(
+    .ff-microtrust__card,
+    .ff-microtrust__card--refined,
+    .ff-successUpsell,
+    #footer .ff-footerTray,
+    #footer .ff-footerMetaV2__card
+  ) {
+    border-color: var(--ff-global-finish-border);
+    background: var(--ff-global-finish-panel);
+    box-shadow: var(--ff-global-finish-shadow);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #footer .ff-footerTray {
+    border-color: var(--ff-global-finish-border-strong);
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 18px 38px rgb(15 23 42 / 0.078);
+  }
+
+  /* -------------------------------------------------------------
+     Pills / chips: slightly more premium and less “default”
+     ------------------------------------------------------------- */
+  :is(.ff-pill, .ff-pill--soft, .ff-pill--ghost, .ff-chip, .ff-chip--pill) {
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  /* -------------------------------------------------------------
+     Checkout surface finish
+     ------------------------------------------------------------- */
+  .ff-input {
+    border-color: var(--ff-prod-border-strong);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.92));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.82),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  .ff-input:focus,
+  .ff-input:focus-visible {
+    border-color: rgb(249 115 22 / 0.42);
+    box-shadow:
+      0 0 0 2px var(--ff-bg),
+      0 0 0 4px rgb(249 115 22 / 0.14);
+  }
+
+  html.ff-root[data-theme="dark"] .ff-input {
+    background:
+      linear-gradient(180deg, rgb(16 24 39 / 0.95), rgb(10 16 30 / 0.94));
+  }
+
+  :is(
+    .ff-checkoutPaymentMount--stripe,
+    [data-ff-stripe-mount],
+    [data-ff-paypal-mount]
+  ) {
+    min-block-size: 10rem;
+    border: 1px solid var(--ff-prod-border);
+    border-radius: var(--ff-r-2);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0)),
+      var(--ff-panel);
+  }
+
+  .ff-skeleton--payment {
+    border: 1px solid var(--ff-prod-border);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0.02)),
+      var(--ff-panel);
+  }
+
+  /* -------------------------------------------------------------
+     Success upsell action calmness
+     ------------------------------------------------------------- */
+  .ff-successUpsell__actions {
+    align-items: stretch;
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-successUpsell__actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .ff-successUpsell__actions .ff-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    :is(.ff-pill, .ff-pill--soft, .ff-pill--ghost, .ff-chip, .ff-chip--pill) {
+      min-height: 1.68rem;
+      padding-inline: 0.58rem;
+      font-size: 0.69rem;
+    }
+  }
+}
+@layer ff.pages {
+  /* FF_GLOBAL_FINISH_WAVE_V1_END */
+}
