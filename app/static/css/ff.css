@@ -7164,9 +7164,12 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 /* FF_MAIN_STYLESHEET_HARDENING_V4_START */
 @layer ff.overrides {
   /* ----------------------------------------------------------------------
-     Token alias stabilization
-     Keep late rescue selectors from depending on missing aliases.
+     Safe late-stage hardening only
+     - no new visual ownership
+     - no new section/grid authority
+     - keep checkout / footer / dock / long-content stable
      ---------------------------------------------------------------------- */
+
   html.ff-root,
   body[data-ff-page="fundraiser"] {
     --ff-heading: var(--ff-card-title);
@@ -7247,7 +7250,9 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
   /* ----------------------------------------------------------------------
      Checkout hardening
-     Keep scroll, sticky footer, and payment mounts calm.
+     - preserve scroll
+     - keep sticky footer stable
+     - prevent payment mount clipping
      ---------------------------------------------------------------------- */
   #checkout .ff-sheet__panel,
   #checkout .ff-sheet__viewport,
@@ -7265,6 +7270,8 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
   }
 
   #checkout .ff-sheet__scroll {
+    overflow: auto;
+    overscroll-behavior: contain;
     scrollbar-gutter: stable both-edges;
   }
 
@@ -7276,6 +7283,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
   #checkout .ff-checkoutActions {
     align-items: stretch;
+    gap: 0.65rem;
   }
 
   #checkout .ff-checkoutActions .ff-btn,
@@ -7311,7 +7319,6 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
   /* ----------------------------------------------------------------------
      Footer tablet reflow
-     Brand full-width first, then nav/meta side-by-side.
      ---------------------------------------------------------------------- */
   @media (min-width: 48rem) and (max-width: 63.99rem) {
     #footer .ff-footerGridV2 {
@@ -10154,3 +10161,246 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
   }
 }
 /* FF_LIGHT_THEME_PRESTIGE_FINAL_V1_END */
+
+/* FF_STORY_DOCK_REBALANCE_V1_START */
+@layer ff.overrides, ff.pages {
+  /* ------------------------------------------------------------------
+     Screenshot-driven rebalancing
+     - calm the floating dock / top button collision
+     - reduce lower-page overlay feel
+     - rebalance story media vs support cards
+     ------------------------------------------------------------------ */
+
+  .ff-main {
+    padding-bottom: calc(var(--ff-tabbar-h) + 1.8rem + var(--ff-safe-bottom));
+  }
+
+  .ff-tabs {
+    max-width: min(78vw, 27rem);
+    bottom: calc(0.42rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ff-tabs__scroller {
+    padding: 0.22rem;
+    border-radius: calc(var(--ff-r-pill) + 0.04rem);
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 8px 18px rgb(15 23 42 / 0.07);
+  }
+
+  .ff-tab {
+    min-height: 2.02rem;
+    padding: 0.42rem 0.64rem;
+    font-size: 0.84rem;
+  }
+
+  .ff-backtotop {
+    right: max(0.72rem, calc(0.72rem + env(safe-area-inset-right, 0px)));
+    bottom: calc(var(--ff-tabbar-h) + 1.05rem + env(safe-area-inset-bottom, 0px));
+    min-height: 2.08rem;
+    padding: 0.4rem 0.62rem;
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 8px 18px rgb(15 23 42 / 0.07);
+  }
+
+  /* ------------------------------------------------------------------
+     Story section: make the right-side support rail breathe more
+     ------------------------------------------------------------------ */
+  #story .ff-storyCard,
+  #story .ff-storyGrid {
+    gap: 0.88rem;
+  }
+
+  #story .ff-storyMediaCard,
+  #story .ff-storyPanel,
+  #story .ff-storySupportGrid,
+  #story .ff-storyNotes {
+    align-content: start;
+  }
+
+  #story .ff-storySupportGrid,
+  #story .ff-storyNotes {
+    gap: 0.72rem;
+  }
+
+  #story .ff-proofMini--feature,
+  #story .ff-proofMini--tile,
+  #story .ff-storyPanel,
+  #story .ff-storyQuote {
+    padding: 0.84rem 0.9rem;
+  }
+
+  #story .ff-videoFrame,
+  #story .ff-storyPoster {
+    min-height: clamp(16rem, 33vw, 21.5rem);
+  }
+
+  #story .ff-storyQuote {
+    margin-top: 0.12rem;
+  }
+
+  @media (min-width: 64rem) {
+    #story .ff-storyGrid {
+      grid-template-columns: minmax(0, 1.01fr) minmax(19rem, 0.99fr);
+      gap: 0.92rem;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ff-tabs__scroller:hover,
+    .ff-backtotop:hover {
+      box-shadow:
+        0 1px 2px rgb(15 23 42 / 0.05),
+        0 12px 24px rgb(15 23 42 / 0.10);
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .ff-main {
+      padding-bottom: calc(var(--ff-tabbar-h) + 1.25rem + var(--ff-safe-bottom));
+    }
+
+    .ff-tabs {
+      left: 0.56rem;
+      right: 0.56rem;
+      max-width: none;
+      bottom: calc(0.38rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .ff-tabs__scroller {
+      padding: 0.2rem;
+    }
+
+    .ff-tab {
+      min-height: 1.96rem;
+      padding: 0.4rem 0.58rem;
+      font-size: 0.82rem;
+    }
+
+    .ff-backtotop {
+      bottom: calc(var(--ff-tabbar-h) + 0.68rem + env(safe-area-inset-bottom, 0px));
+      min-height: 2rem;
+      padding: 0.38rem 0.58rem;
+    }
+
+    #story .ff-storyCard,
+    #story .ff-storyGrid,
+    #story .ff-storySupportGrid,
+    #story .ff-storyNotes {
+      gap: 0.78rem;
+    }
+
+    #story .ff-videoFrame,
+    #story .ff-storyPoster {
+      min-height: 15.5rem;
+    }
+
+    #story .ff-proofMini--feature,
+    #story .ff-proofMini--tile,
+    #story .ff-storyPanel,
+    #story .ff-storyQuote {
+      padding: 0.82rem 0.86rem;
+    }
+  }
+}
+/* FF_STORY_DOCK_REBALANCE_V1_END */
+
+/* FF_STORY_OVERLAP_RESCUE_V1_START */
+@layer ff.overrides, ff.pages {
+  /* ------------------------------------------------------------------
+     Story overlap rescue
+     Fixes right rail cards bleeding over the video poster.
+     ------------------------------------------------------------------ */
+
+  #story .ff-storyCard,
+  #story .ff-storyGrid,
+  #story .ff-storyGrid > *,
+  #story .ff-storyMedia,
+  #story .ff-storyCopy,
+  #story .ff-storyMediaCard,
+  #story .ff-storyPanel,
+  #story .ff-storySupportGrid,
+  #story .ff-storyNotes,
+  #story .ff-storySupportGrid > *,
+  #story .ff-storyNotes > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #story .ff-storyGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(0.9rem, 0.82rem + 0.5vw, 1.1rem);
+    align-items: start;
+  }
+
+  #story .ff-storyMedia,
+  #story .ff-storyCopy {
+    width: 100%;
+    align-self: start;
+  }
+
+  #story .ff-storyMediaCard,
+  #story .ff-storyPoster,
+  #story .ff-storyPoster__picture,
+  #story .ff-storyPoster__img {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #story .ff-storyPoster {
+    display: block;
+    overflow: hidden;
+  }
+
+  #story .ff-storyCopy {
+    position: relative;
+    z-index: 0;
+  }
+
+  #story .ff-storySupportGrid,
+  #story .ff-storyNotes {
+    width: 100%;
+  }
+
+  #story .ff-proofMini,
+  #story .ff-storyPanel,
+  #story .ff-storyQuote {
+    min-width: 0;
+  }
+
+  @media (min-width: 40rem) {
+    #story .ff-storySupportGrid,
+    #story .ff-storyNotes {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    #story .ff-storyGrid {
+      grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+      gap: clamp(1rem, 0.92rem + 0.55vw, 1.25rem);
+    }
+  }
+
+  @media (min-width: 72rem) {
+    #story .ff-storyGrid {
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    #story .ff-storyGrid,
+    #story .ff-storySupportGrid,
+    #story .ff-storyNotes {
+      grid-template-columns: 1fr;
+    }
+
+    #story .ff-storyMediaCard,
+    #story .ff-storyCopy {
+      gap: 0.82rem;
+    }
+  }
+}
+/* FF_STORY_OVERLAP_RESCUE_V1_END */
