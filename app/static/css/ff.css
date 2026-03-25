@@ -6863,7 +6863,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 /* FF_HERO_CLASS_COVERAGE_V1_END */
 
 /* FF_SCREENSHOT_REVIEW_POLISH_V1_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   /* ------------------------------------------------------------------
      Screenshot-driven polish
      - fix 4-card team orphan state on normal desktop
@@ -6954,7 +6954,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 /* FF_SCREENSHOT_REVIEW_POLISH_V1_END */
 
 /* FF_GLOBAL_CASCADE_CONSOLIDATED_V2_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   html.ff-root {
     --ff-copy-title: var(--ff-card-title);
   }
@@ -7395,7 +7395,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 /* FF_MAIN_STYLESHEET_HARDENING_V4_END */
 
 /* FF_FOUNDER_VISUAL_REBALANCE_V1_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   /* ----------------------------------------------------------------------
      Lower-half section depth
      Light mode still reads a little too flat after the hero.
@@ -7548,7 +7548,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
 
 /* FF_TEAMS_HIERARCHY_POLISH_V1_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   /* ------------------------------------------------------------------
      Teams-only hierarchy pass
      Goals
@@ -7824,7 +7824,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
 
 /* FF_TEAMS_HIERARCHY_POLISH_V2_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   /* ------------------------------------------------------------------
      Teams-only hierarchy wave 2
      Goals
@@ -8037,7 +8037,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
 
 /* FF_TEAMS_MEDIA_POLISH_V1_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   /* ------------------------------------------------------------------
      Teams-only media polish
      Goals
@@ -9268,7 +9268,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
 
 /* FF_BOTTOM_UTILITY_TRUST_TRAY_POLISH_V1_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   :root,
   html.ff-root {
     --ff-bottom-tray-border: rgb(15 23 42 / 0.085);
@@ -9713,7 +9713,7 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
 
 
 /* FF_LIGHT_THEME_SURFACE_PARITY_RESCUE_V1_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   html.ff-root:not([data-theme="dark"]) {
     --ff-light-parity-border: rgb(15 23 42 / 0.08);
     --ff-light-parity-border-strong: rgb(15 23 42 / 0.12);
@@ -9920,3 +9920,237 @@ html.ff-root[data-theme="dark"] .ff-pill--muted {
   }
 }
 /* FF_LIGHT_THEME_SURFACE_PARITY_RESCUE_V1_END */
+
+/* FF_LIGHT_THEME_PRESTIGE_FINAL_V1_START */
+@layer ff.overrides {
+  html.ff-root:not([data-theme="dark"]) {
+    --ff-light-prestige-border: rgb(15 23 42 / 0.09);
+    --ff-light-prestige-border-strong: rgb(15 23 42 / 0.125);
+    --ff-light-prestige-line: rgb(15 23 42 / 0.07);
+    --ff-light-prestige-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 14px 30px rgb(15 23 42 / 0.065);
+    --ff-light-prestige-shadow-strong:
+      0 1px 2px rgb(15 23 42 / 0.05),
+      0 18px 40px rgb(15 23 42 / 0.09);
+    --ff-light-prestige-panel:
+      linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.96));
+    --ff-light-prestige-panel-soft:
+      linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(248 250 252 / 0.93));
+  }
+
+  /* -------------------------------------------------------
+     Section cadence: slightly stronger separation, still calm
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #content > .ff-section + .ff-section::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(15 23 42 / 0.085),
+      transparent
+    );
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #impact .ff-impactCard,
+    #teams .ff-teamsShell,
+    #story .ff-storyCard,
+    #sponsors .ff-sponsorsBoard
+  ) {
+    gap: 1.04rem;
+  }
+
+  /* -------------------------------------------------------
+     Program / support / sponsor / trust surfaces
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) :is(
+    .ff-momentumTray,
+    .ff-momentumCard,
+    .ff-momentumMetric,
+    #impact .ff-impactPick,
+    #impact .ff-impactProof,
+    #impact .ff-impactTier,
+    #story .ff-storyPanel,
+    #story .ff-proofMini--feature,
+    #story .ff-proofMini--tile,
+    #story .ff-storyQuote,
+    #story .ff-videoFrame,
+    #story .ff-storyPoster,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier,
+    #sponsors .ff-sponsorWallBlock,
+    #sponsors [data-ff-sponsor-wall-empty],
+    #sponsors .ff-foundingProof,
+    #sponsors .ff-foundingPartner,
+    #trust-faq .ff-trustCard,
+    #trust-faq .ff-faqCard,
+    #footer .ff-footerTray,
+    #footer .ff-footerMetaV2__card
+  ) {
+    border-color: var(--ff-light-prestige-border);
+    background: var(--ff-light-prestige-panel);
+    box-shadow: var(--ff-light-prestige-shadow);
+  }
+
+  html.ff-root:not([data-theme="dark"]) :is(
+    #impact .ff-proofMini,
+    #impact .ff-progressMini,
+    #impact .ff-callout,
+    #story .ff-proofMini,
+    #teams .ff-teamCard__summary,
+    #teams .ff-teamCard__stats,
+    #teams .ff-teamStat,
+    #teams .ff-teamCard__ask,
+    #teams .ff-teamCard .ff-proofMini,
+    #sponsors .ff-sponsorTierGrid .ff-proofMini,
+    #sponsors .ff-sponsorTierGrid .ff-progressMini,
+    #sponsors .ff-sponsorTierGrid .ff-callout,
+    #trust-faq .ff-trustCard .ff-proofMini,
+    #trust-faq .ff-impactProofCallout,
+    #trust-faq .ff-disclosure,
+    #trust-faq .ff-faqItem
+  ) {
+    border-color: var(--ff-light-prestige-border);
+    background: var(--ff-light-prestige-panel-soft);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.88),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  /* -------------------------------------------------------
+     Team card hierarchy: light theme only
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard {
+    border-color: var(--ff-light-prestige-border);
+    background: var(--ff-light-prestige-panel);
+    box-shadow: var(--ff-light-prestige-shadow);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__title {
+    color: var(--ff-card-title);
+    letter-spacing: -0.024em;
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__meta,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__meterText,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard .ff-help,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard .ff-muted {
+    color: var(--ff-copy-muted);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__summary,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__stats,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamStat,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__ask,
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard .ff-proofMini {
+    border-color: var(--ff-light-prestige-border);
+    background: var(--ff-light-prestige-panel-soft);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__stats .ff-teamStat:first-child {
+    border-color: rgb(249 115 22 / 0.20);
+    background:
+      linear-gradient(180deg, rgb(255 251 235), rgb(255 247 237));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.92),
+      0 10px 22px rgb(249 115 22 / 0.08);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard__foot {
+    border-top-color: var(--ff-light-prestige-line);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard.is-featured {
+    border-color: rgb(249 115 22 / 0.22);
+    box-shadow:
+      0 0 0 1px rgb(249 115 22 / 0.07),
+      var(--ff-light-prestige-shadow-strong);
+  }
+
+  /* -------------------------------------------------------
+     Recommended / VIP surfaces
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) :is(
+    #impact .ff-impactTier--recommended,
+    #sponsors .ff-sponsorTierGrid .ff-impactTier--recommended,
+    #sponsors .ff-sponsorTierGrid [data-tier="vip"],
+    #sponsors .ff-foundingProof
+  ) {
+    border-color: rgb(249 115 22 / 0.22);
+    box-shadow:
+      0 0 0 1px rgb(249 115 22 / 0.07),
+      var(--ff-light-prestige-shadow-strong);
+  }
+
+  /* -------------------------------------------------------
+     Trust + footer authority bump
+     ------------------------------------------------------- */
+  html.ff-root:not([data-theme="dark"]) #trust-faq .ff-trustCard,
+  html.ff-root:not([data-theme="dark"]) #trust-faq .ff-faqCard,
+  html.ff-root:not([data-theme="dark"]) #footer .ff-footerTray {
+    border-color: var(--ff-light-prestige-border-strong);
+  }
+
+  html.ff-root:not([data-theme="dark"]) #footer .ff-footerBrandV2__head img {
+    border-color: var(--ff-light-prestige-border);
+    box-shadow:
+      0 8px 18px rgb(15 23 42 / 0.06),
+      inset 0 1px 0 rgb(255 255 255 / 0.18);
+  }
+
+  /* -------------------------------------------------------
+     Hover polish: subtle, not flashy
+     ------------------------------------------------------- */
+  @media (hover: hover) and (pointer: fine) {
+    html.ff-root:not([data-theme="dark"]) :is(
+      .ff-momentumTray,
+      .ff-momentumCard,
+      .ff-momentumMetric,
+      #impact .ff-impactTier,
+      #teams .ff-teamCard,
+      #story .ff-storyPanel,
+      #story .ff-videoFrame,
+      #story .ff-storyPoster,
+      #sponsors .ff-sponsorTierGrid .ff-impactTier,
+      #trust-faq .ff-trustCard,
+      #trust-faq .ff-faqCard,
+      #footer .ff-footerTray
+    ):hover {
+      border-color: var(--ff-light-prestige-border-strong);
+      box-shadow: var(--ff-light-prestige-shadow-strong);
+    }
+
+    html.ff-root:not([data-theme="dark"]) #teams .ff-teamCard:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* -------------------------------------------------------
+     Mobile composure
+     ------------------------------------------------------- */
+  @media (max-width: 47.99rem) {
+    html.ff-root:not([data-theme="dark"]) :is(
+      .ff-momentumTray,
+      .ff-momentumCard,
+      .ff-momentumMetric,
+      #impact .ff-impactPick,
+      #impact .ff-impactProof,
+      #impact .ff-impactTier,
+      #teams .ff-teamCard,
+      #story .ff-storyPanel,
+      #story .ff-videoFrame,
+      #story .ff-storyPoster,
+      #sponsors .ff-sponsorTierGrid .ff-impactTier,
+      #trust-faq .ff-trustCard,
+      #trust-faq .ff-faqCard,
+      #footer .ff-footerTray
+    ) {
+      box-shadow:
+        0 1px 2px rgb(15 23 42 / 0.03),
+        0 10px 24px rgb(15 23 42 / 0.05);
+    }
+  }
+}
+/* FF_LIGHT_THEME_PRESTIGE_FINAL_V1_END */

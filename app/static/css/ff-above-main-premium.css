@@ -1046,20 +1046,20 @@
   html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="community"] {
     background:
       linear-gradient(180deg, rgb(255 255 255 / 0.10), rgb(255 255 255 / 0)),
-      linear-gradient(180deg, #ffffff, #f9fbfd);
+      linear-gradient(180deg, #fff, #f9fbfd);
   }
 
   html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="partner"] {
     background:
       radial-gradient(circle at top right, rgb(14 165 233 / 0.08), transparent 32%),
-      linear-gradient(180deg, #ffffff, #f7fbff);
+      linear-gradient(180deg, #fff, #f7fbff);
   }
 
   html.ff-root:not([data-theme="dark"]) #sponsors .ff-sponsorTierGrid [data-tier="vip"] {
     border-color: rgb(249 115 22 / 0.16);
     background:
       radial-gradient(circle at top right, rgb(249 115 22 / 0.12), transparent 34%),
-      linear-gradient(180deg, #fffaf5, #ffffff);
+      linear-gradient(180deg, #fffaf5, #fff);
     box-shadow:
       0 0 0 1px rgb(249 115 22 / 0.07),
       0 14px 30px rgb(249 115 22 / 0.09);
@@ -1739,35 +1739,35 @@
 /* FF_ZOOM_SAFE_RESPONSIVE_V1_END */
 
 /* FF_ABOVE_MAIN_HARDENING_V3_START */
-@layer ff.overrides, ff.pages {
+@layer ff.pages {
   /* ----------------------------------------------------------------------
      Ownership fence
      This file should only own above-main sections.
      Let ff.css own everything else under #content.
      ---------------------------------------------------------------------- */
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq).ff-section {
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq).ff-section {
     padding-block: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) .ff-sectionhead--flagship {
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) .ff-sectionhead--flagship {
     gap: revert-layer;
     margin-block-end: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) .ff-sectionhead__text {
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) .ff-sectionhead__text {
     display: revert-layer;
     gap: revert-layer;
     max-width: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) .ff-sectionhead__actions {
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) .ff-sectionhead__actions {
     display: revert-layer;
     flex-wrap: revert-layer;
     gap: revert-layer;
     align-items: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) :is(
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) :is(
     .ff-card,
     .ff-proofMini,
     .ff-progressMini,
@@ -1786,7 +1786,7 @@
     box-shadow: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) :is(
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) :is(
     .ff-card--premium,
     .ff-hero__capsule,
     .ff-heroPanel .ff-card,
@@ -1799,7 +1799,7 @@
     box-shadow: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) :is(
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) :is(
     .ff-help,
     .ff-lead,
     .ff-storyQuote__body,
@@ -1808,7 +1808,7 @@
     max-width: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) :is(
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) :is(
     .ff-proofMini,
     .ff-progressMini,
     .ff-callout,
@@ -1817,7 +1817,7 @@
     padding: revert-layer;
   }
 
-  #content > :not(#home):not(#impact):not(#teams):not(#story):not(#sponsors):not(#trust-faq) :is(
+  #content > :not(#home, #impact, #teams, #story, #sponsors, #trust-faq) :is(
     .ff-kicker,
     .ff-teamStat__label,
     .ff-teamCard__summaryLabel,
