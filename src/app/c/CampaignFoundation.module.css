@@ -1,0 +1,569 @@
+/* Public campaign foundations. Scoped copies of the accepted reference cascade.
+   These selectors never target Organizer Studio, even after client navigation. */
+:where(.foundation) :global(*) { margin: revert; padding: revert; }
+:where(.foundation) :global(a) { text-decoration: revert; }
+
+/* Reference foundation: tokens.css */
+.foundation {
+  color-scheme: only light;
+
+  /* Product tokens: action, feedback, and legibility remain platform-owned.
+     Tenant identity belongs to the active campaign surface, never these states. */
+  --ff-canvas: #f4f1ea;
+  --ff-surface: #ffffff;
+  --ff-surface-soft: #faf8f3;
+  --ff-surface-warm: #f2eee5;
+  --ff-carbon: #111315;
+  --ff-carbon-raised: #181b1e;
+  --ff-carbon-soft: #23272b;
+  --ff-text: #171819;
+  --ff-text-strong: #0d0e0f;
+  --ff-muted: #666861;
+  --ff-muted-dark: #aeb4b8;
+  --ff-border: #dedbd4;
+  --ff-border-soft: #ebe7df;
+  --ff-border-strong: #aaa59d;
+  --ff-ember: #c03912;
+  --ff-ember-hover: #aa300d;
+  --ff-ember-pressed: #922909;
+  --ff-ember-soft: #fff0e9;
+  --ff-gold: #80601d;
+  --ff-gold-soft: #f6eddc;
+  --ff-focus: #1769e0;
+  --ff-success: #1f7a4d;
+  --ff-danger: #b42318;
+
+  /* Stable semantic aliases. Tenant branding must not replace these states. */
+  --ff-action: var(--ff-ember);
+  --ff-action-hover: var(--ff-ember-hover);
+  --ff-action-pressed: var(--ff-ember-pressed);
+  --ff-action-ink: #ffffff;
+  --ff-recognition: var(--ff-gold);
+  --ff-state-focus: var(--ff-focus);
+  --ff-state-success: var(--ff-success);
+  --ff-state-danger: var(--ff-danger);
+  --ff-surface-canvas: var(--ff-canvas);
+  --ff-surface-raised: var(--ff-surface);
+  --ff-surface-inset: var(--ff-surface-soft);
+  --ff-surface-dark: var(--ff-carbon);
+
+  /* Geometry */
+  --ff-container: 1240px;
+  --ff-reading: 1120px;
+  --ff-copy: 720px;
+  --ff-page-gutter: clamp(20px, 3.2vw, 52px);
+  --ff-section-space: clamp(36px, 5vw, 64px);
+  --ff-section-space-compact: clamp(32px, 3.1vw, 44px);
+  --ff-target: 44px;
+  --ff-sticky-offset: 84px;
+
+  /* 8px rhythm. Half-step is reserved for optical adjustment, not layout drift. */
+  --ff-space-0: 0;
+  --ff-space-half: 4px;
+  --ff-space-1: 8px;
+  --ff-space-2: 16px;
+  --ff-space-3: 24px;
+  --ff-space-4: 32px;
+  --ff-space-5: 40px;
+  --ff-space-6: 48px;
+  --ff-space-8: 64px;
+  --ff-space-10: 80px;
+  --ff-space-12: 96px;
+
+  /* Radius */
+  --ff-radius-xs: 6px;
+  --ff-radius-sm: 8px;
+  --ff-radius-control: 10px;
+  --ff-radius-md: 12px;
+  --ff-radius-card: 14px;
+  --ff-radius-lg: 16px;
+  --ff-radius-feature: 20px;
+  --ff-radius-pill: 999px;
+
+  /* Type */
+  --ff-step--1: clamp(.82rem, .79rem + .12vw, .9rem);
+  --ff-step-0: clamp(1rem, .96rem + .18vw, 1.125rem);
+  --ff-step-1: clamp(1.125rem, 1.02rem + .42vw, 1.4rem);
+  --ff-step-2: clamp(1.4rem, 1.18rem + .85vw, 1.95rem);
+  --ff-step-3: clamp(1.8rem, 1.55rem + 1vw, 2.4rem);
+  --ff-step-4: clamp(2rem, 1.76rem + 1vw, 2.4rem);
+  --ff-step-5: clamp(2.85rem, 2.35rem + 2vw, 3.75rem);
+  --ff-text-xs: .75rem;
+  --ff-text-sm: .875rem;
+  --ff-text-body: var(--ff-step-0);
+  --ff-text-lead: var(--ff-step-1);
+  --ff-text-h4: var(--ff-step-2);
+  --ff-text-h3: var(--ff-step-3);
+  --ff-text-h2: var(--ff-step-4);
+  --ff-text-display: var(--ff-step-5);
+  --ff-title-size: clamp(1.5rem, 2.6vw, 2.5rem);
+  --ff-measure-copy: 68ch;
+  --ff-measure-lead: 58ch;
+  --ff-measure-heading: 22ch;
+
+  /* Motion */
+  --ff-ease: cubic-bezier(.2,.8,.2,1);
+  --ff-ease-standard: cubic-bezier(.2,.8,.2,1);
+  --ff-ease-out: cubic-bezier(.16,1,.3,1);
+  --ff-ease-spring: cubic-bezier(.2,.9,.25,1.18);
+  --ff-motion-fast: 160ms;
+  --ff-duration-fast: 120ms;
+  --ff-duration-standard: 180ms;
+  --ff-duration-emphasis: 260ms;
+
+  /* Elevation. Keep shadows quiet; borders and hierarchy do most of the work. */
+  --ff-shadow-xs: 0 1px 2px rgba(17, 19, 21, .05), 0 1px 4px rgba(17, 19, 21, .03);
+  --ff-shadow-sm: 0 8px 24px rgba(17, 19, 21, .07);
+  --ff-shadow-md: 0 18px 52px rgba(17, 19, 21, .10);
+  --ff-shadow-focus: 0 0 0 5px rgba(23, 105, 224, .16);
+  --ff-shadow-1: 0 10px 30px rgba(17, 19, 21, .08);
+  --ff-shadow-elevated: 0 28px 80px rgba(0, 0, 0, .28);
+}
+
+/* VR7-E — Mobile + AA+ closure tokens. */
+.foundation {
+  --ff-safe-top: env(safe-area-inset-top, 0px);
+  --ff-safe-right: env(safe-area-inset-right, 0px);
+  --ff-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ff-safe-left: env(safe-area-inset-left, 0px);
+  --ff-mobile-action-height: 68px;
+  --ff-focus-scroll-offset: calc(var(--ff-sticky-offset) + 16px + var(--ff-safe-top));
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .foundation {
+    --ff-section-space: clamp(32px, 7vh, 44px);
+    --ff-section-space-compact: clamp(24px, 5vh, 34px);
+    --ff-sticky-offset: 68px;
+    --ff-focus-scroll-offset: calc(var(--ff-sticky-offset) + 8px + var(--ff-safe-top));
+  }
+}
+
+
+/* Reference foundation: reset.css */
+:where(.foundation) :global(*),
+:where(.foundation) :global(*::before),
+:where(.foundation) :global(*::after){box-sizing:border-box}.foundation{scroll-behavior:smooth}.foundation{margin:0;background:var(--ff-canvas);color:var(--ff-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}:where(.foundation) :global(img),
+:where(.foundation) :global(svg),
+:where(.foundation) :global(video){max-width:100%;height:auto}:where(.foundation) :global(button),
+:where(.foundation) :global(input),
+:where(.foundation) :global(textarea),
+:where(.foundation) :global(select){font:inherit}:where(.foundation) :global(a){color:inherit}
+
+
+/* Reference foundation: typography.css */
+.foundation {
+  font-size: 100%;
+  font-synthesis: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+.foundation {
+  font-size: var(--ff-text-body);
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(.foundation) :global(h1),
+:where(.foundation) :global(h2),
+:where(.foundation) :global(h3),
+:where(.foundation) :global(p) { overflow-wrap: anywhere; }
+:where(.foundation) :global(h1),
+:where(.foundation) :global(h2),
+:where(.foundation) :global(h3) {
+  margin: 0;
+  color: inherit;
+  font-weight: 780;
+  text-wrap: balance;
+}
+:where(.foundation) :global(h1) { font-size: var(--ff-text-display); line-height: .91; letter-spacing: -.055em; }
+:where(.foundation) :global(h2) { font-size: var(--ff-text-h2); line-height: 1.08; letter-spacing: -.04em; }
+:where(.foundation) :global(h3) { font-size: var(--ff-text-h4); line-height: 1.08; letter-spacing: -.025em; }
+:where(.foundation) :global(p) { margin: 0; text-wrap: pretty; }
+:where(.foundation) :global(.ff-kicker) {
+  font-size: var(--ff-text-xs);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-weight: 820;
+  line-height: 1.35;
+  color: #e8d5aa;
+}
+:where(.foundation) :global(.ff-kicker--ember) { color: var(--ff-ember); }
+:where(.foundation) :global(.ff-kicker--gold) { color: var(--ff-gold); }
+:where(.foundation) :global(.ff-text-link) {
+  color: inherit;
+  font-weight: 760;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .22em;
+  text-decoration-skip-ink: auto;
+}
+:where(.foundation) :global(strong),
+:where(.foundation) :global(small),
+:where(.foundation) :global(dd),
+:where(.foundation) :global(dt),
+:where(.foundation) :global(li),
+:where(.foundation) :global(code) { overflow-wrap: anywhere; }
+:where(.foundation) :global([data-money]),
+:where(.foundation) :global([data-progress-value]),
+:where(.foundation) :global(.ff-tabular),
+:where(.foundation) :global(table),
+:where(.foundation) :global(dl) {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+:where(.foundation) :global(::selection) {
+  background: color-mix(in srgb, var(--ff-ember) 24%, white);
+  color: var(--ff-text-strong);
+}
+@supports not (text-wrap: pretty) {
+  :where(.foundation) :global(p) { overflow-wrap: break-word; }
+}
+
+
+/* Reference foundation: layout.css */
+:where(.foundation) :global(.ff-container) { width: min(calc(100% - (var(--ff-page-gutter) * 2)), var(--ff-container)); margin-inline: auto; }
+:where(.foundation) :global(.ff-shell) { min-height: 100vh; padding: var(--ff-space-10) 0; }
+:where(.foundation) :global(.ff-prose) { width: min(calc(100% - (var(--ff-page-gutter) * 2)), var(--ff-reading)); margin-inline: auto; }
+:where(.foundation) :global(.ff-section) { padding: var(--ff-section-space) 0; background: var(--ff-surface); scroll-margin-block-start: var(--ff-sticky-offset); }
+:where(.foundation) :global(.ff-section--soft) { background: var(--ff-surface-soft); }
+/* The ordinary chapters share one frame; Story and Relay keep their own editorial layouts. */
+:where(.foundation) :global(.ff-section .ff-chapter-heading) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: clamp(24px, 3.5vw, 56px);
+  align-items: end;
+  margin-bottom: clamp(24px, 2.8vw, 36px);
+}
+:where(.foundation) :global(.ff-section .ff-chapter-heading > :last-child) { min-width: 0; }
+:where(.foundation) :global(.ff-section-heading) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .55fr); gap: clamp(24px,3vw,48px); align-items: end; margin-bottom: clamp(24px,3vw,38px); }
+:where(.foundation) :global(.ff-section-heading h2) { margin-top: .16em; max-width: 13ch; }
+:where(.foundation) :global(.ff-section-heading p) { justify-self: end; margin: 0; max-width: 52ch; color: var(--ff-muted); line-height: 1.7; }
+:where(.foundation) :global(.ff-button) {
+  display: inline-grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 12px 20px;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ff-radius-control);
+  background: var(--ff-action);
+  color: #fff;
+  box-shadow: var(--ff-shadow-xs);
+  text-decoration: none;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--ff-duration-standard) var(--ff-ease-out),
+    background-color var(--ff-duration-standard) var(--ff-ease-standard),
+    border-color var(--ff-duration-standard) var(--ff-ease-standard),
+    box-shadow var(--ff-duration-standard) var(--ff-ease-standard);
+}
+:where(.foundation) :global(.ff-button:hover) { background: var(--ff-action-hover); transform: translateY(-1px); box-shadow: var(--ff-shadow-sm); }
+:where(.foundation) :global(.ff-button:active) { background: var(--ff-action-pressed); transform: translateY(0); box-shadow: var(--ff-shadow-xs); transition-duration: var(--ff-duration-fast); }
+:where(.foundation) :global(.ff-button:disabled),
+:where(.foundation) :global(.ff-button[aria-disabled="true"]) { cursor: not-allowed; opacity: .58; transform: none; box-shadow: none; }
+:where(.foundation) :global(.ff-button--secondary) { background: #fff; color: var(--ff-text); border-color: var(--ff-border-strong); box-shadow: none; }
+:where(.foundation) :global(.ff-button--secondary:hover) { background: #f7f6f2; border-color: #8f8b84; box-shadow: var(--ff-shadow-xs); }
+:where(.foundation) :global(.ff-button--compact) { min-height: var(--ff-target); padding-inline: 16px; }
+@media (max-width: 900px) {
+  :where(.foundation) :global(.ff-section-heading) { grid-template-columns: 1fr; gap: 18px; }
+  :where(.foundation) :global(.ff-section-heading p) { justify-self: start; }
+}
+@media (max-width: 1120px) {
+  :where(.foundation) :global(.ff-section .ff-chapter-heading) { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  :where(.foundation) :global(.ff-section .ff-chapter-heading > :last-child) { justify-self: start; width: min(100%, 640px); }
+}
+@media (max-width: 760px) {
+  :where(.foundation) :global(.ff-container) { width: min(calc(100% - 28px), var(--ff-container)); }
+  :where(.foundation) :global(.ff-section) { scroll-margin-block-start: 72px; }
+}
+@media (hover: none) {
+  :where(.foundation) :global(.ff-button:hover) { transform: none; box-shadow: var(--ff-shadow-xs); }
+}
+
+/* VR7-E — viewport and safe-area resilience. */
+:where(.foundation) :global(.ff-section),
+:where(.foundation) :global([id]) {
+  scroll-margin-block-start: var(--ff-focus-scroll-offset);
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  :where(.foundation) :global(.ff-section) { padding-block: var(--ff-section-space); }
+  :where(.foundation) :global(.ff-section-heading),
+:where(.foundation) :global(.ff-section .ff-chapter-heading) { margin-bottom: 22px; }
+}
+
+
+/* Reference foundation: composition.css */
+/* VR9-C.1 — Campaign Composition Foundation
+ * Macro page geometry belongs to movements, not individual content modules.
+ * This layer intentionally does not restyle component internals.
+ */
+.foundation {
+  --ff-stage-gap: clamp(0px, 0.7vw, 10px);
+  --ff-stage-rule: var(--ff-border-soft);
+  --ff-stage-max: 1600px;
+  --ff-stage-inline: max(var(--ff-page-gutter), calc((100vw - var(--ff-stage-max)) / 2));
+}
+
+:where(.foundation) :global(.ff-campaign-composition) {
+  width: 100%;
+  min-width: 0;
+  overflow: clip;
+  background: var(--ff-canvas);
+}
+
+:where(.foundation) :global(.ff-movement) {
+  position: relative;
+  min-width: 0;
+  isolation: isolate;
+}
+
+:where(.foundation) :global(.ff-movement + .ff-movement) {
+  border-block-start: 1px solid var(--ff-stage-rule);
+}
+
+/* Movement identity is machine-readable and available to later composition
+ * waves without adding public-facing labels or decorative chrome. */
+:where(.foundation) :global(.ff-movement[data-ff-movement="convert"]) { --ff-movement-order: 1; }
+:where(.foundation) :global(.ff-movement[data-ff-movement="decide"]) { --ff-movement-order: 2; }
+:where(.foundation) :global(.ff-movement[data-ff-movement="believe"]) { --ff-movement-order: 3; }
+:where(.foundation) :global(.ff-movement[data-ff-movement="understand"]) { --ff-movement-order: 4; }
+:where(.foundation) :global(.ff-movement[data-ff-movement="participate"]) { --ff-movement-order: 5; }
+:where(.foundation) :global(.ff-movement[data-ff-movement="partner"]) { --ff-movement-order: 6; }
+:where(.foundation) :global(.ff-movement[data-ff-movement="complete"]) { --ff-movement-order: 7; }
+
+/* C.1 only establishes ownership. Existing section padding remains intact
+ * until each movement is deliberately recomposed in C.2–C.5. */
+@media (min-width: 1120px) {
+  :where(.foundation) :global(.ff-movement) {
+    container-type: inline-size;
+    container-name: ff-movement;
+  }
+
+  :where(.foundation) :global(.ff-movement[data-ff-movement="believe"]),
+:where(.foundation) :global(.ff-movement[data-ff-movement="understand"]),
+:where(.foundation) :global(.ff-movement[data-ff-movement="participate"]),
+:where(.foundation) :global(.ff-movement[data-ff-movement="complete"]) {
+    display: flow-root;
+  }
+}
+
+@media (max-width: 1119px) {
+  :where(.foundation) :global(.ff-movement + .ff-movement) { border-block-start-color: transparent; }
+}
+
+@media (forced-colors: active) {
+  :where(.foundation) :global(.ff-movement + .ff-movement) { border-block-start-color: CanvasText; }
+}
+
+
+/* Reference foundation: accessibility.css */
+/* FutureFunded AA+ = WCAG 2.2 AA baseline + stronger internal usability gates. */
+.foundation {
+  scroll-padding-block-start: var(--ff-sticky-offset);
+}
+:where(.foundation) :global(:focus-visible) {
+  outline: 3px solid var(--ff-state-focus);
+  outline-offset: 3px;
+  box-shadow: var(--ff-shadow-focus);
+}
+:where(.foundation) :global(button),
+:where(.foundation) :global(a),
+:where(.foundation) :global(summary) { touch-action: manipulation; }
+:where(.foundation) :global(a),
+:where(.foundation) :global(button),
+:where(.foundation) :global(summary),
+:where(.foundation) :global([role="button"]),
+:where(.foundation) :global([role="tab"]),
+:where(.foundation) :global([role="radio"]) { min-block-size: var(--ff-target); }
+:where(.foundation) :global([id]) { scroll-margin-block-start: var(--ff-sticky-offset); }
+:where(.foundation) :global(.ff-sr-only) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+:where(.foundation) :global(.ff-sr-only:focus),
+:where(.foundation) :global(.ff-sr-only:active) {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+}
+:where(.foundation) :global([aria-invalid="true"]) { border-color: var(--ff-state-danger) !important; }
+:where(.foundation) :global([aria-current="true"]),
+:where(.foundation) :global([aria-pressed="true"]),
+:where(.foundation) :global([aria-selected="true"]) { text-decoration-thickness: max(1px, .08em); }
+@media (prefers-reduced-motion: reduce) {
+  .foundation { scroll-behavior: auto !important; }
+  :where(.foundation) :global(*),
+:where(.foundation) :global(*::before),
+:where(.foundation) :global(*::after) {
+    scroll-behavior: auto !important;
+    animation-delay: 0s !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0s !important;
+    transition-duration: .001ms !important;
+  }
+}
+@media (prefers-contrast: more) {
+  .foundation {
+    --ff-border: #aaa59d;
+    --ff-border-soft: #c7c2b9;
+    --ff-muted: #4c4e49;
+  }
+  :where(.foundation) :global(:focus-visible) { outline-width: 4px; box-shadow: none; }
+}
+@media (forced-colors: active) {
+  .foundation { --ff-target: 44px; }
+  :where(.foundation) :global(:focus-visible) {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+  :where(.foundation) :global(.ff-button),
+:where(.foundation) :global(.ff-button--secondary) {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+    box-shadow: none;
+    forced-color-adjust: auto;
+  }
+  :where(.foundation) :global(.ff-button:focus-visible) { outline-color: Highlight; }
+  :where(.foundation) :global([aria-current="true"]),
+:where(.foundation) :global([aria-pressed="true"]),
+:where(.foundation) :global([aria-selected="true"]) {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  :where(.foundation) :global([aria-invalid="true"]) { border-color: Mark !important; }
+}
+@media (max-width: 320px) {
+  .foundation { --ff-page-gutter: 10px; --ff-sticky-offset: 72px; }
+  :where(.foundation) :global(.ff-container) { width: calc(100% - 20px); }
+}
+:where(.foundation) :global(main),
+:where(.foundation) :global(section),
+:where(.foundation) :global(article),
+:where(.foundation) :global(aside),
+:where(.foundation) :global(header),
+:where(.foundation) :global(footer),
+:where(.foundation) :global(nav),
+:where(.foundation) :global(form),
+:where(.foundation) :global(fieldset),
+:where(.foundation) :global(dl),
+:where(.foundation) :global(ul),
+:where(.foundation) :global(ol) { min-width: 0; }
+:where(.foundation) :global(fieldset) { min-inline-size: 0; }
+:where(.foundation) :global(button),
+:where(.foundation) :global(a),
+:where(.foundation) :global(input),
+:where(.foundation) :global(select),
+:where(.foundation) :global(textarea),
+:where(.foundation) :global(code) { min-width: 0; max-width: 100%; }
+@media (max-width: 420px) {
+  :where(.foundation) :global(h1),
+:where(.foundation) :global(h2),
+:where(.foundation) :global(h3),
+:where(.foundation) :global(p),
+:where(.foundation) :global(strong),
+:where(.foundation) :global(small),
+:where(.foundation) :global(span),
+:where(.foundation) :global(code),
+:where(.foundation) :global(button),
+:where(.foundation) :global(a),
+:where(.foundation) :global(label),
+:where(.foundation) :global(legend),
+:where(.foundation) :global(dd),
+:where(.foundation) :global(dt) { overflow-wrap: anywhere; }
+}
+@media print {
+  :where(.foundation) :global(*),
+:where(.foundation) :global(*::before),
+:where(.foundation) :global(*::after) { box-shadow: none !important; text-shadow: none !important; }
+  :where(.foundation) :global(a[href]) { text-decoration: underline; }
+}
+
+/* VR7-E — focus visibility, target geometry, zoom and high-contrast closure. */
+.foundation {
+  scroll-padding-block-start: var(--ff-focus-scroll-offset);
+}
+:where(.foundation) :global(:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible) {
+  scroll-margin-block-start: var(--ff-focus-scroll-offset);
+  scroll-margin-block-end: calc(var(--ff-mobile-action-height) + var(--ff-safe-bottom) + 12px);
+}
+:where(.foundation) :global(:where(input, select, textarea)) {
+  min-block-size: var(--ff-target);
+}
+@media (pointer: coarse) {
+  :where(.foundation) :global(:where(a, button, summary, input, select, textarea, [role="button"], [role="tab"], [role="radio"])) {
+    min-block-size: var(--ff-target);
+  }
+}
+@media (max-width: 420px) {
+  :where(.foundation) :global(:where(code, pre, samp, kbd, a, button)) { overflow-wrap: anywhere; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .foundation { scroll-padding-block-start: var(--ff-focus-scroll-offset); }
+}
+@media (forced-colors: active) {
+  :where(.foundation) :global(:where(input, select, textarea, dialog)) {
+    border: 1px solid CanvasText;
+    forced-color-adjust: auto;
+  }
+  :where(.foundation) :global(:where([role="status"], [role="alert"])) { forced-color-adjust: auto; }
+}
+/* VR8-A — audit closure: skip-link geometry stays hidden until keyboard focus. */
+:where(.foundation) :global(.ff-skip-link) {
+  position: fixed;
+  z-index: 1000;
+  inset-block-start: max(8px, var(--ff-safe-top));
+  inset-inline-start: max(8px, var(--ff-safe-left));
+  display: inline-grid;
+  place-items: center;
+  min-block-size: var(--ff-target);
+  min-inline-size: var(--ff-target);
+  padding: 10px 14px;
+  border: 1px solid var(--ff-border-strong);
+  border-radius: var(--ff-radius-control);
+  background: var(--ff-surface);
+  color: var(--ff-text-strong);
+  box-shadow: var(--ff-shadow-sm);
+  text-decoration: none;
+  font-weight: 800;
+  transform: translateY(calc(-100% - 24px));
+  transition: transform var(--ff-duration-fast) var(--ff-ease-out);
+}
+:where(.foundation) :global(.ff-skip-link:focus-visible) { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { :where(.foundation) :global(.ff-skip-link) { transition: none; } }
+@media (forced-colors: active) {
+  :where(.foundation) :global(.ff-skip-link) { border: 1px solid ButtonText; background: Canvas; color: LinkText; }
+}
+
+
+/* Reference foundation: product-colors.css */
+/* MP:BEGIN vr9-c12 */
+/* Product values and geometry tokens now have one authority in tokens.css.
+   This stylesheet retains the accepted flagship composition rules in their
+   original cascade position. */
+/* Flagship composition authority: product geometry and typography. */
+:where(.foundation) :global([data-ff-flagship] .ff-container){width:min(calc(100% - 40px),var(--ff-container));margin-inline:auto;padding-inline:0}
+:where(.foundation) :global([data-ff-flagship] .ff-kicker){font-size:.75rem;letter-spacing:.08em;line-height:1.5}
+:where(.foundation) :global([data-ff-flagship] :is(section,details)){scroll-margin-top:calc(var(--ff-sticky-offset) + 16px)}
+:where(.foundation) :global([data-ff-flagship] :is(h1,h2,h3)){hyphens:none;word-break:normal}
+@media(max-width:480px){:where(.foundation) :global([data-ff-flagship] .ff-container){width:calc(100% - 32px)}}
+/* MP:END vr9-c12 */

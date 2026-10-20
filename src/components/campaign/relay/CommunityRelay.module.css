@@ -1,0 +1,64 @@
+/* G36.2-D.10 — Chapter sharing instrument. Capability behavior remains in CommunityRelay. */
+.relay {
+  --relay-paper:var(--campaign-paper,#fffdf9);
+  --relay-ink:var(--campaign-ink,#192c44);
+  --relay-muted:var(--campaign-muted,#52647b);
+  --relay-line:var(--campaign-line,#c6d1df);
+  --relay-stage:var(--campaign-stage,#f2f5fa);
+  --relay-focus:var(--campaign-focus,#28579b);
+  padding-block:0;background:var(--relay-paper);color:var(--relay-ink);
+  scroll-margin-block-start:6rem;
+}
+.inner { display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;align-items:start; }
+.copy { min-inline-size:0; }
+.copy > p:first-child { color:var(--relay-muted);font:750 .75rem/1.5 var(--campaign-font-body,Arial,sans-serif);letter-spacing:.08em; }
+.copy h2 { margin:.4rem 0 .6rem;max-inline-size:24ch;font:700 clamp(1.4rem,3vw,1.8rem)/1.2 var(--campaign-font-display,Georgia,serif);letter-spacing:-.025em;text-wrap:pretty; }
+.copy > p:not(:first-child) { max-inline-size:60ch;margin:0;color:var(--relay-muted);font-size:1rem;line-height:1.6; }
+.truthRail { display:flex;flex-wrap:wrap;gap:.3rem .8rem;margin-block-start:.7rem;padding-block:.55rem;border-block:1px solid var(--relay-line);color:var(--relay-muted);font-size:.8125rem;line-height:1.5; }
+.truthRail span:first-child { color:var(--relay-ink);font-weight:750; }
+.shareKit { min-inline-size:0;display:grid;gap:.8rem;padding:clamp(.875rem,2vw,1.25rem);border:1px solid var(--relay-line);border-radius:10px;background:var(--relay-stage); }
+.shareTopline { display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:.5rem 1rem; }
+.shareTopline > div { display:grid;gap:.2rem;min-inline-size:0; }
+.shareTopline span,.toolKicker { color:var(--relay-muted);font-size:.8125rem;line-height:1.5; }
+.shareTopline strong { color:var(--relay-ink);font-size:.9375rem;line-height:1.5; }
+.shareState { padding:.2rem .5rem;border:1px solid var(--relay-line);border-radius:4px;background:var(--relay-paper); }
+/* W5: accessible manual-copy fallback; keep URL visible at extreme reflow. */
+.urlField { display:grid;gap:.4rem;min-inline-size:0; }
+.urlField label { color:var(--relay-ink);font-size:.875rem;font-weight:750;line-height:1.5; }
+.previewNote { margin:0;color:var(--relay-muted);font-size:.8125rem;line-height:1.5; }
+.urlField input { box-sizing:border-box;display:block;inline-size:100%;min-inline-size:0;min-block-size:44px;padding:.65rem .75rem;border:1px solid var(--relay-line);border-radius:6px;background:var(--relay-paper);color:var(--relay-ink);font:inherit;font-size:1rem;line-height:1.5;text-overflow:ellipsis; }
+.actions { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10em),1fr));gap:.65rem;align-items:stretch; }
+.actions button,.textAction { display:inline-flex;justify-content:center;align-items:center;min-block-size:44px;min-inline-size:0;padding:.65rem .875rem;border:1px solid var(--relay-line);border-radius:6px;background:var(--relay-paper);color:var(--relay-ink);font:700 .9375rem/1.5 var(--campaign-font-body,Arial,sans-serif);text-align:center;cursor:pointer; }
+.actions .primary { background:#1b2d47;color:#fff;border-color:#1b2d47;font-weight:800;box-shadow:0 2px 0 rgb(11 27 49 / .10); }
+.actions button:disabled { opacity:.65;cursor:default; }
+.actions button:focus-visible,.textAction:focus-visible,.urlField input:focus-visible { outline:3px solid var(--relay-focus);outline-offset:3px; }
+.giveTools { display:grid;gap:1rem;min-inline-size:0; }
+.qrPanel { display:flex;flex-wrap:wrap;align-items:center;gap:.875rem;padding:.875rem;border:1px solid var(--relay-line);border-radius:8px;background:var(--relay-paper); }
+.qrFrame { flex:0 0 auto;display:grid;place-items:center;max-inline-size:100%;padding:.7rem;background:#fff;border:1px solid #c6d1df;border-radius:6px; }
+.qrFrame svg { display:block;inline-size:clamp(100px,11vw,124px);block-size:auto;max-inline-size:100%; }
+.qrPanel > div:last-child { flex:1 1 12em;min-inline-size:0; }
+.toolKicker { display:block;margin-block-end:.25rem; }
+.qrPanel strong,.textPanel strong { display:block;color:var(--relay-ink);font-size:1rem;line-height:1.5; }
+.qrPanel p,.textPanel p { margin:.4rem 0 0;color:var(--relay-muted);font-size:.875rem;line-height:1.6; }
+.textPanel { padding-block-start:.75rem;border-block-start:1px solid var(--relay-line);min-inline-size:0; }
+.pending { color:var(--relay-muted);font-size:.875rem;line-height:1.6; }
+.textAction { justify-content:flex-start;margin-block-start:.75rem;max-inline-size:100%;text-decoration:underline;text-underline-offset:.2em; }
+.relay :is(h2,h3,p,strong,span,a) { overflow-wrap:normal;word-break:normal; }
+@media (hover:hover) and (pointer:fine) { .actions button:not(:disabled):hover,.textAction:hover { border-color:var(--relay-focus); } }
+@media (forced-colors:active) {
+  .relay { --relay-paper:Canvas;--relay-ink:CanvasText;--relay-muted:CanvasText;--relay-line:CanvasText;--relay-stage:Canvas;--relay-focus:Highlight; }
+  .actions button,.actions .primary,.textAction { background:ButtonFace;color:ButtonText;border-color:ButtonText; }
+  .urlField input { background:Field;color:FieldText;border-color:FieldText; }
+}
+
+/* D.15.1: compact phone reading order, retain full-size tap targets and QR quiet zone. */
+@media (max-width: 420px) {
+  .inner { gap:.7rem; }
+  .copy h2 { margin-block:.25rem .45rem; }
+  .copy > p:not(:first-child) { line-height:1.5; }
+  .truthRail { margin-block-start:.5rem; }
+  .shareKit { gap:.7rem; padding:.75rem; }
+  .shareTopline { gap:.3rem .5rem; }
+  .qrPanel { padding:.75rem; gap:.7rem; }
+  .qrFrame svg { inline-size:104px; }
+}

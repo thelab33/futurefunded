@@ -1,0 +1,107 @@
+import Image from "next/image";
+import { CampaignGivingStatus } from "@/components/campaign/CampaignGivingStatus";
+import styles from "@/components/campaign/Campaign.module.css";
+import {
+  CampaignImpactChooser,
+  type CampaignImpactChooserProps,
+} from "@/components/campaign/CampaignImpactChooser";
+import { formatCampaignMoney as money } from "@/components/campaign/campaign-format";
+
+type CampaignGivingProps = CampaignImpactChooserProps & {
+  checkoutReady: boolean;
+};
+
+export function CampaignGiving({
+  campaign,
+  checkoutReady,
+  ...chooser
+}: CampaignGivingProps) {
+  const goal = Math.max(0, campaign.goal);
+  const raised = Math.max(0, campaign.raised);
+  const fundedPercent =
+    goal > 0 ? Math.max(0, Math.floor((raised / goal) * 100)) : 0;
+  const progressMax = Math.max(1, goal);
+  const progressValue = Math.min(raised, progressMax);
+  const remaining = Math.max(0, goal - raised);
+
+  return (
+    <section
+      className={styles.giving}
+      id="giving"
+      aria-labelledby="fund-title"
+      data-orbit-giving="v6b"
+      data-fund-purpose="season-mission"
+      data-campaign-donation-rail="c3"
+      data-checkout-ready={checkoutReady ? "true" : "false"}
+      data-orbit-design="fund-console-v8c2"
+      data-orbit-revision="fund-console-v9ab"
+    >
+      <div className={styles.fundMeta} data-console-zone="masthead">
+        <h2 className={styles.fundEyebrow} id="fund-title">
+          {campaign.season} fund
+        </h2>
+        <div className={styles.fundOrganizer}>
+          {campaign.media?.logo && <Image unoptimized src={campaign.media.logo.src} alt="" width={28} height={28} className={styles.fundLogo} />}
+          <span>{campaign.organization}</span>
+        </div>
+      </div>
+
+      <div className={styles.fundSnapshot} data-console-zone="performance">
+        <div className={styles.fundPrimary}>
+          <div>
+            <span className={styles.metricLabel}>Demo raised</span>
+            <strong className={styles.total} data-money>
+              {money(campaign.raised)}
+            </strong>
+          </div>
+
+          <div className={styles.goalBlock}>
+            <span>Goal</span>
+            <strong>{money(campaign.goal)}</strong>
+          </div>
+        </div>
+
+        <p className={styles.fundProgressCaption}>Season fundraising progress</p>
+        <progress
+          max={progressMax}
+          value={progressValue}
+          aria-label={`Demonstration campaign funding progress: ${fundedPercent}% funded`}
+        />
+
+        <dl className={styles.fundStats} aria-label="Demonstration campaign funding snapshot">
+          <div>
+            <dt>funded</dt>
+            <dd>{fundedPercent}%</dd>
+          </div>
+          <div>
+            <dt>{campaign.branding?.supporterLabel ?? "supporters"}</dt>
+            <dd>{campaign.supporters}</dd>
+          </div>
+          <div>
+            <dt>remaining</dt>
+            <dd>{money(remaining)}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <CampaignImpactChooser
+         campaign={campaign}
+         {...chooser}
+         checkoutReady={checkoutReady}
+         availabilityDescriptionId="checkout-availability"
+         status={<CampaignGivingStatus checkoutReady={checkoutReady} />}
+       />
+
+      <details className={styles.givingDisclosure}>
+        <summary>Giving details and receipts</summary>
+        <div className={styles.givingAssurance} aria-label="Giving assurances">
+        <span>{checkoutReady ? "Test checkout only" : "Checkout setup in progress"}</span>
+        <span>Receipt available after completed gift</span>
+      </div>
+
+        <p className={styles.shared}>One-time gift · Shared season fund</p>
+        {!checkoutReady && <p className={styles.shared}>Campaign preview · Giving is not open yet. Explore an amount now; payments are not being accepted.</p>}
+      </details>
+    </section>
+  );
+}

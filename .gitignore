@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# FutureFunded private configuration
+.env
+.env.*
+!.env.example
+.neon
+.neon/
+.ff-*
+*.bak
+*.backup
+*-backups/
+
+playwright/.auth/

@@ -1,0 +1,27 @@
+/* D.13.1 — Athlete documentary gallery, chapter-scoped editorial presentation. */
+.athleteChapter { min-inline-size:0; }
+.athleteGallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(.65rem,1.4vw,1rem); margin-block:1.25rem 1.5rem; align-items:stretch; }
+.athleteGallery figure { display:flex; flex-direction:column; min-inline-size:0; margin:0; overflow:hidden; border:1px solid var(--campaign-line,#dcd4c8); border-radius:10px; background:var(--campaign-paper,#fffcf7); }
+.athleteGallery img { display:block; inline-size:100%; block-size:auto; aspect-ratio:4/3; object-fit:cover; border-radius:0; background:#243347; }
+.athleteGallery figcaption { flex:1; margin:0; padding:.7rem .8rem .85rem; color:var(--campaign-muted,#526174); font:inherit; font-size:.84rem; line-height:1.48; overflow-wrap:anywhere; }
+.athleteGallery figure:first-child { grid-column:span 2; }
+.athleteGallery figure:first-child img { aspect-ratio:16/9; }
+.athleteGallery figure:first-child figcaption { padding:.85rem 1rem 1rem; font-size:.9rem; }
+.athleteFundNote { margin-block:1.2rem 0; padding:.95rem 1.1rem; border:1px solid var(--campaign-line,#dcd4c8); border-inline-start:3px solid var(--campaign-accent,#c39343); border-radius:8px; background:var(--campaign-paper,#fffcf7); color:var(--campaign-ink,#1d2f46); font-weight:650; line-height:1.5; }
+@media (max-width:47.999rem) {
+  .athleteGallery { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; margin-block:1rem 1.2rem; }
+  .athleteGallery figure:first-child { grid-column:span 2; }
+  .athleteGallery figure:first-child img { aspect-ratio:16/9; }
+  .athleteGallery figcaption { padding:.65rem .75rem .8rem; }
+}
+@media (max-width:35.999rem) {
+  .athleteGallery { grid-template-columns:minmax(0,1fr); gap:.65rem; }
+  .athleteGallery figure:first-child { grid-column:auto; }
+  .athleteGallery img,.athleteGallery figure:first-child img { aspect-ratio:16/10; }
+  .athleteGallery figcaption,.athleteGallery figure:first-child figcaption { padding:.6rem .75rem .72rem; font-size:.83rem; }
+  .athleteFundNote { padding:.8rem .9rem; }
+}
+@media (forced-colors:active) {
+  .athleteGallery figure,.athleteFundNote { border-color:CanvasText; background:Canvas; color:CanvasText; }
+  .athleteGallery figcaption { color:CanvasText; }
+}
