@@ -1,0 +1,23 @@
+/* Editorial photograph viewer contained by the existing athletes chapter. */
+.athleteChapter { min-inline-size:0; }
+.athleteChapter > p:not(.athleteFundNote) { margin:0 0 .75rem;color:var(--campaign-muted);font-size:.9375rem;line-height:1.7; }
+.athleteChapter > p:first-child { color:var(--campaign-ink);font-size:1rem; }
+.athleteGallery { min-inline-size:0;margin-block:1.25rem 1.5rem; }
+.feature { margin:0;overflow:hidden;border:1px solid var(--campaign-line);border-radius:12px;background:var(--campaign-paper); }
+.stage { position:relative;block-size:clamp(14rem,45dvh,26rem);background:#191a18; }
+.feature figcaption { display:flex;align-items:baseline;gap:.75rem;padding:.875rem 1rem;color:var(--campaign-muted);font-size:.85rem;line-height:1.5; }
+.counter { flex:none;color:var(--campaign-accent);font-size:.75rem;font-weight:750;font-variant-numeric:tabular-nums; }
+.viewerControls { display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-block:.75rem; }
+.viewerControls button { min-block-size:44px;padding:.55rem .85rem;border:1px solid var(--campaign-line);border-radius:7px;background:var(--campaign-paper);color:var(--campaign-ink);font:650 .8rem/1.4 var(--campaign-font-body); }
+.viewerControls > span { color:var(--campaign-muted);font-size:.75rem; }
+.thumbnailStrip { display:flex;gap:.5rem;overflow-x:auto;padding:.3rem .2rem .5rem;scrollbar-width:thin; }
+.thumbnailStrip button { position:relative;flex:0 0 clamp(5rem,15vw,7.5rem);padding:3px;border:1px solid var(--campaign-line);border-radius:8px;background:var(--campaign-paper);color:var(--campaign-ink); }
+.thumbnailStrip img { display:block;inline-size:100%;block-size:auto;aspect-ratio:4/3;object-fit:cover;border-radius:5px; }
+.thumbnailStrip button > span { display:block;padding:.2rem;font-size:.65rem;font-weight:750; }
+.thumbnailStrip button[aria-pressed='true'] { border-color:var(--campaign-accent);box-shadow:inset 0 0 0 1px var(--campaign-accent); }
+.stage:focus-visible,.viewerControls button:focus-visible,.thumbnailStrip button:focus-visible { outline:3px solid var(--campaign-focus);outline-offset:3px; }
+.athleteFundNote { margin-block:1.2rem 0;padding:.95rem 1.1rem;border:1px solid var(--campaign-line);border-inline-start:3px solid var(--campaign-recognition-ink);border-radius:8px;background:var(--campaign-stage);color:var(--campaign-ink);font-weight:600;line-height:1.5; }
+@media (hover:hover) and (pointer:fine) { .viewerControls button:hover,.thumbnailStrip button:hover { border-color:var(--campaign-accent); } }
+@media (prefers-reduced-motion:no-preference) { .viewerControls button,.thumbnailStrip button { transition:border-color 160ms ease,box-shadow 160ms ease; } }
+@media (max-width:35.999rem) { .feature figcaption { padding:.7rem .75rem;font-size:.8rem; }.viewerControls > span { display:none; }.athleteFundNote { padding:.8rem .9rem; } }
+@media (forced-colors:active) { .feature,.stage,.athleteFundNote { border-color:CanvasText;background:Canvas;color:CanvasText; }.viewerControls button,.thumbnailStrip button { background:ButtonFace;color:ButtonText;border-color:ButtonText; }.thumbnailStrip button[aria-pressed='true'] { outline:2px solid Highlight;outline-offset:-3px; }.counter,.feature figcaption { color:CanvasText; } }

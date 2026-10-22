@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const route = readFileSync("src/app/api/organizer/[slug]/members/manage/route.ts", "utf8");
+const store = readFileSync("src/server/organizer/permissions-store.ts", "utf8");
+test("management remains development-only", () => assert.match(route, /FF_DEVELOPMENT_STUDIO/));
+test("campaign mutations share transaction lock", () => assert.match(store, /pg_advisory_xact_lock/));
+test("authority rechecked inside transaction", () => assert.match(store, /authority.rows\[0\]\?\.role !== "owner"/));
+test("final owner protected", () => assert.match(store, /last campaign owner cannot be removed or demoted/i));
+test("audit remains transactional", () => assert.match(store, /ff_campaign_membership_audit/));

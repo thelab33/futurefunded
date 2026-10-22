@@ -1,61 +1,18 @@
-export default [
-  { ignores: ["**/*.bak", "**/*.min.js", "**/vendor/**", "**/.artifacts/**", "**/artifacts/**"] },
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 
-  {
-    files: ["app/static/js/**/*.js"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "script",
-      globals: {
-        window: "readonly",
-        document: "readonly",
-        navigator: "readonly",
-        location: "readonly",
-        history: "readonly",
-        localStorage: "readonly",
-        sessionStorage: "readonly",
-        CustomEvent: "readonly",
-        Event: "readonly",
-        requestAnimationFrame: "readonly",
-        cancelAnimationFrame: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
-        setInterval: "readonly",
-        clearInterval: "readonly",
-        URL: "readonly",
-        URLSearchParams: "readonly",
-        AbortController: "readonly",
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
 
-        fetch: "readonly",
-        Headers: "readonly",
-        Request: "readonly",
-        Response: "readonly",
-        FormData: "readonly",
-
-        // fetch stack
-        fetch: "readonly",
-        Headers: "readonly",
-        Request: "readonly",
-        Response: "readonly",
-        FormData: "readonly",
-
-        console: "readonly",
-
-        Stripe: "readonly",
-        paypal: "readonly"
-      }
-    },
-    rules: {
-      "no-console": "off",
-      "no-undef": "error",
-      "no-unused-vars": ["warn", {
-        "args": "none",
-        "vars": "all",
-        "caughtErrors": "none",
-        "varsIgnorePattern": "^_",
-        "argsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_"
-      }]
-    }
-  }
-];
+export default eslintConfig;
