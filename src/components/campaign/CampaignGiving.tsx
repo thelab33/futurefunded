@@ -16,6 +16,8 @@ export function CampaignGiving({
   checkoutReady,
   ...chooser
 }: CampaignGivingProps) {
+  // Source totals are demo/test records, not verified live funding.
+  const showUnverifiedFunding = process.env.NODE_ENV !== "production";
   const goal = Math.max(0, campaign.goal);
   const raised = Math.max(0, campaign.raised);
   const fundedPercent =
@@ -53,18 +55,19 @@ export function CampaignGiving({
       <div className={styles.fundSnapshot} data-console-zone="performance">
         <div className={styles.fundPrimary}>
           <div>
-            <span className={styles.metricLabel}>{checkoutReady ? "Test recorded · before fees" : "Demo raised"}</span>
+            <span className={styles.metricLabel}>{showUnverifiedFunding ? (checkoutReady ? "Test recorded · before fees" : "Demo raised") : "Season goal"}</span>
             <strong className={styles.total} data-money>
-              {money(campaign.raised)}
+              {money(showUnverifiedFunding ? campaign.raised : goal)}
             </strong>
           </div>
 
-          <div className={styles.goalBlock}>
+          {showUnverifiedFunding && <div className={styles.goalBlock}>
             <span>Goal</span>
             <strong>{money(campaign.goal)}</strong>
-          </div>
+          </div>}
         </div>
 
+        {showUnverifiedFunding && <>
         <p className={styles.fundProgressCaption}>Season fundraising progress</p>
         <progress
           max={progressMax}
@@ -86,6 +89,7 @@ export function CampaignGiving({
             <dd>{money(remaining)}</dd>
           </div>
         </dl>
+        </>}
       </div>
 
       {checkoutReady && <p className={styles.shared}>Test mode · No real money collected.</p>}

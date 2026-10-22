@@ -19,9 +19,10 @@ function currentCampaignUrl() {
   return url.toString();
 }
 
-export function CampaignShare({ campaign, canonicalUrl, onShare, onNewsletter }: {
+export function CampaignShare({ campaign, canonicalUrl, newsletterConfigured, onShare, onNewsletter }: {
   campaign: Campaign;
   canonicalUrl: string | null;
+  newsletterConfigured: boolean;
   onShare: () => void;
   onNewsletter: () => void;
 }) {
@@ -35,8 +36,8 @@ export function CampaignShare({ campaign, canonicalUrl, onShare, onNewsletter }:
   const link = relayLinkPresentation(url, canonicalUrl);
   const available = Boolean(url) && link.kind !== "loading";
   const message = feedback.url === url ? feedback.message : "";
-  const updatesEnabled = Boolean(campaign.engagement?.newsletter?.enabled);
-  const textNumberPublished = Boolean(campaign.engagement?.textToGive?.publicNumber);
+  const updatesEnabled = Boolean(campaign.engagement?.newsletter?.enabled && newsletterConfigured);
+  const textNumberPublished = Boolean(campaign.engagement?.textToGive?.publicNumber?.trim());
   const qrCaption = link.kind === "local" ? "Preview QR" : link.kind === "loading" ? "Preparing QR" : "Scan to open";
 
   async function copyLink() {
@@ -73,10 +74,10 @@ export function CampaignShare({ campaign, canonicalUrl, onShare, onNewsletter }:
           </div>
           <div className={styles.toolFooter}>
             <button type="button" className={`${styles.shareShare} ${finish.shareAction}`} onClick={onShare} aria-haspopup="dialog" aria-controls="campaign-detail-dialog">Share options <span aria-hidden="true">→</span></button>
-            <div className={styles.relaySmsStatus}>
+            {textNumberPublished && <div className={styles.relaySmsStatus}>
               <strong>Text to Give</strong>
-              <span className={styles.relaySmsPending}>{textNumberPublished ? "Number published" : "Not yet active"}</span>
-            </div>
+              <span className={styles.relaySmsPending}>{"Number published"}</span>
+            </div>}
           </div>
           <span className={styles.shareStatus} role="status">{message}</span>
         </div>

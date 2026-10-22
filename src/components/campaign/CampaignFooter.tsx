@@ -44,9 +44,9 @@ export function CampaignFooter({ campaign, checkoutReady, onChapter }: CampaignF
         <h2 className={`${styles.campaignFooterLabel} ${finish.label}`}>Campaign resources</h2>
         <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("support")}>Privacy & policies</button>
         <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("support")}>Campaign record · Shared season fund</button>
-        <button type="button" aria-label="Official collection status: in preparation" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("gear")}>
-          Official collection · <span className={styles.collectionStatus}>In preparation{"\u00a0"}<span aria-hidden="true">→</span></span>
-        </button>
+        {campaign.capabilities.commerce && campaign.commerce?.storefrontUrl?.trim() && <button type="button" aria-label="Explore the official collection" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("gear")}>
+          Official collection · <span className={styles.collectionStatus}>Explore{"\u00a0"}<span aria-hidden="true">→</span></span>
+        </button>}
       </div>
     </footer>
   );

@@ -125,7 +125,7 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
               </div>
             </div>
 
-            <div className={styles.textPanel}>
+            {textToGive?.publicNumber?.trim() && <div className={styles.textPanel}>
               <span className={styles.toolKicker}>Text to give</span>
               {textToGive?.publicNumber ? (
                 <>
@@ -136,7 +136,7 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
               ) : (
                 <p className={styles.pending}>Messaging connection pending. Text-to-give will be available after the program number is verified.</p>
               )}
-            </div>
+            </div>}
           </div>
         </div>
       </div>

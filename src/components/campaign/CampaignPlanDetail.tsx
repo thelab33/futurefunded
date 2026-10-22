@@ -10,7 +10,7 @@ export function CampaignPlanDetail({ campaign }: { campaign: Campaign }) {
     <p className={styles.recordLede}>One shared fund keeps practices, competition, travel, meals, gear, and participation support within reach.</p>
     <div className={styles.recordPlanSnapshot} aria-label="Season fund goal">
       <div><span>Season goal</span><strong>{money(campaign.goal)}</strong></div>
-      <div><span>Remaining toward goal</span><strong>{money(remaining)}</strong></div>
+      {process.env.NODE_ENV !== "production" && <div><span>Remaining toward goal</span><strong>{money(remaining)}</strong></div>}
     </div>
     {plan ? <>
       <h3>Where the season fund is planned to go</h3>

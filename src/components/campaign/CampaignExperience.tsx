@@ -109,7 +109,7 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
         program={<CampaignNeeds campaign={campaign} onGive={continueGift} />}
         momentum={<CampaignUpdates campaign={campaign} onShare={() => open("share")} />}
         chapters={<CampaignChapters campaign={campaign} media={media} onChapter={open} />}
-        share={<CampaignShare campaign={campaign} canonicalUrl={canonicalUrl} onShare={() => open("share")} onNewsletter={() => requestNewsletter(n => n + 1)} />}
+        share={<CampaignShare newsletterConfigured={newsletterConfigured} campaign={campaign} canonicalUrl={canonicalUrl} onShare={() => open("share")} onNewsletter={() => requestNewsletter(n => n + 1)} />}
         footer={
           <CampaignFooter
             campaign={campaign}
