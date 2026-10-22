@@ -2,6 +2,7 @@ import type { Campaign } from "@/domain/campaigns/types";
 
 export const connectAtxElite: Campaign = {
   slug: "connect-atx-elite",
+  branding: { typography: "modern" },
   organization: "Connect ATX Elite",
   location: "Austin, TX",
   season: "2026 season",

@@ -7,8 +7,8 @@ export function CampaignGivingStatus({ checkoutReady }: { checkoutReady: boolean
     <span className={styles.givingStatusDot} aria-hidden="true" />
     <div>
       <strong>{checkoutReady ? "Test checkout available" : "Giving opens soon"}</strong>
-      <p>{checkoutReady ? "Test mode only. No real payment is accepted."
-        : "Explore your gift. Payments are not being accepted."}</p>
+      <p>{checkoutReady ? "Use Stripe test details."
+        : "Payments are not being accepted."}</p>
     </div>
   </div>;
 }

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { testCheckoutContext } from "@/server/donations/store";
+import { newsletterReady } from "@/server/newsletter-store";
 import { getCampaign } from "@/data/campaigns";
 import { publicCampaignSnapshot } from "@/domain/campaigns/season-dispatch";
 import { getCampaignCanonicalUrl } from "@/config/site";
@@ -24,13 +26,19 @@ export default async function CampaignPage({params,searchParams}: Props) {
   const {slug} = await params;
   const source = getCampaign(slug);
   if (!source) notFound();
-  // Public source only: no private drafts, organizer database, payment provider, or email service.
-  const campaign = publicCampaignSnapshot(source,new Date().toISOString());
+  // Campaign content stays public-only; newsletter readiness checks its isolated schema.
+  const snapshot = publicCampaignSnapshot(source,new Date().toISOString());
+  const checkout = await testCheckoutContext(slug);
+  // Test-ledger projection replaces demo figures only while explicitly configured.
+  const campaign = checkout.ready && checkout.funding ? {
+    ...snapshot, raised:checkout.funding.raised, supporters:checkout.funding.gifts,
+    branding:{...snapshot.branding,supporterLabel:"test gifts"},
+  } : snapshot;
   const presentation = toCampaignPresentationV1(campaign,{
-    checkoutReady:false, purposes:[], canonicalUrl:getCampaignCanonicalUrl(slug),
+    checkoutReady:checkout.ready, purposes:[], canonicalUrl:getCampaignCanonicalUrl(slug),
   });
   const query = await searchParams;
   return <CampaignExperience campaign={campaign} presentation={presentation}
     returned={query.checkout === "returned"} cancelled={query.checkout === "cancelled"}
-    newsletterConfigured={false} />;
+    newsletterConfigured={await newsletterReady(slug)} />;
 }

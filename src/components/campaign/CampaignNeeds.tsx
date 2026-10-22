@@ -8,13 +8,17 @@ export function CampaignNeeds({ campaign, onGive }: {
   onGive: () => void;
 }) {
   const mission = campaign.seasonMission;
+  const title = mission?.title ?? "What your support makes possible";
   const primary = mission?.priorities.slice(0, 3) ?? [];
   const supporting = mission?.priorities.slice(3) ?? [];
   return (
     <section className={styles.programWing} aria-labelledby="program-title" data-orbit-program="season-mission">
       <div className={styles.programCopy}>
         <p className={styles.needsEyebrow}>What keeps the season possible</p>
-        <h2 id="program-title">{mission?.title ?? "What your support makes possible"}</h2>
+        <h2 id="program-title">{title === "Three key needs. A stronger season." ? <>
+          <span className={styles.needsTitleLine}>Three key needs.</span>{" "}
+          <span className={styles.needsTitleLine}>A stronger season.</span>
+        </> : title}</h2>
         <p>{mission?.summary ?? campaign.story?.programSummary ?? campaign.story?.narrative}</p>
       </div>
       {primary.length > 0 && (

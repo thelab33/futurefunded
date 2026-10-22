@@ -1,0 +1,50 @@
+/* Footer-owned presentation; chapter destinations and attribution remain unchanged. */
+.campaignFooter { display:grid;gap:1.5rem 2rem;padding:1.5rem max(var(--campaign-gutter),calc((100% - var(--campaign-max)) / 2 + var(--campaign-gutter)));border-block-start:1px solid var(--campaign-line-on-dark);background:var(--campaign-navy);color:var(--campaign-muted-on-dark); }
+.campaignFooterIdentity,.campaignFooterTrust,.campaignFooterActions { display:grid;align-content:start;gap:.25rem;min-inline-size:0;font:400 .8rem/1.6 var(--campaign-font-body); }
+.campaignFooterBrand { color:var(--campaign-on-dark);font:700 1.2rem/1.3 var(--campaign-font-display);letter-spacing:-.035em; }
+.campaignFooterMeta { font-size:.75rem; }
+.campaignFooterMission { margin-block-start:.35rem;color:var(--campaign-gold);font:550 1.05rem/1.35 var(--campaign-font-display); }
+.campaignFooterLabel { margin:0 0 .45rem;color:var(--campaign-on-dark);font:600 .7rem/1.5 var(--campaign-font-body);letter-spacing:.08em;text-transform:uppercase; }
+.campaignFooterActions button,.campaignFooterTrust button { display:block;justify-self:start;min-block-size:44px;max-inline-size:100%;padding:.45rem 0;border:0;border-radius:3px;background:transparent;color:var(--campaign-muted-on-dark);font:inherit;text-align:start;text-decoration:underline;text-decoration-thickness:1px;text-decoration-color:#8195af;text-underline-offset:4px;cursor:pointer; }
+.collectionStatus { display:inline-block;white-space:nowrap; }
+.givingStatus { display:grid;gap:.25rem;margin-block-start:.4rem;padding:.65rem .8rem;border-inline-start:2px solid var(--campaign-gold);background:rgba(255,255,255,.035);font-size:.75rem; }
+.givingStatus > span:first-child { color:var(--campaign-on-dark);font-weight:600; }
+.campaignPlatformSignature { display:grid;gap:.1rem;margin-block-start:.8rem;font-size:.7rem; }
+.campaignPlatformSignature strong { color:var(--campaign-on-dark);font-size:.8rem; }
+.campaignPlatformTagline { font-size:.7rem; }
+.campaignFooter :is(a,button):focus-visible { outline:3px solid var(--campaign-gold);outline-offset:4px; }
+@media (min-width:48rem) {
+ .campaignFooter { grid-template-columns:1.05fr 1fr 1fr;gap:1.5rem; }
+ .campaignFooterTrust,.campaignFooterActions { padding-inline-start:1.5rem;border-inline-start:1px solid var(--campaign-line-on-dark); }
+}
+@media (max-width:47.999rem) {
+ .campaignFooterTrust,.campaignFooterActions { padding-block-start:1rem;border-block-start:1px solid var(--campaign-line-on-dark); }
+}
+@media (hover:hover) and (pointer:fine) { .campaignFooter button:hover { color:var(--campaign-on-dark);text-decoration-color:var(--campaign-gold); } }
+@media (prefers-reduced-motion:no-preference) { .campaignFooter button { transition:color 160ms ease,text-decoration-color 160ms ease; } }
+@media (forced-colors:active) {
+ .campaignFooter,.givingStatus { background:Canvas;color:CanvasText;border-color:CanvasText; }
+ .campaignFooterTrust,.campaignFooterActions { border-color:CanvasText; }
+ .campaignFooter button { color:LinkText;text-decoration-color:LinkText; }
+ .campaignFooterBrand,.campaignFooterLabel,.campaignFooterMission,.campaignPlatformSignature strong,.givingStatus > span:first-child { color:CanvasText; }
+ .campaignFooter :is(a,button):focus-visible { outline-color:Highlight; }
+}
+
+/* FutureFunded V1.18 D — institutional close, editorial hierarchy. */
+.campaignFooter { gap:1.1rem 1.65rem;padding-block:clamp(1.25rem,2vw,1.7rem); }
+.campaignFooterIdentity,.campaignFooterTrust,.campaignFooterActions { gap:.3rem;line-height:1.55; }
+.campaignFooterBrand { font-size:1.13rem;letter-spacing:-.03em; }
+.campaignFooterMeta { font-size:.79rem; }
+.campaignFooterMission { margin-block-start:.25rem;font-size:.96rem;font-weight:650; }
+.campaignFooterLabel { margin-block-end:.3rem;font-size:.72rem;font-weight:750;letter-spacing:.075em; }
+.campaignFooterActions button,.campaignFooterTrust button { line-height:1.5;text-decoration-color:rgb(186 203 223 / .7);text-underline-offset:4px; }
+.givingStatus { gap:.25rem;margin-block-start:.3rem;padding:.7rem .85rem;border-inline-start:2px solid var(--campaign-gold);border-radius:0 6px 6px 0;background:rgb(255 255 255 / .055);font-size:.78rem; }
+.campaignPlatformSignature { margin-block-start:.55rem;gap:.15rem;font-size:.77rem; }
+.campaignPlatformTagline { font-size:.75rem; }
+@media (min-width:48rem) {
+ .campaignFooter { grid-template-columns:1.08fr 1fr 1fr; }
+ .campaignFooterTrust,.campaignFooterActions { padding-inline-start:clamp(1rem,2vw,1.5rem); }
+}
+@media (prefers-reduced-motion:reduce) {
+ .campaignFooter button { transition:none; }
+}

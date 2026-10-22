@@ -1,0 +1,20 @@
+.page { min-block-size:100svh;padding:clamp(1.25rem,5vw,4rem);background:#f2efe9;color:#142840;font:400 1rem/1.65 var(--font-geist-sans),system-ui,sans-serif; }
+.brand { display:flex;flex-wrap:wrap;justify-content:space-between;gap:.5rem 1.5rem;max-inline-size:56rem;margin:0 auto 2rem;color:inherit;text-decoration:none;font-weight:700; }
+.brand span { color:#506076;font-size:.8125rem;font-weight:500; }
+.card { max-inline-size:56rem;margin:auto;padding:clamp(1.5rem,5vw,3rem);border:1px solid #d7dce2;border-block-start:3px solid #e9bd68;border-radius:16px;background:#fdfcf9;box-shadow:0 20px 50px -35px rgb(20 40 64 / 30%); }
+.eyebrow { margin:0 0 .75rem;color:#74541e;font-size:.6875rem;font-weight:650;letter-spacing:.1em;text-transform:uppercase; }
+.card h1 { max-inline-size:22ch;margin:0;font-size:clamp(1.75rem,4vw,2.75rem);font-weight:750;line-height:1.12;letter-spacing:-.045em;text-wrap:balance; }
+.message { max-inline-size:62ch;margin:1rem 0 1.5rem;color:#506076; }
+.summary { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:0 0 1.5rem;padding:1.25rem;border:1px solid #d7dce2;border-radius:10px;background:#f2efe9; }
+.summary div { min-inline-size:0; }
+.summary dt { color:#506076;font-size:.75rem; }
+.summary dd { margin:.25rem 0 0;font-size:1.125rem;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+.actions { display:grid;gap:.75rem; }
+.actions :is(a,button) { display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-block-size:48px;padding:.75rem 1rem;border:1px solid #d7dce2;border-radius:8px;background:transparent;color:#142840;font:600 .875rem/1.5 var(--font-geist-sans),system-ui,sans-serif;text-decoration:none;cursor:pointer; }
+.actions .primary { border-color:#e9bd68;background:#e9bd68; }
+.actions button:disabled { cursor:wait;opacity:.7; }
+.note { margin:1.25rem 0 0;color:#506076;font-size:.75rem; }
+.page :is(a,button):focus-visible { outline:3px solid #1769c2;outline-offset:4px; }
+@media(max-width:30rem) { .summary { grid-template-columns:minmax(0,1fr); } }
+@media(hover:hover) { .actions .primary:hover { background:#f3cf89; } }
+@media(forced-colors:active) { .page,.card,.summary,.actions :is(a,button) { background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none; } .eyebrow,.brand span,.message,.summary dt,.note { color:CanvasText; } .page :is(a,button):focus-visible { outline-color:Highlight; } }

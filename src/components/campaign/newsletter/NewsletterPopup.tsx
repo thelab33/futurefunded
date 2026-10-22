@@ -100,7 +100,7 @@ export function NewsletterPopup({
       }
 
       setStatus("success");
-      setMessage(result.message || "You are on the list.");
+      setMessage(result.message || "Check your inbox to confirm season updates.");
       rememberDismissal();
       form.reset();
     } catch (error) {
@@ -144,14 +144,17 @@ export function NewsletterPopup({
 
         {!configured ? (
           <div className={styles.readiness} role="status">
-            <span className={styles.readinessKicker}>Service readiness</span>
+            <span className={styles.readinessKicker}>Registration pending</span>
             <strong>Season updates are coming.</strong>
-            <p>Email registration is not available yet. Follow the campaign and share its milestones while this service is being connected.</p>
-            <div className={styles.readinessFooter}>No email address or consent is collected in preview mode.</div>
+            <p>Email signup is not open yet. You can still explore the campaign and share the season with your community.</p>
+            <div className={styles.readinessFooter}>No email address or consent is collected while signup is unavailable.</div>
+            <button className={styles.back} type="button" onClick={closeDialog}>
+              Back to campaign <span aria-hidden="true">→</span>
+            </button>
           </div>
         ) : status === "success" ? (
           <div className={styles.success} role="status">
-            <strong>You’re subscribed.</strong>
+            <strong>Check your inbox.</strong>
             <p>{message}</p>
 
             <button type="button" onClick={closeDialog}>
@@ -198,7 +201,7 @@ export function NewsletterPopup({
               {configured
                 ? status === "sending"
                   ? "Joining…"
-                  : "Join campaign updates"
+                  : "Send confirmation email"
                 : "Email connection pending"}
             </button>
 

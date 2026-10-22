@@ -32,8 +32,8 @@ export function resolveCampaignBranding(branding?: CampaignBranding) {
     && campaignContrast(candidate, palette.selected) >= 4.5);
   const accent = accepted ? candidate! : palette.accent;
   const style = {
-    "--campaign-font-display": branding?.typography === "modern" ? "Arial, Helvetica, sans-serif" : "Georgia, serif",
-    "--campaign-font-body": "system-ui, sans-serif",
+    "--campaign-font-display": branding?.typography === "modern" ? "var(--font-geist-sans), system-ui, sans-serif" : "Georgia, serif",
+    "--campaign-font-body": "var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     ...(branding?.surface ? {
       "--campaign-paper": palette.paper, "--campaign-stage": palette.stage,
       "--campaign-ink": palette.ink, "--campaign-muted": palette.muted,

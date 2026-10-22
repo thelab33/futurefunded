@@ -23,7 +23,15 @@ export function campaignMedia(campaign: Campaign) {
     return image && image.presentation !== "identity" ? [image] : [];
   });
 
+  const heroFrames = [
+    hero && { ...hero, label: "The connection", objectPosition: hero.objectPosition ?? "center 38%", mobileObjectPosition: "center 40%" },
+    campaign.athleteGallery?.[0] && { ...campaign.athleteGallery[0], label: "The achievement", objectPosition: campaign.athleteGallery[0].objectPosition ?? "center 32%", mobileObjectPosition: "center 35%" },
+    community && { ...community, label: "The community", objectPosition: community.objectPosition ?? "center 28%", mobileObjectPosition: "center 32%" },
+  ].filter((photo): photo is NonNullable<typeof photo> => Boolean(photo));
+  const uniqueHeroFrames = heroFrames.filter((photo, index) => heroFrames.findIndex(item => item.src === photo.src) === index);
+
   return {
+    heroFrames: uniqueHeroFrames,
     hero,
     story,
     identity,

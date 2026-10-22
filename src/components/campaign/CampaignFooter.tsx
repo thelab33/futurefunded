@@ -1,6 +1,6 @@
 import type { Campaign } from "@/domain/campaigns/types";
 import type { CampaignChapter } from "@/components/campaign/campaign-types";
-import styles from "@/components/campaign/Campaign.module.css";
+import styles from "@/components/campaign/CampaignFooter.module.css";
 
 type CampaignFooterProps = {
   campaign: Campaign;
@@ -15,7 +15,7 @@ export function CampaignFooter({ campaign, checkoutReady, onChapter }: CampaignF
     : "co-branded";
 
   return (
-    <footer className={styles.campaignFooter} aria-label="Campaign trust and record" data-orbit-footer="institutional-v6e-d2">
+    <footer className={styles.campaignFooter} aria-label="Campaign trust and record" data-orbit-footer="editorial-v1-9">
       <div className={styles.campaignFooterIdentity}>
         <span className={styles.campaignFooterBrand}>
           {campaign.organization}
@@ -31,14 +31,16 @@ export function CampaignFooter({ campaign, checkoutReady, onChapter }: CampaignF
       </div>
 
       <div className={styles.campaignFooterTrust} role="group" aria-label="Campaign trust status">
-        <span className={styles.campaignFooterLabel}>Organizer & giving</span>
+        <h2 className={styles.campaignFooterLabel}>Organizer &amp; giving</h2>
         <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("support")}>Organizer information</button>
-        <span>{checkoutReady ? "Test checkout only" : "Checkout setup in progress"}</span>
-        <span>Receipt available after completed gift</span>
+        <div className={styles.givingStatus}>
+          <span>{checkoutReady ? "Test checkout only" : "Checkout setup in progress"}</span>
+          <span>{checkoutReady ? "Test record only · No donation receipt" : "Giving is not open yet"}</span>
+        </div>
       </div>
 
       <div className={styles.campaignFooterActions}>
-        <span className={styles.campaignFooterLabel}>Campaign resources</span>
+        <h2 className={styles.campaignFooterLabel}>Campaign resources</h2>
         <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("support")}>Privacy & policies</button>
         <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("support")}>Campaign record · Shared season fund</button>
         <button type="button" aria-label="Official collection status: in preparation" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" onClick={() => onChapter("gear")}>

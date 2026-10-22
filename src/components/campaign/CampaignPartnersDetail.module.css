@@ -1,0 +1,24 @@
+/* Only the partnership record adopts these shared comparison rows. */
+.tiers > .tier { display:grid;grid-template-rows:auto auto auto auto;align-content:start;row-gap:.65rem; }
+.tiers .kicker { margin:0;min-block-size:3em; }
+.tiers .heading { margin:0;gap:.6rem; }
+.tiers .heading h3 { min-block-size:2.6em; }
+.tiers .focus { margin:0;padding:0; }
+.tiers .summary { margin:0; }
+/* Content defines row heights; no clipped labels or fixed-height copy. */
+@supports (grid-template-rows:subgrid) {
+ @media (min-width:52.001rem) {
+  .tiers { row-gap:.65rem; }
+  .tiers > .tier { grid-row:span 5;grid-template-rows:subgrid; }
+  .tiers .kicker { grid-row:1;min-block-size:0; }
+  .tiers .heading { grid-row:2 / span 2;grid-template-rows:subgrid;row-gap:.65rem; }
+  .tiers .heading h3 { min-block-size:0;align-self:start; }
+  .tiers .heading strong { align-self:start; }
+  .tiers .focus { grid-row:4; }
+  .tiers .summary { grid-row:5; }
+ }
+}
+@media (max-width:52rem) {
+ .tiers > .tier { row-gap:.65rem; }
+ .tiers .kicker,.tiers .heading h3 { min-block-size:0; }
+}

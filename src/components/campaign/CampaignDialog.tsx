@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { RecordProps } from "@/components/campaign/campaign-types";
 import { CampaignRecord } from "@/components/campaign/CampaignRecord";
 import styles from "@/components/campaign/Campaign.module.css";
+import giftStyles from "@/components/campaign/checkout/CampaignCheckout.module.css";
 
 type Props = RecordProps & {
   title: string;
@@ -32,7 +33,7 @@ export function CampaignDialog({
     <dialog
       id="campaign-detail-dialog"
       ref={dialogRef}
-      className={styles.campaignDialog}
+      className={`${styles.campaignDialog}${chapter === "give" ? ` ${giftStyles.dialog}` : ""}`}
       aria-labelledby="chapter-title"
       onClose={restoreFocus}
       onKeyDown={(event) => {
@@ -92,7 +93,7 @@ export function CampaignDialog({
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <div className={styles.campaignDialogBody}>
+      <div className={`${styles.campaignDialogBody}${chapter === "give" ? ` ${giftStyles.body}` : ""}`}>
         <p className={styles.campaignDialogEyebrow}>
           {chapter === "give" ? "Contribution" : "Campaign record"}
         </p>

@@ -44,7 +44,7 @@ export function CampaignLayout({branding,header,hero,notice,giving,story,program
       window.removeEventListener("resize", update);
     };
   }, []);
-  return <div ref={shellRef} style={brand.style} data-brand-surface={brand.surface} data-campaign-theme={brand.surface === "dark" ? "dark" : undefined} className={`${styles.root}`} data-cleanroom-layout="c2" data-orbit-shell="c2" data-campaign-shell="c2">
+  return <div ref={shellRef} style={brand.style} data-brand-surface={brand.surface} data-campaign-typography={branding?.typography ?? "editorial"} data-campaign-theme={brand.surface === "dark" ? "dark" : undefined} className={`${styles.root}`} data-cleanroom-layout="c2" data-orbit-shell="c2" data-campaign-shell="c2">
     <span ref={textProbeRef} className={styles.textScaleProbe} aria-hidden="true" />
     <a className="ff-skip-link" href="#campaign-main">Skip to campaign</a>
     {header}

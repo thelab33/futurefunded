@@ -2,17 +2,19 @@ import type { Campaign } from "@/domain/campaigns/types";
 import styles from "@/components/campaign/Campaign.module.css";
 import { formatCampaignMoney as money } from "@/components/campaign/campaign-format";
 
+import layout from "./CampaignPartnersDetail.module.css";
+
 export function CampaignPartnersDetail({ campaign }: { campaign: Campaign }) {
   const sponsorship = campaign.sponsorship;
 
   return <div className={styles.recordPartners}>
     <p className={styles.recordLede}>Local businesses and community organizations can help make the shared season fund possible. Explore a level, then confirm recognition and availability with the organizer.</p>
-    {Boolean(sponsorship?.tiers.length) && <ul className={styles.recordTiers} aria-label="Partnership levels">
-      {sponsorship?.tiers.map((tier) => <li key={tier.slug} className={tier.featured ? styles.recordFeatured : undefined}>
-        <span className={styles.recordTierKicker}>{tier.featured ? "Lead opportunity" : "Community opportunity"}</span>
-        <div className={styles.recordTierHeading}><h3>{tier.name}</h3><strong>{money(tier.price)}</strong></div>
-        <p className={styles.recordTierFocus}>{tier.focus}</p>
-        <p className={styles.recordTierSummary}>{tier.summary}</p>
+    {Boolean(sponsorship?.tiers.length) && <ul className={`${styles.recordTiers} ${layout.tiers}`} aria-label="Partnership levels">
+      {sponsorship?.tiers.map((tier) => <li key={tier.slug} className={`${layout.tier} ${tier.featured ? styles.recordFeatured : ""}`}>
+        <span className={`${styles.recordTierKicker} ${layout.kicker}`}>{tier.featured ? "Lead opportunity" : "Community opportunity"}</span>
+        <div className={`${styles.recordTierHeading} ${layout.heading}`}><h3>{tier.name}</h3><strong>{money(tier.price)}</strong></div>
+        <p className={`${styles.recordTierFocus} ${layout.focus}`}>{tier.focus}</p>
+        <p className={`${styles.recordTierSummary} ${layout.summary}`}>{tier.summary}</p>
       </li>)}
     </ul>}
     <div className={styles.recordPartnerNext}>

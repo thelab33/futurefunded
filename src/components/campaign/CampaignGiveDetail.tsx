@@ -1,6 +1,5 @@
 import type { RecordProps } from "@/components/campaign/campaign-types";
 import { DonationForm } from "@/components/campaign/checkout/DonationForm";
-import styles from "@/components/campaign/Campaign.module.css";
 
 export function CampaignGiveDetail({
   campaign, amount, custom, purposes, checkoutReady, onBack,
@@ -12,7 +11,6 @@ export function CampaignGiveDetail({
     : purposes.find(purpose => purpose.amountCents === amountCents)?.id ?? "shared-season-fund";
 
   return <div data-campaign-gift-review="c3">
-    {!isCustom && selected?.description && <p className={styles.recordLede}>{selected.description}</p>}
     <DonationForm
       campaignSlug={campaign.slug}
       amountCents={amountCents}
@@ -20,6 +18,7 @@ export function CampaignGiveDetail({
       configured={checkoutReady}
       frequency="one_time"
       impactLabel={isCustom ? "Shared season fund" : selected?.label ?? "Shared season fund"}
+      impactDescription={isCustom ? undefined : selected?.description}
       onBack={onBack}
     />
   </div>;

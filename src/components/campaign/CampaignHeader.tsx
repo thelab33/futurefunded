@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { Campaign } from "@/domain/campaigns/types";
-import type { CampaignChapter } from "@/components/campaign/campaign-types";
-import type { campaignMedia } from "@/components/campaign/campaign-media";
-import styles from "@/components/campaign/Campaign.module.css";
+import type { CampaignChapter } from "./campaign-types";
+import type { campaignMedia } from "./campaign-media";
+import styles from "./CampaignHeader.module.css";
 
 type CampaignHeaderProps = {
   campaign: Campaign;
@@ -15,112 +16,84 @@ type CampaignHeaderProps = {
   checkoutReady: boolean;
 };
 
-export function CampaignHeader({
-  campaign,
-  identity,
-  onGive,
-  onChapter,
-  hydrated,
-  checkoutReady,
-}: CampaignHeaderProps) {
-  const initials =
-    campaign.organization
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((word) => Array.from(word)[0] ?? "")
-      .join("")
-      .toUpperCase() || "FF";
+export function CampaignHeader({ campaign, identity, onGive, onChapter, hydrated, checkoutReady }: CampaignHeaderProps) {
+  const headerRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const header = headerRef.current;
+    const shell = header?.parentElement;
+    if (!header || !shell) return;
+    const previous = shell.style.getPropertyValue("--campaign-header-offset");
+    const update = () => {
+      setScrolled(window.scrollY > 12);
+      const offset = getComputedStyle(header).position === "sticky" ? header.getBoundingClientRect().height + 16 : 16;
+      shell.style.setProperty("--campaign-header-offset", `${offset}px`);
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      if (previous) shell.style.setProperty("--campaign-header-offset", previous);
+      else shell.style.removeProperty("--campaign-header-offset");
+    };
+  }, []);
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      const menu = menuRef.current;
+      if (!document.querySelector("dialog[open]") && menu?.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, []);
+  const initials = campaign.organization.trim().split(/\s+/).slice(0, 2)
+    .map(word => Array.from(word)[0] ?? "").join("").toUpperCase() || "FF";
+  const actionLabel = checkoutReady ? "Test a gift" : "Support the season";
 
-  const hasIdentityImage = Boolean(identity?.src);
+  const navigation = (mobile: boolean) => (
+    <nav className={`${styles.nav} ${mobile ? styles.mobileNav : styles.desktopNav}`} aria-label="Campaign navigation">
+          <a href="#giving">Campaign</a>
+          <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" disabled={!hydrated} onClick={() => onChapter("squads")}>Program</button>
+          <button type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" disabled={!hydrated} onClick={() => onChapter("partners")}>Partners</button>
+          {mobile && <button className={styles.supportLink} type="button" aria-haspopup="dialog" aria-controls="campaign-detail-dialog" disabled={!hydrated} onClick={() => onChapter("support")}>Support information</button>}
+        </nav>
+  );
 
-  return (
-    <header className={styles.header}>
-      <div className={styles.headerInner}>
-      <a
-        className={styles.identity}
-        href={`/c/${campaign.slug}`}
-        aria-label={`${campaign.organization} campaign home`}
-      >
-        <span
-          className={hasIdentityImage ? styles.brandMark : styles.monogram}
-          aria-hidden="true"
-        >
-          {hasIdentityImage && identity ? (
-            <Image
-              unoptimized
-              src={identity.src}
-              alt=""
-              width={52}
-              height={52}
-            />
-          ) : (
-            initials
-          )}
+  return <header ref={headerRef} className={styles.header} data-scrolled={scrolled}>
+    <div className={styles.inner}>
+      <a className={styles.identity} href={`/c/${campaign.slug}`} aria-label={`${campaign.organization} campaign home`}>
+        <span className={styles.mark} aria-hidden="true">
+          {identity?.src ? <Image unoptimized src={identity.src} alt="" width={44} height={44} /> : initials}
         </span>
-
         <span className={styles.identityCopy}>
           <strong>{campaign.organization}</strong>
-          <small>
-            {campaign.season} · {campaign.location}
-          </small>
+          <small><span aria-hidden="true" />{campaign.season}{/\bseason\b/i.test(campaign.season) ? "" : " season"} · {campaign.location}</small>
         </span>
       </a>
-
-      <nav className={styles.nav} aria-label="Campaign navigation">
-        <a href="#giving">Campaign</a>
-
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-controls="campaign-detail-dialog"
-          disabled={!hydrated}
-          onClick={() => onChapter("squads")}
-        >
-          Program
-        </button>
-
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-controls="campaign-detail-dialog"
-          disabled={!hydrated}
-          onClick={() => onChapter("partners")}
-        >
-          Partners
-        </button>
-
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-controls="campaign-detail-dialog"
-          disabled={!hydrated}
-          onClick={() => onChapter("support")}
-        >
-          Support
-        </button>
-      </nav>
-
-      <button
-        type="button"
-        className={styles.headerGive}
-        data-checkout-ready={checkoutReady ? "true" : "false"}
-        aria-haspopup="dialog"
-        aria-controls="campaign-detail-dialog"
-        disabled={!hydrated}
-        onClick={onGive}
-      >
-        <span className={styles.giveLabel}>{checkoutReady ? "Give securely" : "Support the season"}</span>
-        <Image
-          unoptimized
-          src="/media/futurefunded/arrow-right.svg"
-          alt=""
-          width={20}
-          height={20}
-          aria-hidden="true"
-        />
+      <button type="button" className={styles.give} data-checkout-ready={checkoutReady ? "true" : "false"}
+        aria-label={actionLabel} aria-haspopup="dialog" aria-controls="campaign-detail-dialog"
+        disabled={!hydrated} onClick={onGive}>
+        <span className={styles.fullLabel}>{actionLabel}</span>
+        <span className={styles.shortLabel}>{checkoutReady ? "Test gift" : "Support"}</span>
+        <span className={styles.arrow} aria-hidden="true">→</span>
       </button>
-      </div>
-    </header>
-  );
+      {navigation(false)}
+      <details ref={menuRef} className={styles.menu} onKeyDown={event => {
+        if (event.key === "Escape" && menuRef.current?.open && !document.querySelector("dialog[open]")) {
+          event.preventDefault(); menuRef.current.open = false;
+          menuRef.current.querySelector("summary")?.focus();
+        }
+      }} onBlur={event => {
+        if (!document.querySelector("dialog[open]") && event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+      }}>
+        <summary className={styles.menuToggle}>Menu <span aria-hidden="true">＋</span></summary>
+        {navigation(true)}
+      </details>
+    </div>
+  </header>;
 }
