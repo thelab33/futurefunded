@@ -2,6 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { relayLinkPresentation } from "./relay-link-presentation";
 import type { Campaign } from "@/domain/campaigns/types";
 import styles from "@/components/campaign/relay/CommunityRelay.module.css";
 
@@ -22,15 +23,6 @@ function currentCampaignUrl() {
   return url.toString();
 }
 
-function isLocalPreview(url: string, canonicalUrl: string | null) {
-  if (!url || canonicalUrl) return false;
-  try {
-    return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-}
-
 function smsHref(number: string, keyword: string) {
   const normalized = number.replace(/[^+\d]/g, "");
   return `sms:${normalized}?&body=${encodeURIComponent(keyword)}`;
@@ -42,26 +34,31 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
     () => canonicalUrl ?? currentCampaignUrl(),
     () => canonicalUrl ?? "",
   );
-  const [status, setStatus] = useState("Ready to share");
+  const [feedback, setFeedback] = useState({ url: "", message: "" });
   const linkInput = useRef<HTMLInputElement>(null);
   const textToGive = campaign.engagement?.textToGive;
-  const shareText = `${campaign.headline} Support ${campaign.organization}'s ${campaign.season}.`;
-  const preview = isLocalPreview(runtimeUrl, canonicalUrl);
+  const link = relayLinkPresentation(runtimeUrl, canonicalUrl);
+  const shareText = link.kind === "published"
+    ? `${campaign.headline} Support ${campaign.organization}'s ${campaign.season}.`
+    : `${campaign.organization} campaign ${link.kind === "local" ? "preview" : "page"}.`;
+  const available = Boolean(runtimeUrl) && link.kind !== "loading";
+  const status = feedback.url === runtimeUrl && feedback.message ? feedback.message : link.status;
+  const setStatus = (message: string) => setFeedback({ url: runtimeUrl, message });
 
   async function copyLink() {
-    if (!runtimeUrl) return;
+    if (!available) return;
     try {
       await navigator.clipboard.writeText(runtimeUrl);
-      setStatus("Campaign link copied");
+      setStatus(link.copied);
     } catch {
       linkInput.current?.focus();
       linkInput.current?.select();
-      setStatus("Automatic copy unavailable. The campaign link is selected; copy it manually.");
+      setStatus("Automatic copy unavailable. The link is selected; copy it manually.");
     }
   }
 
   async function shareCampaign() {
-    if (!runtimeUrl) return;
+    if (!available) return;
     if (navigator.share) {
       try {
         await navigator.share({ title: campaign.organization, text: shareText, url: runtimeUrl });
@@ -69,7 +66,7 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          setStatus("Sharing cancelled. The campaign link is still available below.");
+          setStatus("Sharing cancelled. The link is still available below.");
           return;
         }
       }
@@ -78,14 +75,12 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
   }
 
   return (
-    <section id="relay" data-ff-relay="vr9-c9" aria-labelledby="relay-title" className={styles.relay}>
+    <section id="relay" data-ff-relay="vr9-c9" aria-label="Campaign sharing tools" className={styles.relay}>
       <div className={`${styles.inner} ff-container`}>
         <div className={styles.copy}>
-          <p className="ff-kicker ff-kicker--ember">Community relay</p>
-          <h2 id="relay-title">Put the season in the right hands.</h2>
-          <p>Share the official campaign with people who can give, sponsor, or open the right door.</p>
+          <p className={styles.intro}>{link.intro}</p>
           <div className={styles.truthRail}>
-            <span>Official campaign</span>
+            <span>{link.truth}</span>
             <span>{campaign.organization}</span>
             <span>{campaign.location}</span>
           </div>
@@ -94,15 +89,14 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
         <div className={styles.shareKit} data-motion-share-kit>
           <div className={styles.shareTopline}>
             <div>
-              <span>Campaign link</span>
               <strong role="status">{status}</strong>
             </div>
-            <span className={styles.shareState}>{preview ? "Local preview" : canonicalUrl ? "Canonical" : "Current page"}</span>
+            <span className={styles.shareState}>{link.badge}</span>
           </div>
 
           <div className={styles.urlField}>
-            <label htmlFor="ff-share-campaign-link">{preview ? "Local preview link" : "Official campaign link"}</label>
-            {preview && <p className={styles.previewNote}>Local-only preview. This link and QR code work on this device; share a public link after publishing.</p>}
+            <label htmlFor="ff-share-campaign-link">{link.label}</label>
+            {link.note && <p className={styles.previewNote}>{link.note}</p>}
             <input
               id="ff-share-campaign-link"
               ref={linkInput}
@@ -115,19 +109,19 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
           </div>
 
           <div className={styles.actions}>
-            <button type="button" className={styles.primary} onClick={shareCampaign} disabled={!runtimeUrl}>Share the season</button>
-            <button type="button" onClick={copyLink} disabled={!runtimeUrl}>Copy link</button>
+            <button type="button" className={styles.primary} onClick={shareCampaign} disabled={!available}>{link.share}</button>
+            <button type="button" onClick={copyLink} disabled={!available}>Copy link</button>
           </div>
 
           <div className={styles.giveTools}>
             <div id="campaign-qr" className={styles.qrPanel}>
               <div className={styles.qrFrame}>
-                {runtimeUrl ? <QRCodeSVG aria-label={preview ? `QR code: open the local ${campaign.organization} campaign preview` : `QR code: open the official ${campaign.organization} campaign`} value={runtimeUrl} size={164} level="M" bgColor="#ffffff" fgColor="#111315" /> : null}
+                {available ? <QRCodeSVG aria-label={`QR code: ${link.qrTitle} for ${campaign.organization}`} value={runtimeUrl} size={164} level="M" bgColor="#ffffff" fgColor="#111315" /> : null}
               </div>
               <div>
-                <span className={styles.toolKicker}>{preview ? "Preview QR" : "Scan to give"}</span>
-                <strong>{preview ? "Open this local preview" : "Open the official campaign"}</strong>
-                <p>{preview ? "Scan to open the link above on this device." : "This QR code always resolves to the same public campaign link shown above."}</p>
+                <span className={styles.toolKicker}>{link.qrKicker}</span>
+                <strong>{link.qrTitle}</strong>
+                <p>{link.qrCopy}</p>
               </div>
             </div>
 

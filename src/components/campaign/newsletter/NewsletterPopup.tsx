@@ -1,11 +1,41 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import type { Campaign } from "@/domain/campaigns/types";
 import styles from "@/components/campaign/newsletter/NewsletterPopup.module.css";
 
 const STORAGE_KEY = "ff-newsletter-dismissed";
+
+function containNewsletterFocus(event: KeyboardEvent<HTMLDialogElement>) {
+  if (event.key !== "Tab" || !event.currentTarget.open) return;
+  const dialog = event.currentTarget;
+  const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'a[href], button, input, select, textarea, [tabindex]'
+  )).filter(element => {
+    const style = getComputedStyle(element);
+    return element.tabIndex >= 0 && !element.matches(":disabled") &&
+      !element.closest("[inert]") && style.visibility !== "hidden" &&
+      style.display !== "none" && element.getClientRects().length > 0;
+  });
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  const active = document.activeElement;
+  if (!first || !last) {
+    event.preventDefault();
+    dialog.querySelector<HTMLElement>("#newsletter-title")?.focus();
+    return;
+  }
+  const atHeading = active?.id === "newsletter-title";
+  if (event.shiftKey && (active === first || active === dialog || atHeading || !dialog.contains(active))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || active === dialog || atHeading || !dialog.contains(active))) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 
 export function NewsletterPopup({
   campaign,
@@ -100,7 +130,7 @@ export function NewsletterPopup({
       }
 
       setStatus("success");
-      setMessage(result.message || "You are on the list.");
+      setMessage(result.message || "Check your inbox to confirm season updates.");
       rememberDismissal();
       form.reset();
     } catch (error) {
@@ -119,6 +149,7 @@ export function NewsletterPopup({
       id="newsletter-updates-dialog"
       className={styles.dialog}
       onClose={handleClose}
+      onKeyDown={containNewsletterFocus}
       aria-labelledby="newsletter-title"
       data-newsletter-configured={configured ? "true" : "false"}
     >
@@ -144,14 +175,17 @@ export function NewsletterPopup({
 
         {!configured ? (
           <div className={styles.readiness} role="status">
-            <span className={styles.readinessKicker}>Service readiness</span>
+            <span className={styles.readinessKicker}>Registration pending</span>
             <strong>Season updates are coming.</strong>
-            <p>Email registration is not available yet. Follow the campaign and share its milestones while this service is being connected.</p>
-            <div className={styles.readinessFooter}>No email address or consent is collected in preview mode.</div>
+            <p>Email signup is not open yet. You can still explore the campaign and share the season with your community.</p>
+            <div className={styles.readinessFooter}>No email address or consent is collected while signup is unavailable.</div>
+            <button className={styles.back} type="button" onClick={closeDialog}>
+              Back to campaign <span aria-hidden="true">→</span>
+            </button>
           </div>
         ) : status === "success" ? (
           <div className={styles.success} role="status">
-            <strong>You’re subscribed.</strong>
+            <strong>Check your inbox.</strong>
             <p>{message}</p>
 
             <button type="button" onClick={closeDialog}>
@@ -198,7 +232,7 @@ export function NewsletterPopup({
               {configured
                 ? status === "sending"
                   ? "Joining…"
-                  : "Join campaign updates"
+                  : "Send confirmation email"
                 : "Email connection pending"}
             </button>
 

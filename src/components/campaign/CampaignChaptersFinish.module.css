@@ -1,0 +1,95 @@
+/* V1.18.4.1 — a compact, numbered photographic chapter collection.
+   Preserve shared card widths, photo crops, rail behavior and caption height. */
+.gallery.gallery {
+ --chapter-finish-line:color-mix(in srgb,var(--campaign-gold) 42%,var(--campaign-navy));
+ counter-reset:campaign-chapter;
+}
+.gallery.gallery h2 {
+ display:flex;align-items:center;gap:.65rem;
+ font-size:clamp(1.25rem,1.85vw,1.65rem);line-height:1.2;letter-spacing:-.035em;
+}
+.gallery.gallery h2::before {
+ content:'';flex:none;inline-size:1.25rem;block-size:2px;background:var(--campaign-gold);
+}
+.gallery.gallery [data-orbit-exhibit] { counter-increment:campaign-chapter; }
+.gallery.gallery [data-campaign-chapter-frame] {
+ background:var(--campaign-navy);border:1px solid var(--chapter-finish-line);
+ border-radius:12px;
+ box-shadow:0 2px 4px rgb(20 40 64 / 8%),0 9px 16px -14px rgb(20 40 64 / 45%);
+}
+.gallery.gallery [data-campaign-chapter-title] {
+ padding-inline-start:.8rem;
+}
+.gallery.gallery [data-campaign-chapter-title] strong {
+ color:var(--campaign-on-dark);
+ font-family:var(--campaign-font-body);font-size:.8125rem;font-weight:600;
+ line-height:1.35;letter-spacing:-.015em;text-wrap:pretty;
+}
+.gallery.gallery .photo {
+ margin:.3rem .3rem 0;border-radius:8px 8px 2px 2px;
+ background:var(--campaign-navy);border:1px solid rgb(255 255 255 / 16%);
+}
+.gallery.gallery .photo::before {
+ content:counter(campaign-chapter,decimal-leading-zero);
+ position:absolute;z-index:1;inset-block-start:.4rem;inset-inline-start:.4rem;
+ display:grid;place-items:center;min-inline-size:1.55rem;min-block-size:1.35rem;
+ padding:.15rem .25rem;border:1px solid rgb(232 187 103 / 65%);border-radius:4px;
+ background:rgb(12 26 42 / 88%);color:var(--campaign-gold);
+ font:700 .5625rem/1 var(--campaign-font-body);letter-spacing:.09em;
+ font-variant-numeric:tabular-nums;pointer-events:none;
+}
+.gallery.gallery .photo::after {
+ background:linear-gradient(180deg,transparent 65%,rgb(7 18 32 / 24%));
+}
+.gallery.gallery .arrow {
+ background:transparent;color:var(--campaign-gold);
+ border:1px solid color-mix(in srgb,var(--campaign-gold) 65%,var(--campaign-navy));
+ font-size:1rem;line-height:1;box-shadow:none;
+}
+.gallery.gallery [data-orbit-exhibit]:focus-visible {
+ outline:3px solid var(--campaign-focus);outline-offset:3px;
+}
+.gallery.gallery [data-orbit-exhibit]:focus-visible [data-campaign-chapter-frame] {
+ border-color:var(--campaign-gold);
+}
+.gallery.gallery [data-orbit-exhibit]:focus-visible .arrow {
+ background:var(--campaign-gold);color:var(--campaign-action-ink);border-color:var(--campaign-gold);
+}
+@media (hover:hover) and (pointer:fine) {
+ .gallery.gallery [data-orbit-exhibit]:hover [data-campaign-chapter-frame] {
+  border-color:var(--campaign-gold);
+  box-shadow:0 3px 6px rgb(20 40 64 / 10%),0 10px 18px -13px rgb(20 40 64 / 38%);
+  transform:none;
+ }
+ .gallery.gallery [data-orbit-exhibit]:hover .arrow {
+  background:var(--campaign-gold);color:var(--campaign-action-ink);border-color:var(--campaign-gold);
+  transform:none;
+ }
+ .gallery.gallery [data-orbit-exhibit]:hover [data-campaign-chapter-title] strong {
+  text-decoration:none;
+ }
+}
+@media (max-width:40rem) {
+ .gallery.gallery [data-campaign-chapter-title] strong { font-size:.875rem; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .gallery.gallery [data-campaign-chapter-frame],.gallery.gallery .arrow { transition:none; }
+}
+@media (forced-colors:active) {
+ .gallery.gallery h2::before { background:CanvasText; }
+ .gallery.gallery [data-campaign-chapter-frame],
+ .gallery.gallery [data-orbit-exhibit]:hover [data-campaign-chapter-frame],
+ .gallery.gallery [data-orbit-exhibit]:focus-visible [data-campaign-chapter-frame] {
+  background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none;
+ }
+ .gallery.gallery [data-campaign-chapter-title] strong { color:CanvasText; }
+ .gallery.gallery .photo { border-color:CanvasText; }
+ .gallery.gallery .photo::after { display:none; }
+ .gallery.gallery .photo::before { background:Canvas;color:CanvasText;border-color:CanvasText; }
+ .gallery.gallery .arrow,
+ .gallery.gallery [data-orbit-exhibit]:hover .arrow,
+ .gallery.gallery [data-orbit-exhibit]:focus-visible .arrow {
+  background:ButtonFace;color:ButtonText;border-color:ButtonText;
+ }
+ .gallery.gallery [data-orbit-exhibit]:focus-visible { outline-color:Highlight; }
+}

@@ -1,0 +1,101 @@
+/* Header / hero finishing layer. Shared composition CSS remains authoritative. */
+.stage.stage {
+ background:var(--campaign-navy);
+ padding-block:clamp(3rem,4.8vw,4.5rem) clamp(7rem,8vw,8rem);
+}
+.stage.stage::after {
+ background:
+  radial-gradient(ellipse 58% 70% at 50% 30%,rgb(7 18 32 / 68%),rgb(7 18 32 / 28%) 65%,transparent),
+  linear-gradient(180deg,rgb(7 18 32 / 10%),transparent 45%,rgb(7 18 32 / 68%));
+}
+.stage .copy { max-inline-size:76rem; }
+.stage .copy h1 {
+ max-inline-size:24ch;
+ font-family:var(--campaign-font-body);
+ font-size:clamp(2.35rem,5.15vw,5.15rem);
+ font-weight:800;
+ line-height:1.025;
+ letter-spacing:-.055em;
+ text-transform:uppercase;
+ text-wrap:balance;
+ text-shadow:0 3px 24px rgb(0 0 0 / 24%);
+}
+.stage .copy em { color:var(--campaign-gold); }
+.stage .copy p {
+ max-inline-size:51ch;
+ margin-block-start:1.25rem;
+ font-size:clamp(1rem,1.2vw,1.125rem);
+ line-height:1.65;
+ color:var(--campaign-on-dark);
+ text-shadow:0 1px 12px rgb(0 0 0 / 60%);
+}
+.stage .action {
+ display:inline-flex;align-items:center;justify-content:center;gap:1.5rem;
+ min-block-size:52px;margin-block-start:1.5rem;padding:.85rem 1.4rem;
+ border:1px solid var(--campaign-action);border-radius:8px;
+ background:var(--campaign-action);color:var(--campaign-action-ink);
+ font:750 .875rem/1.4 var(--campaign-font-body);text-decoration:none;
+ box-shadow:0 6px 22px rgb(0 0 0 / 18%);
+}
+.stage .action > span { font-size:1.25rem;line-height:1; }
+.stage .controls { inset-block-end:2.75rem;gap:.5rem; }
+.stage .controls button {
+ min-block-size:44px;min-inline-size:44px;
+ background:rgb(12 26 42 / 62%);border-color:rgb(255 255 255 / 40%);
+ box-shadow:none;
+}
+.stage .caption { gap:.4rem .75rem;font-size:.75rem;letter-spacing:.01em; }
+.stage .caption > span { color:var(--campaign-gold);font-size:.6875rem;letter-spacing:.09em; }
+.stage :is(a,button):focus-visible { outline:3px solid var(--campaign-gold);outline-offset:4px; }
+@media (hover:hover) and (pointer:fine) {
+ .stage .action:hover { background:var(--campaign-action-hover);border-color:var(--campaign-action-hover); }
+ .stage .controls button:hover:not(:disabled) { background:var(--campaign-navy);border-color:var(--campaign-gold); }
+}
+@media (max-width:47.999rem) {
+ .stage.stage { padding-block:2.75rem 7rem; }
+ .stage .copy h1 { font-size:clamp(2.1rem,6.8vw,3.9rem);letter-spacing:-.045em; }
+ .stage .copy p { max-inline-size:40ch;font-size:1rem; }
+ .stage .caption { max-inline-size:45%;font-size:.6875rem; }
+ .stage .action { gap:1rem; }
+}
+@media (max-width:23rem) {
+ .stage .controls { gap:.3rem; }
+ .stage .controls button { padding-inline:.5rem; }
+ .stage .caption { max-inline-size:40%; }
+}
+@media (forced-colors:active) {
+ .stage.stage { background:Canvas;color:CanvasText; }
+ .stage.stage::after { display:none; }
+ .stage .copy p,.stage .copy em,.stage .caption,.stage .caption > span { color:CanvasText;text-shadow:none; }
+ .stage .copy h1 { text-shadow:none; }
+ .stage .action,.stage .controls button { background:ButtonFace;color:ButtonText;border-color:ButtonText;box-shadow:none; }
+}
+
+/* Keep the photograph dock in flow when text leaves too little inline room.
+   The em threshold follows enlarged text; the approved normal 390px layout
+   retains its existing absolute dock. */
+.stage.stage { container: campaign-hero / inline-size; }
+@container campaign-hero (max-width:20em) {
+ .stage .controls {
+  position:relative;
+  inset:auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:.75rem;
+  inline-size:100%;
+  max-inline-size:100%;
+  margin:2rem auto 0;
+ }
+ .stage .caption {
+  grid-column:1 / -1;
+  grid-row:1;
+  display:block;
+  min-inline-size:0;
+  max-inline-size:none;
+  margin:0;
+  overflow-wrap:normal;
+ }
+ .stage .caption > span { display:inline-block;margin-inline-end:.75rem; }
+ .stage .controls > div { grid-column:1;grid-row:2;justify-self:start; }
+ .stage .controls > button { grid-column:2;grid-row:2;justify-self:end; }
+}

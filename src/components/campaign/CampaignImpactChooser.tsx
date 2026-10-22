@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { CampaignImpactPhoto } from "./CampaignImpactPhoto";
 import type { ReactNode, RefObject } from "react";
 import type { Campaign } from "@/domain/campaigns/types";
 import styles from "@/components/campaign/Campaign.module.css";
@@ -78,18 +79,14 @@ export function CampaignImpactChooser({
       <p className={styles.amountFootnote} id="impact-fund-note">Every amount supports the shared season fund.</p>
 
       <div className={styles.impactStory} data-impact-story="c4c52" aria-live="polite" aria-atomic="true">
-        <span className={styles.impactStoryEyebrow}>Your support in action</span>
-        {customAmount ? (
-          <>
-            <strong>Every gift helps keep the season moving.</strong>
-            <p>Your custom amount supports the shared season fund, including gym time, competition, and travel needs.</p>
-          </>
-        ) : (
-          <>
-            <strong>{selectedImpact?.label ?? "Back every athlete"}</strong>
-            <p>{selectedImpact?.description ?? "Your gift supports the program’s shared season fund."} Every contribution supports the shared season fund.</p>
-          </>
-        )}
+        <CampaignImpactPhoto campaign={campaign} category={selectedImpact?.category} custom={Boolean(customAmount)} />
+        <div className={styles.impactStoryHeading}>
+          <strong>{customAmount ? "Flexible support" : selectedImpact?.label ?? "Back every athlete"}</strong>
+          <span className={styles.impactStoryEyebrow}>Shared season fund</span>
+        </div>
+        <p>{customAmount
+          ? "Your custom amount helps cover gym time, competition, and travel across the program."
+          : selectedImpact?.description ?? "Your gift supports the program’s shared season fund."}</p>
       </div>
 
       <label className={styles.custom}>
@@ -117,7 +114,7 @@ export function CampaignImpactChooser({
         </span>
       </label>
 
-      <p className={styles.customGuidance} id="custom-amount-guidance">$1 minimum · Up to two decimal places.</p>
+      <p className={styles.customGuidance} id="custom-amount-guidance">{checkoutReady ? "$1–$10,000 test limit · Up to two decimal places." : "$1 minimum · Up to two decimal places."}</p>
 
       {error && (
         <p id="amount-error" className={styles.error} role="alert">

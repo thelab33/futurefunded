@@ -1,0 +1,95 @@
+/* Community Relay band. Chapter sharing and newsletter dialogs own their behavior. */
+.shareRail { border-block-start:1px solid var(--campaign-line);background:var(--campaign-relay-surface);color:var(--campaign-ink);padding:1rem var(--campaign-gutter); }
+.shareInner { display:grid;gap:1.25rem;align-items:center;max-inline-size:calc(var(--campaign-max) - 2 * var(--campaign-gutter));margin-inline:auto; }
+.shareIntro { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:1rem;min-inline-size:0; }
+.shareIntroCopy { min-inline-size:0; }
+.shareKicker { display:block;color:var(--campaign-recognition-ink);font:600 .65rem/1.5 var(--campaign-font-body);letter-spacing:.075em;text-transform:uppercase; }
+.shareIntro h2 { margin:.4rem 0 0;max-inline-size:14ch;color:var(--campaign-ink);font:700 clamp(1.3rem,1.8vw,1.65rem)/1.15 var(--campaign-font-display);letter-spacing:-.03em;text-wrap:balance; }
+.shareQr { display:grid;place-items:center;gap:.3rem;padding:.5rem;border:1px solid #fff;border-radius:10px;background:#fff;color:#1d3048; }
+.shareQr svg,.qrPlaceholder { display:block;inline-size:72px;block-size:72px; }
+.qrPlaceholder { border:1px dashed #d7dce2;border-radius:4px;background:#fdfcf9; }
+.shareQr > span:last-child { font:650 .6rem/1.4 var(--campaign-font-body); }
+.shareTools { display:grid;gap:.35rem;min-inline-size:0; }
+.shareTools label { color:var(--campaign-ink);font:550 .75rem/1.5 var(--campaign-font-body); }
+.sharePreviewNote { color:var(--campaign-muted);font-size:.7rem;line-height:1.5; }
+.shareLinkLine { display:flex;align-items:stretch;gap:.25rem;min-inline-size:0;padding:.2rem;border:1px solid var(--campaign-line);border-radius:10px;background:var(--campaign-paper); }
+.shareLinkLine input { flex:1;inline-size:100%;min-inline-size:0;min-block-size:44px;padding:.55rem .6rem;border:0;border-radius:6px;background:transparent;color:var(--campaign-ink);font:400 .8rem/1.5 var(--campaign-font-body); }
+.shareCopy,.shareShare,.seasonUpdatesInvite button { display:inline-flex;align-items:center;justify-content:center;gap:.75rem;flex:none;min-block-size:44px;max-inline-size:100%;padding:.5rem .75rem;border:1px solid var(--campaign-line);border-radius:7px;background:var(--campaign-paper);color:var(--campaign-ink);font:700 .75rem/1.4 var(--campaign-font-body); }
+.shareCopy { background:var(--campaign-stage);white-space:nowrap; }
+.toolFooter { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem .75rem; }
+.shareShare { background:var(--campaign-navy);border-color:var(--campaign-navy);color:var(--campaign-on-dark); }
+.shareShare > span,.seasonUpdatesInvite button > span { flex:none; }
+.relaySmsStatus { display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;min-inline-size:0;color:var(--campaign-muted);font-size:.6875rem;line-height:1.5; }
+.relaySmsStatus strong { font-weight:600; }
+.relaySmsPending { padding:.15rem .4rem;border:1px solid var(--campaign-line);border-radius:5px;font-size:.625rem; }
+.shareStatus { color:var(--campaign-accent);font-size:.75rem;line-height:1.5; }
+.shareStatus:empty { display:none; }
+.seasonUpdatesInvite { display:flex;flex-direction:column;align-items:start;justify-content:center;gap:.25rem;min-inline-size:0;padding:.875rem 1rem .625rem;border:1px solid var(--campaign-line);border-block-start:2px solid var(--campaign-gold);border-radius:12px;background:var(--campaign-paper); }
+.seasonUpdatesInvite > div { min-inline-size:0; }
+.seasonUpdatesInvite strong { display:block;color:var(--campaign-ink);font:650 1.15rem/1.25 var(--campaign-font-display);letter-spacing:-.03em; }
+.seasonUpdatesInvite p { margin:.35rem 0 0;color:var(--campaign-muted);font-size:.75rem;line-height:1.5; }
+.seasonUpdatesInvite button { justify-content:space-between;padding-inline:0;border-color:transparent;background:transparent;color:var(--campaign-accent); }
+.shareRail :is(button,input):focus-visible { outline:3px solid var(--campaign-focus);outline-offset:3px; }
+@media (min-width:48rem) {
+ .shareInner { grid-template-columns:minmax(15rem,1fr) minmax(0,1.6fr); }
+ .seasonUpdatesInvite { grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem 1rem; }
+}
+@media (min-width:68rem) {
+ .shareInner { grid-template-columns:minmax(17rem,.95fr) minmax(0,1.7fr) minmax(15rem,.9fr);gap:1.5rem; }
+ .shareInner[data-updates='false'] { grid-template-columns:minmax(17rem,.85fr) minmax(0,1.7fr); }
+ .seasonUpdatesInvite { grid-column:auto;flex-direction:column;align-items:start;gap:.25rem;padding:.875rem 1rem .625rem; }
+}
+@media (max-width:25rem) {
+ .shareIntro { gap:.75rem; }
+ .toolFooter { align-items:start; }
+ .relaySmsStatus { font-size:.75rem; }
+ .relaySmsPending { font-size:.6875rem; }
+}
+@media (hover:hover) and (pointer:fine) {
+ .shareCopy:hover:not(:disabled),.shareShare:hover { border-color:var(--campaign-accent); }
+ .shareCopy:hover:not(:disabled) { background:var(--campaign-selected); }
+ .seasonUpdatesInvite button:hover { text-decoration:underline;text-underline-offset:4px; }
+}
+@media (prefers-reduced-motion:no-preference) {
+ .shareCopy,.shareShare { transition:background-color 160ms ease,border-color 160ms ease; }
+ .shareShare > span,.seasonUpdatesInvite button > span { transition:transform 180ms var(--campaign-ease-out); }
+}
+@media (prefers-reduced-motion:no-preference) and (hover:hover) and (pointer:fine) { .shareShare:hover > span,.seasonUpdatesInvite button:hover > span { transform:translateX(3px); } }
+@media (forced-colors:active) {
+ .shareRail,.seasonUpdatesInvite,.shareLinkLine { background:Canvas;color:CanvasText;border-color:CanvasText; }
+ .shareCopy,.shareShare,.seasonUpdatesInvite button { background:ButtonFace;color:ButtonText;border-color:ButtonText; }
+ .shareLinkLine input { background:Field;color:FieldText; }
+ .shareQr { forced-color-adjust:none; }
+ .relaySmsPending { border-color:CanvasText; }
+}
+
+/* FutureFunded V1.18 D — composed relay, preserving QR quiet zone and actions. */
+.shareRail { padding-block:clamp(.85rem,1.5vw,1.2rem);border-block-start-color:var(--campaign-line); }
+.shareInner { gap:clamp(.85rem,1.4vw,1.15rem); }
+.shareKicker { letter-spacing:.095em;font-weight:750; }
+.shareIntro { gap:.875rem; }
+.shareIntro h2 { margin-block-start:.22rem;font-size:clamp(1.3rem,1.7vw,1.6rem);letter-spacing:-.04em; }
+.shareQr { gap:.3rem;padding:.55rem;border:1px solid #e7dfd0;border-radius:11px;box-shadow:0 3px 12px rgb(20 37 56 / .055); }
+.shareTools { gap:.4rem; }
+.shareTools label { font-weight:700; }
+.shareLinkLine { gap:.35rem;border-color:var(--campaign-line);border-radius:11px;box-shadow:0 2px 7px rgb(21 39 61 / .035); }
+.shareLinkLine input { font-size:.8rem; }
+.shareCopy,.shareShare { border-radius:8px;font-weight:750; }
+.shareShare { box-shadow:0 2px 7px rgb(10 29 52 / .1); }
+.relaySmsStatus { gap:.4rem .5rem; }
+.relaySmsPending { border-radius:6px;background:rgb(255 255 255 / .35); }
+.seasonUpdatesInvite { gap:.4rem;padding:.85rem 1rem;border-radius:12px;border-block-start:2px solid var(--campaign-gold);box-shadow:0 4px 14px rgb(25 40 60 / .045); }
+.seasonUpdatesInvite strong { font-size:clamp(.95rem,1.1vw,1.08rem);letter-spacing:-.025em; }
+.seasonUpdatesInvite p { margin-block-start:.25rem;font-size:.76rem; }
+.seasonUpdatesInvite button { font-weight:800; }
+@media (min-width:68rem) {
+ .shareInner { grid-template-columns:minmax(12.5rem,.9fr) minmax(0,1.85fr) minmax(13.5rem,.95fr);gap:1.1rem; }
+ .seasonUpdatesInvite { padding:.8rem .9rem; }
+}
+@media (max-width:47.999rem) {
+ .shareInner { align-items:stretch; }
+ .seasonUpdatesInvite { gap:.4rem; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .shareShare > span,.seasonUpdatesInvite button > span { transition:none;transform:none; }
+}

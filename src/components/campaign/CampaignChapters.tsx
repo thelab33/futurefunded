@@ -7,6 +7,7 @@ import type { CampaignChapter } from "@/components/campaign/campaign-types";
 import type { campaignMedia } from "@/components/campaign/campaign-media";
 import { formatCampaignMoney as money } from "@/components/campaign/campaign-format";
 import styles from "@/components/campaign/Campaign.module.css";
+import finish from "./CampaignChaptersFinish.module.css";
 
 const chapters = [
   { id: "story", title: "Our story", text: "Basketball is the bridge.", detail: "" },
@@ -53,7 +54,7 @@ export function CampaignChapters({
 
   return (
     <section
-      className={styles.chapterExhibition}
+      className={`${styles.chapterExhibition} ${finish.gallery}`}
       aria-labelledby="exhibition-title"
       data-orbit-restoration="v6c3-framed-chapters"
     >
@@ -84,7 +85,7 @@ export function CampaignChapters({
               aria-controls="campaign-detail-dialog"
             >
               <span className={styles.chapterFrame} data-campaign-chapter-frame="true">
-                <span className={styles.chapterPhoto} aria-hidden="true">
+                <span className={`${styles.chapterPhoto} ${finish.photo}`} aria-hidden="true">
                 {chapterImage && (
                   <Image
                     unoptimized
@@ -136,7 +137,7 @@ export function CampaignChapters({
                     <small className={styles.chapterPartnerAction}>Explore partnerships</small>
                   )}
                 </span>
-                <span className={styles.chapterArrow} aria-hidden="true">
+                <span className={`${styles.chapterArrow} ${finish.arrow}`} aria-hidden="true">
                   <span className={styles.chapterArrowGlyph}>→</span>
                 </span>
 

@@ -1,0 +1,146 @@
+/* V1.18.3 — three-panel finish, isolated from hero and lower chapters.
+   Preserve the existing grid, breakpoints, content order and natural heights.
+   Public data attributes scope this layer across existing CSS module names. */
+.panels.panels {
+ --panel-finish-line:color-mix(in srgb,var(--campaign-ink) 13%,var(--campaign-paper));
+ --panel-finish-soft:color-mix(in srgb,var(--campaign-stage) 55%,var(--campaign-paper));
+}
+.panels.panels > [data-orbit-region] { align-self:start; }
+.panels.panels > [data-orbit-region] > :where(section) {
+ border-color:var(--panel-finish-line);
+ box-shadow:0 2px 5px rgb(20 40 64 / 4%),0 18px 32px -25px rgb(20 40 64 / 28%);
+}
+/* Paired editorial panels: common scale, distinct content and height. */
+.panels.panels [data-orbit-region='story'] h2,
+.panels.panels [data-orbit-region='program'] h2 {
+ margin-block-end:.65rem;
+ font-size:clamp(1.75rem,2.4vw,2.25rem);
+ line-height:1.1;
+ letter-spacing:-.04em;
+ text-wrap:balance;
+}
+.panels.panels [data-orbit-region='story'] h2 + p,
+.panels.panels [data-orbit-region='program'] h2 + p {
+ font-size:.875rem;line-height:1.6;color:var(--campaign-muted);
+}
+.panels.panels [data-season-priority-tier='primary'] {
+ border-block-end-color:var(--panel-finish-line);
+}
+.panels.panels [data-season-priority-tier='primary'] > summary {
+ gap:.75rem;padding-block:.7rem;
+}
+.panels.panels [data-season-priority-tier='primary'] > summary strong {
+ font-family:var(--campaign-font-body);font-size:.9375rem;
+ font-weight:650;line-height:1.4;letter-spacing:-.015em;
+}
+/* Snapshot: total first, goal second, statistics as one quiet group. */
+.panels.panels [data-orbit-giving] {
+ border-block-start-color:var(--campaign-gold);
+ box-shadow:0 3px 8px rgb(20 40 64 / 5%),0 24px 42px -26px rgb(20 40 64 / 30%);
+}
+.panels.panels [data-console-zone='masthead'] {
+ padding-block:.7rem;border-block-end-color:var(--campaign-line-on-dark);
+}
+.panels.panels [data-console-zone='performance'] { padding-block:.9rem .65rem; }
+.panels.panels [data-console-zone='performance'] strong[data-money] {
+ font-size:clamp(2.25rem,10.5cqi,3.25rem);line-height:1.05;
+ letter-spacing:-.055em;font-weight:750;
+}
+.panels.panels [data-console-zone='performance'] progress {
+ block-size:5px;margin-block-start:.85rem;
+}
+.panels.panels [data-console-zone='performance'] dl {
+ gap:.5rem;margin-block-start:.75rem;
+ padding-block:.15rem;
+}
+.panels.panels [data-console-zone='performance'] dd {
+ font-size:.9375rem;line-height:1.35;letter-spacing:-.02em;
+}
+.panels.panels [data-console-zone='performance'] dt { font-size:.6875rem;line-height:1.5; }
+/* Choices: selected amount is the strongest surface; explanation is quieter. */
+.panels.panels [data-console-zone='workspace'] { row-gap:.65rem; }
+.panels.panels [data-console-zone='workspace'] fieldset legend {
+ margin-block-end:.65rem;font-size:.875rem;line-height:1.45;
+}
+.panels.panels [data-console-zone='workspace'] fieldset legend > span + span {
+ color:var(--campaign-muted);font-size:.6875rem;font-weight:550;
+}
+.panels.panels [data-console-zone='workspace'] fieldset button {
+ border-color:var(--panel-finish-line);border-radius:9px;
+ padding:.6rem .65rem;box-shadow:none;
+}
+.panels.panels [data-console-zone='workspace'] fieldset button b {
+ font-size:clamp(1.25rem,5.1cqi,1.5rem);line-height:1.15;letter-spacing:-.035em;
+}
+.panels.panels [data-console-zone='workspace'] fieldset button[aria-pressed='true'] {
+ border-color:var(--campaign-gold);
+ background:var(--campaign-ink);color:var(--campaign-paper);
+ box-shadow:inset 0 0 0 1px var(--campaign-gold),0 3px 8px rgb(20 40 64 / 10%);
+}
+.panels.panels [data-impact-story] {
+ border:0;border-inline-start:2px solid var(--campaign-accent);
+ border-radius:0;background:var(--panel-finish-soft);
+ padding:.65rem .75rem;
+}
+.panels.panels [data-impact-story] strong { font-size:.8125rem;font-weight:650; }
+.panels.panels [data-impact-story] p { font-size:.75rem;line-height:1.6; }
+.panels.panels [data-console-zone='workspace'] > label {
+ color:var(--campaign-ink);font-size:.75rem;font-weight:600;
+}
+.panels.panels [data-console-zone='workspace'] > label > span {
+ border-color:var(--panel-finish-line);background:var(--campaign-paper);
+}
+.panels.panels [data-console-zone='workspace'] > label > span:focus-within {
+ border-color:var(--campaign-accent);
+}
+.panels.panels [data-console-zone='workspace'] > label > span:has(input[aria-invalid='true']) {
+ border-color:var(--campaign-error);
+}
+.panels.panels [data-console-zone='workspace'] > button {
+ border-radius:8px;box-shadow:0 3px 8px rgb(20 40 64 / 9%);font-weight:750;
+}
+.panels.panels [data-orbit-giving] > details > summary {
+ font-size:.75rem;font-weight:650;min-block-size:48px;
+}
+@media (hover:hover) and (pointer:fine) {
+ .panels.panels [data-console-zone='workspace'] fieldset button:not(:disabled):not([aria-pressed='true']):hover {
+  border-color:var(--campaign-accent);background:var(--campaign-selected);
+ }
+ .panels.panels [data-season-priority-tier='primary'] > summary:hover strong { color:var(--campaign-accent); }
+}
+@media (forced-colors:active) {
+ .panels.panels > [data-orbit-region] > section,
+ .panels.panels [data-console-zone='workspace'] fieldset button,
+ .panels.panels [data-impact-story],
+ .panels.panels [data-console-zone='workspace'] > label > span {
+  border-color:CanvasText;box-shadow:none;
+ }
+ .panels.panels [data-console-zone='workspace'] fieldset button[aria-pressed='true'] {
+  background:Canvas;color:CanvasText;border-color:Highlight;
+  outline:2px solid Highlight;outline-offset:-4px;box-shadow:none;
+ }
+ .panels.panels [data-impact-story] { background:Canvas; }
+ .panels.panels [data-console-zone='workspace'] > button { box-shadow:none; }
+}
+
+
+/* V1.18.7 — narrow space relative to text size: retain complete money labels.
+   Normal desktop/tablet/mobile rail columns remain owned by the shared CSS. */
+@container giving (max-width:14em) {
+ .panels.panels [data-console-zone='workspace'] fieldset > div {
+  grid-template-columns:minmax(0,1fr);
+ }
+ .panels.panels [data-console-zone='performance'] dl {
+  grid-template-columns:minmax(0,1fr);gap:.4rem;
+ }
+ .panels.panels [data-console-zone='performance'] dl > div {
+  flex-direction:row;align-items:baseline;justify-content:space-between;gap:.5rem;
+ }
+ .panels.panels [data-console-zone='performance'] dl > div + div {
+  border-inline-start:0;padding-inline-start:0;
+  border-block-start:1px solid var(--campaign-line);padding-block-start:.4rem;
+ }
+ .panels.panels [data-console-zone='performance'] dd { white-space:nowrap; }
+ .panels.panels [data-impact-story] { grid-template-columns:minmax(0,1fr); }
+ .panels.panels [data-impact-story] > [aria-hidden='true'] { display:none; }
+}

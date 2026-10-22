@@ -1,4 +1,4 @@
-/* S7 newsletter: single component-owned presentation authority. */
+/* Season updates: compact editorial header, honest pending state and explicit actions. */
 .dialog {
   box-sizing:border-box;
   position:relative;
@@ -6,8 +6,8 @@
   max-width:calc(100vw - 24px);
   max-height:calc(100dvh - 24px);
   padding:0;
-  border:1px solid #9bb1ce;
-  border-radius:20px;
+  border:1px solid var(--campaign-line, #d8dce1);
+  border-radius:16px;
   background:var(--campaign-paper, #faf9f6);
   color:var(--campaign-ink, #21324a);
   box-shadow:0 30px 90px rgba(8,26,50,.35);
@@ -17,16 +17,16 @@
   scrollbar-width:thin;
   scrollbar-color:#879cba transparent;
 }
-.dialog::backdrop { background:rgba(12,28,53,.76); backdrop-filter:blur(5px); }
-.content { min-width:0; padding:0 0 clamp(20px,3vw,30px); }
+.dialog::backdrop { background:rgba(12,24,38,.68); backdrop-filter:blur(5px); }
+.content { min-width:0; padding:0 0 clamp(20px,3vw,28px); }
 .content > :global(.ff-kicker), .content h2, .content > p {
   background:var(--campaign-navy, #172b47);
   color:var(--campaign-on-dark, #faf9f6);
   margin:0;
-  padding-inline:clamp(22px,5vw,40px);
+  padding-inline:clamp(22px,4vw,32px);
 }
 .content > :global(.ff-kicker) {
-  padding-block:clamp(34px,5vw,46px) 0;
+  padding-block:clamp(26px,4vw,32px) 0;
   padding-inline-end:76px;
   color:var(--campaign-gold, #e7b95f);
   font-size:.77rem;
@@ -35,26 +35,26 @@
 }
 .content h2 {
   padding-block:12px 6px;
-  font:700 clamp(2rem,5vw,3.15rem)/1.06 var(--campaign-font-display, Georgia, serif);
-  letter-spacing:-.045em;
+  font:700 clamp(1.85rem,4vw,2.4rem)/1.1 var(--campaign-font-display, Georgia, serif);
+  letter-spacing:-.035em;
   text-wrap:balance;
 }
 .content > p {
-  padding-block:6px clamp(24px,4vw,34px);
+  padding-block:6px clamp(20px,3vw,26px);
   color:var(--campaign-muted-on-dark, #c9d3df);
-  font-size:clamp(.95rem,1.5vw,1.03rem);
+  font-size:.95rem;
   line-height:1.6;
 }
 .close {
   position:absolute; z-index:2; inset-block-start:12px; inset-inline-end:12px;
   width:44px; height:44px;
   display:grid; place-items:center;
-  border:1px solid #8daacb; border-radius:50%;
+  border:1px solid var(--campaign-line-on-dark, #8daacb); border-radius:50%;
   background:var(--campaign-navy, #172b47); color:var(--campaign-on-dark, #faf9f6);
   font-size:1.5rem; cursor:pointer;
 }
 .form, .success, .readiness {
-  margin:clamp(18px,3vw,28px) clamp(22px,5vw,40px) 0;
+  margin:clamp(18px,3vw,28px) clamp(22px,4vw,32px) 0;
 }
 .form { display:grid; gap:16px; }
 .form label { display:grid; gap:8px; min-width:0; }
@@ -67,24 +67,26 @@
 .form .consent { display:flex; align-items:flex-start; gap:12px; font-size:.875rem; line-height:1.55; }
 .form .consent input { flex:none; width:21px; height:21px; margin:2px 0 0; accent-color:var(--campaign-accent, #254a78); }
 .form .consent span { font:inherit; color:var(--campaign-ink, #21324a); letter-spacing:normal; text-transform:none; }
-.form button, .success button {
+.form button, .success button, .back {
   min-height:48px; padding:10px 16px; border:0; border-radius:9px;
-  background:var(--campaign-blue, #254a78); color:var(--campaign-on-dark, #faf9f6); font-size:.95rem; font-weight:800; line-height:1.4; font-family:inherit; cursor:pointer;
+  background:var(--campaign-navy, #172b47); color:var(--campaign-on-dark, #faf9f6); font-size:.95rem; font-weight:800; line-height:1.4; font-family:inherit; cursor:pointer;
 }
 .form button:disabled { opacity:.65; cursor:wait; }
 .honeypot { position:absolute!important; left:-9999px!important; width:1px!important; height:1px!important; opacity:0!important; }
 .error { margin:0; color:var(--campaign-error, #a52b38); font-weight:700; }
 .success, .readiness {
-  padding:18px 20px; border:1px solid var(--campaign-line, #d8dce1); border-radius:12px;
+  padding:18px 20px; border:1px solid var(--campaign-line, #d8dce1); border-radius:10px;
   background:var(--campaign-stage, #f1efea); color:var(--campaign-ink, #21324a);
 }
 .success { display:grid; gap:10px; }
 .success strong, .readiness strong { display:block; font-size:1.12rem; line-height:1.35; }
 .success p, .readiness p { margin:.45rem 0 0; color:var(--campaign-muted, #536174); font-size:.92rem; line-height:1.55; }
 .success button { justify-self:start; margin-block-start:8px; }
+.readiness { border-inline-start:2px solid var(--campaign-gold, #e7b95f); }
+.back { display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;margin-block-start:18px;background:var(--campaign-gold, #e7b95f);color:var(--campaign-navy, #172b47); }
 .readinessKicker { display:block; margin:0 0 8px; color:var(--campaign-accent, #254a78); font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
 .readinessFooter { margin-block-start:14px; padding-block-start:12px; border-block-start:1px solid var(--campaign-line, #d8dce1); color:var(--campaign-muted, #536174); font-size:.8rem; line-height:1.5; }
-.close:focus-visible,.form input:focus-visible,.form button:focus-visible,.success button:focus-visible { outline:3px solid var(--campaign-focus, #165dcc); outline-offset:3px; }
+.close:focus-visible,.form input:focus-visible,.form button:focus-visible,.success button:focus-visible,.back:focus-visible { outline:3px solid var(--campaign-focus, #165dcc); outline-offset:3px; }
 @media (max-width:480px) {
   .dialog { border-radius:14px; }
   .content > :global(.ff-kicker),.content h2,.content > p { padding-inline:20px; }
@@ -100,7 +102,15 @@
 @media (forced-colors:active) {
   .dialog,.content > :global(.ff-kicker),.content h2,.content > p,.close,.readiness,.success { background:Canvas; color:CanvasText; border-color:CanvasText; }
   .readinessKicker,.readiness p,.readinessFooter,.success p { color:CanvasText; }
-  .form button,.success button,.close { background:ButtonFace; color:ButtonText; border:1px solid ButtonText; }
+  .form button,.success button,.back,.close { background:ButtonFace; color:ButtonText; border:1px solid ButtonText; }
   .form input:not([type="checkbox"]) { background:Field; color:FieldText; border-color:CanvasText; }
-  .close:focus-visible,.form input:focus-visible,.form button:focus-visible,.success button:focus-visible { outline-color:Highlight; }
+  .close:focus-visible,.form input:focus-visible,.form button:focus-visible,.success button:focus-visible,.back:focus-visible { outline-color:Highlight; }
+}
+
+@media (hover:hover) and (pointer:fine) {
+  .close:hover { border-color:var(--campaign-gold, #e7b95f); }
+  .form button:hover:not(:disabled),.success button:hover,.back:hover { box-shadow:inset 0 0 0 2px currentColor; }
+}
+@media (prefers-reduced-motion:no-preference) {
+  .close,.form button,.success button,.back { transition:box-shadow 160ms ease,border-color 160ms ease; }
 }
