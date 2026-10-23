@@ -50,10 +50,10 @@ function ProductVisual() {
 
 export default function Home() {
   return <div className={styles.page} id="top">
-    <a className={styles.skip} href="#home-main">Skip to content</a>
+    <Link className={styles.skip} href="#home-main">Skip to content</Link>
     <header className={styles.header}>
       <Link href="/" aria-label="FutureFunded home"><Brand /></Link>
-      <nav className={styles.nav} aria-label="Main navigation"><a href="#platform">Platform</a><a href="#in-action">In action</a><Link className={styles.navAction} href={campaignUrl}>View campaign <Arrow /></Link></nav>
+      <nav className={styles.nav} aria-label="Main navigation"><Link href="#platform">Platform</Link><Link href="#in-action">In action</Link><Link className={styles.navAction} href={campaignUrl}>View campaign <Arrow /></Link></nav>
     </header>
     <main id="home-main">
       <section className={styles.hero} aria-labelledby="home-title">
@@ -61,7 +61,7 @@ export default function Home() {
           <p className={styles.eyebrow}>Community fundraising infrastructure</p>
           <h1 id="home-title">Fundraising.<br /><em>Built to operate.</em></h1>
           <p className={styles.lede}>One operating system for credible campaigns and the work behind them. Bring the public campaign, sponsorship, and organizer workflow into one connected experience.</p>
-          <div className={styles.actions}><a className={styles.primary} href="#platform">Explore the platform <span aria-hidden="true">↓</span></a><Link className={styles.textLink} href={studioUrl}>Studio preview <Arrow /></Link></div>
+          <div className={styles.actions}><Link className={styles.primary} href="#platform">Explore the platform <span aria-hidden="true">↓</span></Link><Link className={styles.textLink} href={studioUrl}>Studio preview <Arrow /></Link></div>
           <p className={styles.audiences}>For teams, schools, clubs, nonprofits,<br className={styles.optionalBreak} /> and community organizers.</p>
         </div>
         <ProductVisual />
@@ -107,6 +107,6 @@ export default function Home() {
         </div>
       </section>
     </main>
-    <footer className={styles.footer}><div><Link href="/" aria-label="FutureFunded home"><Brand /></Link><p>Big futures. Built together.</p></div><nav aria-label="Footer navigation"><Link href={campaignUrl}>Campaign <Arrow /></Link><Link href={studioUrl}>Studio preview <Arrow /></Link><a href="#top">Back to top ↑</a></nav><div className={styles.footerBottom}><span>© {new Date().getFullYear()} FutureFunded</span><span>Community at the center.</span></div></footer>
+    <footer className={styles.footer}><div><Link href="/" aria-label="FutureFunded home"><Brand /></Link><p>Big futures. Built together.</p></div><nav aria-label="Footer navigation"><Link href={campaignUrl}>Campaign <Arrow /></Link><Link href={studioUrl}>Studio preview <Arrow /></Link><Link href="#top">Back to top ↑</Link></nav><div className={styles.footerBottom}><span>© {new Date().getFullYear()} FutureFunded</span><span>Community at the center.</span></div></footer>
   </div>;
 }
