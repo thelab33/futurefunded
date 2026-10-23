@@ -70,8 +70,7 @@
 .capabilities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #cbd3d2; border-radius: 6px; overflow: hidden; background: var(--paper); }
 .capabilities article { padding: 22px; min-width: 0; }
 .capabilities article + article { border-left: 1px solid var(--line); }
-.cardTop { display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: .57rem; letter-spacing: .08em; text-transform: uppercase; color: #7b5a23; font-weight: 650; }
-.cardTop > span:last-child { font-size: 1rem; }
+.cardTop { display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; color: #7b5a23; font-weight: 650; }
 .capabilities h3 { font-size: 1.2rem; margin: 16px 0 22px; letter-spacing: -.035em; }
 .capabilities dl > div + div { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
 .capabilities dt { font-size: .81rem; font-weight: 650; line-height: 1.5; }

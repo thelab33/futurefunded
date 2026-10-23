@@ -70,15 +70,15 @@ export default function Home() {
       <section className={styles.platform} id="platform" aria-labelledby="platform-title">
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Connected capabilities</p><h2 id="platform-title">The engine.<br /><em>The system around it.</em></h2></div><p>Crowdfunding is the public engine. FutureFunded connects the campaign to sponsorship, giving, and operations—with each capability’s availability clearly shown.</p></div>
         <div className={styles.capabilities}>
-          <article><div className={styles.cardTop}><span>01 / Public experience</span><span aria-hidden="true">↗</span></div><h3>Campaign &amp; community</h3><dl>
+          <article><div className={styles.cardTop}><span>01 / Public experience</span></div><h3>Campaign &amp; community</h3><dl>
             <div><dt>Premium campaign pages <span className={styles.available}>Available</span></dt><dd>Story, photography, goals, and program needs.</dd></div>
             <div><dt>QR &amp; share tools <span className={styles.available}>Available</span></dt><dd>One campaign link for the community to pass on.</dd></div>
           </dl></article>
-          <article><div className={styles.cardTop}><span>02 / Support pathways</span><span aria-hidden="true">↗</span></div><h3>Sponsorship &amp; giving</h3><dl>
+          <article><div className={styles.cardTop}><span>02 / Support pathways</span></div><h3>Sponsorship &amp; giving</h3><dl>
             <div><dt>Sponsor-ready packages <span className={styles.available}>Explore today</span></dt><dd>Defined partnership levels and program context.</dd></div>
             <div><dt>Donor-grade checkout <span className={styles.preview}>In preparation</span></dt><dd>Gift selection and review; live payments are not open.</dd></div>
           </dl></article>
-          <article><div className={styles.cardTop}><span>03 / Organizer operations</span><span aria-hidden="true">↗</span></div><h3>Readiness &amp; continuity</h3><dl>
+          <article><div className={styles.cardTop}><span>03 / Organizer operations</span></div><h3>Readiness &amp; continuity</h3><dl>
             <div><dt>Reporting <span className={styles.preview}>Planned</span></dt><dd>Verified live donation reporting and reconciliation.</dd></div>
             <div><dt>Launch readiness &amp; follow-up <span className={styles.preview}>Planned</span></dt><dd>Launch checks and automated follow-up workflows.</dd></div>
           </dl></article>
