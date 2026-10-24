@@ -1,4 +1,4 @@
-/* V1.18.4.1 — a compact, numbered photographic chapter collection.
+/* V1.18.4.1 — a compact photographic chapter collection.
    Preserve shared card widths, photo crops, rail behavior and caption height. */
 .gallery.gallery {
   --chapter-finish-line: color-mix(
@@ -6,7 +6,6 @@
     var(--campaign-gold) 42%,
     var(--campaign-navy)
   );
-  counter-reset: campaign-chapter;
 }
 .gallery.gallery h2 {
   display: flex;
@@ -22,9 +21,6 @@
   inline-size: 1.25rem;
   block-size: 2px;
   background: var(--campaign-gold);
-}
-.gallery.gallery [data-orbit-exhibit] {
-  counter-increment: campaign-chapter;
 }
 .gallery.gallery [data-campaign-chapter-frame] {
   background: var(--campaign-navy);
@@ -51,26 +47,6 @@
   border-radius: 8px 8px 2px 2px;
   background: var(--campaign-navy);
   border: 1px solid rgb(255 255 255 / 16%);
-}
-.gallery.gallery .photo::before {
-  content: counter(campaign-chapter, decimal-leading-zero);
-  position: absolute;
-  z-index: 1;
-  inset-block-start: 0.4rem;
-  inset-inline-start: 0.4rem;
-  display: grid;
-  place-items: center;
-  min-inline-size: 1.55rem;
-  min-block-size: 1.35rem;
-  padding: 0.15rem 0.25rem;
-  border: 1px solid rgb(232 187 103 / 65%);
-  border-radius: 4px;
-  background: rgb(12 26 42 / 88%);
-  color: var(--campaign-gold);
-  font: 700 0.5625rem/1 var(--campaign-font-body);
-  letter-spacing: 0.09em;
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
 }
 .gallery.gallery .photo::after {
   background: linear-gradient(180deg, transparent 65%, rgb(7 18 32 / 24%));
@@ -152,11 +128,6 @@
   }
   .gallery.gallery .photo::after {
     display: none;
-  }
-  .gallery.gallery .photo::before {
-    background: Canvas;
-    color: CanvasText;
-    border-color: CanvasText;
   }
   .gallery.gallery .arrow,
   .gallery.gallery [data-orbit-exhibit]:hover .arrow,

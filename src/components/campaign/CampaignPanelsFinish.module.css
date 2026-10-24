@@ -386,3 +386,19 @@
     background:ButtonFace;
   }
 }
+
+/* Give the custom amount, guidance and action a clear full-width sequence. */
+.panels.panels [data-console-zone="workspace"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.panels.panels [data-console-zone="workspace"] > label,
+.panels.panels [data-console-zone="workspace"] > p,
+.panels.panels [data-console-zone="workspace"] > button {
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+.panels.panels [data-console-zone="workspace"] > button {
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-size: .875rem;
+}
