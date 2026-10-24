@@ -59,3 +59,16 @@
   .qrPanel { padding:.75rem; gap:.7rem; }
   .qrFrame svg { inline-size:104px; }
 }
+
+/* Applied only inside the Share chapter; the page relay keeps its layout. */
+.dialog .inner { gap:1rem; }
+.dialog .truthRail { margin-block-start:.65rem;padding-block:.6rem; }
+.dialog .truthRail > span:not(:first-child) { display:none; }
+.dialog .shareKit { gap:.85rem;padding:1.1rem;border-radius:8px; }
+.dialog .shareState { border-radius:4px; }
+.dialog .qrPanel { padding:.8rem;border-radius:6px; }
+.dialog .qrFrame { padding:.6rem;border-radius:5px; }
+.dialog .qrFrame svg { inline-size:112px; }
+.dialog .actions button { border-radius:5px;font-size:.875rem; }
+.dialog .urlField input { border-radius:5px;font-size:.875rem; }
+@media (max-width:40rem) { .dialog .shareKit { padding:.85rem; } }

@@ -42,7 +42,7 @@ export function CampaignStoryDetail({ campaign }: { campaign: Campaign }) {
 
       {story?.priorities?.length ? (
         <section className={styles.storyChapterPriorities} aria-labelledby="story-priorities-title">
-          <h3 id="story-priorities-title">A season built on reps, travel, and support.</h3>
+          <h3 id="story-priorities-title">Practice. Competition. A place to belong.</h3>
           <dl>
             {story.priorities.map((priority) => (
               <div key={priority.label}>

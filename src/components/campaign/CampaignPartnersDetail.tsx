@@ -7,11 +7,11 @@ import layout from "./CampaignPartnersDetail.module.css";
 export function CampaignPartnersDetail({ campaign }: { campaign: Campaign }) {
   const sponsorship = campaign.sponsorship;
 
-  return <div className={styles.recordPartners}>
-    <p className={styles.recordLede}>Local businesses and community organizations can help make the shared season fund possible. Explore a level, then confirm recognition and availability with the organizer.</p>
+  return <div className={styles.recordPartners} data-partner-record="true">
+    <p className={styles.recordLede}>Help keep the season within reach. Compare partnership levels below; recognition and availability are confirmed with the organizer.</p>
     {Boolean(sponsorship?.tiers.length) && <ul className={`${styles.recordTiers} ${layout.tiers}`} aria-label="Partnership levels">
-      {sponsorship?.tiers.map((tier) => <li key={tier.slug} className={`${layout.tier} ${tier.featured ? styles.recordFeatured : ""}`}>
-        <span className={`${styles.recordTierKicker} ${layout.kicker}`}>{tier.featured ? "Lead opportunity" : "Community opportunity"}</span>
+      {sponsorship?.tiers.map((tier) => <li key={tier.slug} data-featured={tier.featured ? "true" : undefined} className={`${layout.tier} ${tier.featured ? styles.recordFeatured : ""}`}>
+        <span className={`${styles.recordTierKicker} ${layout.kicker}`}>{tier.featured ? "Lead partnership" : "Program partnership"}</span>
         <div className={`${styles.recordTierHeading} ${layout.heading}`}><h3>{tier.name}</h3><strong>{money(tier.price)}</strong></div>
         <p className={`${styles.recordTierFocus} ${layout.focus}`}>{tier.focus}</p>
         <p className={`${styles.recordTierSummary} ${layout.summary}`}>{tier.summary}</p>
@@ -20,7 +20,7 @@ export function CampaignPartnersDetail({ campaign }: { campaign: Campaign }) {
     <div className={styles.recordPartnerNext}>
       <strong>Build the season together.</strong>
       {sponsorship?.inquiryUrl ? <a href={sponsorship.inquiryUrl}>Start a partnership conversation <span aria-hidden="true">↗</span></a>
-        : <p>Organizer inquiry workflow is in preparation. These levels are invitations to discuss support. No sponsorship is reserved or confirmed here.</p>}
+        : <p>Sponsor inquiries are not available here yet. These levels describe opportunities; no sponsorship is reserved or confirmed on this page.</p>}
       {sponsorship?.recognitionNote && <p>{sponsorship.recognitionNote}</p>}
     </div>
     {Boolean(sponsorship?.recognizedSponsors.length) && <ul className={styles.recordConfirmedSponsors} aria-label="Confirmed community partners">

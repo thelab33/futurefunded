@@ -22,3 +22,19 @@
  .tiers > .tier { row-gap:.65rem; }
  .tiers .kicker,.tiers .heading h3 { min-block-size:0; }
 }
+
+/* Platform dialog finish: clear prices and a single featured partnership. */
+.tiers.tiers > .tier { padding:1rem;border-radius:8px;box-shadow:none; }
+.tiers.tiers .kicker { font-size:.625rem;letter-spacing:.065em; }
+.tiers.tiers .heading h3 { font-size:1.0625rem;line-height:1.3; }
+.tiers.tiers .heading strong { color:var(--campaign-ink);font-family:var(--campaign-font-body);font-size:1.875rem;font-weight:700;letter-spacing:-.04em; }
+.tiers.tiers .focus { font-size:.8125rem;line-height:1.5; }
+.tiers.tiers .summary { font-size:.8125rem;line-height:1.65; }
+.tiers.tiers > .tier[data-featured="true"] { background:var(--campaign-navy);color:var(--campaign-on-dark);border-color:var(--campaign-navy);border-block-start:3px solid var(--campaign-gold);padding-block-start:calc(1rem - 2px); }
+.tiers.tiers [data-featured="true"] .kicker { color:var(--campaign-gold); }
+.tiers.tiers [data-featured="true"] :is(.heading h3,.heading strong,.focus) { color:var(--campaign-on-dark); }
+.tiers.tiers [data-featured="true"] .summary { color:var(--campaign-muted-on-dark); }
+@media (forced-colors:active) {
+ .tiers.tiers > .tier[data-featured="true"] { background:Canvas;color:CanvasText;border-color:CanvasText; }
+ .tiers.tiers [data-featured="true"] :is(.kicker,.heading h3,.heading strong,.focus,.summary) { color:CanvasText; }
+}

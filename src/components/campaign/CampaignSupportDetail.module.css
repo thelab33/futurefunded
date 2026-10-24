@@ -26,3 +26,17 @@
 .supportAvailability { border:1px solid CanvasText; }
 .supportDetail .answers summary:focus-visible { outline:3px solid Highlight; }
 }
+
+/* Compact questions, comfortable answers, and consistent chapter surfaces. */
+.supportDetail { gap:1rem; }
+.supportIntro { font-size:.9375rem;line-height:1.6; }
+.serviceNote { padding:.8rem 1rem;border-radius:0 7px 7px 0;font-size:.8125rem;line-height:1.6; }
+.supportGroupHeader { padding-block-end:.6rem; }
+.supportGroupHeader h3 { font-family:var(--campaign-font-body);font-size:1.125rem;font-weight:650; }
+.supportGroupHeader p { font-size:.8125rem; }
+.supportDetail .answers details { padding-block:0; }
+.supportDetail .answers summary { min-block-size:48px;padding-block:.65rem;font-size:.875rem;line-height:1.5; }
+.supportDetail .answers details[open] { border-radius:7px; }
+.supportDetail .answers details p { margin-block-end:.8rem;font-size:.875rem;line-height:1.65; }
+.supportAvailability { padding:.9rem 1rem;border-radius:0 7px 7px 0; }
+.supportAvailability p { font-size:.8125rem; }

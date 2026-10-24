@@ -90,3 +90,11 @@
   .actions { position:static; }
 }
 @media (forced-colors:active) { .actions { background:Canvas; box-shadow:none; } }
+
+/* Chapter finish; form state and checkout handling remain unchanged. */
+.summary { gap:1.1rem;border-radius:9px;padding:1.4rem; }
+.selectionImpact { padding-block-start:1rem;gap:.4rem; }
+.back,.submit,.returnButton { border-radius:6px; }
+.readiness { padding:.85rem 1rem;border-radius:7px;margin-block-end:1rem; }
+.form .topline { margin-block-end:1rem; }
+.form h3 { font-size:clamp(1.35rem,2.7vw,1.625rem);line-height:1.25; }

@@ -21,3 +21,11 @@
 @media (prefers-reduced-motion:no-preference) { .viewerControls button,.thumbnailStrip button { transition:border-color 160ms ease,box-shadow 160ms ease; } }
 @media (max-width:35.999rem) { .feature figcaption { padding:.7rem .75rem;font-size:.8rem; }.viewerControls > span { display:none; }.athleteFundNote { padding:.8rem .9rem; } }
 @media (forced-colors:active) { .feature,.stage,.athleteFundNote { border-color:CanvasText;background:Canvas;color:CanvasText; }.viewerControls button,.thumbnailStrip button { background:ButtonFace;color:ButtonText;border-color:ButtonText; }.thumbnailStrip button[aria-pressed='true'] { outline:2px solid Highlight;outline-offset:-3px; }.counter,.feature figcaption { color:CanvasText; } }
+
+/* Retain whole photographs while bringing navigation closer to the story. */
+.athleteGallery { margin-block:1rem; }
+.feature { border-radius:8px; }
+.stage { block-size:clamp(14rem,37dvh,23rem); }
+.feature figcaption { padding:.7rem .875rem;font-size:.8125rem; }
+.viewerControls { margin-block:.6rem; }
+.athleteFundNote { margin-block-start:.85rem;padding:.8rem 1rem;border-radius:7px;font-size:.875rem; }

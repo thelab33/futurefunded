@@ -2,7 +2,7 @@ import type { Campaign, SupporterDeskItem } from "@/domain/campaigns/types";
 import styles from "@/components/campaign/CampaignSupportDetail.module.css";
 
 const groups: ReadonlyArray<{ category: SupporterDeskItem["category"]; heading: string; description: string }> = [
-  { category: "giving", heading: "Giving & the shared fund", description: "Where contributions go and how impact amounts work." },
+  { category: "giving", heading: "Giving & the shared fund", description: "How gifts support the season." },
   { category: "trust", heading: "Confirmation & privacy", description: "Transaction records, tax status, and supporter information." },
   { category: "help", heading: "More ways to help", description: "Sponsorship, sharing, and campaign questions." },
 ];
@@ -11,10 +11,10 @@ export function CampaignSupportDetail({ campaign }: { campaign: Campaign }) {
   return (
     <div className={styles.supportDetail} data-wave6-support="true">
       <p className={styles.serviceNote}>
-        Campaign totals are a snapshot, not confirmation of a live payment. Contributions support one shared season fund.
+        One season fund supports the program’s shared needs.
       </p>
       <p className={styles.supportIntro}>
-        Answers for supporters of {campaign.organization}. Select any question to read its full answer.
+        Questions about supporting {campaign.organization}? Start here.
       </p>
       {groups.map(({ category, heading, description }) => {
         const items = campaign.supporterDesk.filter((item) => item.category === category);
@@ -38,9 +38,9 @@ export function CampaignSupportDetail({ campaign }: { campaign: Campaign }) {
         );
       })}
       <aside className={styles.supportAvailability} aria-label="Published support availability">
-        <strong>Support and policy availability</strong>
-        <p>Organizer contact, privacy policy, and campaign terms are awaiting published links. No direct contact or policy link is available here yet.</p>
-        <p>For your security, do not send card or bank details through messages or social posts.</p>
+        <strong>Contact & policies</strong>
+        <p>Organizer contact details, the privacy policy, and campaign terms have not been published here yet.</p>
+        <p>Keep card and bank details out of messages and social posts.</p>
       </aside>
     </div>
   );

@@ -113,15 +113,15 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
         <strong>{customAmount.trim() ? "Shared season fund" : impactLabel}</strong>
         {!customAmount.trim() && impactDescription && <p>{impactDescription}</p>}
       </div>
-      <p className={styles.sharedFund}>Gifts support the shared season fund. Impact amounts illustrate support; they do not reserve a specific purchase.</p>
+      <p className={styles.sharedFund}>{impactLabel === "Shared season fund" || customAmount.trim() ? "Contributions are pooled across the program." : "All gifts support the shared season fund. Amounts illustrate support, rather than a reserved purchase."}</p>
       <button type="button" className={styles.back} onClick={onBack}>Change amount <span aria-hidden="true">←</span></button>
     </aside>
 
     <div className={styles.details}>
       <header className={styles.topline}>
         <p className={styles.eyebrow}>{configured ? "Next · Stripe test checkout" : "Season fund preview"}</p>
-        <h3 id="checkout-form-title">{configured ? "Review your test gift." : "Giving opens soon."}</h3>
-        <p>{configured ? "Use Stripe test details. No real money is collected." : "Your support makes the season possible. Payments are not being accepted yet."}</p>
+        <h3 id="checkout-form-title">{configured ? "Review your test gift." : "Giving not open yet."}</h3>
+        <p>{configured ? "Use Stripe test details. No real money is collected." : "You can review your support here. Payments are not being accepted yet."}</p>
       </header>
 
     {configured && <>
@@ -166,8 +166,8 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
     {!configured && <div className={styles.readiness}>
       <span className={styles.readinessDot} aria-hidden="true" />
       <div>
-        <strong>No payment is collected here</strong>
-        <p>Return to the campaign to explore the season, meet the athletes, or get season updates.</p>
+        <strong>This is a gift preview</strong>
+        <p>No payment or card details are collected. Return to the campaign to explore the season.</p>
       </div>
     </div>}
     {error && <p role={errorOwner === "form" ? "alert" : undefined} id={errorOwner === "customAmount" ? "checkout-custom-amount-error" : "checkout-error"} className={styles.error}>{error}</p>}

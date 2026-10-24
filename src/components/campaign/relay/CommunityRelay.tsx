@@ -28,7 +28,7 @@ function smsHref(number: string, keyword: string) {
   return `sms:${normalized}?&body=${encodeURIComponent(keyword)}`;
 }
 
-export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign; canonicalUrl: string | null }) {
+export function CommunityRelay({ campaign, canonicalUrl, variant }: { campaign: Campaign; canonicalUrl: string | null; variant?: "dialog" }) {
   const runtimeUrl = useSyncExternalStore(
     subscribeToLocation,
     () => canonicalUrl ?? currentCampaignUrl(),
@@ -37,7 +37,12 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
   const [feedback, setFeedback] = useState({ url: "", message: "" });
   const linkInput = useRef<HTMLInputElement>(null);
   const textToGive = campaign.engagement?.textToGive;
-  const link = relayLinkPresentation(runtimeUrl, canonicalUrl);
+  const presentation = relayLinkPresentation(runtimeUrl, canonicalUrl);
+  const link = variant === "dialog" && presentation.kind === "local"
+    ? { ...presentation, intro: "A public campaign link is needed before others can open this page.",
+        status: "Local link available", label: "Preview address", note: "This address opens on this computer only.",
+        qrKicker: "Local QR", qrTitle: "For this computer only", qrCopy: "A phone or another computer cannot open this localhost address." }
+    : presentation;
   const shareText = link.kind === "published"
     ? `${campaign.headline} Support ${campaign.organization}'s ${campaign.season}.`
     : `${campaign.organization} campaign ${link.kind === "local" ? "preview" : "page"}.`;
@@ -75,7 +80,7 @@ export function CommunityRelay({ campaign, canonicalUrl }: { campaign: Campaign;
   }
 
   return (
-    <section id="relay" data-ff-relay="vr9-c9" aria-label="Campaign sharing tools" className={styles.relay}>
+    <section id="relay" data-ff-relay="vr9-c9" aria-label="Campaign sharing tools" className={`${styles.relay}${variant === "dialog" ? ` ${styles.dialog}` : ""}`}>
       <div className={`${styles.inner} ff-container`}>
         <div className={styles.copy}>
           <p className={styles.intro}>{link.intro}</p>

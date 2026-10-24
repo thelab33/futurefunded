@@ -1,0 +1,79 @@
+/* This theme applies only to the public Organizer Studio preview. */
+.preview.preview {
+  --os-ink: #182f43;
+  --os-muted: #586779;
+  --os-blue: #182f43;
+  --os-canvas: #f7f5ef;
+  --os-paper: #ffffff;
+  --os-line: #dfded6;
+  --os-strong-line: #aab4bb;
+  --os-selected: #eee9dd;
+  --os-action: #182f43;
+  --os-action-hover: #284b61;
+  --os-warning: #f4eddf;
+  --os-warning-ink: #765322;
+  --os-shadow: 0 5px 20px #182f4305;
+  font-family: var(--font-ff-studio-sans), sans-serif;
+}
+.preview.preview :is(button, input, select, textarea) {
+  font-family: var(--font-ff-studio-sans), sans-serif;
+}
+.preview.preview h1,
+.preview.preview h2 {
+  font-family: var(--font-ff-studio-display), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+.preview.preview strong {
+  font-family: var(--font-ff-studio-sans), sans-serif;
+}
+.notice {
+  padding: 12px 22px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #765322;
+  background: #f3ead7;
+  border-bottom: 1px solid #e6d8bd;
+}
+.preview.preview .brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.preview.preview .brand img {
+  width: 35px;
+  height: 35px;
+}
+.preview.preview .brand .wordmark {
+  margin: 0;
+  color: #182f43;
+  font:
+    800 24px/1.1 var(--font-ff-studio-sans),
+    sans-serif;
+  letter-spacing: -0.8px;
+  text-transform: none;
+}
+.wordmark small {
+  display: block;
+  margin-top: 6px;
+  font:
+    650 9px/1.4 var(--font-ff-studio-sans),
+    sans-serif;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #697584;
+}
+.preview.preview :is(input, textarea, select):focus-visible {
+  outline-color: #a27836;
+}
+@media (max-width: 600px) {
+  .notice {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+  }
+  .preview.preview .brand .wordmark {
+    font-size: 21px;
+  }
+}

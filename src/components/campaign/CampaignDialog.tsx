@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { RecordProps } from "@/components/campaign/campaign-types";
 import { CampaignRecord } from "@/components/campaign/CampaignRecord";
 import styles from "@/components/campaign/Campaign.module.css";
+import finish from "./CampaignDialogFinish.module.css";
 import giftStyles from "@/components/campaign/checkout/CampaignCheckout.module.css";
 
 type Props = RecordProps & {
@@ -33,7 +34,7 @@ export function CampaignDialog({
     <dialog
       id="campaign-detail-dialog"
       ref={dialogRef}
-      className={`${styles.campaignDialog}${chapter === "give" ? ` ${giftStyles.dialog}` : ""}`}
+      className={`${styles.campaignDialog} ${finish.dialog}${chapter === "give" ? ` ${giftStyles.dialog}` : ""}`}
       aria-labelledby="chapter-title"
       onClose={restoreFocus}
       onKeyDown={(event) => {
@@ -86,15 +87,15 @@ export function CampaignDialog({
         if (event.target === dialogRef.current) onBack();
       }}
     >
-      <div className={styles.campaignDialogHeader}>
+      <div className={`${styles.campaignDialogHeader} ${finish.header}`}>
         <span>{campaign.organization} · {campaign.season}</span>
         <button type="button" onClick={onBack} aria-label="Close campaign detail">
           <span className={styles.campaignDialogCloseLabel}>Close</span>
           <span aria-hidden="true">×</span>
         </button>
       </div>
-      <div className={`${styles.campaignDialogBody}${chapter === "give" ? ` ${giftStyles.body}` : ""}`}>
-        <p className={styles.campaignDialogEyebrow}>
+      <div className={`${styles.campaignDialogBody} ${finish.body}${chapter === "give" ? ` ${giftStyles.body}` : ""}`}>
+        <p className={`${styles.campaignDialogEyebrow} ${finish.eyebrow}`}>
           {chapter === "give" ? "Contribution" : "Campaign record"}
         </p>
         <h2 id="chapter-title" data-dialog-title tabIndex={-1}>{title}</h2>

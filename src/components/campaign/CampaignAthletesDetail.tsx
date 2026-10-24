@@ -13,8 +13,8 @@ export function CampaignAthletesDetail({ campaign }: { campaign: Campaign }) {
   function step(direction: 1 | -1) { setSelected(current => (current + direction + photos.length) % photos.length); }
   return (
     <div className={styles.athleteChapter} data-athlete-documentary="true">
-      <p>Basketball brings athletes, coaches, and families together. Consistent practice, opportunities to compete, and travel support help keep that connection moving.</p>
-      <p>Photographs from the program’s journey are documentary history, not a current roster or a fixed team count.</p>
+      <p>Practice, competition, and time together help athletes grow. Your support keeps those opportunities within reach.</p>
+      <p>From the program’s journey. Photographs show past teams and moments, rather than the current roster.</p>
       {photos.length > 0 ? <div className={styles.athleteGallery} data-athlete-viewer="true">
         <figure className={styles.feature}>
           <div className={styles.stage} id="athlete-featured-photo" tabIndex={0} role="group"

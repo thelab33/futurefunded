@@ -40,18 +40,35 @@ export function CampaignImpactChooser({
   // Custom text remains an editable draft until the state owner validates it.
   // Do not present unvalidated input as a confirmed currency amount.
   const actionLabel = customAmount
-    ? checkoutReady ? "Continue with custom gift" : "Explore custom gift"
-    : checkoutReady ? `Continue with ${money(amount)}` : `Explore ${money(amount)} gift`;
+    ? checkoutReady
+      ? "Continue with custom gift"
+      : "Preview custom gift"
+    : checkoutReady
+      ? `Continue with ${money(amount)}`
+      : `Preview a ${money(amount)} gift`;
 
   return (
-    <div className={styles.givingAction} data-console-zone="workspace" data-custom-active={customAmount ? "true" : "false"}>
+    <div
+      className={styles.givingAction}
+      data-console-zone="workspace"
+      data-custom-active={customAmount ? "true" : "false"}
+    >
       {status}
-      <fieldset className={styles.amounts} aria-describedby={["impact-fund-note", availabilityDescriptionId].filter(Boolean).join(" ")}>
+      <fieldset
+        className={styles.amounts}
+        aria-describedby={["impact-fund-note", availabilityDescriptionId]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <legend>
-          <span>Choose your impact</span>
+          <span>Choose your support</span>
           {recommendedImpact && (
-            <span className={styles.amountRecommendation} id="campaign-recommended-amount">
-              {campaign.branding?.recommendedLabel ?? "Recommended"}: {money(recommendedImpact.amount)}
+            <span
+              className={styles.amountRecommendation}
+              id="campaign-recommended-amount"
+            >
+              {campaign.branding?.recommendedLabel ?? "Recommended"}:{" "}
+              {money(recommendedImpact.amount)}
             </span>
           )}
         </legend>
@@ -64,29 +81,55 @@ export function CampaignImpactChooser({
               disabled={disabled}
               aria-label={`${money(i.amount)} ${i.label}`}
               aria-pressed={!customAmount && amount === i.amount}
-              data-impact-selected={!customAmount && amount === i.amount ? "true" : "false"}
+              data-impact-selected={
+                !customAmount && amount === i.amount ? "true" : "false"
+              }
               onClick={() => onPreset(i.amount)}
             >
-              {i.category && <span className={styles.impactCategory}>{i.category}</span>}
+              {i.category && (
+                <span className={styles.impactCategory}>{i.category}</span>
+              )}
               <b>{money(i.amount)}</b>
               <span>{i.label}</span>
-              {!customAmount && amount === i.amount && <span className={styles.selectedMark} aria-hidden="true">✓</span>}
+              {!customAmount && amount === i.amount && (
+                <span className={styles.selectedMark} aria-hidden="true">
+                  ✓
+                </span>
+              )}
             </button>
           ))}
         </div>
       </fieldset>
 
-      <p className={styles.amountFootnote} id="impact-fund-note">Every amount supports the shared season fund.</p>
+      <p className={styles.amountFootnote} id="impact-fund-note">
+        Every amount supports the shared season fund.
+      </p>
 
-      <div className={styles.impactStory} data-impact-story="c4c52" aria-live="polite" aria-atomic="true">
-        <CampaignImpactPhoto campaign={campaign} category={selectedImpact?.category} custom={Boolean(customAmount)} />
+      <div
+        className={styles.impactStory}
+        data-impact-story="c4c52"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <CampaignImpactPhoto
+          campaign={campaign}
+          category={selectedImpact?.category}
+          custom={Boolean(customAmount)}
+        />
         <div className={styles.impactStoryHeading}>
-          <strong>{customAmount ? "Flexible support" : selectedImpact?.label ?? "Back every athlete"}</strong>
+          <strong>
+            {customAmount
+              ? "Flexible support"
+              : (selectedImpact?.label ?? "Back every athlete")}
+          </strong>
           <span className={styles.impactStoryEyebrow}>Shared season fund</span>
         </div>
-        <p>{customAmount
-          ? "Your custom amount helps cover gym time, competition, and travel across the program."
-          : selectedImpact?.description ?? "Your gift supports the program’s shared season fund."}</p>
+        <p>
+          {customAmount
+            ? "Your custom amount helps cover gym time, competition, and travel across the program."
+            : (selectedImpact?.description ??
+              "Your gift supports the program’s shared season fund.")}
+        </p>
       </div>
 
       <label className={styles.custom}>
@@ -105,7 +148,11 @@ export function CampaignImpactChooser({
             spellCheck={false}
             aria-invalid={Boolean(error)}
             aria-errormessage={error ? "amount-error" : undefined}
-            aria-describedby={error ? "custom-amount-guidance amount-error" : "custom-amount-guidance"}
+            aria-describedby={
+              error
+                ? "custom-amount-guidance amount-error"
+                : "custom-amount-guidance"
+            }
             value={custom}
             onChange={(event) => onCustom(event.target.value)}
             placeholder="Enter amount"
@@ -114,7 +161,11 @@ export function CampaignImpactChooser({
         </span>
       </label>
 
-      <p className={styles.customGuidance} id="custom-amount-guidance">{checkoutReady ? "$1–$10,000 test limit · Up to two decimal places." : "$1 minimum · Up to two decimal places."}</p>
+      <p className={styles.customGuidance} id="custom-amount-guidance">
+        {checkoutReady
+          ? "$1–$10,000 test limit · Up to two decimal places."
+          : "$1 minimum · Up to two decimal places."}
+      </p>
 
       {error && (
         <p id="amount-error" className={styles.error} role="alert">

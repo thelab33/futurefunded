@@ -1,9 +1,22 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import type { CampaignBranding } from "@/domain/campaigns/types";
 import { resolveCampaignBranding } from "@/components/campaign/campaign-branding";
 import styles from "@/components/campaign/Campaign.module.css";
 import finish from "./CampaignPanelsFinish.module.css";
+import localFont from "next/font/local";
+const campaignSans = localFont({
+  src: "../home/fonts/dm-sans.woff2",
+  variable: "--font-ff-campaign-sans",
+  weight: "100 900",
+  display: "swap",
+});
+const campaignDisplay = localFont({
+  src: "../home/fonts/dm-serif-display.woff2",
+  variable: "--font-ff-campaign-display",
+  weight: "400",
+  display: "swap",
+});
 
 type Props = {
   branding?: CampaignBranding;
@@ -21,7 +34,20 @@ type Props = {
 };
 
 /** Accepted public campaign composition, isolated from Organizer Studio. */
-export function CampaignLayout({branding,header,hero,notice,giving,story,program,momentum,chapters,share,footer,dialog}: Props) {
+export function CampaignLayout({
+  branding,
+  header,
+  hero,
+  notice,
+  giving,
+  story,
+  program,
+  momentum,
+  chapters,
+  share,
+  footer,
+  dialog,
+}: Props) {
   const brand = resolveCampaignBranding(branding);
   const shellRef = useRef<HTMLDivElement>(null);
   const textProbeRef = useRef<HTMLSpanElement>(null);
@@ -45,20 +71,61 @@ export function CampaignLayout({branding,header,hero,notice,giving,story,program
       window.removeEventListener("resize", update);
     };
   }, []);
-  return <div ref={shellRef} style={brand.style} data-brand-surface={brand.surface} data-campaign-typography={branding?.typography ?? "editorial"} data-campaign-theme={brand.surface === "dark" ? "dark" : undefined} className={`${styles.root}`} data-cleanroom-layout="c2" data-orbit-shell="c2" data-campaign-shell="c2">
-    <span ref={textProbeRef} className={styles.textScaleProbe} aria-hidden="true" />
-    <a className="ff-skip-link" href="#campaign-main">Skip to campaign</a>
-    {header}
-    <main id="campaign-main" tabIndex={-1} className={styles.main}>
-      {hero}
-      {notice}
-      <div className={`${styles.composition} ${finish.panels}`} data-cleanroom-composition="true" data-campaign-assembly="c2">
-        <div className={styles.givingRail} data-orbit-region="giving">{giving}</div>
-        <div className={styles.story} data-orbit-region="story">{story}</div>
-        <div className={styles.program} data-orbit-region="program">{program}</div>
-      </div>
-      {momentum}{chapters}{share}
-    </main>
-    {footer}{dialog}
-  </div>;
+  return (
+    <div
+      ref={shellRef}
+      style={
+        {
+          ...brand.style,
+          "--campaign-font-body":
+            "var(--font-ff-campaign-sans), system-ui, sans-serif",
+          "--campaign-font-display":
+            branding?.typography === "modern"
+              ? "var(--font-ff-campaign-sans), system-ui, sans-serif"
+              : "var(--font-ff-campaign-display), Georgia, serif",
+        } as CSSProperties
+      }
+      data-brand-surface={brand.surface}
+      data-campaign-typography={branding?.typography ?? "editorial"}
+      data-campaign-theme={brand.surface === "dark" ? "dark" : undefined}
+      className={`${styles.root} ${finish.campaign} ${campaignSans.variable} ${campaignDisplay.variable}`}
+      data-cleanroom-layout="c2"
+      data-orbit-shell="c2"
+      data-campaign-shell="c2"
+    >
+      <span
+        ref={textProbeRef}
+        className={styles.textScaleProbe}
+        aria-hidden="true"
+      />
+      <a className="ff-skip-link" href="#campaign-main">
+        Skip to campaign
+      </a>
+      {header}
+      <main id="campaign-main" tabIndex={-1} className={styles.main}>
+        {hero}
+        {notice}
+        <div
+          className={`${styles.composition} ${finish.panels}`}
+          data-cleanroom-composition="true"
+          data-campaign-assembly="c2"
+        >
+          <div className={styles.givingRail} data-orbit-region="giving">
+            {giving}
+          </div>
+          <div className={styles.story} data-orbit-region="story">
+            {story}
+          </div>
+          <div className={styles.program} data-orbit-region="program">
+            {program}
+          </div>
+        </div>
+        {momentum}
+        {chapters}
+        {share}
+      </main>
+      {footer}
+      {dialog}
+    </div>
+  );
 }
