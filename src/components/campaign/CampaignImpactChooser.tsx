@@ -155,7 +155,7 @@ export function CampaignImpactChooser({
             }
             value={custom}
             onChange={(event) => onCustom(event.target.value)}
-            placeholder="Enter amount"
+            placeholder="Amount"
             maxLength={9}
           />
         </span>

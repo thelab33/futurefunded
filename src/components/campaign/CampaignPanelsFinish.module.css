@@ -331,3 +331,58 @@
     box-shadow: none;
   }
 }
+
+/* Campaign micro polish: even choices and a balanced custom-gift row. */
+.panels.panels [data-console-zone="workspace"] fieldset > div {
+  grid-auto-rows:1fr;
+}
+.panels.panels [data-console-zone="workspace"] fieldset button {
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto 1fr;
+  min-block-size:4.75rem;
+  gap:.3rem;
+  padding:.6rem .65rem;
+}
+.panels.panels [data-console-zone="workspace"] fieldset button b {
+  font-family:var(--campaign-font-body);
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.035em;
+}
+.panels.panels [data-console-zone="workspace"] fieldset button[aria-pressed="true"] b {
+  padding-inline-end:1.25rem;
+}
+.panels.panels [data-console-zone="workspace"] fieldset button > span[aria-hidden="true"] {
+  position:absolute;
+  inset-block-start:.6rem;
+  inset-inline-end:.6rem;
+  inline-size:17px;
+  block-size:17px;
+}
+.panels.panels [data-console-zone="workspace"] > label > span,
+.panels.panels [data-console-zone="workspace"] > button {
+  min-block-size:52px;
+  border-radius:6px;
+}
+.panels.panels [data-console-zone="workspace"] > label b {
+  padding-inline:.7rem;
+}
+.panels.panels [data-console-zone="workspace"] > label input {
+  font-family:var(--campaign-font-body);
+  font-variant-numeric:tabular-nums;
+}
+.panels.panels [data-console-zone="workspace"] > button > span {
+  text-wrap:balance;
+}
+@media (hover:hover) and (pointer:fine) {
+  .panels.panels [data-console-zone="workspace"] fieldset button:not(:disabled):not([aria-pressed="true"]):hover {
+    border-color:var(--campaign-recognition-ink);
+    background:var(--campaign-stage);
+  }
+}
+@media (forced-colors:active) {
+  .panels.panels [data-console-zone="workspace"] fieldset button:not(:disabled):not([aria-pressed="true"]):hover {
+    border-color:Highlight;
+    background:ButtonFace;
+  }
+}
