@@ -1,3 +1,4 @@
+import {givingState,type CheckoutMode} from "@/domain/campaigns/payment-presentation";
 import type { Campaign } from "@/domain/campaigns/types";
 import type { CampaignChapter } from "@/components/campaign/campaign-types";
 import styles from "@/components/campaign/CampaignFooter.module.css";
@@ -6,15 +7,17 @@ import finish from "./CampaignLowerFinish.module.css";
 type CampaignFooterProps = {
   campaign: Campaign;
   checkoutReady: boolean;
+  checkoutMode?:CheckoutMode;
   onChapter: (chapter: CampaignChapter) => void;
 };
 
 /** Institutionally grounded footer; all destinations use the existing chapter owner. */
 export function CampaignFooter({
   campaign,
-  checkoutReady,
+  checkoutReady, checkoutMode,
   onChapter,
 }: CampaignFooterProps) {
+  const state=givingState(checkoutMode,checkoutReady);
   const attributionMode =
     process.env.NEXT_PUBLIC_FF_ATTRIBUTION_MODE === "white-label"
       ? "white-label"
@@ -43,9 +46,6 @@ export function CampaignFooter({
             <span>
               Powered by <strong>FutureFunded</strong>
             </span>
-            <span className={styles.campaignPlatformTagline}>
-              Fundraising built for the next generation.
-            </span>
           </div>
         )}
       </div>
@@ -64,14 +64,14 @@ export function CampaignFooter({
           aria-controls="campaign-detail-dialog"
           onClick={() => onChapter("support")}
         >
-          Organizer information
+          Organizer &amp; support
         </button>
         <div className={`${styles.givingStatus} ${finish.status}`}>
           <span>
-            {checkoutReady ? "Test checkout only" : "Campaign preview"}
+            {state==="live"?"Giving is open":state==="test"?"Test checkout only":"Campaign preview"}
           </span>
           <span>
-            {checkoutReady
+            {state==="live"?"One-time gifts · Stripe checkout":state==="test"
               ? "Test record only · No donation receipt"
               : "Giving is not open yet"}
           </span>

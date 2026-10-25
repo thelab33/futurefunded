@@ -1,3 +1,4 @@
+import type { CheckoutMode, FundingSource, PublicGivingDetails } from "./payment-presentation";
 import type { CampaignCapabilities, } from "@/config/capabilities";
 import type { CampaignMediaAsset } from "@/domain/campaigns/types";
 
@@ -15,7 +16,8 @@ export type CampaignPresentationV1 = {
     readonly hero: CampaignMediaAsset | null;
   };
   readonly funding: {
-    readonly source: "campaign_record_unreconciled";
+    readonly source: FundingSource;
+    readonly isVerifiedPayment: boolean;
     readonly isVerifiedSettlement: false;
     readonly raised: number;
     readonly goal: number;
@@ -27,6 +29,8 @@ export type CampaignPresentationV1 = {
   readonly giving: {
     readonly impact: readonly { readonly amount: number; readonly label: string; readonly description?: string; readonly recommended: boolean }[];
     readonly checkoutReady: boolean;
+    readonly checkoutMode: CheckoutMode;
+    readonly details: PublicGivingDetails | null;
     readonly purposes: readonly { readonly id: string; readonly amountCents: number }[];
   };
   readonly story: {

@@ -1,9 +1,12 @@
+import { GET as liveGET } from "@/server/donations/live/status";
 import { cookies } from "next/headers";
 import { testCheckoutSettings } from "@/server/donations/config";
 import { errorResponse,GiftError,json,ownsCookie,sameOrigin,uuid } from "@/server/donations/protocol";
 import { giftStatus } from "@/server/donations/store";
 export const runtime='nodejs';
+export const maxDuration=60;
 export async function GET(request:Request){
+  if(process.env.NODE_ENV === "production") return liveGET(request);
   try{
     const s=testCheckoutSettings();if(!s)throw new GiftError(503,'checkout_disabled','Test confirmation is unavailable.');
     sameOrigin(request,s.origin,false);

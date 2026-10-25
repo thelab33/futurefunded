@@ -1,3 +1,4 @@
+import {givingState,hasVerifiedFunding,type FundingSource} from "@/domain/campaigns/payment-presentation";
 import Image from "next/image";
 import { CampaignGivingStatus } from "@/components/campaign/CampaignGivingStatus";
 import styles from "@/components/campaign/Campaign.module.css";
@@ -9,15 +10,18 @@ import { formatCampaignMoney as money } from "@/components/campaign/campaign-for
 
 type CampaignGivingProps = CampaignImpactChooserProps & {
   checkoutReady: boolean;
+  fundingSource?:FundingSource;
 };
 
 export function CampaignGiving({
   campaign,
-  checkoutReady,
+  checkoutReady, checkoutMode, fundingSource,
   ...chooser
 }: CampaignGivingProps) {
-  // Source totals are demo/test records, not verified live funding.
-  const showUnverifiedFunding = process.env.NODE_ENV !== "production";
+  // Goal-only until a positive live ledger projection exists. Development demos stay labeled.
+  const state=givingState(checkoutMode,checkoutReady);
+  const verified=hasVerifiedFunding(fundingSource,campaign.raised,campaign.supporters);
+  const showUnverifiedFunding = verified || process.env.NODE_ENV !== "production";
   const goal = Math.max(0, campaign.goal);
   const raised = Math.max(0, campaign.raised);
   const fundedPercent = goal > 0 ? Math.max(0, (raised / goal) * 100) : 0;
@@ -27,7 +31,7 @@ export function CampaignGiving({
       : new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(
           fundedPercent,
         );
-  const fundingLabel = checkoutReady
+  const fundingLabel = verified ? "Verified campaign payments" : state==="test"
     ? "Test campaign funding"
     : "Demonstration campaign funding";
   const progressMax = Math.max(1, goal);
@@ -70,7 +74,7 @@ export function CampaignGiving({
           <div>
             <span className={styles.metricLabel}>
               {showUnverifiedFunding
-                ? checkoutReady
+                ? verified ? "Recorded gifts · before fees" : state==="test"
                   ? "Test recorded · before fees"
                   : "Demo raised"
                 : "Season goal"}
@@ -108,7 +112,7 @@ export function CampaignGiving({
                 <dd>{fundedLabel}%</dd>
               </div>
               <div>
-                <dt>{campaign.branding?.supporterLabel ?? "supporters"}</dt>
+                <dt>{verified?"recorded gifts":campaign.branding?.supporterLabel ?? "supporters"}</dt>
                 <dd>{campaign.supporters}</dd>
               </div>
               <div>
@@ -120,32 +124,30 @@ export function CampaignGiving({
         )}
       </div>
 
-      {checkoutReady && (
-        <p className={styles.shared}>Test mode · No real money collected.</p>
-      )}
       <CampaignImpactChooser
         campaign={campaign}
         {...chooser}
-        checkoutReady={checkoutReady}
+        checkoutReady={state!=="preview"}
+        checkoutMode={state}
         availabilityDescriptionId="checkout-availability"
-        status={<CampaignGivingStatus checkoutReady={checkoutReady} />}
+        status={<CampaignGivingStatus checkoutReady={state!=="preview"} checkoutMode={state} />}
       />
 
       <details className={styles.givingDisclosure}>
         <summary>Giving details</summary>
         <div className={styles.givingAssurance} aria-label="Giving assurances">
           <span>
-            {checkoutReady ? "Test checkout only" : "Campaign preview"}
+            {state==="live"?"Giving is open":state==="test"?"Test checkout only":"Campaign preview"}
           </span>
           <span>
-            {checkoutReady
+            {state==="live"?"One-time gifts · Stripe checkout":state==="test"
               ? "Test record only · No donation receipt"
               : "Giving is not open yet"}
           </span>
         </div>
 
         <p className={styles.shared}>One-time gift · Shared season fund</p>
-        {checkoutReady && (
+        {(checkoutReady||verified) && (
           <p className={styles.shared}>
             Recorded totals exclude refunded and open or lost dispute amounts
             and are before fees. They do not represent Stripe payouts.

@@ -1,11 +1,15 @@
 "use client";
+import type {PublicGivingDetails} from "@/domain/campaigns/payment-presentation";
+import {CheckoutRecovery} from "./CheckoutRecovery";
 import { useRef, useState, type FormEvent } from "react";
 import styles from "@/components/campaign/checkout/DonationForm.module.css";
 
 type GivingFrequency = "one_time" | "monthly";
 type ErrorOwner = "customAmount" | "form" | null;
 
-export function DonationForm({ campaignSlug, amountCents, purposeId, configured, frequency, impactLabel, impactDescription, onBack }: {
+export function DonationForm({ campaignSlug, amountCents, purposeId, configured, frequency, impactLabel, impactDescription, onBack, mode="test", givingDetails }: {
+  mode?: "test" | "live";
+  givingDetails?:PublicGivingDetails|null;
   campaignSlug: string;
   amountCents: number;
   purposeId: string;
@@ -15,6 +19,9 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
   impactDescription?: string;
   onBack: () => void;
 }) {
+  const live=mode==="live";
+  const enabled=configured&&(!live||Boolean(givingDetails));
+  const [recoveryReady,setRecoveryReady]=useState(false);
   const [customAmount, setCustomAmount] = useState("");
   const [error, setError] = useState("");
   const [errorOwner, setErrorOwner] = useState<ErrorOwner>(null);
@@ -35,7 +42,7 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (inFlight.current || !configured) return;
+    if (inFlight.current || !enabled || !recoveryReady || frequency!=="one_time") return;
     const form = new FormData(event.currentTarget);
     let chosenCents = amountCents;
     if (customAmount.trim()) {
@@ -53,6 +60,10 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
         window.requestAnimationFrame(() => customAmountInput.current?.focus());
         return;
       }
+    }
+    if (!Number.isSafeInteger(chosenCents) || chosenCents<100 || chosenCents>1000000) {
+      setError("Choose an amount from $1 to $10,000 USD.");setErrorOwner("customAmount");
+      window.requestAnimationFrame(()=>customAmountInput.current?.focus());return;
     }
     const query = new URLSearchParams(window.location.search);
     const details = { campaignSlug, amountCents: chosenCents, purposeId: customAmount.trim() ? "shared-season-fund" : purposeId,
@@ -76,12 +87,13 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
         if (["invalid_amount", "amount_below_minimum", "amount_above_maximum", "invalid_email", "invalid_name", "purpose_not_allowed", "frequency_not_allowed", "invalid_json", "checkout_disabled", "checkout_not_configured", "checkout_rate_limited", "invalid_request", "campaign_not_found"].includes(code)) retryLocked.current = false;
         throw new Error(body.error?.message ?? "Checkout could not be opened. Retry with the same details.");
       }
+      if(body.mode!==mode)throw new Error("The checkout environment could not be verified. Contact the organizer before retrying.");
       if (typeof body.checkout?.returnUrl === "string") {
         const back = new URL(body.checkout.returnUrl, window.location.origin);
         const id = body.checkout.attemptId;
         if (back.origin !== window.location.origin || back.pathname !== `/c/${campaignSlug}/gift` ||
             typeof id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id) || back.searchParams.get("attempt") !== id) {
-          throw new Error("The test confirmation destination could not be verified.");
+          throw new Error("The confirmation destination could not be verified.");
         }
         window.location.assign(back.href);
         return;
@@ -119,12 +131,13 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
 
     <div className={styles.details}>
       <header className={styles.topline}>
-        <p className={styles.eyebrow}>{configured ? "Next · Stripe test checkout" : "Season fund preview"}</p>
-        <h3 id="checkout-form-title">{configured ? "Review your test gift." : "Giving not open yet."}</h3>
-        <p>{configured ? "Use Stripe test details. No real money is collected." : "You can review your support here. Payments are not being accepted yet."}</p>
+        <p className={styles.eyebrow}>{enabled ? (live?"Next · Stripe checkout":"Next · Stripe test checkout") : "Season fund preview"}</p>
+        <h3 id="checkout-form-title">{enabled ? (live?"Review your gift.":"Review your test gift.") : "Giving not open yet."}</h3>
+        <p>{enabled ? (live?"Continue to Stripe to enter payment details for your one-time gift.":"Use Stripe test details. No real money is collected.") : "You can review your support here. Payments are not being accepted yet."}</p>
       </header>
 
-    {configured && <>
+    {enabled&&<CheckoutRecovery slug={campaignSlug} mode={mode} onReady={setRecoveryReady}/> }
+    {enabled && <>
     <fieldset disabled={busy}>
       <legend>Gift amount</legend>
       <label className={styles.override}>
@@ -158,12 +171,12 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
         <label>Email <small>optional</small><input name="donorEmail" type="email" autoComplete="email" maxLength={254}/></label>
         <label>Name <small>optional</small><input name="donorName" autoComplete="name" maxLength={100}/></label>
       </div>
-      <label className={styles.anonymous}><input name="anonymous" type="checkbox"/> Keep my name private on public supporter activity</label>
+      <label className={styles.anonymous}><input name="anonymous" type="checkbox"/> Keep my name private on any future public supporter recognition</label>
     </fieldset>
     </>}
 
-    {frequency === "monthly" && <p className={styles.note}>The selected amount repeats every month until cancelled. Future payment management will remain separate from public campaign activity.</p>}
-    {!configured && <div className={styles.readiness}>
+    {frequency === "monthly" && <p className={styles.note}>Monthly giving is not available. Return to the campaign and choose a one-time gift.</p>}
+    {!enabled && <div className={styles.readiness}>
       <span className={styles.readinessDot} aria-hidden="true" />
       <div>
         <strong>This is a gift preview</strong>
@@ -172,15 +185,18 @@ export function DonationForm({ campaignSlug, amountCents, purposeId, configured,
     </div>}
     {error && <p role={errorOwner === "form" ? "alert" : undefined} id={errorOwner === "customAmount" ? "checkout-custom-amount-error" : "checkout-error"} className={styles.error}>{error}</p>}
     <div className={styles.actions}>
-      {configured ? <button className={styles.submit} type="submit" disabled={busy}>
-        {busy ? "Opening test checkout…" : "Continue to Stripe test checkout"}
+      {enabled ? <button className={styles.submit} type="submit" disabled={busy||!recoveryReady||frequency!=="one_time"}>
+        {busy ? (live?"Opening checkout…":"Opening test checkout…") : (live?"Continue to Stripe checkout":"Continue to Stripe test checkout")}
         {!busy && <span aria-hidden="true">→</span>}
       </button> : <button className={styles.returnButton} type="button" onClick={onBack}>
         Return to campaign <span aria-hidden="true">→</span>
       </button>}
       <span className={styles.fundContext}>Shared season fund · {frequencyLabel}</span>
     </div>
-    {configured && <p className={styles.note}>Payment details are entered securely on Stripe.</p>}
+    {enabled && <p className={styles.note}>Payment details are entered securely on Stripe.</p>}
+    {enabled&&live&&givingDetails&&<p className={styles.note}>
+      Recipient: {givingDetails.recipientName}. <a href={`mailto:${givingDetails.supportEmail}`}>Contact the organizer</a>{" · "}<a href={givingDetails.privacyUrl}>Privacy policy</a>{" · "}<a href={givingDetails.termsUrl}>Campaign terms</a>
+    </p>}
     </div>
   </form>;
 }

@@ -1,15 +1,16 @@
+import {hasVerifiedFunding,type FundingSource} from "@/domain/campaigns/payment-presentation";
 import type { Campaign } from "@/domain/campaigns/types";
 import finish from "./CampaignDialogFinish.module.css";
 import { formatCampaignMoney as money } from "@/components/campaign/campaign-format";
 
-export function CampaignPlanDetail({ campaign }: { campaign: Campaign }) {
+export function CampaignPlanDetail({ campaign, fundingSource }: { campaign: Campaign;fundingSource?:FundingSource }) {
   const plan = campaign.seasonPlan;
   const remaining = Math.max(0, campaign.goal - campaign.raised);
   return <div className={finish.plan} data-campaign-plan="season-record">
     <p className={finish.lede}>One fund supports practice, competition, travel, meals, gear, and participation across the program.</p>
     <div className={finish.goal} aria-label="Season fund goal">
       <div><span>Season goal</span><strong>{money(campaign.goal)}</strong></div>
-      {process.env.NODE_ENV !== "production" && <div><span>Remaining toward goal</span><strong>{money(remaining)}</strong></div>}
+      {(hasVerifiedFunding(fundingSource,campaign.raised,campaign.supporters)||process.env.NODE_ENV !== "production") && <div><span>Remaining toward goal</span><strong>{money(remaining)}</strong></div>}
     </div>
     {plan ? <>
       <h3 id="season-allocation-title">Where your support goes</h3>

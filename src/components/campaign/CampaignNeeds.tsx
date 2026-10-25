@@ -14,12 +14,14 @@ export function CampaignNeeds({ campaign, onGive }: {
   return (
     <section className={styles.programWing} aria-labelledby="program-title" data-orbit-program="season-mission">
       <div className={styles.programCopy}>
-        <p className={styles.needsEyebrow}>What keeps the season possible</p>
+        <p className={styles.needsEyebrow}>{campaign.slug === "connect-atx-elite" ? "Season needs" : "What keeps the season possible"}</p>
         <h2 id="program-title">{title === "Three key needs. A stronger season." ? <>
           <span className={styles.needsTitleLine}>Three key needs.</span>{" "}
           <span className={styles.needsTitleLine}>A stronger season.</span>
         </> : title}</h2>
-        <p>{mission?.summary ?? campaign.story?.programSummary ?? campaign.story?.narrative}</p>
+        {campaign.slug !== "connect-atx-elite" && (
+          <p>{mission?.summary ?? campaign.story?.programSummary ?? campaign.story?.narrative}</p>
+        )}
       </div>
       {primary.length > 0 && (
         <div className={styles.priorities} role="group" aria-label="Primary season needs">

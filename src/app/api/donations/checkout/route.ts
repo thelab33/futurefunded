@@ -1,3 +1,4 @@
+import { POST as livePOST } from "@/server/donations/live/checkout";
 import { cookies } from "next/headers";
 import { getCampaign } from "@/data/campaigns";
 import { testCheckoutSettings } from "@/server/donations/config";
@@ -5,7 +6,9 @@ import { boundedBody,errorResponse,GiftError,json,proof,sameOrigin,validateGift 
 import { bindSession,reserveGift,testCheckoutContext } from "@/server/donations/store";
 import { checkoutURL,stripeRequest,verifyAccount,type StripeSession } from "@/server/donations/stripe";
 export const runtime="nodejs";
+export const maxDuration=60;
 export async function POST(request:Request){
+  if(process.env.NODE_ENV === "production") return livePOST(request);
   try{
     const s=testCheckoutSettings();if(!s)throw new GiftError(503,'checkout_disabled','Test checkout is not configured. No real payments are available.');
     sameOrigin(request,s.origin);
@@ -18,11 +21,11 @@ export async function POST(request:Request){
     await verifyAccount(s);
     const row=await reserveGift(s,campaign,gift);
     const setOwnerCookie=async()=>{(await cookies()).set('ff_test_gift',row.id+'.'+proof(s,row.id),{httpOnly:true,sameSite:'lax',secure:false,path:'/',maxAge:86400});};
+    await setOwnerCookie();
     // Never recreate an old ambiguous request after Stripe's retry window.
     // Completed/expired attempts recover ownership and return to their existing record.
     const returnOnly=row.state!=='pending'||row.expires_at.getTime()<=Date.now()||(!row.stripe_session_id&&Date.now()-row.created_at.getTime()>15*60000);
     if(returnOnly){
-      await setOwnerCookie();
       return json({ok:true,mode:'test',checkout:{attemptId:row.id,returnUrl:`/c/${campaign.slug}/gift?attempt=${row.id}&state=returned`}});
     }
     let url=row.checkout_url;
@@ -31,7 +34,6 @@ export async function POST(request:Request){
       await bindSession(s,row,session);url=session.url;
     }
     if(!checkoutURL(url))throw new Error('Invalid checkout destination');
-    await setOwnerCookie();
     return json({ok:true,mode:'test',checkout:{url,attemptId:row.id}});
   }catch(error){return errorResponse(error);}
 }

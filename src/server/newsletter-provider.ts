@@ -1,4 +1,5 @@
 import "server-only";
+import {requireSandboxEmailRecipient} from "./sandbox-email";
 import type { NewsletterSettings } from "./newsletter-config";
 
 type Operation = "contact-lookup" | "contact-create" | "contact-shape" | "topic-opt-in" | "segment-add" | "email-send" | "provider-read";
@@ -56,11 +57,13 @@ export async function resendRequest(settings: NewsletterSettings, path: string, 
   throw new ProviderError(429, operation);
 }
 export async function sendConfirmation(settings: NewsletterSettings, email: string, organization: string, token: string, id: string) {
+  requireSandboxEmailRecipient(email);
   const url = `${settings.origin}/api/newsletter/confirm?token=${token}`;
   const result = await resendRequest(settings, "/emails", "POST", { from: settings.from, to: [email], subject: `Confirm ${organization} season updates`, text: `You requested occasional campaign updates from ${organization}.\n\nConfirm your email within 24 hours:\n${url}\n\nThe page will ask you to confirm before subscribing. If you did not request this, ignore this email. You have not been subscribed.`, }, `ff-newsletter-${id}`);
   if (typeof result.id !== "string") throw new ProviderError(502, "email-send", "response");
 }
 export async function subscribeContact(settings: NewsletterSettings, email: string, slug: string): Promise<"subscribed" | "suppressed"> {
+  requireSandboxEmailRecipient(email);
   const ids = settings.campaigns[slug];
   if (!ids) throw new Error("Unknown newsletter campaign.");
   const deadline = AbortSignal.timeout(30000);

@@ -7,7 +7,7 @@ export const connectAtxElite: Campaign = {
   location: "Austin, TX",
   season: "2026 season",
   headline: "Fund the season. Back every athlete.",
-  subhead: "Help Austin youth stay in the game. Your support helps cover gym time, tournaments, travel, meals, and essential equipment.",
+  subhead: "Help keep basketball within reach for Austin youth—from consistent gym time to tournaments, travel, uniforms, and equipment.",
   raised: 11850,
   goal: 20000,
   supporters: 143,
@@ -37,7 +37,7 @@ export const connectAtxElite: Campaign = {
     heading: "Basketball is the bridge.",
     lede: "A youth program can do more than teach the game. It can build leaders, strengthen community, and create opportunity on and off the court.",
     narrative: "Connect ATX Elite is rooted in Austin community, mentorship, and a shared belief that basketball can open doors well beyond a final score.",
-    summary: "Basketball builds leaders, strengthens community, and opens doors beyond the court.",
+    summary: "Help kids stay connected to their team and the opportunities basketball creates.",
     programSummary: "Reliable gym time, tournament opportunities, and travel support help keep basketball available to Austin youth.",
     priorities: [
       { label: "Training", description: "Gym time, practice access, and training support that keeps athletes developing." },
@@ -85,7 +85,7 @@ export const connectAtxElite: Campaign = {
   ],
   seasonMission: {
     rallyingCry: "Keep the season moving.",
-    title: "Three key needs. A stronger season.",
+    title: "Where your gift goes.",
     summary: "Gym access, competition, and travel help make a consistent season possible for Austin youth.",
     priorities: [
       { id: "practice", title: "A place to practice", summary: "Help cover consistent gym access.", detail: "Reliable gym access gives athletes a place to practice, build skills, and stay connected to their coaches and teammates. The shared season fund helps cover gym rentals and practice needs.", image: { src: "/media/connect-atx-elite/7th-black.webp", alt: "Connect ATX Elite athletes gathered in a courtside huddle" } },

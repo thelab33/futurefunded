@@ -2,7 +2,7 @@ import type { RecordProps } from "@/components/campaign/campaign-types";
 import { DonationForm } from "@/components/campaign/checkout/DonationForm";
 
 export function CampaignGiveDetail({
-  campaign, amount, custom, purposes, checkoutReady, onBack,
+  campaign, amount, custom, purposes, checkoutReady, checkoutMode, givingDetails, onBack,
 }: Omit<RecordProps, "chapter" | "canonicalUrl">) {
   const selected = campaign.impact.find(option => option.amount === amount);
   const isCustom = Boolean(custom.trim());
@@ -15,7 +15,9 @@ export function CampaignGiveDetail({
       campaignSlug={campaign.slug}
       amountCents={amountCents}
       purposeId={purposeId}
-      configured={checkoutReady}
+      configured={checkoutReady && (checkoutMode==="live"||checkoutMode==="test")}
+      mode={checkoutMode==="live"?"live":"test"}
+      givingDetails={givingDetails}
       frequency="one_time"
       impactLabel={isCustom ? "Shared season fund" : selected?.label ?? "Shared season fund"}
       impactDescription={isCustom ? undefined : selected?.description}

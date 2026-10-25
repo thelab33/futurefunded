@@ -1,3 +1,5 @@
+import {campaignCheckoutContext} from "@/server/donations/context";
+export const dynamic="force-dynamic";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { HomeExperience } from "@/components/home/HomeExperience";
@@ -44,12 +46,14 @@ export const metadata: Metadata = {
     ],
   },
 };
-export default function Home() {
+export default async function Home() {
+  const checkout=await campaignCheckoutContext("connect-atx-elite");
   return (
     <div className={`${homeSans.variable} ${homeDisplay.variable}`}>
       <HomeExperience
         canonicalCampaignUrl={getCampaignCanonicalUrl("connect-atx-elite")}
         year={2026}
+        givingOpen={checkout.ready&&checkout.mode==="live"}
       />
     </div>
   );

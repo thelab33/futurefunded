@@ -1,25 +1,27 @@
+import {givingState,type CheckoutMode} from "@/domain/campaigns/payment-presentation";
 import styles from "@/components/campaign/Campaign.module.css";
 
-/** Current processor is test-only; readiness never implies live settlement. */
+/** Payment readiness is server-derived; it does not imply settled payouts. */
 export function CampaignGivingStatus({
-  checkoutReady,
+  checkoutReady, checkoutMode,
 }: {
-  checkoutReady: boolean;
+  checkoutReady: boolean; checkoutMode?:CheckoutMode;
 }) {
+  const state=givingState(checkoutMode,checkoutReady);
   return (
     <div
       className={styles.givingStatus}
       id="checkout-availability"
-      data-giving-state={checkoutReady ? "test" : "preview"}
+      data-giving-state={state}
     >
       <span className={styles.givingStatusDot} aria-hidden="true" />
       <div>
         <strong>
-          {checkoutReady ? "Test checkout available" : "Giving not open yet"}
+          {state==="live"?"Giving is open":state==="test"?"Test mode":"Giving not open yet"}
         </strong>
         <p>
-          {checkoutReady
-            ? "Use Stripe test details."
+          {state==="live"?"One-time gifts through Stripe.":state==="test"
+            ? "· No real money is collected."
             : "Payments are not being accepted."}
         </p>
       </div>

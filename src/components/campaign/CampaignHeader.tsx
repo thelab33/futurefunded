@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import {givingState,type CheckoutMode} from "@/domain/campaigns/payment-presentation";
 import type { Campaign } from "@/domain/campaigns/types";
 import type { CampaignChapter } from "./campaign-types";
 import type { campaignMedia } from "./campaign-media";
@@ -14,9 +15,10 @@ type CampaignHeaderProps = {
   onChapter: (chapter: CampaignChapter) => void;
   hydrated: boolean;
   checkoutReady: boolean;
+  checkoutMode?:CheckoutMode;
 };
 
-export function CampaignHeader({ campaign, identity, onGive, onChapter, hydrated, checkoutReady }: CampaignHeaderProps) {
+export function CampaignHeader({ campaign, identity, onGive, onChapter, hydrated, checkoutReady, checkoutMode }: CampaignHeaderProps) {
   const headerRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -53,7 +55,8 @@ export function CampaignHeader({ campaign, identity, onGive, onChapter, hydrated
   }, []);
   const initials = campaign.organization.trim().split(/\s+/).slice(0, 2)
     .map(word => Array.from(word)[0] ?? "").join("").toUpperCase() || "FF";
-  const actionLabel = checkoutReady ? "Test a gift" : "Support the season";
+  const state=givingState(checkoutMode,checkoutReady);
+  const actionLabel = state==="live"?"Give to the season":state==="test"?"Test a gift":"Support the season";
 
   const navigation = (mobile: boolean) => (
     <nav className={`${styles.nav} ${mobile ? styles.mobileNav : styles.desktopNav}`} aria-label="Campaign navigation">
@@ -80,7 +83,7 @@ export function CampaignHeader({ campaign, identity, onGive, onChapter, hydrated
         aria-label={actionLabel} aria-haspopup="dialog" aria-controls="campaign-detail-dialog"
         disabled={!hydrated} onClick={onGive}>
         <span className={styles.fullLabel}>{actionLabel}</span>
-        <span className={styles.shortLabel}>{checkoutReady ? "Test gift" : "Support"}</span>
+        <span className={styles.shortLabel}>{state==="live"?"Give":state==="test"?"Test gift":"Support"}</span>
         <span className={styles.arrow} aria-hidden="true">→</span>
       </button>
       {navigation(false)}

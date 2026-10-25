@@ -1,22 +1,26 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import {requestSignIn,signInIssueMessage,type SignInIssue} from "@/domain/organizer/sign-in-feedback";
+import { useRef, useState, type FormEvent } from "react";
 import { createAuthClient } from "better-auth/react";
 import { magicLinkClient } from "better-auth/client/plugins";
 import styles from "./OrganizerStudio.module.css";
 
 const authClient = createAuthClient({ plugins: [magicLinkClient()] });
-export function OrganizerSignIn({ slug }: { slug: string }) {
+export function OrganizerSignIn({ slug, initialIssue=null }: { slug: string;initialIssue?:SignInIssue }) {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(signInIssueMessage(initialIssue));
+  const lock=useRef(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setPending(true); setMessage("");
+    event.preventDefault();if(lock.current)return;lock.current=true;setPending(true);setMessage("");
     try {
-      // Never show whether an email belongs to an organizer.
-      await authClient.signIn.magicLink({ email, callbackURL: `/organizer/${encodeURIComponent(slug)}` });
-      setMessage("If this address has organizer access, a sign-in link will arrive shortly. Check your inbox.");
-    } catch { setMessage("If this address has organizer access, a sign-in link will arrive shortly. Check your inbox."); }
-    finally { setPending(false); }
+      const feedback=await requestSignIn(()=>authClient.signIn.magicLink({
+        email:email.trim().toLowerCase(),callbackURL:`/organizer/${encodeURIComponent(slug)}`,
+        errorCallbackURL:`/organizer/${encodeURIComponent(slug)}`,
+        fetchOptions:{signal:AbortSignal.timeout(10000)},
+      }));
+      setMessage(feedback.message);
+    }finally{lock.current=false;setPending(false);}
   }
   return <section className={styles.intro}>
     <p className={styles.eyebrow}>Private organizer access</p>

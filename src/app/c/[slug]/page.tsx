@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { testCheckoutContext } from "@/server/donations/store";
+import { campaignCheckoutContext } from "@/server/donations/context";
 import { newsletterReady } from "@/server/newsletter-store";
 import { getCampaign } from "@/data/campaigns";
 import { publicCampaignSnapshot } from "@/domain/campaigns/season-dispatch";
@@ -28,14 +28,14 @@ export default async function CampaignPage({params,searchParams}: Props) {
   if (!source) notFound();
   // Campaign content stays public-only; newsletter readiness checks its isolated schema.
   const snapshot = publicCampaignSnapshot(source,new Date().toISOString());
-  const checkout = await testCheckoutContext(slug);
-  // Test-ledger projection replaces demo figures only while explicitly configured.
-  const campaign = checkout.ready && checkout.funding ? {
-    ...snapshot, raised:checkout.funding.raised, supporters:checkout.funding.gifts,
-    branding:{...snapshot.branding,supporterLabel:"test gifts"},
+  const checkout = await campaignCheckoutContext(slug);
+  // Production records come only from verified ledger projections, never source demo totals.
+  const campaign = checkout.funding || process.env.NODE_ENV==="production" ? {
+    ...snapshot, raised:checkout.funding?.raised??0, supporters:checkout.funding?.gifts??0,
+    branding:{...snapshot.branding,supporterLabel:checkout.funding?.source==="test_payment_ledger"?"test gifts":"recorded gifts"},
   } : snapshot;
   const presentation = toCampaignPresentationV1(campaign,{
-    checkoutReady:checkout.ready, purposes:[], canonicalUrl:getCampaignCanonicalUrl(slug),
+    checkoutReady:checkout.ready, checkoutMode:checkout.mode, funding:checkout.funding, details:checkout.details, purposes:[], canonicalUrl:getCampaignCanonicalUrl(slug),
   });
   const query = await searchParams;
   return <CampaignExperience campaign={campaign} presentation={presentation}

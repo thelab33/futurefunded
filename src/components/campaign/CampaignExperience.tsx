@@ -31,7 +31,7 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
     newsletterConfigured: boolean;
 }) {
     const media = campaignMedia(campaign);
-    const { checkoutReady, purposes } = presentation.giving;
+    const { checkoutReady, checkoutMode, purposes, details:givingDetails } = presentation.giving;
     const canonicalUrl = presentation.publicUrl;
     const [amount, setAmount] = useState(presentation.giving.impact.find(i => i.recommended)?.amount ?? 150);
     const [custom, setCustom] = useState("");
@@ -58,8 +58,8 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
     function changeCustom(value: string) { setCustom(value); setError(""); }
     function continueGift() {
         if (custom.trim()) {
-            if (!/^\d{1,6}(\.\d{1,2})?$/.test(custom.trim()) || Number(custom) < 1) {
-                setError("Enter a gift of at least $1, with up to two decimal places.");
+            if (!/^\d{1,6}(\.\d{1,2})?$/.test(custom.trim()) || Number(custom) < 1 || Number(custom)>10000) {
+                setError("Enter a gift from $1 to $10,000, with up to two decimal places.");
                 customInput.current?.focus();
                 return;
             }
@@ -80,6 +80,7 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
             onChapter={open}
             hydrated={hydrated}
             checkoutReady={checkoutReady}
+            checkoutMode={checkoutMode}
           />
         }
         hero={<CampaignHero campaign={campaign} media={media} />}
@@ -96,6 +97,8 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
           <CampaignGiving
             campaign={campaign}
             checkoutReady={checkoutReady}
+            checkoutMode={checkoutMode}
+            fundingSource={presentation.funding.source}
             amount={amount}
             custom={custom}
             error={error}
@@ -114,6 +117,7 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
           <CampaignFooter
             campaign={campaign}
             checkoutReady={checkoutReady}
+            checkoutMode={checkoutMode}
             onChapter={open}
           />
         }
@@ -130,7 +134,10 @@ export function CampaignExperience({ campaign, presentation, returned, cancelled
             custom={custom}
             purposes={purposes.map(p => ({ id: p.id, amountCents: p.amountCents }))}
             checkoutReady={checkoutReady}
+            checkoutMode={checkoutMode}
             canonicalUrl={canonicalUrl}
+            givingDetails={givingDetails}
+            fundingSource={presentation.funding.source}
           />
           <NewsletterPopup campaign={campaign} configured={newsletterConfigured} openRequest={newsletterRequest} />
           </>

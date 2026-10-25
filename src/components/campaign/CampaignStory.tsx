@@ -38,6 +38,7 @@ export function CampaignStory({ campaign, media }: CampaignStoryProps) {
         <p>{campaign.story?.summary ?? campaign.story?.lede}</p>
       </div>
 
+      <div role="group" aria-label={hasKvueReport ? "KVUE program coverage" : "Program coverage"}>
       {(storyImage || hasKvueReport) && (
         <div className={styles.storyMedia}>
           <div className={styles.storyPhoto} data-story-media="documentary">
@@ -82,7 +83,7 @@ export function CampaignStory({ campaign, media }: CampaignStoryProps) {
           </div>
           {hasKvueReport && (
             <p id="story-video-disclosure" className={styles.videoDisclosure}>
-              Video hosted by KVUE. Loading connects to its video service.
+              Hosted by KVUE. Playing connects to its video service.
             </p>
           )}
         </div>
@@ -96,16 +97,16 @@ export function CampaignStory({ campaign, media }: CampaignStoryProps) {
           rel="noopener noreferrer"
           aria-label={`Read ${campaign.story.coverage.publisher} feature: ${campaign.story.coverage.headline} (opens in a new tab)`}
         >
-          <span className={styles.coverageMeta}>
+          {!hasKvueReport && <span className={styles.coverageMeta}>
             <b>{campaign.story.coverage.publisher}</b>
-            <small>Independent coverage</small>
-          </span>
+          </span>}
           <strong>{campaign.story.coverage.headline}</strong>
           <span className={styles.coverageAction}>
-            Read the original feature <span aria-hidden="true">↗</span>
+            Read the {campaign.story.coverage.publisher} feature <span aria-hidden="true">↗</span>
           </span>
         </a>
       )}
+      </div>
     </section>
   );
 }

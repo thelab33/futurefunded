@@ -22,6 +22,7 @@ export function CampaignDialog({
   custom,
   purposes,
   checkoutReady,
+  checkoutMode, fundingSource, givingDetails,
   canonicalUrl,
 }: Props) {
   function restoreFocus() {
@@ -106,6 +107,9 @@ export function CampaignDialog({
           custom={custom}
           purposes={purposes}
           checkoutReady={checkoutReady}
+          checkoutMode={checkoutMode}
+          fundingSource={fundingSource}
+          givingDetails={givingDetails}
           canonicalUrl={canonicalUrl}
           onBack={onBack}
         />

@@ -1,3 +1,4 @@
+import type {PublicGivingDetails} from "@/domain/campaigns/payment-presentation";
 import type { Campaign, SupporterDeskItem } from "@/domain/campaigns/types";
 import styles from "@/components/campaign/CampaignSupportDetail.module.css";
 
@@ -7,7 +8,7 @@ const groups: ReadonlyArray<{ category: SupporterDeskItem["category"]; heading: 
   { category: "help", heading: "More ways to help", description: "Sponsorship, sharing, and campaign questions." },
 ];
 
-export function CampaignSupportDetail({ campaign }: { campaign: Campaign }) {
+export function CampaignSupportDetail({ campaign, givingDetails }: { campaign: Campaign;givingDetails?:PublicGivingDetails|null }) {
   return (
     <div className={styles.supportDetail} data-wave6-support="true">
       <p className={styles.serviceNote}>
@@ -39,7 +40,10 @@ export function CampaignSupportDetail({ campaign }: { campaign: Campaign }) {
       })}
       <aside className={styles.supportAvailability} aria-label="Published support availability">
         <strong>Contact & policies</strong>
-        <p>Organizer contact details, the privacy policy, and campaign terms have not been published here yet.</p>
+        {!givingDetails && campaign.slug === "connect-atx-elite" && (
+          <p>Campaign prepared by Angel · Ninth-grade coach.</p>
+        )}
+        {givingDetails?<><p>Recipient: {givingDetails.recipientName}</p><p><a href={`mailto:${givingDetails.supportEmail}`}>Contact the organizer</a></p><p><a href={givingDetails.privacyUrl}>Privacy policy</a>{" · "}<a href={givingDetails.termsUrl}>Campaign terms</a></p></>:<p>Organizer contact details, the privacy policy, and campaign terms have not been published here yet.</p>}
         <p>Keep card and bank details out of messages and social posts.</p>
       </aside>
     </div>

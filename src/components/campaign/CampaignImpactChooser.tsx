@@ -1,3 +1,4 @@
+import {givingState,type CheckoutMode} from "@/domain/campaigns/payment-presentation";
 import Image from "next/image";
 import { CampaignImpactPhoto } from "./CampaignImpactPhoto";
 import type { ReactNode, RefObject } from "react";
@@ -16,6 +17,7 @@ export type CampaignImpactChooserProps = {
   onGive: () => void;
   availabilityDescriptionId?: string;
   checkoutReady: boolean;
+  checkoutMode?:CheckoutMode;
   status?: ReactNode;
   disabled?: boolean;
 };
@@ -30,10 +32,11 @@ export function CampaignImpactChooser({
   onCustom,
   onGive,
   availabilityDescriptionId,
-  checkoutReady,
+  checkoutReady, checkoutMode,
   status,
   disabled = false,
 }: CampaignImpactChooserProps) {
+  const state=givingState(checkoutMode,checkoutReady);
   const customAmount = custom.trim();
   const selectedImpact = campaign.impact.find((item) => item.amount === amount);
   const recommendedImpact = campaign.impact.find((item) => item.recommended);
@@ -163,7 +166,7 @@ export function CampaignImpactChooser({
 
       <p className={styles.customGuidance} id="custom-amount-guidance">
         {checkoutReady
-          ? "$1–$10,000 test limit · Up to two decimal places."
+          ? (state==="live"?"$1–$10,000 USD · Up to two decimal places.":"$1–$10,000 test limit · Up to two decimal places.")
           : "$1 minimum · Up to two decimal places."}
       </p>
 

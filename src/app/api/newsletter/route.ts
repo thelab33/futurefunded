@@ -1,3 +1,4 @@
+import {isSandboxEmailRecipient} from "@/server/sandbox-email";
 import { z } from "zod";
 import { getCampaign } from "@/data/campaigns";
 import { newsletterSettings } from "@/server/newsletter-config";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     const { email, campaignSlug, company } = parsed.data;
     const campaign = getCampaign(campaignSlug);
     if (!campaign?.engagement?.newsletter?.enabled || !settings.campaigns[campaignSlug]) throw new NewsletterInputError(404, "Campaign updates are unavailable.");
-    if (company) return accepted();
+    if (company || !isSandboxEmailRecipient(email)) return accepted();
     if (!await newsletterReady(campaignSlug)) return json({ ok: false, message: "Email signup is temporarily unavailable." }, 503);
     const reservation = await reserve(settings, campaignSlug, campaign.organization, email);
     if (reservation.accepted === "limited") return json({ ok: false, message: "Please try again later." }, 429);

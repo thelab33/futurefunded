@@ -534,8 +534,8 @@ function OrganizerPanel({ brand, open }) {
     </div>
   );
 }
-/** @param {{canonicalCampaignUrl: string | null, year: number}} props */
-export function HomeExperience({ canonicalCampaignUrl, year }) {
+/** @param {{canonicalCampaignUrl: string | null, year: number, givingOpen?: boolean}} props */
+export function HomeExperience({ canonicalCampaignUrl, year, givingOpen=false }) {
   const [activeTab, setActiveTab] = useState(0),
     [brandKey, setBrandKey] = useState("school"),
     [mobileOpen, setMobileOpen] = useState(false),
@@ -610,7 +610,7 @@ export function HomeExperience({ canonicalCampaignUrl, year }) {
     ],
     [
       "What can I try today?",
-      "Open the Connect ATX Elite campaign, explore sample sponsorship packages, or copy the featured campaign link. Organizer Studio uses sample data with saving and publishing disabled. Live giving is not open yet.",
+      `Open the Connect ATX Elite campaign, explore sample sponsorship packages, or copy the featured campaign link. Organizer Studio uses sample data with saving and publishing disabled. ${givingOpen?"One-time giving is available on the featured campaign through Stripe.":"Live giving is not open yet."}`,
     ],
   ];
   return (
@@ -977,7 +977,7 @@ export function HomeExperience({ canonicalCampaignUrl, year }) {
               <div>
                 <h3>Connect ATX Elite</h3>
                 <p>Austin youth basketball.</p>
-                <small className={cx("availability")}>Giving not open</small>
+                <small className={cx("availability")}>{givingOpen?"Giving is open":"Giving not open"}</small>
               </div>
               <Action href={CAMPAIGN_URL}>View campaign</Action>
             </div>
