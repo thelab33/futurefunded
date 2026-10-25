@@ -2540,6 +2540,7 @@
 .page img[data-ff-home-icon] {
   flex-shrink: 0;
   object-fit: contain;
+  height: auto;
 }
 .page .action:not(.outline):not(.ivory):not(.text) [data-ff-home-icon],
 .page .action.light [data-ff-home-icon],

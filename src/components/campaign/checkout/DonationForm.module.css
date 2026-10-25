@@ -98,3 +98,21 @@
 .readiness { padding:.85rem 1rem;border-radius:7px;margin-block-end:1rem; }
 .form .topline { margin-block-end:1rem; }
 .form h3 { font-size:clamp(1.35rem,2.7vw,1.625rem);line-height:1.25; }
+
+/* Recovery actions sit on a light surface, separate from the navy gift summary. */
+.readiness .back {
+  box-sizing:border-box;
+  color:var(--campaign-ink);
+  background:var(--campaign-paper);
+  border-color:var(--campaign-line);
+}
+.readiness a.back { text-decoration:underline;text-underline-offset:3px; }
+.readiness .back:focus-visible { outline:3px solid var(--campaign-focus);outline-offset:3px; }
+.readiness button.back:disabled { opacity:.65;cursor:wait; }
+@media (hover:hover) and (pointer:fine) {
+  .readiness .back:hover { background:var(--campaign-stage);border-color:var(--campaign-recognition-ink); }
+}
+@media (forced-colors:active) {
+  .readiness .back { color:ButtonText;background:ButtonFace;border-color:ButtonText; }
+  .readiness .back:focus-visible { outline-color:Highlight; }
+}
